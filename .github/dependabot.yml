@@ -1,43 +1,43 @@
 version: 2
 updates:
-  # NPM ecosystem: manages pnpm workspace root dependencies
+  # Dépendances npm du monorepo pnpm (racine et workspaces)
   - package-ecosystem: npm
     directory: '/'
     schedule:
       interval: weekly
+      day: monday
     groups:
-      # Group patch and minor updates together
       minor-and-patch:
         update-types:
           - minor
           - patch
-      # Group major updates separately for review
       major:
         update-types:
           - major
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
 
-  # GitHub Actions ecosystem: keeps workflow actions up to date
+  # Actions GitHub des workflows, regroupées en une seule PR
   - package-ecosystem: github-actions
     directory: '/'
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - '*'
+    open-pull-requests-limit: 2
 
-  # Pub ecosystem for Flutter/Dart dependencies in mobile app
-  # Note: /apps/mobile may be temporarily incomplete/empty as development is ongoing.
-  # Dependabot tolerates missing/empty manifests and will simply find nothing to update.
+  # Dépendances Flutter/Dart. Les versions sont épinglées sur le SDK
+  # Dart 3.11.4 : les montées se font manuellement avec le SDK.
   - package-ecosystem: pub
     directory: '/apps/mobile'
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 2
 
-  # Docker ecosystem for Dockerfile dependencies under infra/docker
-  # Note: /infra/docker directory structure may be temporarily incomplete/empty.
-  # Dependabot tolerates missing/empty manifests and will simply find nothing to update.
+  # Images Docker de la pile locale
   - package-ecosystem: docker
     directory: '/infra/docker'
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 2

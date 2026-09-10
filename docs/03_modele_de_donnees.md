@@ -406,61 +406,65 @@ Le schéma déclare 80 types `ENUM` (partie `01_extensions_enums.sql`), regroup�
 
 ### 3.5 Facturation & encaissement (21 types) — partie 2
 
-| Type                       | Valeur                 | Signification                                                                |
-| -------------------------- | ---------------------- | ---------------------------------------------------------------------------- |
-| `momo_status`              | `INITIATED`            | Transaction initiée auprès de l'agrégateur.                                  |
-| `momo_status`              | `PENDING`              | En attente de confirmation opérateur.                                        |
-| `momo_status`              | `SUCCEEDED`            | Transaction réussie.                                                         |
-| `momo_status`              | `FAILED`               | Transaction échouée.                                                         |
-| `momo_status`              | `EXPIRED`              | Transaction expirée sans réponse de l'opérateur.                             |
-| `momo_status`              | `CANCELLED`            | Transaction annulée par l'utilisateur ou l'agrégateur.                       |
-| `momo_status`              | `REFUNDED`             | Transaction remboursée.                                                      |
-| `fee_bearer`               | `TENANT`               | Frais du canal à la charge du locataire.                                     |
-| `fee_bearer`               | `ORGANIZATION`         | Frais à la charge de l'organisation (agence).                                |
-| `fee_bearer`               | `LANDLORD`             | Frais à la charge du bailleur.                                               |
-| `fee_bearer`               | `SHARED`               | Frais partagés entre plusieurs parties.                                      |
-| `check_status`             | `RECEIVED`             | Chèque reçu, non encore déposé.                                              |
-| `check_status`             | `DEPOSITED`            | Déposé en banque.                                                            |
-| `check_status`             | `CLEARED`              | Compensé, fonds disponibles.                                                 |
-| `check_status`             | `BOUNCED`              | Rejeté pour défaut de provision.                                             |
-| `check_status`             | `CANCELLED`            | Annulé avant dépôt.                                                          |
-| `check_status`             | `RETURNED`             | Retourné par la banque après dépôt (autre motif que le défaut de provision). |
-| `statement_format`         | `CSV`                  | Relevé bancaire au format CSV.                                               |
-| `statement_format`         | `MT940`                | Format SWIFT MT940.                                                          |
-| `statement_format`         | `CAMT053`              | Format ISO 20022 CAMT.053.                                                   |
-| `statement_format`         | `OFX`                  | Format Open Financial Exchange.                                              |
-| `statement_format`         | `XLSX`                 | Fichier tableur Excel.                                                       |
-| `statement_format`         | `PDF_OCR`              | Relevé PDF scanné, traité par reconnaissance optique de caractères.          |
-| `bank_statement_status`    | `UPLOADED`             | Fichier de relevé téléversé.                                                 |
-| `bank_statement_status`    | `PARSING`              | Analyse du fichier en cours.                                                 |
-| `bank_statement_status`    | `PARSED`               | Lignes extraites avec succès.                                                |
-| `bank_statement_status`    | `RECONCILING`          | Rapprochement avec les paiements en cours.                                   |
-| `bank_statement_status`    | `RECONCILED`           | Rapprochement terminé.                                                       |
-| `bank_statement_status`    | `FAILED`               | Échec d'analyse du fichier.                                                  |
-| `statement_line_direction` | `CREDIT`               | Ligne créditrice (entrée de fonds).                                          |
-| `statement_line_direction` | `DEBIT`                | Ligne débitrice (sortie de fonds).                                           |
-| `match_type`               | `EXACT`                | Rapprochement automatique exact (montant, référence).                        |
-| `match_type`               | `SUGGESTED`            | Rapprochement suggéré par l'algorithme, à confirmer.                         |
-| `match_type`               | `MANUAL`               | Rapprochement effectué manuellement par un gestionnaire.                     |
-| `match_type`               | `PARTIAL`              | Rapprochement partiel (montant différent).                                   |
-| `match_type`               | `SPLIT`                | Une ligne de relevé rapprochée avec plusieurs paiements, ou l'inverse.       |
-| `match_status`             | `PROPOSED`             | Rapprochement proposé, non validé.                                           |
-| `match_status`             | `CONFIRMED`            | Rapprochement validé par un utilisateur.                                     |
-| `match_status`             | `REJECTED`             | Rapprochement rejeté.                                                        |
-| `match_status`             | `REVERSED`             | Rapprochement annulé après validation.                                       |
-| `receipt_status`           | `DRAFT`                | Quittance en cours de génération.                                            |
-| `receipt_status`           | `GENERATING`           | PDF en cours de production (job Puppeteer).                                  |
-| `receipt_status`           | `ISSUED`               | PDF généré, prêt à l'envoi.                                                  |
-| `receipt_status`           | `SENT`                 | Envoyée au locataire (WhatsApp/SMS/email).                                   |
-| `receipt_status`           | `CANCELLED`            | Quittance annulée.                                                           |
-| `sequence_kind`            | `CASH_RECEIPT`         | Séquence des reçus de caisse (`CASH-{org}-{collector}-{seq}`).               |
-| `sequence_kind`            | `RENT_INVOICE`         | Séquence des factures de loyer (`LOY-{YYYYMM}-{seq}`).                       |
-| `sequence_kind`            | `RECEIPT`              | Séquence des quittances (`QUI-{YYYYMM}-{seq}`).                              |
-| `sequence_kind`            | `OWNER_STATEMENT`      | Séquence des relevés de gérance.                                             |
-| `sequence_kind`            | `REMITTANCE`           | Séquence des reversements d'encaisse.                                        |
-| `sequence_kind`            | `EXPENSE`              | Séquence des dépenses.                                                       |
-| `sequence_kind`            | `PAYOUT`               | Séquence des reversements aux bailleurs.                                     |
-| `sequence_kind`            | `SUBSCRIPTION_INVOICE` | Séquence des factures d'abonnement SaaS.                                     |
+| Type                       | Valeur                 | Signification                                                                                      |
+| -------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------- |
+| `momo_status`              | `INITIATED`            | Transaction initiée auprès de l'agrégateur.                                                        |
+| `momo_status`              | `PENDING`              | En attente de confirmation opérateur.                                                              |
+| `momo_status`              | `DECLARED`             | Transfert direct déclaré par le locataire (canal DECLARED), en attente de vérification.            |
+| `momo_status`              | `SUCCEEDED`            | Transaction réussie.                                                                               |
+| `momo_status`              | `FAILED`               | Transaction échouée.                                                                               |
+| `momo_status`              | `EXPIRED`              | Transaction expirée sans réponse de l'opérateur.                                                   |
+| `momo_status`              | `CANCELLED`            | Transaction annulée par l'utilisateur ou l'agrégateur.                                             |
+| `momo_status`              | `REFUNDED`             | Transaction remboursée.                                                                            |
+| `momo_status`              | `REJECTED`             | Déclaration refusée par le gestionnaire (référence introuvable ou montant différent).              |
+| `momo_channel`             | `AGGREGATOR`           | Transaction poussée via MobileMoneyProvider (CinetPay, PawaPay, opérateur direct).                 |
+| `momo_channel`             | `DECLARED`             | Transfert direct vers le numéro du bailleur, déclaré par le locataire avec la référence opérateur. |
+| `fee_bearer`               | `TENANT`               | Frais du canal à la charge du locataire.                                                           |
+| `fee_bearer`               | `ORGANIZATION`         | Frais à la charge de l'organisation (agence).                                                      |
+| `fee_bearer`               | `LANDLORD`             | Frais à la charge du bailleur.                                                                     |
+| `fee_bearer`               | `SHARED`               | Frais partagés entre plusieurs parties.                                                            |
+| `check_status`             | `RECEIVED`             | Chèque reçu, non encore déposé.                                                                    |
+| `check_status`             | `DEPOSITED`            | Déposé en banque.                                                                                  |
+| `check_status`             | `CLEARED`              | Compensé, fonds disponibles.                                                                       |
+| `check_status`             | `BOUNCED`              | Rejeté pour défaut de provision.                                                                   |
+| `check_status`             | `CANCELLED`            | Annulé avant dépôt.                                                                                |
+| `check_status`             | `RETURNED`             | Retourné par la banque après dépôt (autre motif que le défaut de provision).                       |
+| `statement_format`         | `CSV`                  | Relevé bancaire au format CSV.                                                                     |
+| `statement_format`         | `MT940`                | Format SWIFT MT940.                                                                                |
+| `statement_format`         | `CAMT053`              | Format ISO 20022 CAMT.053.                                                                         |
+| `statement_format`         | `OFX`                  | Format Open Financial Exchange.                                                                    |
+| `statement_format`         | `XLSX`                 | Fichier tableur Excel.                                                                             |
+| `statement_format`         | `PDF_OCR`              | Relevé PDF scanné, traité par reconnaissance optique de caractères.                                |
+| `bank_statement_status`    | `UPLOADED`             | Fichier de relevé téléversé.                                                                       |
+| `bank_statement_status`    | `PARSING`              | Analyse du fichier en cours.                                                                       |
+| `bank_statement_status`    | `PARSED`               | Lignes extraites avec succès.                                                                      |
+| `bank_statement_status`    | `RECONCILING`          | Rapprochement avec les paiements en cours.                                                         |
+| `bank_statement_status`    | `RECONCILED`           | Rapprochement terminé.                                                                             |
+| `bank_statement_status`    | `FAILED`               | Échec d'analyse du fichier.                                                                        |
+| `statement_line_direction` | `CREDIT`               | Ligne créditrice (entrée de fonds).                                                                |
+| `statement_line_direction` | `DEBIT`                | Ligne débitrice (sortie de fonds).                                                                 |
+| `match_type`               | `EXACT`                | Rapprochement automatique exact (montant, référence).                                              |
+| `match_type`               | `SUGGESTED`            | Rapprochement suggéré par l'algorithme, à confirmer.                                               |
+| `match_type`               | `MANUAL`               | Rapprochement effectué manuellement par un gestionnaire.                                           |
+| `match_type`               | `PARTIAL`              | Rapprochement partiel (montant différent).                                                         |
+| `match_type`               | `SPLIT`                | Une ligne de relevé rapprochée avec plusieurs paiements, ou l'inverse.                             |
+| `match_status`             | `PROPOSED`             | Rapprochement proposé, non validé.                                                                 |
+| `match_status`             | `CONFIRMED`            | Rapprochement validé par un utilisateur.                                                           |
+| `match_status`             | `REJECTED`             | Rapprochement rejeté.                                                                              |
+| `match_status`             | `REVERSED`             | Rapprochement annulé après validation.                                                             |
+| `receipt_status`           | `DRAFT`                | Quittance en cours de génération.                                                                  |
+| `receipt_status`           | `GENERATING`           | PDF en cours de production (job Puppeteer).                                                        |
+| `receipt_status`           | `ISSUED`               | PDF généré, prêt à l'envoi.                                                                        |
+| `receipt_status`           | `SENT`                 | Envoyée au locataire (WhatsApp/SMS/email).                                                         |
+| `receipt_status`           | `CANCELLED`            | Quittance annulée.                                                                                 |
+| `sequence_kind`            | `CASH_RECEIPT`         | Séquence des reçus de caisse (`CASH-{org}-{collector}-{seq}`).                                     |
+| `sequence_kind`            | `RENT_INVOICE`         | Séquence des factures de loyer (`LOY-{YYYYMM}-{seq}`).                                             |
+| `sequence_kind`            | `RECEIPT`              | Séquence des quittances (`QUI-{YYYYMM}-{seq}`).                                                    |
+| `sequence_kind`            | `OWNER_STATEMENT`      | Séquence des relevés de gérance.                                                                   |
+| `sequence_kind`            | `REMITTANCE`           | Séquence des reversements d'encaisse.                                                              |
+| `sequence_kind`            | `EXPENSE`              | Séquence des dépenses.                                                                             |
+| `sequence_kind`            | `PAYOUT`               | Séquence des reversements aux bailleurs.                                                           |
+| `sequence_kind`            | `SUBSCRIPTION_INVOICE` | Séquence des factures d'abonnement SaaS.                                                           |
 
 ### 3.6 Gestion d'agence (8 types)
 
@@ -2235,40 +2239,46 @@ Chèque remis par un locataire : réception, remise en banque, compensation ou r
 
 ### 7.13 `mobile_money_transactions`
 
-Transaction Mobile Money via agrégateur (CinetPay, PawaPay) ou opérateur direct (MTN MoMo, Airtel Money). La confirmation d'un paiement repose sur la re-interrogation du statut auprès de l'agrégateur, jamais sur la seule réception d'un webhook.
+Transaction Mobile Money, soit poussée via agrégateur (CinetPay, PawaPay) ou opérateur direct (canal AGGREGATOR), soit déclarée par le locataire après un transfert direct vers le numéro du bailleur (canal DECLARED : référence opérateur dans `provider_transaction_id`, capture facultative, validation manuelle ; contrainte `momo_channel_chk`). La confirmation d'un paiement repose sur la re-interrogation du statut auprès de l'agrégateur, jamais sur la seule réception d'un webhook.
 
-| Colonne                        | Type              | Nullable | Défaut              | Description                                                               |
-| :----------------------------- | :---------------- | :------- | :------------------ | :------------------------------------------------------------------------ |
-| id                             | UUID              | non      | `gen_random_uuid()` | Identifiant technique                                                     |
-| organization_id                | UUID              | non      | —                   | Organisation propriétaire                                                 |
-| payment_id                     | UUID              | oui      | —                   | Paiement associé                                                          |
-| tenant_id                      | UUID              | oui      | —                   | Locataire payeur                                                          |
-| lease_id                       | UUID              | oui      | —                   | Bail concerné                                                             |
-| invoice_id                     | UUID              | oui      | —                   | Facture visée                                                             |
-| provider                       | momo_provider     | non      | —                   | MTN_MOMO, AIRTEL_MONEY, CINETPAY, PAWAPAY, OTHER                          |
-| aggregator                     | TEXT              | non      | 'CINETPAY'          | Agrégateur technique effectivement utilisé                                |
-| direction                      | payment_direction | non      | INBOUND             | INBOUND / OUTBOUND                                                        |
-| status                         | momo_status       | non      | INITIATED           | INITIATED, PENDING, SUCCEEDED, FAILED, EXPIRED, CANCELLED, REFUNDED       |
-| provider_transaction_id        | TEXT              | oui      | —                   | Référence opérateur                                                       |
-| aggregator_transaction_id      | TEXT              | oui      | —                   | Référence agrégateur                                                      |
-| merchant_reference             | TEXT              | non      | —                   | Référence marchande, clé d'idempotence de la demande                      |
-| payer_msisdn                   | TEXT              | non      | —                   | Numéro débité, format E.164                                               |
-| payee_msisdn                   | TEXT              | oui      | —                   | Numéro crédité (paiement sortant)                                         |
-| amount                         | BIGINT            | non      | —                   | Montant demandé                                                           |
-| fee_amount                     | BIGINT            | non      | 0                   | Frais opérateur prélevés                                                  |
-| fee_bearer                     | fee_bearer        | non      | TENANT              | Partie supportant les frais                                               |
-| net_amount                     | BIGINT            | non      | 0                   | Montant net                                                               |
-| currency                       | CHAR(3)           | non      | 'XAF'               | Devise                                                                    |
-| initiated_at                   | TIMESTAMPTZ       | non      | `now()`             | Déclenchement                                                             |
-| completed_at / expires_at      | TIMESTAMPTZ       | oui      | —                   | Fin de vie de la transaction                                              |
-| status_checked_at              | TIMESTAMPTZ       | oui      | —                   | Dernière re-interrogation                                                 |
-| status_check_count             | SMALLINT          | non      | 0                   | Nombre de re-interrogations : un webhook seul ne vaut jamais confirmation |
-| failure_code / failure_message | TEXT              | oui      | —                   | Détail d'échec                                                            |
-| raw_payload                    | JSONB             | non      | `{}`                | Payload brut de l'agrégateur, conservé pour audit et rejeu                |
-| webhook_event_id               | UUID              | oui      | —                   | Webhook déclencheur                                                       |
-| idempotency_key                | TEXT              | oui      | —                   | Idempotence API                                                           |
-| client_ref                     | TEXT              | oui      | —                   | Idempotence mobile                                                        |
-| created_at / updated_at        | TIMESTAMPTZ       | non      | `now()`             | Horodatage                                                                |
+| Colonne                        | Type              | Nullable | Défaut              | Description                                                                             |
+| :----------------------------- | :---------------- | :------- | :------------------ | :-------------------------------------------------------------------------------------- |
+| id                             | UUID              | non      | `gen_random_uuid()` | Identifiant technique                                                                   |
+| organization_id                | UUID              | non      | —                   | Organisation propriétaire                                                               |
+| payment_id                     | UUID              | oui      | —                   | Paiement associé                                                                        |
+| tenant_id                      | UUID              | oui      | —                   | Locataire payeur                                                                        |
+| lease_id                       | UUID              | oui      | —                   | Bail concerné                                                                           |
+| invoice_id                     | UUID              | oui      | —                   | Facture visée                                                                           |
+| provider                       | momo_provider     | non      | —                   | MTN_MOMO, AIRTEL_MONEY, CINETPAY, PAWAPAY, OTHER                                        |
+| channel                        | momo_channel      | non      | AGGREGATOR          | AGGREGATOR (poussée via agrégateur) ou DECLARED (transfert direct déclaré)              |
+| aggregator                     | TEXT              | oui      | —                   | Agrégateur technique (CINETPAY, PAWAPAY) ; NULL en canal DECLARED                       |
+| declared_by_user_id            | UUID              | oui      | —                   | Utilisateur ayant saisi la déclaration (locataire ou gestionnaire)                      |
+| proof_document_id              | UUID              | oui      | —                   | Capture d'écran du transfert (documents), mode déclaré                                  |
+| verified_by_user_id            | UUID              | oui      | —                   | Gestionnaire ayant validé ou rejeté la déclaration                                      |
+| verified_at                    | TIMESTAMPTZ       | oui      | —                   | Date de validation ou de rejet                                                          |
+| rejection_reason               | TEXT              | oui      | —                   | Motif de rejet d'une déclaration                                                        |
+| direction                      | payment_direction | non      | INBOUND             | INBOUND / OUTBOUND                                                                      |
+| status                         | momo_status       | non      | INITIATED           | INITIATED, PENDING, DECLARED, SUCCEEDED, FAILED, EXPIRED, CANCELLED, REJECTED, REFUNDED |
+| provider_transaction_id        | TEXT              | oui      | —                   | Référence opérateur                                                                     |
+| aggregator_transaction_id      | TEXT              | oui      | —                   | Référence agrégateur                                                                    |
+| merchant_reference             | TEXT              | non      | —                   | Référence marchande, clé d'idempotence de la demande                                    |
+| payer_msisdn                   | TEXT              | non      | —                   | Numéro débité, format E.164                                                             |
+| payee_msisdn                   | TEXT              | oui      | —                   | Numéro crédité (paiement sortant)                                                       |
+| amount                         | BIGINT            | non      | —                   | Montant demandé                                                                         |
+| fee_amount                     | BIGINT            | non      | 0                   | Frais opérateur prélevés                                                                |
+| fee_bearer                     | fee_bearer        | non      | TENANT              | Partie supportant les frais                                                             |
+| net_amount                     | BIGINT            | non      | 0                   | Montant net                                                                             |
+| currency                       | CHAR(3)           | non      | 'XAF'               | Devise                                                                                  |
+| initiated_at                   | TIMESTAMPTZ       | non      | `now()`             | Déclenchement                                                                           |
+| completed_at / expires_at      | TIMESTAMPTZ       | oui      | —                   | Fin de vie de la transaction                                                            |
+| status_checked_at              | TIMESTAMPTZ       | oui      | —                   | Dernière re-interrogation                                                               |
+| status_check_count             | SMALLINT          | non      | 0                   | Nombre de re-interrogations : un webhook seul ne vaut jamais confirmation               |
+| failure_code / failure_message | TEXT              | oui      | —                   | Détail d'échec                                                                          |
+| raw_payload                    | JSONB             | non      | `{}`                | Payload brut de l'agrégateur, conservé pour audit et rejeu                              |
+| webhook_event_id               | UUID              | oui      | —                   | Webhook déclencheur                                                                     |
+| idempotency_key                | TEXT              | oui      | —                   | Idempotence API                                                                         |
+| client_ref                     | TEXT              | oui      | —                   | Idempotence mobile                                                                      |
+| created_at / updated_at        | TIMESTAMPTZ       | non      | `now()`             | Horodatage                                                                              |
 
 **Clés étrangères** : `organization_id` → `organizations(id)` CASCADE ; `payment_id` → `payments(id)` SET NULL ; `tenant_id` → `tenants(id)` RESTRICT ; `lease_id` → `leases(id)` RESTRICT ; `invoice_id` → `rent_invoices(id)` SET NULL ; `webhook_event_id` → `webhook_events(id)` SET NULL (FK différée, partie 11b).
 **Contraintes** : `momo_merchant_ref_uk` UNIQUE `(organization_id, merchant_reference)` ; `momo_provider_tx_uk` UNIQUE `(provider, provider_transaction_id)` ; `momo_msisdn_chk` CHECK `payer_msisdn ~ '^\+[1-9][0-9]{7,14}$'` ; CHECK `>= 0` sur les montants.

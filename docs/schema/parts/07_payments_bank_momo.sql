@@ -86,7 +86,13 @@ CREATE TABLE mobile_money_transactions (
     lease_id               UUID REFERENCES leases(id) ON DELETE RESTRICT,
     invoice_id             UUID REFERENCES rent_invoices(id) ON DELETE SET NULL,
     provider               momo_provider NOT NULL,
-    aggregator             TEXT NOT NULL DEFAULT 'CINETPAY',
+    channel                momo_channel NOT NULL DEFAULT 'AGGREGATOR',
+    aggregator             TEXT,
+    declared_by_user_id    UUID REFERENCES users(id) ON DELETE SET NULL,
+    proof_document_id      UUID,
+    verified_by_user_id    UUID REFERENCES users(id) ON DELETE SET NULL,
+    verified_at            TIMESTAMPTZ,
+    rejection_reason       TEXT,
     direction              payment_direction NOT NULL DEFAULT 'INBOUND',
     status                 momo_status NOT NULL DEFAULT 'INITIATED',
     provider_transaction_id TEXT,
@@ -127,4 +133,11 @@ CREATE INDEX momo_status_idx ON mobile_money_transactions (organization_id, stat
 CREATE INDEX momo_pending_recheck_idx ON mobile_money_transactions (status_checked_at)
     WHERE status IN ('INITIATED', 'PENDING');
 CREATE INDEX momo_payer_idx ON mobile_money_transactions (organization_id, payer_msisdn);
+CREATE INDEX momo_declared_pending_idx ON mobile_money_transactions (organization_id, initiated_at DESC)
+    WHERE channel = 'DECLARED' AND status = 'DECLARED';
+COMMENT ON COLUMN mobile_money_transactions.channel IS 'AGGREGATOR : initiée via MobileMoneyProvider ; DECLARED : transfert direct vers le numéro du bailleur déclaré par le locataire (référence opérateur saisie), à vérifier manuellement ou par relevé opérateur.';
+COMMENT ON COLUMN mobile_money_transactions.aggregator IS 'Nom de l''agrégateur (CINETPAY, PAWAPAY) ; NULL pour une transaction déclarée.';
+COMMENT ON COLUMN mobile_money_transactions.proof_document_id IS 'Capture d''écran facultative du transfert (documents), mode déclaré.';
+ALTER TABLE mobile_money_transactions ADD CONSTRAINT momo_channel_chk CHECK (
+    (channel = 'AGGREGATOR' AND aggregator IS NOT NULL) OR (channel = 'DECLARED' AND provider_transaction_id IS NOT NULL));
 CREATE INDEX momo_payload_gin ON mobile_money_transactions USING GIN (raw_payload jsonb_path_ops);

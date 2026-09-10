@@ -44,9 +44,11 @@ La valeur livrée est technique et non fonctionnelle pour le client final, mais 
 - **Phases précédentes** : aucune.
 - **Contrats externes à obtenir** — à lancer dès le jour 1, voir la checklist de démarrage en fin de document :
   - compte agrégateur Mobile Money (CinetPay ou équivalent) : dossier KYC entreprise, délai bancaire CEMAC long et imprévisible ;
-  - accès Meta WhatsApp Business Cloud API : vérification Meta Business, numéro dédié, templates à soumettre ;
-  - passerelle SMS locale pour l'envoi des OTP (indispensable dès cette phase, car l'OTP par SMS est le mode d'authentification principal) ;
-  - comptes cloud (VPS/cloud région Europe-Paris), GitHub, Sentry, Cloudflare R2.
+  - **accès Meta WhatsApp Business Cloud API : prérequis bloquant à lancer dès le jour 1** (compte Meta Business et numéro WhatsApp dédié), vérification Meta Business, templates à soumettre ;
+  - passerelle SMS locale pour l'envoi des OTP (indispensable dès cette phase, car WhatsApp est le canal par défaut et le SMS le canal de repli automatique) ;
+  - comptes cloud (VPS Hetzner/OVH région Europe-Paris avec reverse proxy Caddy), GitHub, GlitchTip auto-hébergé, MinIO auto-hébergé.
+- **Équipement à acquérir dès le jour 1** :
+  - téléphone Android dédié et carte SIM MTN (forfait SMS illimité), servant de passerelle SMS de repli pour le pilote.
 - **Décisions à prendre en début de phase** :
   - stratégie d'isolation multi-tenant : **RLS PostgreSQL** sur toutes les tables portant `organization_id`, avec `SET LOCAL app.current_organization_id` par requête — décision actée dans le référentiel, à implémenter et à prouver par test ;
   - format des identifiants : **UUID v7 généré par l'application**, `gen_random_uuid()` en défaut SQL ;
@@ -69,7 +71,7 @@ La valeur livrée est technique et non fonctionnelle pour le client final, mais 
 
 ### Epic 0.C — Authentification téléphone + OTP
 
-- En tant qu'utilisateur, je veux me connecter avec mon numéro de téléphone et un code reçu par SMS ou WhatsApp, afin de ne pas avoir à retenir un mot de passe.
+- En tant qu'utilisateur, je veux me connecter avec mon numéro de téléphone et un code reçu par WhatsApp (canal par défaut), avec repli automatique par SMS si WhatsApp est indisponible, afin de ne pas avoir à retenir un mot de passe.
 - En tant qu'utilisateur, je veux rester connecté un mois sans ressaisir mon code, afin de ne pas être interrompu en tournée.
 - En tant que responsable sécurité, je veux que les OTP expirent en 5 minutes, soient limités à 5 tentatives et soient stockés hachés dans `otp_codes`, afin de contenir les attaques par force brute.
 
@@ -92,10 +94,20 @@ Scénario: Connexion réussie par OTP
   Et qu'aucun OTP valide n'existe pour ce numéro
   Quand il demande un code sur "POST /auth/otp/request"
   Alors un enregistrement est créé dans "otp_codes" avec un code haché et une expiration à 5 minutes
-  Et un message est envoyé via le canal SMS et tracé dans "message_logs"
+  Et un message est envoyé via le canal WhatsApp (canal par défaut) et tracé dans "message_logs"
   Quand il soumet le bon code sur "POST /auth/otp/verify"
   Alors il reçoit un JWT d'accès valide 15 minutes et un refresh token valide 30 jours
   Et l'OTP est marqué consommé et ne peut plus être réutilisé
+```
+
+```gherkin
+Scénario: Repli automatique par SMS si WhatsApp échoue
+  Étant donné un utilisateur enregistré avec le numéro "+242066000002"
+  Et que ce numéro n'a pas WhatsApp actif, ou que l'envoi WhatsApp échoue
+  Quand il demande un code sur "POST /auth/otp/request"
+  Alors le système tente l'envoi via le canal WhatsApp
+  Et bascule automatiquement vers la passerelle SMS Android sans nouvelle action de l'utilisateur
+  Et le canal effectivement utilisé est tracé dans "message_logs"
 ```
 
 ```gherkin
@@ -198,14 +210,14 @@ Scénario: Rotation du refresh token
 - [ ] Pipeline CI vert : lint, typecheck, tests unitaires, tests d'intégration, build des trois applications.
 - [ ] Environnements `dev`, `staging`, `prod` provisionnés (région Europe-Paris), avec secrets gérés hors du dépôt.
 - [ ] Sauvegarde PostgreSQL quotidienne chiffrée configurée et **restauration testée au moins une fois** sur staging.
-- [ ] Sentry et Grafana/Prometheus branchés sur l'API et le web.
+- [ ] GlitchTip et Grafana/Prometheus branchés sur l'API et le web.
 - [ ] Politique RLS active sur toutes les tables du périmètre de la phase, suite de tests d'isolation verte.
-- [ ] Authentification OTP complète (SMS), rotation de refresh token, révocation, limitation de débit.
+- [ ] Authentification OTP complète (WhatsApp par défaut, repli SMS automatique), rotation de refresh token, révocation, limitation de débit.
 - [ ] Design system publié (tokens, composants de base, formatage des montants XAF sans décimale).
 - [ ] `openapi.json` généré automatiquement, clients TypeScript et Dart générés et publiés dans `packages/shared`.
 - [ ] Table `feature_flags` opérationnelle avec au moins un flag de démonstration lisible côté web et mobile.
 - [ ] Registre des décisions d'architecture (ADR) initialisé avec les décisions de la phase.
-- [ ] Démarches Mobile Money et WhatsApp Business **lancées et tracées** avec un référent nommé et une date de relance.
+- [ ] Démarches Mobile Money et WhatsApp Business **lancées dès le jour 1 et tracées** avec un référent nommé et une date de relance ; téléphone Android passerelle et carte SIM MTN acquis.
 
 ## 0.9 Durée et charge
 
@@ -242,7 +254,7 @@ Permettre à une agence ou à un bailleur indépendant de saisir la totalité de
 ## 1.2 Prérequis
 
 - **Phases précédentes** : phase 0 terminée (multi-tenant, auth, design system, CI).
-- **Contrats externes** : bucket Cloudflare R2 opérationnel avec politique d'URL signées et cycle de vie des objets ; aucun autre contrat externe requis.
+- **Contrats externes** : aucun. Le stockage objet est MinIO auto-hébergé (URL signées, cycle de vie des objets) ; Cloudflare R2 seulement si le volume l'exige.
 - **Décisions à prendre** :
   - typologie des lots (`units`) retenue pour le marché congolais : studio, appartement, villa, chambre, magasin/local commercial, entrepôt, parcelle ;
   - modèle d'adressage local : ville, arrondissement, quartier (Poto-Poto, Bacongo, Makélékélé, Mpila, Talangaï…), rue et repère, la numérotation postale n'étant pas fiable ;
@@ -611,8 +623,8 @@ C'est la phase qui rend le produit utile au quotidien. Elle installe le moteur d
 
 - **Phases précédentes** : phases 0, 1 et 2.
 - **Contrats externes obligatoires** :
-  - **WhatsApp Business Cloud API opérationnel** : compte Meta Business vérifié, numéro dédié, et **au moins deux templates approuvés** (quittance de loyer, avis d'échéance). Le délai d'approbation des templates se compte en jours à semaines : les soumettre au plus tard au début de la phase 2.
-  - Passerelle SMS de secours contractualisée.
+  - **WhatsApp Business Cloud API opérationnel** : compte Meta Business et numéro dédié obtenus dès la phase 0, **au moins deux templates approuvés** ici (quittance de loyer, avis d'échéance). Le délai d'approbation des templates se compte en jours à semaines : les soumettre au plus tard au début de la phase 2.
+  - Passerelle SMS de secours (téléphone Android + SIM MTN) opérationnelle, mise en place dès la phase 0.
 - **Décisions à prendre** :
   - nombre de jours avant échéance pour la génération des factures (paramètre `organization_settings`, défaut J-5) ;
   - règle d'imputation d'un paiement partiel : la plus ancienne facture d'abord, puis pénalités, puis charges, puis loyer — à figer et à documenter ;
@@ -652,6 +664,7 @@ C'est la phase qui rend le produit utile au quotidien. Elle installe le moteur d
 - En tant que locataire, je veux recevoir ma quittance de loyer en PDF par WhatsApp dès que ma facture est soldée, afin d'avoir un justificatif officiel.
 - En tant que gestionnaire, je veux qu'un QR code sur la quittance permette de vérifier publiquement son authenticité, afin de lutter contre les faux reçus.
 - En tant que `MANAGER`, je veux voir dans `message_logs` si le message a été remis et lu, afin de savoir si le locataire a bien été informé.
+- En tant que locataire dont le numéro n'a pas WhatsApp actif ou en cas d'échec de remise WhatsApp, je veux recevoir un SMS de repli contenant un lien vers ma quittance PDF et sa page de vérification QR, afin de disposer malgré tout d'un justificatif accessible.
 
 ### Critères d'acceptation (Gherkin)
 
@@ -815,7 +828,7 @@ Scénario: Vérification publique d'une quittance par QR code
 - [ ] Immutabilité garantie : `audit_logs` et `payment_allocations` strictement append-only ; `payments`, `receipts` et `cash_receipts` sans DELETE et avec colonnes financières verrouillées par le trigger `guard_financial_row` (seules les colonnes de workflow sont modifiables). Test d'intégration prouvant le rejet d'un UPDATE de montant et d'un DELETE.
 - [ ] Chaîne complète des espèces opérationnelle : reçu signé numéroté → détention démarcheur → remise → contrôle → écart.
 - [ ] Quittance PDF avec QR code et route publique de vérification en production.
-- [ ] Au moins deux templates WhatsApp approuvés et utilisés en production, avec repli SMS automatique en cas d'échec.
+- [ ] Au moins deux templates WhatsApp approuvés et utilisés en production, avec repli SMS automatique via la passerelle Android en cas d'échec (SMS contenant un lien vers le PDF de la quittance et sa page de vérification QR, un SMS ne pouvant transporter de pièce jointe).
 - [ ] Tests terrain réalisés avec au moins deux démarcheurs réels et compte rendu écrit.
 - [ ] Un mois complet de loyers d'une agence pilote traité de bout en bout dans le produit.
 - [ ] Procédure écrite de gestion des écarts de caisse remise aux agences pilotes.
@@ -851,39 +864,58 @@ Durée indicative : **7 semaines**.
 
 ## 4.1 Objectif et valeur livrée
 
-Ouvrir les canaux de paiement numériques : paiement du loyer par Mobile Money via un agrégateur, et déclaration de virement bancaire par le locataire avec preuve téléversée puis validation par le gestionnaire. La confirmation d'un paiement Mobile Money repose sur une **re-interrogation du statut auprès de l'agrégateur**, jamais sur la seule foi du webhook.
+Ouvrir les canaux de paiement numériques via deux modes Mobile Money, activables ensemble ou séparément par organisation dans `organization_settings`, ainsi que la déclaration de virement bancaire :
+
+- **Mobile Money déclaré** (livré en priorité) : le locataire paie sur le numéro Mobile Money du bailleur ou de l'agence puis déclare la référence de transaction de l'opérateur (capture d'écran facultative) ; validation manuelle par le gestionnaire ou rapprochement avec le relevé opérateur ; zéro commission ; aucun contrat externe requis.
+- **Mobile Money agrégateur** (sous-module conditionné à la signature du contrat CinetPay) : paiement via l'interface `MobileMoneyProvider`, avec commission par transaction. La confirmation d'un paiement agrégateur repose sur une **re-interrogation du statut auprès de l'agrégateur**, jamais sur la seule foi du webhook.
+- **Virement bancaire déclaré** : preuve téléversée par le locataire puis validation par le gestionnaire.
+
+Le mode déclaré ne dépendant d'aucun contrat externe, le pilote peut démarrer avec lui seul ; si le contrat CinetPay glisse, le sous-module agrégateur glisse avec lui sans bloquer le pilote.
 
 Valeur livrée : un locataire peut payer son loyer depuis son téléphone sans rencontrer personne, et l'agence réduit sa manipulation d'espèces.
 
 ## 4.2 Prérequis
 
 - **Phases précédentes** : phases 0, 1, 2 et 3 (les `payments` et `payment_allocations` existent déjà).
-- **Contrats externes obligatoires** :
+- **Prérequis du mode Mobile Money déclaré** (aucun contrat externe) :
+  - numéro Mobile Money du bailleur ou de l'agence, déjà saisi en phase 1 ;
+  - colonnes du mode déclaré disponibles sur `mobile_money_transactions` (`channel = DECLARED`, `declared_by_user_id`, `proof_document_id`, `verified_by_user_id`, `verified_at`, `rejection_reason`).
+- **Prérequis du sous-module Mobile Money agrégateur** (concernent uniquement ce sous-module, conditionné à la signature du contrat, non bloquant pour le pilote) :
   - **compte agrégateur Mobile Money en production** (CinetPay ou équivalent) : KYC entreprise validé, compte de règlement ouvert auprès d'une banque de la zone CEMAC, clés d'API de production, adresse de webhook déclarée et liste blanche d'adresses IP ;
-  - convention de reversement précisant la périodicité des règlements de l'agrégateur vers le compte de l'organisation et la grille de frais ;
-  - coordonnées bancaires complètes des bailleurs et des organisations (déjà saisies en phase 1).
+  - convention de reversement précisant la périodicité des règlements de l'agrégateur vers le compte de l'organisation et la grille de frais.
+- **Prérequis communs** : coordonnées bancaires complètes des bailleurs et des organisations (déjà saisies en phase 1).
 - **Décisions à prendre** :
-  - qui supporte les frais Mobile Money : le locataire (majoration affichée avant validation) ou le bailleur — paramètre d'organisation, valeur par défaut à trancher avec le pilote ;
+  - activation indépendante du mode déclaré et du mode agrégateur par organisation, via `organization_settings` ;
+  - qui supporte les frais Mobile Money agrégateur : le locataire (majoration affichée avant validation) ou le bailleur — paramètre d'organisation, valeur par défaut à trancher avec le pilote ;
   - montant minimum et maximum d'une transaction ;
-  - délai au-delà duquel une transaction `PENDING` est considérée comme expirée (recommandation : 15 minutes, avec réconciliation différée) ;
+  - délai au-delà duquel une transaction `PENDING` (déclarée ou agrégateur) est considérée comme expirée (recommandation : 15 minutes, avec réconciliation différée) ;
   - politique d'activation par pays et par organisation via `feature_flags`.
 
 ## 4.3 Périmètre détaillé
 
-### Epic 4.A — Interface d'agrégateur et initiation de paiement
+### Epic 4.A — Mobile Money déclaré
+
+- En tant que locataire, je veux déclarer mon paiement Mobile Money en saisissant la référence de transaction de l'opérateur, avec une capture d'écran facultative, afin que mon paiement soit pris en compte sans passer par un agrégateur.
+- En tant qu'`ACCOUNTANT` ou `MANAGER`, je veux valider ou rejeter avec motif une déclaration de paiement Mobile Money, en la rapprochant si besoin du relevé opérateur, afin de n'enregistrer que les fonds réellement reçus.
+- En tant qu'`ACCOUNTANT`, je veux qu'une déclaration validée crée un paiement au statut `CONFIRMED` sans commission, afin que le locataire et le bailleur ne supportent aucun frais sur ce mode.
+- En tant qu'`OWNER`, je veux activer ou désactiver indépendamment le mode déclaré et le mode agrégateur dans `organization_settings`, afin d'adapter l'offre à la situation contractuelle de mon organisation.
+
+**Mobile Money agrégateur** (sous-module conditionné à la signature du contrat CinetPay — peut glisser sans bloquer le pilote, qui peut démarrer avec le seul mode déclaré) :
+
+### Epic 4.B — Interface d'agrégateur et initiation de paiement
 
 - En tant qu'architecte, je veux une interface `MobileMoneyProvider` unique derrière laquelle se branchent CinetPay, PawaPay ou une connexion directe opérateur, afin de changer de fournisseur sans réécrire le domaine.
 - En tant que locataire, je veux payer ma facture depuis mon téléphone en saisissant mon numéro Mobile Money, afin de ne pas me déplacer à l'agence.
 - En tant que locataire, je veux voir clairement le montant, les frais éventuels et le total débité avant de valider, afin de ne pas avoir de mauvaise surprise.
 - En tant que `COLLECTOR`, je veux déclencher une demande de paiement Mobile Money pour un locataire depuis mon téléphone, afin de l'encaisser sans manipuler d'espèces.
 
-### Epic 4.B — Webhooks, re-interrogation et confirmation
+### Epic 4.C — Webhooks, re-interrogation et confirmation
 
 - En tant qu'architecte, je veux que tout webhook reçu soit persisté brut dans `webhook_events` avant tout traitement, afin de pouvoir rejouer une intégration défaillante.
 - En tant que responsable financier, je veux que la confirmation d'un paiement passe systématiquement par une re-interrogation du statut auprès de l'agrégateur, afin qu'un webhook falsifié ne puisse jamais créditer un compte.
 - En tant qu'exploitant, je veux qu'une transaction restée `PENDING` soit re-interrogée automatiquement selon un repli exponentiel puis clôturée, afin qu'aucune transaction ne reste orpheline.
 
-### Epic 4.C — Virement bancaire déclaré
+### Epic 4.D — Virement bancaire déclaré
 
 - En tant que locataire, je veux déclarer un virement en téléversant l'avis d'opération de ma banque, afin que mon paiement soit pris en compte avant même le rapprochement bancaire.
 - En tant que locataire, je veux disposer d'une référence de virement à recopier dans le libellé, afin que mon paiement soit identifié automatiquement.
@@ -940,6 +972,34 @@ Scénario: Transaction restée en attente puis expirée
 ```
 
 ```gherkin
+Scénario: Déclaration de paiement Mobile Money en attente de validation
+  Étant donné une facture ISSUED de 50000 XAF et le numéro Mobile Money du bailleur communiqué au locataire
+  Quand le locataire déclare un paiement de 50000 XAF en saisissant la référence de transaction de l'opérateur
+  Alors une ligne est créée dans "mobile_money_transactions" avec le canal DECLARED et le statut DECLARED, avec la capture d'écran facultative si fournie
+  Et une notification est envoyée au gestionnaire
+  Quand un MANAGER ou un ACCOUNTANT ouvre la déclaration pour instruction
+  Alors la déclaration passe au statut PENDING_VERIFICATION en attendant validation manuelle ou rapprochement avec le relevé opérateur
+```
+
+```gherkin
+Scénario: Validation d'une déclaration de paiement Mobile Money
+  Étant donné une déclaration de paiement Mobile Money au statut PENDING_VERIFICATION
+  Quand un ACCOUNTANT la valide après rapprochement avec le relevé opérateur
+  Alors la déclaration passe au statut CONFIRMED
+  Et un paiement de méthode MOBILE_MONEY est créé sans commission
+  Et la facture passe au statut PARTIALLY_PAID ou PAID selon le montant
+```
+
+```gherkin
+Scénario: Rejet d'une déclaration de paiement Mobile Money
+  Étant donné une déclaration de paiement Mobile Money au statut PENDING_VERIFICATION
+  Quand un ACCOUNTANT la rejette avec le motif "référence introuvable sur le relevé opérateur"
+  Alors la déclaration passe au statut REJECTED
+  Et aucune ligne n'est créée dans "payments"
+  Et le locataire est notifié du rejet et du motif
+```
+
+```gherkin
 Scénario: Déclaration de virement validée par le gestionnaire
   Étant donné une facture ISSUED de 300000 XAF et une référence de virement communiquée au locataire
   Quand le locataire déclare un virement de 300000 XAF en téléversant l'avis d'opération
@@ -956,41 +1016,46 @@ Scénario: Déclaration de virement validée par le gestionnaire
 
 ## 4.4 Tables et modules concernés
 
-**Tables** : `mobile_money_transactions`, `bank_transfer_declarations`, `payments`, `payment_allocations`, `tenant_credits`, `rent_invoices`, `receipts`, `webhook_events`, `idempotency_keys`, `documents`, `feature_flags`, `message_logs`, `audit_logs`.
+**Tables** : `mobile_money_transactions` (canaux `AGGREGATOR` et `DECLARED`), `bank_transfer_declarations`, `payments`, `payment_allocations`, `tenant_credits`, `rent_invoices`, `receipts`, `webhook_events`, `idempotency_keys`, `documents`, `organization_settings`, `feature_flags`, `message_logs`, `audit_logs`.
 
 **Modules NestJS** :
 
-| Module           | Responsabilité                                                                                                  |
-| :--------------- | :-------------------------------------------------------------------------------------------------------------- |
-| `mobile-money`   | Interface `MobileMoneyProvider`, adaptateur CinetPay, initiation, re-interrogation, `mobile_money_transactions` |
-| `webhooks`       | Réception, vérification de signature, persistance brute dans `webhook_events`, mise en file de traitement       |
-| `bank-transfers` | `bank_transfer_declarations`, génération de la référence de virement, validation et rejet                       |
-| `payments`       | Extension aux méthodes MOBILE_MONEY et BANK_TRANSFER, statut PENDING_VERIFICATION                               |
-| `platform`       | Activation par `feature_flags` (par pays et par organisation)                                                   |
+| Module           | Responsabilité                                                                                                                                                                                                                                                                                            |
+| :--------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mobile-money`   | Mode déclaré (`mobile_money_transactions` en canal `DECLARED`, statuts DECLARED → SUCCEEDED/REJECTED, `payment` en PENDING_VERIFICATION → CONFIRMED/REJECTED) et sous-module agrégateur : interface `MobileMoneyProvider`, adaptateur CinetPay, initiation, re-interrogation, `mobile_money_transactions` |
+| `webhooks`       | Réception, vérification de signature, persistance brute dans `webhook_events`, mise en file de traitement                                                                                                                                                                                                 |
+| `bank-transfers` | `bank_transfer_declarations`, génération de la référence de virement, validation et rejet                                                                                                                                                                                                                 |
+| `payments`       | Extension aux méthodes MOBILE_MONEY et BANK_TRANSFER, statut PENDING_VERIFICATION                                                                                                                                                                                                                         |
+| `platform`       | Activation par `feature_flags` (par pays et par organisation)                                                                                                                                                                                                                                             |
 
 ## 4.5 Endpoints API principaux
 
-| Méthode | Route                                      | Rôle requis        | Description courte                                         |
-| :------ | :----------------------------------------- | :----------------- | :--------------------------------------------------------- |
-| POST    | `/payments/mobile-money/initiate`          | COLLECTOR / TENANT | Initie une demande de paiement Mobile Money                |
-| GET     | `/payments/mobile-money/{id}`              | VIEWER / TENANT    | Statut d'une transaction Mobile Money                      |
-| POST    | `/payments/mobile-money/{id}/refresh`      | MANAGER            | Force la re-interrogation du statut auprès de l'agrégateur |
-| POST    | `/webhooks/mobile-money/{provider}`        | PUBLIC (signé)     | Point de réception des webhooks de l'agrégateur            |
-| GET     | `/webhook-events`                          | OWNER              | Journal des événements reçus et de leur traitement         |
-| POST    | `/webhook-events/{id}/replay`              | OWNER              | Rejoue un événement après correction                       |
-| GET     | `/leases/{id}/transfer-reference`          | TENANT / MANAGER   | Référence à porter dans le libellé du virement             |
-| POST    | `/bank-transfer-declarations`              | TENANT / MANAGER   | Déclare un virement avec preuve                            |
-| GET     | `/bank-transfer-declarations`              | ACCOUNTANT         | File des déclarations à traiter                            |
-| POST    | `/bank-transfer-declarations/{id}/approve` | ACCOUNTANT         | Valide la déclaration et crée le paiement                  |
-| POST    | `/bank-transfer-declarations/{id}/reject`  | ACCOUNTANT         | Rejette la déclaration avec motif                          |
-| GET     | `/organizations/{id}/payment-methods`      | MANAGER            | Méthodes de paiement actives selon les `feature_flags`     |
-| PATCH   | `/organizations/{id}/payment-methods`      | OWNER              | Active ou désactive une méthode pour l'organisation        |
+| Méthode | Route                                              | Rôle requis          | Description courte                                         |
+| :------ | :------------------------------------------------- | :------------------- | :--------------------------------------------------------- |
+| POST    | `/payments/mobile-money/initiate`                  | COLLECTOR / TENANT   | Initie une demande de paiement Mobile Money                |
+| GET     | `/payments/mobile-money/{id}`                      | VIEWER / TENANT      | Statut d'une transaction Mobile Money                      |
+| POST    | `/payments/mobile-money/{id}/refresh`              | MANAGER              | Force la re-interrogation du statut auprès de l'agrégateur |
+| POST    | `/payments/mobile-money/declare`                   | TENANT / COLLECTOR   | Déclare un paiement Mobile Money avec référence opérateur  |
+| GET     | `/payments/mobile-money/declarations`              | ACCOUNTANT / MANAGER | File des déclarations Mobile Money à valider               |
+| POST    | `/payments/mobile-money/declarations/{id}/approve` | ACCOUNTANT / MANAGER | Valide la déclaration et crée le paiement                  |
+| POST    | `/payments/mobile-money/declarations/{id}/reject`  | ACCOUNTANT / MANAGER | Rejette la déclaration avec motif                          |
+| POST    | `/webhooks/mobile-money/{provider}`                | PUBLIC (signé)       | Point de réception des webhooks de l'agrégateur            |
+| GET     | `/webhook-events`                                  | OWNER                | Journal des événements reçus et de leur traitement         |
+| POST    | `/webhook-events/{id}/replay`                      | OWNER                | Rejoue un événement après correction                       |
+| GET     | `/leases/{id}/transfer-reference`                  | TENANT / MANAGER     | Référence à porter dans le libellé du virement             |
+| POST    | `/bank-transfer-declarations`                      | TENANT / MANAGER     | Déclare un virement avec preuve                            |
+| GET     | `/bank-transfer-declarations`                      | ACCOUNTANT           | File des déclarations à traiter                            |
+| POST    | `/bank-transfer-declarations/{id}/approve`         | ACCOUNTANT           | Valide la déclaration et crée le paiement                  |
+| POST    | `/bank-transfer-declarations/{id}/reject`          | ACCOUNTANT           | Rejette la déclaration avec motif                          |
+| GET     | `/organizations/{id}/payment-methods`              | MANAGER              | Méthodes de paiement actives selon les `feature_flags`     |
+| PATCH   | `/organizations/{id}/payment-methods`              | OWNER                | Active ou désactive une méthode pour l'organisation        |
 
 ## 4.6 Écrans concernés
 
 **Web — dashboard**
 
 - File des déclarations de virement à valider, avec prévisualisation de la preuve côte à côte avec la facture.
+- File des déclarations de paiement Mobile Money à valider, avec rapprochement possible face au relevé opérateur.
 - Journal des transactions Mobile Money : statut, référence opérateur, frais, montant net, action de re-interrogation.
 - Journal technique des webhooks (réservé à `OWNER`) avec possibilité de rejeu.
 - Paramétrage des méthodes de paiement de l'organisation et de la prise en charge des frais.
@@ -1000,9 +1065,10 @@ Scénario: Déclaration de virement validée par le gestionnaire
 
 - Écran de paiement Mobile Money : sélection de la facture, saisie du numéro, affichage du montant, des frais et du total, écran d'attente avec compte à rebours et re-interrogation périodique.
 - Écran de résultat : succès avec quittance, échec avec motif lisible, expiration avec proposition de nouvelle tentative.
+- Écran de déclaration de paiement Mobile Money : numéro utilisé, référence de transaction, montant, capture d'écran facultative.
 - Écran de déclaration de virement : montant, banque, référence, capture ou sélection de l'avis d'opération.
 
-**Portail locataire** : les écrans de paiement Mobile Money et de déclaration de virement sont développés ici en version web mais exposés au locataire à partir de la phase 10 ; en phase 4, ils sont accessibles aux gestionnaires agissant pour le compte du locataire.
+**Portail locataire** : les écrans de paiement Mobile Money (agrégateur et déclaré) et de déclaration de virement sont développés ici en version web mais exposés au locataire à partir de la phase 10 ; en phase 4, ils sont accessibles aux gestionnaires agissant pour le compte du locataire.
 
 ## 4.7 Tests exigés
 
@@ -1016,7 +1082,8 @@ Scénario: Déclaration de virement validée par le gestionnaire
 
 ## 4.8 Livrables et critères de sortie
 
-- [ ] Interface `MobileMoneyProvider` documentée, avec l'adaptateur CinetPay et un simulateur utilisable en CI.
+- [ ] Mode Mobile Money déclaré livré en priorité : déclaration par référence de transaction, validation manuelle ou rapprochement, statuts PENDING → PENDING_VERIFICATION → CONFIRMED/REJECTED, zéro commission, activable indépendamment de l'agrégateur.
+- [ ] Interface `MobileMoneyProvider` documentée, avec l'adaptateur CinetPay et un simulateur utilisable en CI (sous-module agrégateur, conditionné à la signature du contrat — son retard ne bloque pas le pilote qui peut fonctionner avec le seul mode déclaré).
 - [ ] Aucune confirmation de paiement possible sur la seule base d'un webhook : la re-interrogation est obligatoire et testée.
 - [ ] `webhook_events` alimenté systématiquement, avec rejeu possible et sans effet de bord.
 - [ ] Travail répétable de réconciliation des transactions en attente, avec repli exponentiel et clôture automatique.
@@ -2658,7 +2725,7 @@ Scénario: Effacement d'un locataire sorti et conservation des pièces comptable
   Et 14 paiements CONFIRMED et 14 reçus numérotés rattachés à ses baux
   Quand un OWNER valide la demande d'effacement après vérification de l'identité du demandeur
   Alors les données d'identification sont anonymisées dans "tenants", "contact_channels" et "guarantors"
-  Et les pièces d'identité rattachées dans "documents" sont supprimées de Cloudflare R2
+  Et les pièces d'identité rattachées dans "documents" sont supprimées du stockage objet
   Et aucune ligne de "payments", "receipts", "payment_allocations" ou "audit_logs" n'est modifiée ni supprimée
   Et les reçus déjà émis conservent le nom figé au moment de leur émission, au titre de l'obligation de conservation des pièces comptables
   Et l'opération d'anonymisation est elle-même écrite dans "audit_logs" avec l'état avant/après
@@ -3002,22 +3069,25 @@ Ces quatre chantiers conditionnent des phases très tardives (3 et 4) mais leurs
 
 | #   | Action                                                                                                                                                                                       | Responsable   | Délai externe estimé                                    | Phase débloquée |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------- | --------------- |
-| 1   | Création du compte Meta Business, dépôt du dossier de vérification d'entreprise (statuts, registre de commerce, justificatif d'adresse)                                                      | Lead delivery | 2 à 6 semaines                                          | 3               |
-| 2   | Demande d'accès WhatsApp Business Cloud API, enregistrement du numéro d'expédition, soumission des premiers gabarits de messages (quittance, rappel d'échéance, confirmation de paiement)    | Product owner | 1 à 3 semaines après vérification                       | 3, 9            |
+| 1   | Création du compte Meta Business, dépôt du dossier de vérification d'entreprise (statuts, registre de commerce, justificatif d'adresse)                                                      | Lead delivery | 2 à 6 semaines                                          | 0               |
+| 2   | Demande d'accès WhatsApp Business Cloud API, enregistrement du numéro d'expédition, soumission des premiers gabarits de messages (quittance, rappel d'échéance, confirmation de paiement)    | Product owner | 1 à 3 semaines après vérification                       | 0, 9            |
 | 3   | Prise de contact avec l'agrégateur Mobile Money, ouverture du dossier contractuel et KYC entreprise (identité des dirigeants, RCCM, NIU, relevé bancaire, compte de règlement)               | Direction     | 4 à 10 semaines, rythmé par les délais bancaires locaux | 4, 10           |
 | 4   | Ouverture d'une consultation juridique locale : valeur probante d'une quittance électronique avec QR code en droit congolais, mentions obligatoires, conservation, articulation avec l'OHADA | Lead delivery | 2 à 4 semaines                                          | 3               |
 
+- Achat immédiat (délai court, à mener en parallèle, ne bloque aucun chantier long) : un téléphone Android et une carte SIM MTN (forfait SMS illimité) pour la passerelle SMS de repli du pilote.
+
 - Un **suivi hebdomadaire écrit** de ces quatre dossiers est tenu dès J1 et présenté à chaque revue de phase, avec date de relance et interlocuteur nommé.
 - Le résultat de la consultation juridique est une **entrée de conception** de la phase 3 : le gabarit de quittance n'est pas figé avant sa réception.
-- En cas de dérive du dossier agrégateur, le repli est l'activation tardive du `feature_flag` Mobile Money, la phase 4 étant livrée derrière flag sans attendre la mise en production du contrat.
+- En cas de dérive du dossier agrégateur, le pilote n'est pas bloqué : le mode Mobile Money **déclaré** (Epic 4.A) est toujours disponible sans contrat externe, et le mode **agrégateur** (Epic 4.B/4.C) reste activable plus tard par le `feature_flag` Mobile Money dès la mise en production du contrat, la phase 4 étant conçue pour fonctionner avec le seul mode déclaré si nécessaire.
 
 ## J1-J2 — Comptes et fournisseurs
 
 - [ ] Organisation GitHub créée, plan choisi, authentification à deux facteurs imposée à tous les membres.
-- [ ] Compte du fournisseur d'hébergement (VPS/cloud région Europe, Paris) ouvert, facturation et contact technique renseignés.
-- [ ] Compte Cloudflare ouvert, bucket R2 provisionné, politique de cycle de vie des fichiers définie.
-- [ ] Compte Sentry créé (projets `api`, `web`, `mobile`).
+- [ ] VPS Hetzner ou OVH (région Europe, Paris) loué, reverse proxy Caddy configuré, facturation et contact technique renseignés.
+- [ ] MinIO auto-hébergé provisionné sur le VPS (bucket documents/photos/PDF), politique de cycle de vie des fichiers définie ; Cloudflare R2 gardé en option de bascule ultérieure si le volume l'exige.
+- [ ] Compte GlitchTip auto-hébergé provisionné sur le VPS (projets `api`, `web`, `mobile`).
 - [ ] Pile de supervision décidée et provisionnée (Grafana/Prometheus), alerting rattaché à une adresse d'astreinte.
+- [ ] Téléphone Android et carte SIM MTN (forfait SMS illimité) achetés pour la passerelle SMS de repli du pilote.
 - [ ] Registre des fournisseurs et des coûts ouvert (base du registre des traitements de la phase 11).
 
 ## J2-J3 — Accès et secrets
@@ -3049,7 +3119,7 @@ Ces quatre chantiers conditionnent des phases très tardives (3 et 4) mais leurs
 - [ ] Row Level Security active et vérifiée par un test automatisé d'isolation entre deux organisations.
 - [ ] Authentification téléphone + OTP fonctionnelle sur un numéro congolais réel (MTN et Airtel), JWT 15 min et refresh rotatif 30 j vérifiés.
 - [ ] Contrat OpenAPI 3.1 généré et publié en artefact de CI.
-- [ ] Sentry et supervision remontant des événements réels depuis les trois environnements.
+- [ ] GlitchTip et supervision remontant des événements réels depuis les trois environnements.
 - [ ] `feature_flags` pilotable par organisation et par pays, modification tracée dans `audit_logs`.
 - [ ] Point de revue J10 : état des quatre dossiers à délai long, décision de démarrage de la phase 1.
 

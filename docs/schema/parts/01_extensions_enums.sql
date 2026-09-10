@@ -96,7 +96,9 @@ CREATE TYPE cash_receipt_status AS ENUM ('DRAFT', 'ISSUED', 'REMITTED', 'CANCELL
 CREATE TYPE remittance_status AS ENUM ('OPEN', 'SUBMITTED', 'VERIFIED', 'DEPOSITED', 'REJECTED', 'CANCELLED');
 CREATE TYPE declaration_status AS ENUM ('SUBMITTED', 'UNDER_REVIEW', 'MATCHED', 'APPROVED', 'REJECTED', 'CANCELLED');
 CREATE TYPE momo_provider AS ENUM ('MTN_MOMO', 'AIRTEL_MONEY', 'CINETPAY', 'PAWAPAY', 'OTHER');
-CREATE TYPE momo_status AS ENUM ('INITIATED', 'PENDING', 'SUCCEEDED', 'FAILED', 'EXPIRED', 'CANCELLED', 'REFUNDED');
+CREATE TYPE momo_status AS ENUM ('INITIATED', 'PENDING', 'DECLARED', 'SUCCEEDED', 'FAILED', 'EXPIRED', 'CANCELLED', 'REJECTED', 'REFUNDED');
+-- Canal d'une transaction Mobile Money : poussée par un agrégateur, ou déclarée par le locataire après un transfert direct vers le numéro du bailleur.
+CREATE TYPE momo_channel AS ENUM ('AGGREGATOR', 'DECLARED');
 CREATE TYPE fee_bearer AS ENUM ('TENANT', 'ORGANIZATION', 'LANDLORD', 'SHARED');
 CREATE TYPE check_status AS ENUM ('RECEIVED', 'DEPOSITED', 'CLEARED', 'BOUNCED', 'CANCELLED', 'RETURNED');
 CREATE TYPE statement_format AS ENUM ('CSV', 'MT940', 'CAMT053', 'OFX', 'XLSX', 'PDF_OCR');

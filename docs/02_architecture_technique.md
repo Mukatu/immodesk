@@ -68,18 +68,18 @@ graph TB
     subgraph data["Donnees"]
         PG[("PostgreSQL 16<br/>RLS par organization_id")]
         REDIS[("Redis 7<br/>files BullMQ + cache + rate limit")]
-        R2[("Cloudflare R2<br/>documents, photos, PDF")]
+        MINIO[("MinIO auto-heberge<br/>documents, photos, PDF - pilote")]
     end
 
     subgraph ext["Services externes"]
         MM["Agregateur Mobile Money<br/>CinetPay puis PawaPay / MTN / Airtel"]
         WA["WhatsApp Cloud API<br/>Meta - templates approuves"]
-        SMS["Passerelle SMS locale<br/>SmsProvider"]
+        SMS["Passerelle SMS Android (SIM MTN)<br/>SmsProvider - repli"]
         FCM["Firebase Cloud Messaging"]
     end
 
     subgraph obs["Observabilite"]
-        SENTRY["Sentry"]
+        GLITCHTIP["GlitchTip<br/>auto-heberge"]
         PROM["Prometheus + Grafana"]
         LOGS["Logs structures pino<br/>Loki"]
     end
@@ -91,16 +91,16 @@ graph TB
 
     API --> PG
     API --> REDIS
-    API --> R2
+    API --> MINIO
     API -. "enqueue" .-> REDIS
 
     REDIS -. "consume" .-> WRK
     REDIS -. "consume" .-> PDFW
 
     WRK --> PG
-    WRK --> R2
+    WRK --> MINIO
     PDFW --> PG
-    PDFW --> R2
+    PDFW --> MINIO
 
     API --> MM
     WRK --> MM
@@ -111,9 +111,9 @@ graph TB
     WRK --> FCM
     WA -. "statut de livraison" .-> CADDY
 
-    API --> SENTRY
-    WRK --> SENTRY
-    PDFW --> SENTRY
+    API --> GLITCHTIP
+    WRK --> GLITCHTIP
+    PDFW --> GLITCHTIP
     API --> PROM
     WRK --> PROM
     API --> LOGS
@@ -208,6 +208,8 @@ Cette section justifie les arbitrages du référentiel commun. Elle ne les rouvr
 
 **Décision.** La quittance de loyer est une **pièce à valeur probante** : son acheminement ne peut pas dépendre d'un canal susceptible d'être coupé du jour au lendemain, ni d'un téléphone qui doit rester appairé. Le surcoût par conversation est intégré au prix de l'abonnement. La contrainte de la fenêtre de 24 h est absorbée par une bibliothèque de templates approuvés (§12.3), ce qui est de toute façon souhaitable pour la cohérence du ton.
 
+**Meta Cloud API en accès direct plutôt que Twilio.** Twilio ne fait qu'intermédier la même Meta Cloud API sous-jacente : il ajoute une marge par conversation et une couche d'abstraction supplémentaire sans fonctionnalité que l'accès direct n'offre pas déjà (webhooks de statut, templates, envoi de médias). Le compte Meta Business et l'approbation des templates sont de toute façon un prérequis, que l'on passe par Twilio ou en direct. L'accès direct évite cette marge d'intermédiaire et donne un accès de premier rang aux templates et à leur cycle d'approbation, sans dépendance à un revendeur supplémentaire — c'est pourquoi le compte Meta Business et le numéro dédié sont avancés en Phase 0 plutôt qu'en Phase 3.
+
 ### 2.4 Agrégateur Mobile Money plutôt qu'intégration directe MTN / Airtel au démarrage
 
 | Critère                     | Agrégateur (CinetPay)                        | Direct MTN MoMo + Airtel Money                                              | Verdict        |
@@ -219,7 +221,7 @@ Cette section justifie les arbitrages du référentiel commun. Elle ne les rouvr
 | Dépendance                  | Point de défaillance unique commercial       | Résilience par diversification                                              | **Direct**     |
 | Couverture multi-pays CEMAC | Immédiate pour l'expansion                   | À renégocier pays par pays                                                  | **Agrégateur** |
 
-**Décision.** Démarrer par l'agrégateur, **mais derrière l'interface `MobileMoneyProvider`** (§8.2.1), ce qui rend le choix réversible. La bascule vers du direct devient rentable au-delà d'un seuil de volume mensuel : elle sera alors une nouvelle implémentation de la même interface, activable par organisation via `feature_flags`, sans modifier une ligne du domaine `payments-mobile-money`.
+**Décision.** Démarrer par l'agrégateur, **mais derrière l'interface `MobileMoneyProvider`** (§8.2.2), ce qui rend le choix réversible. La bascule vers du direct devient rentable au-delà d'un seuil de volume mensuel : elle sera alors une nouvelle implémentation de la même interface, activable par organisation via `feature_flags`, sans modifier une ligne du domaine `payments-mobile-money`.
 
 **Règle non négociable liée.** Quel que soit le fournisseur, un paiement n'est confirmé qu'après **re-interrogation du statut** auprès du fournisseur. Le webhook est un signal de réveil, jamais une preuve.
 
@@ -231,22 +233,23 @@ Cette section justifie les arbitrages du référentiel commun. Elle ne les rouvr
 | Disponibilité électrique et réseau               | Tier III+, redondance éprouvée   | Bonne                                     | Irrégulière, coupures fréquentes |
 | Coût au Go et au vCPU                            | Le plus bas du marché            | Moyen à élevé                             | Élevé                            |
 | Écosystème managé (PostgreSQL, sauvegardes, CDN) | Complet                          | Partiel                                   | Quasi inexistant                 |
-| Proximité des API tierces (Meta, CinetPay, R2)   | Excellente                       | Moyenne                                   | Moyenne                          |
+| Proximité des API tierces (Meta, CinetPay)       | Excellente                       | Moyenne                                   | Moyenne                          |
 | Cadre juridique des données                      | RGPD, socle exigeant et lisible  | Variable                                  | Loi congolaise de 2019 (§13.6)   |
 
 **Décision.** Paris. La latence n'est pas le facteur limitant : l'expérience terrain est gouvernée par l'**offline-first mobile**, pas par le RTT serveur, et le web est optimisé pour les connexions lentes (§11.6). L'argument de souveraineté est traité par conformité (§13.6) — consentement, finalité, durée de conservation, droit d'accès — et par la capacité d'exporter l'intégralité des données d'une organisation, pas par la géographie du serveur. Une réplique locale reste envisageable si le cadre réglementaire l'impose (voir ADR-010).
 
 ### 2.6 Choix secondaires, en une ligne
 
-| Choix                      | Raison                                                                                                                                      |
-| :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
-| **PostgreSQL 16**          | RLS native (pilier du multi-tenant), `BIGINT` exact, JSONB pour les payloads bruts, contraintes d'exclusion pour les chevauchements de baux |
-| **BullMQ sur Redis**       | Retries exponentiels, jobs répétables (cron), DLQ, verrous distribués ; déjà présent pour le cache et le rate limit                         |
-| **Cloudflare R2**          | Compatible S3, **pas de frais de sortie** — décisif pour des PDF et photos servis à des mobiles africains                                   |
-| **Puppeteer**              | Le rendu HTML/CSS est le seul moyen réaliste d'obtenir des quittances typographiquement correctes et modifiables par un non-développeur     |
-| **Next.js 15 App Router**  | Rendu serveur (bundle réduit sur connexion lente), Server Actions pour les mutations simples, streaming                                     |
-| **UUID v7**                | Ordonnancement temporel (index B-tree performant à l'insertion) tout en restant un UUID standard                                            |
-| **ULID pour `client_ref`** | Généré hors ligne sur l'appareil, triable, court, lisible dans les logs de synchronisation                                                  |
+| Choix                                               | Raison                                                                                                                                                                                                                                                                                        |
+| :-------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PostgreSQL 16**                                   | RLS native (pilier du multi-tenant), `BIGINT` exact, JSONB pour les payloads bruts, contraintes d'exclusion pour les chevauchements de baux                                                                                                                                                   |
+| **BullMQ sur Redis**                                | Retries exponentiels, jobs répétables (cron), DLQ, verrous distribués ; déjà présent pour le cache et le rate limit                                                                                                                                                                           |
+| **MinIO auto-hébergé (pilote)**                     | Compatible S3, open source, hébergé sur le VPS existant : cohérent avec le principe « open source d'abord » du référentiel commun. Cloudflare R2 (pas de frais de sortie, décisif pour des PDF et photos servis à des mobiles africains) reste une **option de bascule** si le volume l'exige |
+| **GlitchTip (auto-hébergé) plutôt que Sentry SaaS** | Compatible avec le SDK Sentry (bascule sans changement de code applicatif), auto-hébergé sur le VPS déjà provisionné, cohérent avec le principe open source d'abord, coût nul au-delà de l'infrastructure existante                                                                           |
+| **Puppeteer**                                       | Le rendu HTML/CSS est le seul moyen réaliste d'obtenir des quittances typographiquement correctes et modifiables par un non-développeur                                                                                                                                                       |
+| **Next.js 15 App Router**                           | Rendu serveur (bundle réduit sur connexion lente), Server Actions pour les mutations simples, streaming                                                                                                                                                                                       |
+| **UUID v7**                                         | Ordonnancement temporel (index B-tree performant à l'insertion) tout en restant un UUID standard                                                                                                                                                                                              |
+| **ULID pour `client_ref`**                          | Généré hors ligne sur l'appareil, triable, court, lisible dans les logs de synchronisation                                                                                                                                                                                                    |
 
 ---
 
@@ -896,6 +899,8 @@ Au Congo-Brazzaville, l'adresse e-mail est marginale chez les démarcheurs et la
 
 ### 6.2 Flux de connexion par OTP
 
+**WhatsApp est le canal par défaut** d'envoi du code. Le repli automatique vers SMS passe par la passerelle Android locale (SIM MTN, §9.3) : il se déclenche pour tout numéro sans WhatsApp vérifié ou en cas d'échec de livraison sur ce canal.
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -903,7 +908,7 @@ sequenceDiagram
     participant API as API identity
     participant R as Redis
     participant WA as WhatsApp Cloud API
-    participant SMS as SmsProvider
+    participant SMS as SmsProvider (passerelle Android)
     participant DB as PostgreSQL
 
     U->>API: POST /v1/auth/otp/request {phone, channel}
@@ -948,7 +953,7 @@ L'OTP est le point d'entrée le plus exposé : il coûte de l'argent à chaque e
 | Demandes par appareil            | 5 / heure                          | `otp:dev:{deviceId}`         | 429                                           |
 | Tentatives de vérification       | 5 par code                         | colonne `otp_codes.attempts` | Code invalidé, nouvelle demande obligatoire   |
 | Durée de vie du code             | 5 minutes                          | `expires_at`                 | Expiration, `IAM.OTP_EXPIRED`                 |
-| Réutilisation d'un code consommé | —                                  | `consumed_at`                | Refus + alerte Sentry                         |
+| Réutilisation d'un code consommé | —                                  | `consumed_at`                | Refus + alerte GlitchTip                      |
 | Coût d'envoi par organisation    | Plafond quotidien selon la formule | `subscriptions`              | Bascule SMS → WhatsApp only, alerte à l'OWNER |
 
 Trois mesures complémentaires : délai plancher de 30 s entre deux demandes pour un même numéro ; réponse **identique** que le numéro existe ou non (pas d'énumération de comptes) ; les numéros marqués `blocked` par abus répété sont refusés en amont de tout envoi. Les compteurs Redis utilisent une fenêtre glissante (`INCR` + `EXPIRE`), et les envois transitent par la file `notifications` afin d'absorber les pics sans multiplier les appels opérateur.
@@ -1180,7 +1185,21 @@ Les paiements espèces restent `CONFIRMED` dès le reçu signé : le locataire s
 
 ### 8.2 Mobile Money
 
-#### 8.2.1 Interface `MobileMoneyProvider`
+Deux modes, activables **ensemble ou séparément** par organisation via `organization_settings` : le **mode déclaré** (§8.2.1), zéro commission, où le locataire verse directement sur le numéro Mobile Money du bailleur ou de l'agence ; et le **mode agrégateur** (§8.2.2 à 8.2.4), via l'interface `MobileMoneyProvider`, avec push USSD/STK et commission par transaction. Le mode déclaré est livré en priorité en Phase 4 ; l'agrégateur reste en Phase 4 mais peut glisser si le contrat n'est pas signé, sans bloquer le pilote.
+
+#### 8.2.1 Mode déclaré
+
+Comme pour le virement (§8.3), Immodesk n'apprend l'existence d'un paiement Mobile Money déclaré que par le locataire : il n'y a ni push USSD ni webhook, seulement une transaction que le locataire a effectuée de son propre chef.
+
+**Principe.** Le locataire envoie les fonds (transfert MTN MoMo ou Airtel Money classique, hors intégration) vers le numéro Mobile Money communiqué par l'organisation, puis déclare ce paiement depuis le portail ou l'application : montant, date, opérateur, numéro émetteur, et **référence de transaction** fournie par l'opérateur en fin d'opération. Une capture d'écran du SMS de confirmation ou de l'historique de l'application opérateur est **facultative**, stockée via le module `documents` au même titre qu'une preuve de virement.
+
+**Déclaration (`mobile_money_transactions`, `channel = DECLARED`, statut `DECLARED`).** Le `payment` associé est créé en `PENDING_VERIFICATION` — jamais `CONFIRMED` sur la seule déclaration du locataire, même règle non négociable que pour le virement (§2.4). La contrainte `UNIQUE (provider, provider_transaction_id)` empêche qu'une même référence opérateur serve deux fois.
+
+**Validation.** Deux chemins, au choix de l'organisation : validation manuelle par un ACCOUNTANT ou un MANAGER (`payment:validate_transfer`, même permission que le virement déclaré), ou rapprochement avec un relevé d'opérateur importé lorsque l'organisation en dispose (relevé agent MTN/Airtel, même mécanique qu'au §8.3). Le paiement passe alors `CONFIRMED`, ses allocations sont écrites et la quittance est générée. Le rejet exige un motif (`REJECTED` + `rejection_reason`), notifié au locataire.
+
+**Zéro commission.** Contrairement au mode agrégateur (§8.2.2), aucune commission par transaction n'est prélevée : le locataire envoie directement au numéro du bailleur ou de l'agence, sans passerelle payante. Une organisation peut n'activer que ce mode si elle ne souhaite payer aucune commission, ou proposer les deux modes et laisser le locataire choisir au moment du paiement.
+
+#### 8.2.2 Mode agrégateur — interface `MobileMoneyProvider`
 
 Le fournisseur est un détail d'infrastructure. Le domaine ne connaît que ce port :
 
@@ -1225,7 +1244,7 @@ export interface ProviderStatus {
 
 Chaque implémentation vit dans `infrastructure/mobile-money/<fournisseur>/` et est sélectionnée par organisation via `feature_flags`. **Aucun `if (provider === 'CINETPAY')` n'est autorisé hors de ce dossier** : c'est la condition qui rend le basculement vers une intégration directe MTN/Airtel non intrusif (§2.4).
 
-#### 8.2.2 Séquence complète
+#### 8.2.3 Séquence complète (mode agrégateur)
 
 ```mermaid
 sequenceDiagram
@@ -1265,11 +1284,11 @@ sequenceDiagram
     WA-->>T: reception de la quittance
 ```
 
-#### 8.2.3 Idempotence, rattrapage, frais et délais
+#### 8.2.4 Idempotence, rattrapage, frais et délais (mode agrégateur)
 
 **Idempotence.** Chaque webhook est inséré dans `webhook_events` avec une contrainte `UNIQUE (provider, event_id)` — à défaut d'`event_id` fourni, un hash SHA-256 du corps brut. Une violation d'unicité signifie « déjà reçu » : le serveur répond `200` sans retraiter. Le corps brut, les en-têtes et l'horodatage sont conservés 90 jours pour l'expertise en cas de litige. L'accusé de réception est renvoyé **avant** tout traitement métier : un fournisseur qui n'obtient pas son `200` rapidement rejoue en boucle.
 
-**La confirmation ne vient jamais du webhook.** Le webhook déclenche un job `momo:verify-status` ; c'est le retour de `getStatus()` qui autorise le passage à `CONFIRMED`, après trois contrôles : le montant retourné égale le montant attendu, la devise est `XAF`, et le paiement n'est pas déjà confirmé. Toute divergence produit `MOMO.STATUS_MISMATCH`, laisse le paiement en `PENDING_VERIFICATION` et lève une alerte Sentry pour arbitrage humain.
+**La confirmation ne vient jamais du webhook.** Le webhook déclenche un job `momo:verify-status` ; c'est le retour de `getStatus()` qui autorise le passage à `CONFIRMED`, après trois contrôles : le montant retourné égale le montant attendu, la devise est `XAF`, et le paiement n'est pas déjà confirmé. Toute divergence produit `MOMO.STATUS_MISMATCH`, laisse le paiement en `PENDING_VERIFICATION` et lève une alerte GlitchTip pour arbitrage humain.
 
 **Job de rattrapage.** `momo:reconcile-pending` s'exécute toutes les 5 minutes et reprend toute transaction `PENDING` de plus de 3 minutes, avec un backoff croissant (3, 5, 10, 20, 30 min) sur une fenêtre de 2 heures. Il couvre les webhooks perdus, qui sont fréquents. Au-delà de la fenêtre, la transaction passe `EXPIRED`, le paiement `CANCELLED`, et le locataire reçoit une invitation à réessayer. Une réconciliation quotidienne rapproche en outre le journal du fournisseur avec `mobile_money_transactions` et signale toute transaction connue de l'opérateur mais absente d'Immodesk.
 
@@ -1771,14 +1790,14 @@ flowchart LR
 
 ### 12.3 Canaux
 
-| Canal        | Implémentation                                              | Usage                                                                     | Coût relatif                     | Preuve de livraison                      |
-| :----------- | :---------------------------------------------------------- | :------------------------------------------------------------------------ | :------------------------------- | :--------------------------------------- |
-| **WhatsApp** | Meta Cloud API, templates approuvés, pièce jointe PDF       | Quittances, relances, confirmations                                       | Moyen (par conversation de 24 h) | `sent` / `delivered` / `read` / `failed` |
-| **SMS**      | Interface `SmsProvider` (passerelle locale), segments GSM-7 | Repli si WhatsApp échoue ou absent, OTP                                   | Élevé à l'unité                  | Accusé opérateur, souvent partiel        |
-| **Push FCM** | Firebase, application mobile                                | Alertes internes (nouvelle facture, remise à clôturer, conflit à traiter) | Nul                              | `success` / `failure` par token          |
-| **Email**    | SMTP transactionnel                                         | Relevés de gérance, exports, factures d'abonnement                        | Nul                              | Bounce / complaint                       |
+| Canal        | Implémentation                                                               | Usage                                                                     | Coût relatif                     | Preuve de livraison                      |
+| :----------- | :--------------------------------------------------------------------------- | :------------------------------------------------------------------------ | :------------------------------- | :--------------------------------------- |
+| **WhatsApp** | Meta Cloud API, templates approuvés, pièce jointe PDF                        | Quittances, relances, confirmations                                       | Moyen (par conversation de 24 h) | `sent` / `delivered` / `read` / `failed` |
+| **SMS**      | Interface `SmsProvider` (passerelle Android locale, SIM MTN), segments GSM-7 | Repli si WhatsApp échoue ou absent, OTP                                   | Élevé à l'unité                  | Accusé opérateur, souvent partiel        |
+| **Push FCM** | Firebase, application mobile                                                 | Alertes internes (nouvelle facture, remise à clôturer, conflit à traiter) | Nul                              | `success` / `failure` par token          |
+| **Email**    | SMTP transactionnel                                                          | Relevés de gérance, exports, factures d'abonnement                        | Nul                              | Bounce / complaint                       |
 
-**Ordre de repli.** Push (si l'appareil est actif depuis moins de 7 jours) → WhatsApp (si une ligne `contact_channels` WhatsApp est vérifiée) → SMS. Un canal n'est retenté qu'une fois ; l'échec définitif d'un palier n'entraîne **jamais** l'escalade automatique au palier suivant.
+**Ordre de repli.** Push (si l'appareil est actif depuis moins de 7 jours) → WhatsApp (si une ligne `contact_channels` WhatsApp est vérifiée) → SMS via la passerelle Android locale (téléphone dédié, SIM MTN, forfait illimité). Un canal n'est retenté qu'une fois ; l'échec définitif d'un palier n'entraîne **jamais** l'escalade automatique au palier suivant.
 
 **Fenêtre de 24 h.** Hors fenêtre de service, seul un **template approuvé** peut être envoyé sur WhatsApp. La bibliothèque de templates est versionnée dans le dépôt (`infra/whatsapp/templates/`), soumise à approbation Meta, et son code d'approbation est stocké dans `notification_templates`.
 
@@ -1867,15 +1886,15 @@ Immodesk vise **OWASP ASVS 4.0 niveau 2** (application manipulant des données f
 
 ### 13.2 Chiffrement
 
-| Périmètre           | Mécanisme                                                                                                                    |
-| :------------------ | :--------------------------------------------------------------------------------------------------------------------------- |
-| Transit externe     | TLS 1.3 obligatoire (Caddy/Traefik, certificats Let's Encrypt automatiques), HSTS preload, redirection 301 systématique      |
-| Transit interne     | Réseau Docker privé, PostgreSQL et Redis **non exposés publiquement**, `sslmode=require` vers la base                        |
-| Repos — base        | Chiffrement du volume (LUKS sur le VPS) + `pgcrypto` pour les colonnes hautement sensibles (numéro de pièce d'identité, RIB) |
-| Repos — objets      | R2 chiffré au repos ; accès exclusivement par **URL signée à 15 min**, jamais de bucket public                               |
-| Repos — mobile      | SQLCipher AES-256, clé en Keystore/Keychain (§10.9)                                                                          |
-| Sauvegardes         | Chiffrement **age** (clé publique en CI, clé privée hors ligne) avant dépôt hors site                                        |
-| Secrets applicatifs | Voir §13.3                                                                                                                   |
+| Périmètre           | Mécanisme                                                                                                                                                                                                               |
+| :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Transit externe     | TLS 1.3 obligatoire (Caddy/Traefik, certificats Let's Encrypt automatiques), HSTS preload, redirection 301 systématique                                                                                                 |
+| Transit interne     | Réseau Docker privé, PostgreSQL et Redis **non exposés publiquement**, `sslmode=require` vers la base                                                                                                                   |
+| Repos — base        | Chiffrement du volume (LUKS sur le VPS) + `pgcrypto` pour les colonnes hautement sensibles (numéro de pièce d'identité, RIB)                                                                                            |
+| Repos — objets      | MinIO (auto-hébergé, solution de production en phase pilote) chiffré au repos ; accès exclusivement par **URL signée à 15 min**, jamais de bucket public ; bascule vers Cloudflare R2 envisageable en option ultérieure |
+| Repos — mobile      | SQLCipher AES-256, clé en Keystore/Keychain (§10.9)                                                                                                                                                                     |
+| Sauvegardes         | Chiffrement **age** (clé publique en CI, clé privée hors ligne) avant dépôt hors site                                                                                                                                   |
+| Secrets applicatifs | Voir §13.3                                                                                                                                                                                                              |
 
 En-têtes de sécurité imposés par la périphérie : `Content-Security-Policy` stricte avec nonce (pas de `unsafe-inline`), `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` minimale, `X-Frame-Options: DENY` sauf sur la page publique de vérification.
 
@@ -1947,7 +1966,7 @@ La loi n° 29-2019 du 10 octobre 2019 sur la protection des données à caractè
 
 ### 13.8 Sauvegardes chiffrées et scans en CI
 
-**Sauvegardes.** pgBackRest : sauvegarde complète hebdomadaire, incrémentale quotidienne, archivage WAL continu ; chiffrement `age` avant dépôt sur un stockage objet distinct du fournisseur d'hébergement (règle 3-2-1). Les médias R2 bénéficient du versionnage d'objet et d'une règle de rétention de 30 jours sur les suppressions. **Une sauvegarde non restaurée n'est pas une sauvegarde** : l'exercice de restauration est trimestriel et chronométré (§14.7).
+**Sauvegardes.** pgBackRest : sauvegarde complète hebdomadaire, incrémentale quotidienne, archivage WAL continu ; chiffrement `age` avant dépôt sur un stockage objet distinct du fournisseur d'hébergement (règle 3-2-1). Les médias MinIO bénéficient du versionnage d'objet et d'une règle de rétention de 30 jours sur les suppressions ; leur réplication hors site suit la même règle 3-2-1 que la base. **Une sauvegarde non restaurée n'est pas une sauvegarde** : l'exercice de restauration est trimestriel et chronométré (§14.7).
 
 **Scans automatisés** (`.github/workflows/security.yml`) :
 
@@ -1969,7 +1988,7 @@ Un test d'intrusion externe est planifié avant le lancement commercial (Phase 1
 
 ### 14.1 Environnement de développement
 
-Un seul prérequis pour démarrer : Docker et pnpm. `docker compose -f infra/docker/docker-compose.dev.yml up` lève PostgreSQL 16, Redis 7, MinIO (substitut R2 compatible S3), Mailpit (courriel), et un simulateur d'agrégateur Mobile Money maison qui reproduit les webhooks, y compris hors ordre, dupliqués et perdus — car un développeur doit rencontrer ces défauts **avant** la production.
+Un seul prérequis pour démarrer : Docker et pnpm. `docker compose -f infra/docker/docker-compose.dev.yml up` lève PostgreSQL 16, Redis 7, MinIO (compatible S3 — la **même** solution qu'en production pilote, pas un simple substitut), Mailpit (courriel), et un simulateur d'agrégateur Mobile Money maison qui reproduit les webhooks, y compris hors ordre, dupliqués et perdus — car un développeur doit rencontrer ces défauts **avant** la production.
 
 | Service dev    | Image                | Port      | Note                                                          |
 | :------------- | :------------------- | :-------- | :------------------------------------------------------------ |
@@ -1983,13 +2002,13 @@ L'API, les workers et le web tournent **hors conteneur** en développement (rech
 
 ### 14.2 Environnements
 
-| Environnement  | Hébergement                                                                 | Données                                                       | Accès                                                                                        | Déploiement                            |
-| :------------- | :-------------------------------------------------------------------------- | :------------------------------------------------------------ | :------------------------------------------------------------------------------------------- | :------------------------------------- |
-| **dev**        | Poste développeur                                                           | Seed de démo                                                  | Local                                                                                        | —                                      |
-| **staging**    | VPS Paris (mutualisé, 4 vCPU / 8 Go)                                        | Copie **anonymisée** de production, rafraîchie chaque semaine | VPN + authentification supplémentaire à la périphérie, `noindex`                             | Automatique à chaque fusion sur `main` |
-| **production** | VPS Paris dédiés (Hetzner CX/CCX ou OVH), 2 nœuds applicatifs + 1 nœud base | Réelles                                                       | SSH par clé uniquement, port non standard, pare-feu restrictif, aucun accès direct à la base | Manuel, sur tag `v*`, avec approbation |
+| Environnement  | Hébergement                                                                                                                                       | Données                                                       | Accès                                                                                        | Déploiement                            |
+| :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------ | :------------------------------------------------------------------------------------------- | :------------------------------------- |
+| **dev**        | Poste développeur                                                                                                                                 | Seed de démo                                                  | Local                                                                                        | —                                      |
+| **staging**    | VPS Paris (mutualisé, 4 vCPU / 8 Go)                                                                                                              | Copie **anonymisée** de production, rafraîchie chaque semaine | VPN + authentification supplémentaire à la périphérie, `noindex`                             | Automatique à chaque fusion sur `main` |
+| **production** | VPS Paris dédiés (Hetzner CX/CCX ou OVH), 2 nœuds applicatifs + 1 nœud base, **MinIO auto-hébergé** pour les documents/photos/PDF en phase pilote | Réelles                                                       | SSH par clé uniquement, port non standard, pare-feu restrictif, aucun accès direct à la base | Manuel, sur tag `v*`, avec approbation |
 
-L'anonymisation de staging est un script obligatoire (`infra/scripts/anonymize.sql`) : téléphones remplacés par une plage de test, noms substitués par un jeu congolais fictif, documents R2 non copiés, montants conservés (les invariants financiers doivent rester vérifiables).
+L'anonymisation de staging est un script obligatoire (`infra/scripts/anonymize.sql`) : téléphones remplacés par une plage de test, noms substitués par un jeu congolais fictif, documents MinIO non copiés, montants conservés (les invariants financiers doivent rester vérifiables). Le passage à Cloudflare R2 reste une option de bascule ultérieure si le volume de documents servis aux mobiles africains le justifie, sans changement de code (interface de stockage compatible S3).
 
 ### 14.3 Schéma de déploiement
 
@@ -2002,7 +2021,6 @@ graph TB
 
     subgraph cf["Cloudflare"]
         DNS["DNS + WAF + cache statique"]
-        R2[("R2 - documents, photos, PDF")]
     end
 
     subgraph paris["VPS Paris - reseau prive"]
@@ -2020,6 +2038,7 @@ graph TB
             PGP[("PostgreSQL 16 primaire")]
             PGS[("Replica logique de secours")]
             PGBR["pgBackRest"]
+            MINIO[("MinIO auto-heberge<br/>documents, photos, PDF")]
         end
     end
 
@@ -2035,15 +2054,16 @@ graph TB
     WEB1 --> API1
     API1 --> PGP
     API1 --> REDIS
-    API1 --> R2
+    API1 --> MINIO
     REDIS --> WRK1
     REDIS --> PDF1
     WRK1 --> PGP
     PDF1 --> PGP
-    PDF1 --> R2
+    PDF1 --> MINIO
     PGP --> PGS
     PGP --> PGBR
     PGBR --> BKP
+    MINIO -. "replication objet" .-> BKP
 ```
 
 ### 14.4 Périphérie, base et files
@@ -2061,21 +2081,21 @@ graph TB
 | `ci.yml`                | PR et push                             | Install pnpm (cache) → lint + Prettier + règles de frontière → typecheck → tests unitaires Vitest → tests d'intégration testcontainers → e2e supertest → `melos analyze` + `flutter test` → build API/web/mobile (APK debug) → vérification que `openapi.json` régénéré est identique au fichier versionné → budgets de bundle (§11.7) |
 | `security.yml`          | PR + planifié                          | Scans du §13.8                                                                                                                                                                                                                                                                                                                         |
 | `deploy-staging.yml`    | Fusion sur `main`                      | Build et push des images (SHA du commit), `prisma migrate deploy`, application des policies RLS, déploiement, smoke tests, notification                                                                                                                                                                                                |
-| `deploy-production.yml` | Tag `v*` + approbation d'environnement | Sauvegarde préalable → migrations → déploiement progressif nœud par nœud → healthchecks → smoke tests → étiquetage de la version dans Sentry ; rollback automatique si les healthchecks échouent                                                                                                                                       |
+| `deploy-production.yml` | Tag `v*` + approbation d'environnement | Sauvegarde préalable → migrations → déploiement progressif nœud par nœud → healthchecks → smoke tests → étiquetage de la version dans GlitchTip ; rollback automatique si les healthchecks échouent                                                                                                                                    |
 | `mobile-release.yml`    | Tag `mobile-v*`                        | fastlane : build signé, montée sur Play Store (piste interne) et TestFlight                                                                                                                                                                                                                                                            |
 
 **Règles de migration.** Les migrations sont **compatibles en avant** : on ajoute une colonne nullable, on déploie le code, on remplit, on contraint dans une migration ultérieure. Aucune migration bloquante longue en heure ouvrée ; `lock_timeout` et `statement_timeout` positionnés pour échouer vite plutôt que verrouiller la production. Toute migration est accompagnée d'une procédure de retour arrière décrite dans la PR.
 
 ### 14.6 Observabilité
 
-| Pilier        | Outil                                     | Contenu                                                                                                                                                                                                                                                   |
-| :------------ | :---------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Erreurs       | **Sentry** (API, workers, web, Flutter)   | Traces, version, `release`, `organization_id` en tag, données personnelles filtrées avant envoi                                                                                                                                                           |
-| Métriques     | **Prometheus + Grafana**                  | Techniques : latence p50/p95/p99, taux d'erreur, profondeur des files, âge du plus vieux job, connexions PostgreSQL, mémoire Chromium. Métier : factures émises, taux d'encaissement, paiements `PENDING` > 15 min, lots de sync rejetés, coût messagerie |
-| Logs          | **pino** JSON → Loki                      | `request_id` propagé de bout en bout (en-tête `X-Request-Id` fourni par le mobile), rédaction des champs sensibles (§13.5)                                                                                                                                |
-| Disponibilité | Sonde externe (UptimeRobot ou équivalent) | `/health/live`, `/health/ready`, page publique de vérification de quittance                                                                                                                                                                               |
+| Pilier        | Outil                                                                            | Contenu                                                                                                                                                                                                                                                   |
+| :------------ | :------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Erreurs       | **GlitchTip** (auto-hébergé, compatible SDK Sentry) (API, workers, web, Flutter) | Traces, version, `release`, `organization_id` en tag, données personnelles filtrées avant envoi                                                                                                                                                           |
+| Métriques     | **Prometheus + Grafana**                                                         | Techniques : latence p50/p95/p99, taux d'erreur, profondeur des files, âge du plus vieux job, connexions PostgreSQL, mémoire Chromium. Métier : factures émises, taux d'encaissement, paiements `PENDING` > 15 min, lots de sync rejetés, coût messagerie |
+| Logs          | **pino** JSON → Loki                                                             | `request_id` propagé de bout en bout (en-tête `X-Request-Id` fourni par le mobile), rédaction des champs sensibles (§13.5)                                                                                                                                |
+| Disponibilité | Sonde externe (UptimeRobot ou équivalent)                                        | `/health/live`, `/health/ready`, page publique de vérification de quittance                                                                                                                                                                               |
 
-**Healthchecks.** `/health/live` répond sans dépendance (le processus est vivant) ; `/health/ready` vérifie PostgreSQL, Redis et R2 et conditionne la réception du trafic. Les workers exposent une sonde de battement dans Redis, dont l'absence pendant 2 min déclenche une alerte.
+**Healthchecks.** `/health/live` répond sans dépendance (le processus est vivant) ; `/health/ready` vérifie PostgreSQL, Redis et MinIO et conditionne la réception du trafic. Les workers exposent une sonde de battement dans Redis, dont l'absence pendant 2 min déclenche une alerte.
 
 **Alertes qui réveillent** (astreinte) : API indisponible > 2 min, PostgreSQL injoignable, taux d'erreur 5xx > 2 % sur 5 min, file `payments` en croissance continue, sauvegarde quotidienne échouée, espace disque < 15 %, certificat TLS à moins de 7 jours. Les autres alertes créent un ticket sans notification nocturne.
 
@@ -2332,20 +2352,22 @@ Une tâche n'est terminée que lorsque **tous** ces points sont vrais :
 
 ## 17. Annexe : ADR initiaux
 
-Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici ; leur version intégrale vit dans `docs/adr/` au format du §16.3. Un ADR ne se modifie pas : il se remplace.
+Les douze ADR ci-dessous figent les décisions de Phase 0 (ADR-011 et ADR-012 actent en outre les arbitrages du 10 septembre 2026, cf. `docs/_DECISIONS_COMMUNES.md`). Ils sont résumés ici ; leur version intégrale vit dans `docs/adr/` au format du §16.3. Un ADR ne se modifie pas : il se remplace.
 
-| N°      | Décision                                       | Statut  | Phase |
-| :------ | :--------------------------------------------- | :------ | :---- |
-| ADR-001 | Monolithe modulaire NestJS 11 + Prisma         | Accepté | 0     |
-| ADR-002 | Flutter offline-first : Riverpod + Drift       | Accepté | 0 / 5 |
-| ADR-003 | WhatsApp Cloud API officielle                  | Accepté | 0 / 3 |
-| ADR-004 | Agrégateur Mobile Money derrière une interface | Accepté | 4     |
-| ADR-005 | Montants en BIGINT XAF, sans décimale          | Accepté | 0     |
-| ADR-006 | UUID v7 en clé primaire                        | Accepté | 0     |
-| ADR-007 | Multi-tenant par Row Level Security PostgreSQL | Accepté | 0     |
-| ADR-008 | Authentification par téléphone + OTP           | Accepté | 0     |
-| ADR-009 | Monorepo unique pnpm + Turborepo               | Accepté | 0     |
-| ADR-010 | Hébergement en région Europe (Paris)           | Accepté | 0     |
+| N°      | Décision                                          | Statut  | Phase |
+| :------ | :------------------------------------------------ | :------ | :---- |
+| ADR-001 | Monolithe modulaire NestJS 11 + Prisma            | Accepté | 0     |
+| ADR-002 | Flutter offline-first : Riverpod + Drift          | Accepté | 0 / 5 |
+| ADR-003 | WhatsApp Cloud API officielle                     | Accepté | 0 / 3 |
+| ADR-004 | Agrégateur Mobile Money derrière une interface    | Accepté | 4     |
+| ADR-005 | Montants en BIGINT XAF, sans décimale             | Accepté | 0     |
+| ADR-006 | UUID v7 en clé primaire                           | Accepté | 0     |
+| ADR-007 | Multi-tenant par Row Level Security PostgreSQL    | Accepté | 0     |
+| ADR-008 | Authentification par téléphone + OTP              | Accepté | 0     |
+| ADR-009 | Monorepo unique pnpm + Turborepo                  | Accepté | 0     |
+| ADR-010 | Hébergement en région Europe (Paris)              | Accepté | 0     |
+| ADR-011 | WhatsApp d'abord, SMS passerelle Android en repli | Accepté | 0 / 3 |
+| ADR-012 | Mobile Money à deux modes                         | Accepté | 4     |
 
 ### ADR-001 — Monolithe modulaire NestJS 11 + Prisma
 

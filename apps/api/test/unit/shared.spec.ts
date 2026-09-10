@@ -4,9 +4,12 @@ import { isUuid, newId, newOpaqueToken, uuidVersionOf } from '../../src/shared/i
 import {
   AmountError,
   formatXaf,
+  MAX_SAFE_BIGINT,
   serializeAmount,
   THOUSANDS_SEPARATOR,
   toAmount,
+  toJsonAmount,
+  toJsonAmountOrNull,
 } from '../../src/shared/money/amount';
 import {
   clampLimit,
@@ -78,8 +81,34 @@ describe('Montants XAF en BigInt', () => {
     expect(() => toAmount('1 200')).toThrow(AmountError);
   });
 
-  it('sérialise en chaîne, jamais en flottant', () => {
+  it('sérialise en chaîne exacte pour l’audit et les journaux', () => {
     expect(serializeAmount(9_007_199_254_740_993n)).toBe('9007199254740993');
+  });
+
+  it('convertit en entier JSON à la frontière de présentation', () => {
+    // Les contrats typent les montants en `number` ; un montant XAF reste
+    // très loin de MAX_SAFE_INTEGER (9,007 × 10^15 FCFA).
+    expect(toJsonAmount(120_000n)).toBe(120000);
+    expect(toJsonAmount(0n)).toBe(0);
+    expect(toJsonAmount(MAX_SAFE_BIGINT)).toBe(Number.MAX_SAFE_INTEGER);
+    expect(toJsonAmountOrNull(null)).toBeNull();
+    expect(toJsonAmountOrNull(undefined)).toBeNull();
+    expect(toJsonAmountOrNull(150_000n)).toBe(150000);
+  });
+
+  it('refuse de sérialiser un montant hors plage plutôt que de l’arrondir', () => {
+    // Transmettre une valeur arrondie serait un montant FAUX chez le client :
+    // mieux vaut une erreur interne tracée.
+    expect(() => toJsonAmount(MAX_SAFE_BIGINT + 1n)).toThrow(AmountError);
+    expect(() => toJsonAmount(-(MAX_SAFE_BIGINT + 1n))).toThrow(AmountError);
+    expect(() => toJsonAmountOrNull(MAX_SAFE_BIGINT + 1n)).toThrow(AmountError);
+  });
+
+  it('sérialise un BigInt en nombre via le filet global de JSON.stringify', () => {
+    // `bootstrap.ts` installe `BigInt.prototype.toJSON` ; on vérifie ici la
+    // même conversion gardée, sans dépendre de l'ordre de chargement.
+    const payload = { baseRentAmount: toJsonAmount(150_000n) };
+    expect(JSON.stringify(payload)).toBe('{"baseRentAmount":150000}');
   });
 
   it('formate en français avec séparateur de milliers', () => {

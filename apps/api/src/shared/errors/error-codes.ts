@@ -57,6 +57,92 @@ export const ERROR_CATALOG = {
     message: 'Cette invitation a été émise pour un autre numéro de téléphone.',
   },
 
+  // --- Domaine PARTIES (bailleurs, locataires, garants, canaux) ---------
+  'PARTIES.PHONE_INVALID': { status: 422, message: 'Numéro de téléphone invalide.' },
+  'PARTIES.NAME_REQUIRED': {
+    status: 422,
+    message:
+      'Le nom est obligatoire : « lastName » pour une personne physique, « companyName » pour une personne morale.',
+  },
+  'PARTIES.PHONE_ALREADY_USED': {
+    status: 409,
+    message: 'Ce numéro est déjà utilisé par un autre locataire de cette organisation.',
+  },
+  'PARTIES.SELF_LANDLORD_PROTECTED': {
+    status: 409,
+    message: "Le bailleur « self » de l'organisation ne peut pas être supprimé.",
+  },
+  'PARTIES.LANDLORD_HAS_PROPERTIES': {
+    status: 409,
+    message: 'Ce bailleur possède encore des biens : transférez-les avant de le supprimer.',
+  },
+  'PARTIES.LANDLORD_NOT_FOUND': { status: 404, message: 'Bailleur introuvable.' },
+  'PARTIES.TENANT_NOT_FOUND': { status: 404, message: 'Locataire introuvable.' },
+  'PARTIES.GUARANTOR_NOT_FOUND': { status: 404, message: 'Garant introuvable.' },
+  'PARTIES.CHANNEL_NOT_FOUND': { status: 404, message: 'Canal de contact introuvable.' },
+  'PARTIES.CHANNEL_DUPLICATE': {
+    status: 409,
+    message: 'Ce canal de contact existe déjà pour ce tiers.',
+  },
+  'PARTIES.OWNER_TYPE_INVALID': {
+    status: 422,
+    message: 'Type de tiers inconnu : utilisez landlords, tenants ou guarantors.',
+  },
+
+  // --- Domaine PORTFOLIO (immeubles, lots, occupation) ------------------
+  'PORTFOLIO.PROPERTY_NOT_FOUND': { status: 404, message: 'Bien introuvable.' },
+  'PORTFOLIO.UNIT_NOT_FOUND': { status: 404, message: 'Lot introuvable.' },
+  'PORTFOLIO.PROPERTY_CODE_TAKEN': {
+    status: 409,
+    message: 'Ce code de bien est déjà utilisé dans cette organisation.',
+  },
+  'PORTFOLIO.PROPERTY_HAS_UNITS': {
+    status: 409,
+    message: 'Ce bien porte encore des lots : supprimez-les avant de le supprimer.',
+  },
+  'PORTFOLIO.UNIT_CODE_TAKEN': { status: 409, message: 'Ce code de lot est déjà pris.' },
+  'PORTFOLIO.UNIT_HAS_ACTIVE_LEASE': {
+    status: 409,
+    message: 'Lot rattaché à un bail actif : suppression impossible.',
+  },
+  'PORTFOLIO.BULK_RANGE_INVALID': {
+    status: 422,
+    message: 'Série de lots invalide : « from » doit précéder « to », et 200 lots au maximum.',
+  },
+
+  // --- Domaine BANKING (comptes de règlement) ---------------------------
+  'BANKING.ACCOUNT_NOT_FOUND': { status: 404, message: 'Compte bancaire introuvable.' },
+  'BANKING.ACCOUNT_DUPLICATE': {
+    status: 409,
+    message: 'Un compte porte déjà ce couple banque / numéro dans cette organisation.',
+  },
+  'BANKING.IDENTIFIER_REQUIRED': {
+    status: 422,
+    message: 'Renseignez au moins un numéro de compte, un IBAN ou un numéro Mobile Money.',
+  },
+  'BANKING.HOLDER_INVALID': {
+    status: 422,
+    message:
+      'Titulaire incohérent : un compte LANDLORD exige landlordId, un compte TENANT tenantId.',
+  },
+
+  // --- Domaine DOCUMENTS (stockage objet, URL signées) ------------------
+  'DOCUMENTS.NOT_FOUND': { status: 404, message: 'Document introuvable.' },
+  'DOCUMENTS.FILE_TOO_LARGE': { status: 413, message: 'Fichier trop volumineux.' },
+  'DOCUMENTS.MIME_NOT_ALLOWED': { status: 415, message: 'Type de fichier non autorisé.' },
+  'DOCUMENTS.OBJECT_MISSING': {
+    status: 409,
+    message: "Aucun objet téléversé sous cette clé : recommencez l'envoi.",
+  },
+  'DOCUMENTS.OBJECT_KEY_INVALID': {
+    status: 422,
+    message: "Clé d'objet invalide pour cette organisation.",
+  },
+  'DOCUMENTS.STORAGE_UNAVAILABLE': {
+    status: 503,
+    message: 'Stockage de fichiers indisponible. Réessayez dans un instant.',
+  },
+
   // --- Domaine VALIDATION / plateforme ----------------------------------
   'VALIDATION.INVALID_PAYLOAD': { status: 422, message: 'Requête invalide.' },
   'PLATFORM.IDEMPOTENCY_CONFLICT': {

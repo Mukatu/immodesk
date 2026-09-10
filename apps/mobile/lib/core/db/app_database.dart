@@ -52,20 +52,174 @@ class Outbox extends Table {
   Set<Column<Object>> get primaryKey => {clientRef};
 }
 
+/// Cache local d'un référentiel (immeubles, lots ou locataires) : lecture
+/// hors ligne de la dernière copie connue, rafraîchie à chaque ouverture
+/// d'écran quand le réseau est disponible (voir `PortfolioRepositoryImpl`).
+@DataClassName('CachedPropertyRow')
+class CachedProperties extends Table {
+  TextColumn get id => text()();
+  TextColumn get organizationId => text()();
+  TextColumn get name => text()();
+  TextColumn get city => text()();
+
+  /// JSON complet de `PropertySummary`.
+  TextColumn get payload => text()();
+  DateTimeColumn get cachedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Lots mis en cache (issus des listes `PropertyDetail.units` consultées).
+@DataClassName('CachedUnitRow')
+class CachedUnits extends Table {
+  TextColumn get id => text()();
+  TextColumn get organizationId => text()();
+  TextColumn get propertyId => text()();
+
+  /// JSON de `Unit` (caractéristiques + loyer de référence).
+  TextColumn get payload => text()();
+  DateTimeColumn get cachedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Locataires mis en cache, avec un champ de recherche normalisé (sans
+/// accents, minuscules) pour permettre une recherche locale hors ligne.
+@DataClassName('CachedTenantRow')
+class CachedTenants extends Table {
+  TextColumn get id => text()();
+  TextColumn get organizationId => text()();
+  TextColumn get displayName => text()();
+  TextColumn get phone => text()();
+  TextColumn get normalizedSearchText => text()();
+
+  /// JSON de `Tenant`.
+  TextColumn get payload => text()();
+  DateTimeColumn get cachedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// Base locale Drift (SQLite).
 ///
 /// Chiffrement : NON activé en phase 0. `sqlcipher_flutter_libs` est prévu
 /// pour la phase 5 (voir `docs/02_architecture_technique.md` §10.9) —
 /// aucune donnée sensible n'est répliquée localement avant l'outbox de
 /// collecte terrain.
-@DriftDatabase(tables: [AppSettings, Outbox])
+@DriftDatabase(
+  tables: [AppSettings, Outbox, CachedProperties, CachedUnits, CachedTenants],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.createTable(cachedProperties);
+        await m.createTable(cachedUnits);
+        await m.createTable(cachedTenants);
+      }
+    },
+  );
+
+  Future<void> replaceCachedProperties(
+    String organizationId,
+    List<CachedPropertyRow> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        cachedProperties,
+      )..where((tbl) => tbl.organizationId.equals(organizationId))).go();
+      for (final CachedPropertyRow row in rows) {
+        await into(cachedProperties).insertOnConflictUpdate(row);
+      }
+    });
+  }
+
+  Future<List<CachedPropertyRow>> getCachedProperties(String organizationId) {
+    return (select(
+      cachedProperties,
+    )..where((tbl) => tbl.organizationId.equals(organizationId))).get();
+  }
+
+  Future<void> replaceCachedUnitsForProperty(
+    String organizationId,
+    String propertyId,
+    List<CachedUnitRow> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(cachedUnits)..where(
+            (tbl) =>
+                tbl.organizationId.equals(organizationId) &
+                tbl.propertyId.equals(propertyId),
+          ))
+          .go();
+      for (final CachedUnitRow row in rows) {
+        await into(cachedUnits).insertOnConflictUpdate(row);
+      }
+    });
+  }
+
+  Future<List<CachedUnitRow>> getCachedUnitsForProperty(
+    String organizationId,
+    String propertyId,
+  ) {
+    return (select(cachedUnits)..where(
+          (tbl) =>
+              tbl.organizationId.equals(organizationId) &
+              tbl.propertyId.equals(propertyId),
+        ))
+        .get();
+  }
+
+  Future<CachedUnitRow?> getCachedUnit(String unitId) {
+    return (select(
+      cachedUnits,
+    )..where((tbl) => tbl.id.equals(unitId))).getSingleOrNull();
+  }
+
+  Future<void> replaceCachedTenants(
+    String organizationId,
+    List<CachedTenantRow> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        cachedTenants,
+      )..where((tbl) => tbl.organizationId.equals(organizationId))).go();
+      for (final CachedTenantRow row in rows) {
+        await into(cachedTenants).insertOnConflictUpdate(row);
+      }
+    });
+  }
+
+  Future<List<CachedTenantRow>> getCachedTenants(String organizationId) {
+    return (select(
+      cachedTenants,
+    )..where((tbl) => tbl.organizationId.equals(organizationId))).get();
+  }
+
+  Future<List<CachedTenantRow>> searchCachedTenants(
+    String organizationId,
+    String normalizedQuery,
+  ) {
+    return (select(cachedTenants)..where(
+          (tbl) =>
+              tbl.organizationId.equals(organizationId) &
+              (tbl.normalizedSearchText.contains(normalizedQuery) |
+                  tbl.phone.contains(normalizedQuery)),
+        ))
+        .get();
+  }
 
   Future<String?> getSetting(String key) async {
     final AppSettingRow? row = await (select(
@@ -93,9 +247,7 @@ LazyDatabase _openConnection() {
   });
 }
 
-final Provider<AppDatabase> appDatabaseProvider = Provider<AppDatabase>((
-  ref,
-) {
+final Provider<AppDatabase> appDatabaseProvider = Provider<AppDatabase>((ref) {
   final AppDatabase database = AppDatabase();
   ref.onDispose(database.close);
   return database;

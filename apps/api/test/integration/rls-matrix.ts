@@ -49,6 +49,13 @@ export const TABLE_HINTS: Record<string, Record<string, unknown>> = {
   tenants: { last_name: 'Locataire RLS', primary_phone: '+242066000097' },
   // guarantors_name_chk / guarantors_phone_chk.
   guarantors: { last_name: 'Garant RLS', primary_phone: '+242066000096' },
+  // bank_accounts_identifier_chk : numéro de compte, IBAN ou Mobile Money.
+  // Sans cette valeur, `bank_accounts` — table de la phase 1 — serait sautée.
+  bank_accounts: { account_number: '30011000000000000001' },
+  // momo_channel_chk : AGGREGATOR exige `aggregator`. La colonne est devenue
+  // facultative avec le mode « paiement déclaré » (migration 1_momo_declared),
+  // si bien que le générateur ne la renseigne plus d'elle-même.
+  mobile_money_transactions: { aggregator: 'CINETPAY', payer_msisdn: '+242066000095' },
 };
 
 /**

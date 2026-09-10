@@ -39,10 +39,40 @@ export function assertNonNegativeAmount(value: bigint): bigint {
   return value;
 }
 
-/** Sérialisation JSON : un BigInt est toujours transporté en chaîne. */
+/** Représentation textuelle exacte, pour les journaux et l'audit JSONB. */
 export function serializeAmount(value: bigint): string {
   return value.toString(10);
 }
+
+/**
+ * Conversion à la FRONTIÈRE DE PRÉSENTATION : BigInt → nombre JSON.
+ *
+ * Les contrats d'API typent les montants en `number` (`baseRentAmount:
+ * number`), et un montant en XAF reste très loin de `Number.MAX_SAFE_INTEGER`
+ * (9,007 × 10^15, soit plus de neuf millions de milliards de francs CFA).
+ * Le domaine et Prisma continuent de manipuler des BigInt : seule la couche
+ * de présentation convertit, et jamais sans garde.
+ *
+ * Si la valeur dépassait la plage entière sûre, la sérialiser silencieusement
+ * produirait un montant FAUX chez le client. On lève donc une erreur interne :
+ * mieux vaut une 500 tracée qu'un loyer arrondi à l'insu de tous.
+ */
+export function toJsonAmount(value: bigint): number {
+  if (value > MAX_SAFE_BIGINT || value < -MAX_SAFE_BIGINT) {
+    throw new AmountError(
+      `Montant hors de la plage entière sûre du JSON : ${value.toString(10)}. ` +
+        'Sérialisation refusée pour ne pas transmettre une valeur arrondie.',
+    );
+  }
+  return Number(value);
+}
+
+/** Variante tolérant l'absence de valeur (colonne SQL nullable). */
+export function toJsonAmountOrNull(value: bigint | null | undefined): number | null {
+  return value === null || value === undefined ? null : toJsonAmount(value);
+}
+
+export const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 
 /** Séparateur de milliers : espace fine insécable (typographie française fr-CG). */
 export const THOUSANDS_SEPARATOR = '\u202f';

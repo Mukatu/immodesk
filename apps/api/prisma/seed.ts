@@ -8,6 +8,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import { v7 as uuidv7 } from 'uuid';
+import { seedPortfolio } from './seed-portfolio';
 
 const prisma = new PrismaClient({
   datasources: {
@@ -39,10 +40,17 @@ async function main(): Promise<void> {
   await upsertTemplates(organizationId);
   await upsertFeatureFlag(organizationId);
 
+  // --- Phase 1 : portefeuille de démonstration -------------------------
+  const portfolio = await seedPortfolio(prisma, organizationId);
+
   console.info('Seed Immodesk — terminé.');
   console.info(`  Organisation : Agence Mpila Immo (${organizationId})`);
   console.info(`  OWNER        : ${OWNER_PHONE}`);
   console.info(`  COLLECTOR    : ${COLLECTOR_PHONE}`);
+  console.info(`  Bailleurs    : ${portfolio.landlords} (dont 1 SCI)`);
+  console.info(`  Immeuble     : Résidence Mpila — ${portfolio.units} lots A1..A12`);
+  console.info(`  Locataires   : ${portfolio.tenants} (garants et canaux de contact inclus)`);
+  console.info(`  Comptes      : ${portfolio.bankAccounts} (BGFI + MTN Mobile Money)`);
   console.info('  Connexion    : POST /v1/auth/otp/request puis /v1/auth/otp/verify');
   console.info('                 avec OTP_DEV_CODE (000000 par défaut) en développement.');
 }

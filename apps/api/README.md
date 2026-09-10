@@ -1,12 +1,16 @@
-# `@immodesk/api` — API Immodesk (phase 0)
+# `@immodesk/api` — API Immodesk (phases 0 et 1)
 
 Backend NestJS 11 de la plateforme Immodesk (gestion immobilière,
 Congo-Brazzaville). Monolithe modulaire en Clean Architecture, multi-tenant
 par Row Level Security PostgreSQL, authentification par téléphone + OTP.
 
-Périmètre de la phase 0 : socle technique, isolation multi-tenant prouvée par
-tests, authentification OTP, organisations / membres / invitations, contrat
-OpenAPI 3.1 publié.
+Périmètre de la **phase 0** : socle technique, isolation multi-tenant prouvée
+par tests, authentification OTP, organisations / membres / invitations,
+contrat OpenAPI 3.1 publié.
+
+Périmètre de la **phase 1** : tiers et patrimoine — bailleurs, locataires,
+garants, canaux de contact, immeubles, lots (création en série), comptes de
+règlement et pièces jointes sur stockage objet compatible S3.
 
 ---
 
@@ -64,15 +68,37 @@ Toutes les variables sont validées au démarrage par **zod**
 empêche le processus de démarrer, plutôt que de produire une panne différée.
 `.env.example` documente chaque entrée ; les points saillants :
 
-| Variable             | Rôle                                                                                                                                                     |
-| :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`       | Rôle applicatif `immodesk_app`, **soumis à la RLS**. Utilisé par tout le code métier.                                                                    |
-| `DATABASE_ADMIN_URL` | Rôle `immodesk` (BYPASSRLS). Migrations, seed, et uniquement les trois lectures transverses de `TenantDirectoryService`.                                 |
-| `REDIS_URL`          | Compteurs de limitation de débit (partagés entre instances).                                                                                             |
-| `JWT_ALGORITHM`      | `HS256` en local, `RS256` en déploiement (renseigner alors la paire de clés).                                                                            |
-| `OTP_PEPPER`         | Poivre du hachage SHA-256 des codes OTP. Vit hors base : à régénérer par environnement.                                                                  |
-| `OTP_DEV_CODE`       | Code fixe accepté hors production. Le démarrage **échoue** si `NODE_ENV=production` et que la variable est définie. Une valeur vide vaut « non défini ». |
-| `CURSOR_SECRET`      | Signature HMAC des curseurs de pagination (empêche de forger une position).                                                                              |
+| Variable             | Rôle                                                                                                                                                              |
+| :------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`       | Rôle applicatif `immodesk_app`, **soumis à la RLS**. Utilisé par tout le code métier.                                                                             |
+| `DATABASE_ADMIN_URL` | Rôle `immodesk` (BYPASSRLS). Migrations, seed, les trois lectures transverses de `TenantDirectoryService` et la recherche de candidats de `DocumentPurgeService`. |
+| `REDIS_URL`          | Compteurs de limitation de débit (partagés entre instances).                                                                                                      |
+| `JWT_ALGORITHM`      | `HS256` en local, `RS256` en déploiement (renseigner alors la paire de clés).                                                                                     |
+| `OTP_PEPPER`         | Poivre du hachage SHA-256 des codes OTP. Vit hors base : à régénérer par environnement.                                                                           |
+| `OTP_DEV_CODE`       | Code fixe accepté hors production. Le démarrage **échoue** si `NODE_ENV=production` et que la variable est définie. Une valeur vide vaut « non défini ».          |
+| `CURSOR_SECRET`      | Signature HMAC des curseurs de pagination (empêche de forger une position).                                                                                       |
+
+### Stockage objet (phase 1)
+
+Les pièces jointes vivent dans un stockage compatible S3 — **MinIO
+auto-hébergé** en pilote, Cloudflare R2 si le volume l'exige. Le fichier ne
+transite **jamais** par l'API : il part du navigateur ou du téléphone vers le
+stockage par une URL signée, et revient de même.
+
+| Variable                           | Rôle                                                                                       |
+| :--------------------------------- | :----------------------------------------------------------------------------------------- |
+| `S3_ENDPOINT`                      | `http://localhost:9010` en local ; console MinIO sur `9011`.                               |
+| `S3_BUCKET`                        | `immodesk`.                                                                                |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY`  | Identifiants du stockage. Le démarrage **échoue** si l'un manque.                          |
+| `S3_REGION`                        | `us-east-1` par défaut : MinIO l'ignore, mais le SDK AWS en exige une pour signer.         |
+| `S3_UPLOAD_URL_TTL_SECONDS`        | Validité de l'URL d'envoi (600 s). Le téléchargement est figé à **10 min** par le contrat. |
+| `DOCUMENTS_PURGE_ENABLED`          | Active la purge différée des objets supprimés (inactive d'office en `NODE_ENV=test`).      |
+| `DOCUMENTS_PURGE_INTERVAL_SECONDS` | Période de passage de la tâche (3600 s).                                                   |
+| `DOCUMENTS_PURGE_GRACE_HOURS`      | Délai de rétractation avant destruction irréversible (24 h).                               |
+| `DOCUMENTS_PURGE_BATCH_SIZE`       | Objets traités par passage (50).                                                           |
+
+`forcePathStyle` est activé : l'adressage par sous-domaine (`bucket.host`)
+suppose un DNS générique que `localhost` n'a pas.
 
 ---
 
@@ -145,6 +171,20 @@ ALTER ROLE immodesk_app WITH LOGIN PASSWORD 'immodesk_app';
 - paramètres par défaut : échéance le **5**, `Africa/Brazzaville`, **XAF** ;
 - trois modèles de message : `auth.otp_login`, `org.invitation`, `user.welcome` ;
 - un drapeau de démonstration `demo.banner`.
+
+Portefeuille de la phase 1 (`prisma/seed-portfolio*.ts`), quartiers réels de
+Brazzaville :
+
+- **2 bailleurs** : Célestin Nkodia (personne physique, Moungali) et **SCI Les
+  Manguiers** (personne morale avec RCCM, Mpila) ;
+- **1 immeuble** « Résidence Mpila » (6e arrondissement Talangaï, repère
+  « derrière l'école Nganga Édouard ») et ses **12 lots A1..A12** — 4 studios
+  au rez-de-chaussée, 8 appartements aux étages, 4 occupés : taux
+  d'occupation **3333 bps** ;
+- **3 locataires** (Poto-Poto, Bacongo, Makélékélé), chacun avec son garant et
+  ses canaux de contact mobile / WhatsApp / e-mail ;
+- **2 comptes de règlement** : compte courant **BGFI** de l'agence et
+  portefeuille **MTN Mobile Money** de la SCI.
 
 ---
 
@@ -272,6 +312,18 @@ se vérifier que sur un vrai serveur.
 - `organizations.int-spec.ts` — création d'organisation, paramètres,
   invitation → acceptation → visibilité partagée, protection du dernier
   OWNER, 404 sur l'organisation d'autrui, drapeaux de fonctionnalité.
+- `phase1-parties.int-spec.ts` — normalisation E.164 à la création, recherche
+  sans accent, **avertissement de doublon de téléphone puis confirmation par
+  `confirmDuplicatePhone`**, garant et canaux de contact, bailleur « self »
+  créé et protégé, suppression logique.
+- `phase1-portfolio.int-spec.ts` — **12 lots A1..A12 en une transaction**,
+  **rollback complet si un seul code est en doublon**, taux d'occupation
+  recalculé, **refus de suppression d'un lot dont le bail ACTIF est inséré
+  directement en SQL**, 404 cross-organisation.
+- `phase1-documents.int-spec.ts` — **contre MinIO réel** : URL signée d'envoi,
+  PUT effectif, enregistrement après vérification HEAD, refus d'une clé
+  d'une autre organisation, téléchargement signé, **404 pour l'organisation
+  B**, **expiration effective d'une URL signée à 1 seconde**, purge différée.
 - `rls-isolation.int-spec.ts` — **suite d'isolation, bloquante**.
 
 ### La suite d'isolation RLS
@@ -300,6 +352,14 @@ données ; la couverture des tables de la phase 0 est en revanche
 
 Pour élargir la couverture, ajoutez une ancre dans `createFixture` ou une
 entrée dans `TABLE_HINTS` (`test/integration/rls-matrix.ts`).
+
+La couverture des **8 tables de la phase 1** — `landlords`, `tenants`,
+`guarantors`, `contact_channels`, `properties`, `units`, `bank_accounts`,
+`documents` — est vérifiée par une assertion dédiée, au même titre que celles
+de la phase 0. `bank_accounts` a exigé une entrée dans `TABLE_HINTS`
+(`bank_accounts_identifier_chk` réclame un numéro de compte, un IBAN ou un
+numéro Mobile Money), et `mobile_money_transactions` une autre depuis que
+`aggregator` est facultatif (migration `1_momo_declared`).
 
 > Une requête émise **sans** contexte de tenant ne retourne jamais de ligne.
 > Selon l'état de la connexion, elle renvoie un ensemble vide (connexion
@@ -346,10 +406,70 @@ src/
 └── modules/
     ├── identity/            # users, credentials, otp_codes, refresh_tokens, api_keys
     ├── organizations/       # organizations, settings, members, invitations, feature_flags
+    ├── parties/             # landlords, tenants, guarantors, contact_channels
+    ├── portfolio/           # properties, units, taux d'occupation
+    ├── banking/             # bank_accounts (banques locales et Mobile Money)
+    ├── documents/           # documents, stockage S3/MinIO, URL signées, purge différée
     ├── notifications/       # SmsProvider, WhatsAppProvider, templates, message_logs
     ├── audit/               # audit_logs, fonction audit()
     └── platform/            # santé, idempotence, OpenAPI, configuration
 ```
+
+### Les quatre modules de la phase 1 et leurs ports
+
+`parties` a besoin des biens (`portfolio`), des comptes (`banking`) et des
+pièces jointes (`documents`) pour composer ses fiches détaillées ; à
+l'inverse, `portfolio` a besoin de `parties` pour vérifier un bailleur, et
+`organizations` a besoin de `parties` pour provisionner le bailleur « self ».
+
+Ces échanges passent tous par des **ports** — un jeton `Symbol` et une
+interface minimale, comme `ACCESS_TOKEN_VERIFIER` ou `SMS_PROVIDER` en
+phase 0 :
+
+| Port                               | Déclaré dans           | Implémenté par    | Sert à                                             |
+| :--------------------------------- | :--------------------- | :---------------- | :------------------------------------------------- |
+| `ORGANIZATION_LIFECYCLE_LISTENERS` | `organizations/domain` | `parties`         | Bailleur « self » à la création d'une organisation |
+| `PROPERTY_READER`                  | `parties/domain`       | `portfolio`       | Biens d'un bailleur dans sa fiche                  |
+| `BANK_ACCOUNT_READER`              | `parties/domain`       | `banking`         | Comptes d'un bailleur dans sa fiche                |
+| `DOCUMENT_READER`                  | `parties/domain`       | `documents`       | Pièces jointes d'un locataire ou d'un lot          |
+| `OBJECT_STORAGE`                   | `documents/domain`     | `S3ObjectStorage` | MinIO aujourd'hui, R2 demain                       |
+
+Les quatre modules sont donc déclarés `@Global()` : un jeu d'imports croisés
+produirait un cycle de **modules** là où il n'existe aucun cycle entre les
+**classes** (seul `PartyDetailsService` consomme les ports de lecture, et rien
+ne dépend de lui). Aucun `forwardRef` n'est nécessaire.
+
+L'événement `OrganizationCreatedEvent` est émis **dans** la transaction de
+création : un abonné en échec annule la création, plutôt que de laisser une
+organisation `INDEPENDENT_LANDLORD` sans son bailleur.
+
+### Purge différée des documents
+
+`DELETE /v1/documents/{id}` est une suppression **logique**. L'objet stocké
+est détruit plus tard par `DocumentPurgeService`, après
+`DOCUMENTS_PURGE_GRACE_HOURS`. Deux choix assumés :
+
+- **Pas de BullMQ pour l'instant.** BullMQ est la file tranchée du projet,
+  mais aucun worker n'est déployé avant la phase 3 (quittances PDF) : la
+  tâche est un `setInterval` `unref()`, et `runOnce()` est public pour que
+  l'exploitation, un test ou un futur job répétable l'appellent tel quel. La
+  bascule ne touchera pas la logique.
+- **La ligne `documents` n'est jamais supprimée.** `lease_documents` et
+  `inspection_photos` la référencent en `ON DELETE RESTRICT`. Seul l'objet
+  disparaît ; la fiche reste en pierre tombale, horodatée dans
+  `metadata.purgedAt`, et l'opération est tracée dans `audit_logs`.
+
+### Recherche `q` sans `unaccent`
+
+L'extension PostgreSQL `unaccent` n'est pas installée : elle exige un
+`CREATE EXTENSION` privilégié qu'on ne veut pas rendre obligatoire pour
+déployer. Le pliage des accents se fait donc avec `translate()`, fonction du
+cœur, sur la même table de correspondance des deux côtés de la comparaison —
+`src/shared/search/search-text.ts` côté application, l'expression SQL côté
+base. Un test unitaire vérifie que les deux tables restent alignées : un
+décalage d'un caractère ferait silencieusement correspondre « é » à « d ».
+Le jour où le `LIKE` ne suffira plus, l'index attendu est un GIN trigramme
+sur la même expression — la requête n'aura pas à changer.
 
 Chaque module suit les quatre couches, la dépendance allant **vers
 l'intérieur** :
@@ -381,8 +501,26 @@ presentation ──▶ application ──▶ domain ◀── infrastructure
 
 ### Règles non négociables
 
-- Montants : **BigInt XAF**, jamais de `number`, jamais de décimale
-  (`src/shared/money/amount.ts`). Sérialisation JSON en **chaîne**.
+- Montants : **BigInt XAF** en base, dans Prisma et dans tout le domaine —
+  jamais de `number`, jamais de décimale (`src/shared/money/amount.ts`).
+  **La conversion en entier JSON se fait à la seule frontière de
+  présentation**, par `toJsonAmount()` / `toJsonAmountOrNull()` dans les
+  mappers (`*-views.ts`), plus un filet global sur `BigInt.prototype.toJSON`
+  installé par `bootstrap.ts`.
+
+  Pourquoi un `number` et non une chaîne : les contrats d'API le typent ainsi
+  (`baseRentAmount: number`), et un montant en XAF reste très loin de
+  `Number.MAX_SAFE_INTEGER` — 9,007 × 10^15, soit plus de neuf millions de
+  milliards de francs CFA. La conversion n'est jamais faite sans garde : au
+  delà de cette borne, `toJsonAmount()` **lève** au lieu de transmettre une
+  valeur arrondie. Mieux vaut une 500 tracée qu'un loyer faux chez le client.
+
+  En entrée, les DTO acceptent un entier (`@Type(() => Number) @IsInt()
+@Min(0)`), converti en BigInt par la couche `application/`. Dans
+  `openapi.json`, ces champs sont des `integer` / `format: int64`.
+  `serializeAmount()` reste la représentation textuelle exacte, réservée à
+  `audit_logs` et aux journaux.
+
 - Identifiants : **UUID v7** générés par l'application (`newId()`).
 - Codes d'erreur stables, messages en français.
 - Pagination par **curseur signé**, jamais d'`OFFSET`.
@@ -410,7 +548,26 @@ transmission des signaux et expose une `HEALTHCHECK` sur `/v1/health`.
 
 ---
 
-## 11. Limites connues de la phase 0
+## 11. Écarts et limites connues
+
+### Phase 1
+
+- **`DELETE /v1/bank-accounts/{id}` désactive** (`isActive: false`) au lieu de
+  supprimer : `bank_accounts` n'a pas de `deleted_at` et ses lignes sont
+  citées par des paiements passés. C'est ce que dit le contrat, explicité ici.
+- **`contact_channels` est supprimée physiquement** : le DDL ne lui donne pas
+  de `deleted_at` — c'est une coordonnée, pas une entité de référence. La
+  suppression reste tracée dans `audit_logs` avec l'état supprimé.
+- **`GET /v1/landlords/{id}` ajoute `contactChannels`** au `LandlordDetail` du
+  contrat : la fiche web en a besoin et l'omettre imposerait un second appel.
+- **La vérification HEAD fait autorité sur la taille** déclarée à
+  l'enregistrement d'un document : un client ne peut pas sous-déclarer.
+- Correction transverse : `OrganizationGuard` ne comparait l'en-tête
+  `X-Organization-Id` au paramètre de route `:id` que pour les routes
+  `/organizations/:id`. Le contrôle s'appliquait à **toute** route portant un
+  `:id` et aurait renvoyé 404 sur `/landlords/{id}`, `/units/{id}`, etc.
+
+### Phase 0
 
 - `PATCH /v1/me` ne persiste pas `timezone` : `users` ne porte pas cette
   colonne, le fuseau vient des paramètres de l'organisation principale.

@@ -28,6 +28,22 @@ const PHASE0_TENANT_TABLES = [
 
 const PHASE0_GLOBAL_TABLES = ['users', 'user_credentials', 'otp_codes', 'refresh_tokens'] as const;
 
+/**
+ * Tables de la phase 1 (tiers et patrimoine) dont l'isolation DOIT être
+ * démontrée. La suite est bloquante et croît à chaque phase : livrer une
+ * table métier sans preuve d'isolation reviendrait à livrer une fuite.
+ */
+const PHASE1_TENANT_TABLES = [
+  'landlords',
+  'tenants',
+  'guarantors',
+  'contact_channels',
+  'properties',
+  'units',
+  'bank_accounts',
+  'documents',
+] as const;
+
 interface Fixture {
   organizationId: string;
   /**
@@ -277,6 +293,11 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
       (t) => t !== 'organizations' && !covered.includes(t),
     );
     expect({ missing, covered }).toEqual({ missing: [], covered: expect.any(Array) });
+  });
+
+  it('couvre obligatoirement les 8 tables de la phase 1 (tiers et patrimoine)', () => {
+    const missing = PHASE1_TENANT_TABLES.filter((t) => !covered.includes(t));
+    expect({ missing, phase: 1 }).toEqual({ missing: [], phase: 1 });
   });
 
   it('vérifie que les tables d’authentification sont bien GLOBALES et hors RLS', async () => {

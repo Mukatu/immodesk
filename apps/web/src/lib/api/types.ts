@@ -178,11 +178,445 @@ export interface HealthResponse {
   checks: { database: boolean; redis: boolean; storage: boolean };
 }
 
-/** Codes d'erreur stables utilisés côté UI (liste non exhaustive, phase 0). */
+/** Codes d'erreur stables utilisés côté UI (liste non exhaustive, phase 0 + phase 1). */
 export const ApiErrorCode = {
   OTP_INVALID: 'IAM.OTP_INVALID',
   OTP_LOCKED: 'IAM.OTP_LOCKED',
   RATE_LIMITED: 'IAM.RATE_LIMITED',
   REFRESH_REVOKED: 'IAM.REFRESH_REVOKED',
   LAST_OWNER: 'ORG.LAST_OWNER',
+  PHONE_INVALID: 'PARTIES.PHONE_INVALID',
+  NAME_REQUIRED: 'PARTIES.NAME_REQUIRED',
+  PHONE_ALREADY_USED: 'PARTIES.PHONE_ALREADY_USED',
+  SELF_LANDLORD_PROTECTED: 'PARTIES.SELF_LANDLORD_PROTECTED',
+  LANDLORD_HAS_PROPERTIES: 'PARTIES.LANDLORD_HAS_PROPERTIES',
+  CHANNEL_DUPLICATE: 'PARTIES.CHANNEL_DUPLICATE',
+  PROPERTY_HAS_UNITS: 'PORTFOLIO.PROPERTY_HAS_UNITS',
+  UNIT_CODE_TAKEN: 'PORTFOLIO.UNIT_CODE_TAKEN',
+  UNIT_HAS_ACTIVE_LEASE: 'PORTFOLIO.UNIT_HAS_ACTIVE_LEASE',
+  ACCOUNT_DUPLICATE: 'BANKING.ACCOUNT_DUPLICATE',
+  FILE_TOO_LARGE: 'DOCUMENTS.FILE_TOO_LARGE',
+  MIME_NOT_ALLOWED: 'DOCUMENTS.MIME_NOT_ALLOWED',
 } as const;
+
+/**
+ * Types du contrat d'API — Phase 1 (tiers et patrimoine).
+ * Recopiés depuis docs/api/phase1-contract.md. Ne pas diverger du contrat
+ * sans mettre à jour ce fichier et le document source.
+ */
+
+// ---- Énumérations ----
+
+export type PartyType = 'INDIVIDUAL' | 'COMPANY';
+
+export type Gender = 'MALE' | 'FEMALE' | 'UNSPECIFIED';
+
+export type IdDocumentType =
+  | 'CNI'
+  | 'PASSPORT'
+  | 'RESIDENCE_PERMIT'
+  | 'DRIVING_LICENSE'
+  | 'VOTER_CARD'
+  | 'RCCM'
+  | 'NIU'
+  | 'OTHER';
+
+export type PropertyType =
+  | 'HOUSE'
+  | 'VILLA'
+  | 'APARTMENT_BUILDING'
+  | 'COMPOUND'
+  | 'COMMERCIAL_BUILDING'
+  | 'MIXED_USE'
+  | 'LAND'
+  | 'WAREHOUSE'
+  | 'OTHER';
+
+export type UnitType =
+  | 'STUDIO'
+  | 'ROOM'
+  | 'APARTMENT'
+  | 'HOUSE'
+  | 'SHOP'
+  | 'OFFICE'
+  | 'WAREHOUSE'
+  | 'PARKING'
+  | 'LAND_PLOT'
+  | 'OTHER';
+
+export type UnitStatus =
+  'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'UNDER_MAINTENANCE' | 'UNAVAILABLE';
+
+export type ContactOwnerType = 'LANDLORD' | 'TENANT' | 'GUARANTOR' | 'MEMBER' | 'SUPPLIER';
+
+export type ContactChannelType = 'PHONE' | 'MOBILE' | 'WHATSAPP' | 'EMAIL' | 'FAX';
+
+export type BankAccountHolderType = 'ORGANIZATION' | 'LANDLORD' | 'TENANT';
+
+export type MomoProvider = 'MTN_MOMO' | 'AIRTEL_MONEY' | 'CINETPAY' | 'PAWAPAY' | 'OTHER';
+
+export type PaymentMethod = 'CASH' | 'MOBILE_MONEY' | 'BANK_TRANSFER' | 'BANK_CHECK';
+
+export type DocumentKind =
+  | 'ID_DOCUMENT'
+  | 'LEASE_CONTRACT'
+  | 'MANDATE'
+  | 'RECEIPT_PDF'
+  | 'INVOICE_PDF'
+  | 'CASH_RECEIPT_PDF'
+  | 'TRANSFER_PROOF'
+  | 'CHECK_IMAGE'
+  | 'BANK_STATEMENT'
+  | 'INSPECTION_REPORT'
+  | 'INSPECTION_PHOTO'
+  | 'MAINTENANCE_PHOTO'
+  | 'SIGNATURE'
+  | 'OWNER_STATEMENT_PDF'
+  | 'EXPENSE_INVOICE'
+  | 'PROPERTY_PHOTO'
+  | 'OTHER';
+
+export type RelatedEntityType =
+  'landlord' | 'tenant' | 'guarantor' | 'property' | 'unit' | 'organization';
+
+// ---- Tiers : bailleurs ----
+
+export interface LandlordInput {
+  partyType: PartyType;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+  gender?: Gender;
+  birthDate?: string;
+  nationality?: string;
+  idDocumentType?: IdDocumentType;
+  idDocumentNumber?: string;
+  idDocumentExpiry?: string;
+  idDocumentId?: string;
+  rccmNumber?: string;
+  niuNumber?: string;
+  primaryPhone: string;
+  secondaryPhone?: string;
+  email?: string;
+  addressLine?: string;
+  district?: string;
+  city?: string;
+  countryCode?: string;
+  defaultBankAccountId?: string;
+  payoutMethod?: PaymentMethod;
+  notes?: string;
+}
+
+export interface Landlord
+  extends
+    Required<
+      Pick<LandlordInput, 'partyType' | 'primaryPhone' | 'city' | 'countryCode' | 'payoutMethod'>
+    >,
+    Omit<LandlordInput, 'partyType' | 'primaryPhone' | 'city' | 'countryCode' | 'payoutMethod'> {
+  id: string;
+  isSelf: boolean;
+  displayName: string;
+  propertiesCount: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface LandlordSummary {
+  id: string;
+  displayName: string;
+  primaryPhone: string;
+  isSelf: boolean;
+}
+
+// ---- Tiers : locataires ----
+
+export interface TenantInput {
+  partyType: PartyType;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+  gender?: Gender;
+  birthDate?: string;
+  birthPlace?: string;
+  nationality?: string;
+  idDocumentType?: IdDocumentType;
+  idDocumentNumber?: string;
+  idDocumentExpiry?: string;
+  idDocumentId?: string;
+  rccmNumber?: string;
+  niuNumber?: string;
+  profession?: string;
+  employerName?: string;
+  monthlyIncome?: number;
+  primaryPhone: string;
+  secondaryPhone?: string;
+  whatsappPhone?: string;
+  email?: string;
+  addressLine?: string;
+  district?: string;
+  city?: string;
+  countryCode?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  clientRef?: string;
+  notes?: string;
+}
+
+export interface Tenant extends TenantInput {
+  id: string;
+  displayName: string;
+  currency: 'XAF';
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+// ---- Tiers : garants ----
+
+export interface GuarantorInput {
+  partyType: PartyType;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+  relationship?: string;
+  idDocumentType?: IdDocumentType;
+  idDocumentNumber?: string;
+  idDocumentId?: string;
+  profession?: string;
+  employerName?: string;
+  monthlyIncome?: number;
+  guaranteeAmount?: number;
+  primaryPhone: string;
+  email?: string;
+  addressLine?: string;
+  district?: string;
+  city?: string;
+  countryCode?: string;
+  notes?: string;
+}
+
+export interface Guarantor extends GuarantorInput {
+  id: string;
+  tenantId: string;
+  displayName: string;
+  currency: 'XAF';
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+// ---- Tiers : canaux de contact ----
+
+export interface ContactChannelInput {
+  channelType: ContactChannelType;
+  value: string;
+  label?: string;
+  isPrimary?: boolean;
+  optIn?: boolean;
+}
+
+export interface ContactChannel extends ContactChannelInput {
+  id: string;
+  ownerType: ContactOwnerType;
+  ownerId: string;
+  isVerified: boolean;
+  verifiedAt: string | null;
+  optOutAt: string | null;
+  createdAt: string;
+}
+
+// ---- Patrimoine : immeubles ----
+
+export interface PropertyInput {
+  landlordId: string;
+  code?: string;
+  name: string;
+  propertyType?: PropertyType;
+  addressLine: string;
+  district: string;
+  arrondissement?: string;
+  landmark?: string;
+  city?: string;
+  countryCode?: string;
+  latitude?: number;
+  longitude?: number;
+  landTitleReference?: string;
+  parcelNumber?: string;
+  builtYear?: number;
+  totalAreaSqm?: number;
+  floorsCount?: number;
+  hasWater?: boolean;
+  hasElectricity?: boolean;
+  hasBorehole?: boolean;
+  caretakerName?: string;
+  caretakerPhone?: string;
+  coverDocumentId?: string;
+  notes?: string;
+}
+
+export interface Occupancy {
+  unitsCount: number;
+  occupiedCount: number;
+  availableCount: number;
+  occupancyRateBps: number;
+}
+
+export interface Property extends PropertyInput {
+  id: string;
+  unitsCount: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface PropertySummary {
+  id: string;
+  code: string | null;
+  name: string;
+  propertyType: PropertyType;
+  district: string;
+  city: string;
+  landlord: LandlordSummary;
+  occupancy: Occupancy;
+  coverDocumentId: string | null;
+}
+
+// ---- Patrimoine : lots ----
+
+export interface UnitInput {
+  code: string;
+  label?: string;
+  unitType?: UnitType;
+  status?: UnitStatus;
+  floorNumber?: number;
+  roomsCount?: number;
+  bedroomsCount?: number;
+  bathroomsCount?: number;
+  areaSqm?: number;
+  isFurnished?: boolean;
+  hasPrivateMeter?: boolean;
+  baseRentAmount: number;
+  baseChargesAmount?: number;
+  depositMonths?: number;
+  amenities?: Record<string, boolean | string | number>;
+  notes?: string;
+}
+
+export interface Unit extends UnitInput {
+  id: string;
+  propertyId: string;
+  currency: 'XAF';
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface BulkUnitsInput {
+  prefix: string; // "A"
+  from: number;
+  to: number; // 1..12 → A1..A12 (to − from + 1 ≤ 200)
+  padding?: number; // 2 → A01..A12
+  template: Omit<UnitInput, 'code' | 'label'>;
+}
+
+// ---- Comptes bancaires ----
+
+export interface BankAccountInput {
+  holderType: BankAccountHolderType;
+  landlordId?: string;
+  tenantId?: string;
+  label: string;
+  bankCode: string;
+  bankName: string;
+  branchName?: string;
+  accountHolderName: string;
+  accountNumber?: string;
+  ribKey?: string;
+  iban?: string;
+  swiftBic?: string;
+  momoProvider?: MomoProvider;
+  momoMsisdn?: string;
+  isDefault?: boolean;
+}
+
+export interface BankAccount extends BankAccountInput {
+  id: string;
+  currency: 'XAF';
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---- Documents ----
+
+export interface Document {
+  id: string;
+  kind: DocumentKind;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  widthPx: number | null;
+  heightPx: number | null;
+  pagesCount: number | null;
+  relatedEntityType: string | null;
+  relatedEntityId: string | null;
+  uploadedByUserId: string | null;
+  uploadedAt: string;
+  retentionUntil: string | null;
+  deletedAt: string | null;
+}
+
+// ---- Vues détaillées (GET {id}) ----
+
+export interface LandlordDetail extends Landlord {
+  properties: PropertySummary[];
+  bankAccounts: BankAccount[];
+}
+
+export interface TenantDetail extends Tenant {
+  guarantors: Guarantor[];
+  contactChannels: ContactChannel[];
+  documents: Document[];
+}
+
+export interface PropertyDetail extends Property {
+  landlord: LandlordSummary;
+  units: Unit[];
+  occupancy: Occupancy;
+}
+
+export interface UnitDetail extends Unit {
+  property: PropertySummary;
+  documents: Document[];
+}
+
+// ---- Documents : upload ----
+
+export interface UploadUrlRequest {
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  kind: DocumentKind;
+  relatedEntityType?: RelatedEntityType;
+  relatedEntityId?: string;
+}
+
+export interface UploadUrlResponse {
+  uploadUrl: string;
+  objectKey: string;
+  expiresAt: string;
+  maxSizeBytes: number;
+}
+
+export interface CreateDocumentBody {
+  objectKey: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  kind: DocumentKind;
+  relatedEntityType?: RelatedEntityType;
+  relatedEntityId?: string;
+  checksumSha256?: string;
+  clientRef?: string;
+}

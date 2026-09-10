@@ -26,6 +26,9 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Prise de photo d'un bien (feature `documents`, phase 1). -->
+	<key>NSCameraUsageDescription</key>
+	<string>Immodesk utilise l'appareil photo pour prendre des photos des biens et des lots.</string>
 	<!-- Développement uniquement : autorise le HTTP en clair vers l'API locale
 	     (App Transport Security bloque le HTTP par défaut). À retirer avant
 	     toute distribution, une fois l'API exposée en HTTPS. -->

@@ -1,9 +1,17 @@
 # Immodesk Mobile
 
 Application Flutter d'Immodesk (`cg.immodesk`) : démarcheurs, bailleurs et
-gestionnaires indépendants. Phase 0 : authentification OTP, sélection
-d'organisation, coquille d'accueil et écran de diagnostic. Voir
-`docs/04_plan_de_phases.md` (§0.6) et `docs/api/phase0-contract.md`.
+gestionnaires indépendants.
+
+- **Phase 0** : authentification OTP, sélection d'organisation, coquille
+  d'accueil et écran de diagnostic. Voir `docs/04_plan_de_phases.md` (§0.6)
+  et `docs/api/phase0-contract.md`.
+- **Phase 1** : navigation par onglets (Accueil / Immeubles / Locataires /
+  Plus), consultation en lecture seule du portefeuille (immeubles, lots,
+  locataires) avec cache local et recherche, fiche locataire (appel /
+  WhatsApp), prise de photo d'un lot avec envoi direct ou mise en attente
+  hors ligne. Voir `docs/04_plan_de_phases.md` (§1.6) et
+  `docs/api/phase1-contract.md`.
 
 ## Prérequis
 
@@ -12,6 +20,11 @@ d'organisation, coquille d'accueil et écran de diagnostic. Voir
   iOS sur macOS.
 - L'API Immodesk (`apps/api`) démarrée localement sur `http://localhost:3000`
   (le port par défaut, exposé à l'émulateur Android via `10.0.2.2`).
+- Prise de photo (feature `documents`) : autorisation caméra déclarée dans
+  `android/app/src/main/AndroidManifest.xml` (`CAMERA`) et
+  `ios/Runner/Info.plist` (`NSCameraUsageDescription`) ; l'appareil ou
+  l'émulateur/simulateur doit disposer d'une caméra (émulateur Android :
+  activer une caméra virtuelle dans l'AVD Manager).
 
 ## Installation
 
@@ -54,11 +67,18 @@ flutter analyze
 flutter test
 ```
 
-- Tests unitaires : formatage XAF (`test/core/format`), normalisation de
-  téléphone (`test/core/format`), machine à états OTP
-  (`test/features/auth/domain`).
-- Tests de widget : parcours connexion (numéro puis code), avec `dio` mocké
-  via `mocktail` (`test/features/auth/presentation`).
+- Tests unitaires : formatage XAF et normalisation de téléphone/texte de
+  recherche (`test/core/format`), compression d'image aux dimensions
+  cibles (`test/core/media`), machine à états OTP
+  (`test/features/auth/domain`), mapping JSON des modèles portefeuille
+  (`test/features/portfolio/domain`), recherche locale de locataires
+  (`test/features/portfolio/presentation/tenants_search_test.dart`).
+- Tests de widget (avec `dio` mocké via `mocktail` et une base Drift en
+  mémoire, `AppDatabase.forTesting(NativeDatabase.memory())`) : parcours
+  connexion (`test/features/auth/presentation`), liste des immeubles avec
+  taux d'occupation et bandeau hors ligne, fiche locataire avec boutons
+  Appeler / WhatsApp, prise de photo hors ligne ajoutée à l'outbox
+  (`test/features/portfolio/presentation`, `test/features/documents/presentation`).
 
 ## Architecture
 
@@ -77,23 +97,55 @@ Clean Architecture par fonctionnalité (`lib/features/<feature>/{domain,data,pre
 - `lib/features/diagnostics` : écran « à propos / diagnostic » (version,
   état réseau via `connectivity_plus`, URL de l'API, test `/v1/health`).
   Coquille phase 0, enrichie en phase 5 (synchronisation).
+- `lib/features/portfolio` : consultation en lecture seule des immeubles
+  (liste avec taux d'occupation, détail avec lots et statuts), des lots
+  (caractéristiques, loyer de référence XAF, photos) et des locataires
+  (liste avec recherche locale par nom/téléphone insensible aux accents,
+  fiche avec boutons Appeler/WhatsApp). Rafraîchit le réseau à l'ouverture
+  et bascule automatiquement sur le cache Drift (`CachedProperties`,
+  `CachedUnits`, `CachedTenants`) en cas d'échec, avec un bandeau
+  « Données du … ».
+- `lib/features/documents` : prise de photo d'un lot (`image_picker`,
+  compression 1600 px / qualité 80 en Dart pur via le paquet `image`),
+  demande d'URL signée, envoi direct (PUT) et enregistrement du document
+  (`kind: PROPERTY_PHOTO`, `relatedEntityType: unit`), galerie via
+  URL de téléchargement signée. Hors ligne, la photo compressée est
+  stockée localement et ajoutée à la table `outbox` existante
+  (`client_ref` ULID généré sur l'appareil, sans dépendance externe —
+  `lib/core/sync/ulid.dart`) ; le rejeu automatique est déclenché au retour
+  du réseau (`OutboxConnectivityWatcher`). Mécanisme volontairement simple :
+  le `SyncEngine` complet arrive en phase 5.
+- `lib/features/more` : onglet « Plus » (diagnostic, déconnexion).
 - `lib/shared/widgets` : composants réutilisables (`MoneyXafText`,
-  `PhoneField`, `OtpField`, `StatusBadge`, `EmptyState`).
+  `PhoneField`, `OtpField`, `StatusBadge`, `EmptyState`,
+  `OfflineDataBanner`, `AppBottomNavShell`).
+
+Navigation par onglets bas (`StatefulShellRoute.indexedStack` de
+`go_router`) : Accueil / Immeubles / Locataires / Plus, accessibles à tous
+les rôles (`COLLECTOR` inclus) — la feature `portfolio` est entièrement en
+lecture seule en phase 1.
 
 État applicatif géré par Riverpod (`riverpod_annotation` + génération de
 code). Modèles `freezed` / `json_serializable`. Base locale Drift déclarée
-avec deux tables : `app_settings` (clé/valeur) et `outbox` (vide, prête pour
-la synchronisation offline de la phase 5). **Le chiffrement SQLCipher n'est
-pas encore activé** — voir le commentaire dans
-`lib/core/db/app_database.dart` ; prévu à l'activation du mode offline
-(phase 5, `docs/02_architecture_technique.md` §10.9).
+avec `app_settings` (clé/valeur), `outbox` (idempotence via `client_ref`,
+utilisée par la feature `documents`) et le cache de référentiels
+(`cached_properties`, `cached_units`, `cached_tenants`, schéma v2 avec
+migration). **Le chiffrement SQLCipher n'est pas encore activé** — voir le
+commentaire dans `lib/core/db/app_database.dart` ; prévu à l'activation du
+mode offline complet (phase 5, `docs/02_architecture_technique.md` §10.9).
 
-## Ce qui reste (hors périmètre phase 0)
+## Ce qui reste (hors périmètre phase 1)
 
 - Chiffrement SQLCipher de la base locale (phase 5).
-- Outbox et moteur de synchronisation (phase 5).
+- `SyncEngine` complet et rejeu générique de l'outbox (phase 5) — seul le
+  rejeu des photos de lot est câblé pour l'instant.
+- Rattachement d'un locataire à un lot (aucun bail n'existe encore côté API
+  en phase 1 ; voir `docs/api/phase1-contract.md`).
+- Pagination des listes immeubles/locataires (une seule page, `limit=100`,
+  suffisante pour la consultation terrain de la phase 1).
 - Client Dart généré depuis `openapi.json` (actuellement, les appels HTTP
-  sont écrits à la main contre `docs/api/phase0-contract.md` ; à remplacer
-  dès que l'OpenAPI de l'API est publié).
+  sont écrits à la main contre les contrats `docs/api/phase0-contract.md`
+  et `docs/api/phase1-contract.md` ; à remplacer dès que l'OpenAPI de l'API
+  est publié).
 - Invitations et gestion des membres d'organisation (Epic 0.D, non couvert
-  par les écrans mobiles de la phase 0 selon `docs/04_plan_de_phases.md`).
+  par les écrans mobiles selon `docs/04_plan_de_phases.md`).

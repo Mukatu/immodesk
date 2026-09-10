@@ -33,6 +33,17 @@ export const configSchema = z
     S3_BUCKET: z.string().optional(),
     S3_ACCESS_KEY: z.string().optional(),
     S3_SECRET_KEY: z.string().optional(),
+    // MinIO ignore la région, mais le SDK AWS en exige une pour signer.
+    S3_REGION: z.string().default('us-east-1'),
+    // Validité des URL signées d'envoi. 10 min = valeur du contrat phase 1.
+    S3_UPLOAD_URL_TTL_SECONDS: z.coerce.number().int().positive().default(600),
+
+    // --- Purge différée des documents supprimés --------------------------
+    DOCUMENTS_PURGE_ENABLED: booleanish.default(true),
+    DOCUMENTS_PURGE_INTERVAL_SECONDS: z.coerce.number().int().positive().default(3600),
+    // Délai de rétractation avant destruction irréversible de l'objet.
+    DOCUMENTS_PURGE_GRACE_HOURS: z.coerce.number().int().nonnegative().default(24),
+    DOCUMENTS_PURGE_BATCH_SIZE: z.coerce.number().int().positive().max(500).default(50),
 
     // --- Jetons ----------------------------------------------------------
     JWT_ALGORITHM: z.enum(['HS256', 'RS256']).default('HS256'),

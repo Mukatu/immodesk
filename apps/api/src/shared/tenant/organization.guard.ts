@@ -78,11 +78,18 @@ export class OrganizationGuard implements CanActivate {
     if (!value || !isUuid(value)) {
       throw new DomainError('ORG.CONTEXT_MISSING', { header: 'X-Organization-Id' });
     }
-    // Cohérence : si la route porte un {id} d'organisation, il doit
+    // Cohérence : si la route porte un {id} D'ORGANISATION, il doit
     // correspondre à l'en-tête, sinon la RLS et l'URL divergeraient.
-    const paramId = (request.params as Record<string, string> | undefined)?.id;
-    if (paramId && isUuid(paramId) && paramId !== value) {
-      throw new DomainError('ORG.NOT_MEMBER', { organizationId: paramId });
+    //
+    // Le contrôle est restreint aux routes `/organizations/:id…` : à partir
+    // de la phase 1, `:id` désigne le plus souvent une tout autre ressource
+    // (`/landlords/:id`, `/units/:id`). Comparer ce `:id` à l'en-tête
+    // renverrait 404 sur toutes ces routes.
+    if (isOrganizationScopedRoute(request)) {
+      const paramId = (request.params as Record<string, string> | undefined)?.id;
+      if (paramId && isUuid(paramId) && paramId !== value) {
+        throw new DomainError('ORG.NOT_MEMBER', { organizationId: paramId });
+      }
     }
     return value;
   }
@@ -112,4 +119,18 @@ export class OrganizationGuard implements CanActivate {
     }
     return { id: membership.id, role: membership.role as MemberRole };
   }
+}
+
+/**
+ * Vrai lorsque le paramètre de route `:id` désigne bien une organisation,
+ * c'est-à-dire sur les routes montées sous `/organizations`.
+ *
+ * Express expose le gabarit de la route appariée (`/v1/organizations/:id`),
+ * et non l'URL concrète : le test porte donc sur la forme de la route, jamais
+ * sur une valeur fournie par l'appelant.
+ */
+function isOrganizationScopedRoute(request: Request): boolean {
+  const route = (request as Request & { route?: { path?: string } }).route;
+  const path = route?.path ?? request.path ?? '';
+  return /(^|\/)organizations\/:id(\/|$)/.test(path);
 }

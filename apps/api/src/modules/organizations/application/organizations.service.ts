@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { newId } from '../../../shared/ids/uuid';
 import { normalizePhoneE164 } from '../../../shared/phone/e164';
@@ -10,6 +10,10 @@ import {
   toOrganizationView,
   type OrganizationView,
 } from '../../identity/application/profile.service';
+import {
+  ORGANIZATION_LIFECYCLE_LISTENERS,
+  type OrganizationLifecycleListener,
+} from '../domain/ports';
 import { resolveUniqueSlug } from '../domain/slug';
 
 const ORGANIZATION_SELECT = {
@@ -62,6 +66,13 @@ export class OrganizationsService {
     private readonly prisma: PrismaService,
     private readonly directory: TenantDirectoryService,
     private readonly auditService: AuditService,
+    /**
+     * Abonnés au cycle de vie de l'organisation. `parties` s'y branche pour
+     * créer le bailleur « self » ; le module reste fonctionnel sans eux.
+     */
+    @Optional()
+    @Inject(ORGANIZATION_LIFECYCLE_LISTENERS)
+    private readonly lifecycleListeners: OrganizationLifecycleListener[] | null = null,
   ) {}
 
   /**
@@ -135,6 +146,22 @@ export class OrganizationsService {
         actorRole: 'OWNER',
         newState: toJsonState({ userId, role: 'OWNER', reason: 'ORGANIZATION_CREATOR' }),
       });
+
+      // Événement de domaine, émis DANS la transaction : un abonné en échec
+      // annule la création plutôt que de laisser une organisation à moitié
+      // provisionnée (cf. bailleur « self » du contrat de phase 1).
+      for (const listener of this.lifecycleListeners ?? []) {
+        await listener.onOrganizationCreated(tx, {
+          organizationId,
+          type: input.type,
+          legalName: input.legalName.trim(),
+          tradeName: input.tradeName?.trim() || null,
+          contactPhone,
+          city: input.city.trim(),
+          district: input.district?.trim() || null,
+          actorUserId: userId,
+        });
+      }
 
       return toOrganizationView(organization);
     });

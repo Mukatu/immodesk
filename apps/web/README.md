@@ -39,22 +39,32 @@ Depuis `apps/web/` (ou via `pnpm --filter @immodesk/web <script>` depuis la raci
 ```
 src/
   app/                    App Router : /login, /onboarding/organisation, /app/**, /invitations/[token],
-                          /acces-refuse, error.tsx, not-found.tsx, /api/auth/* (BFF)
+                          /acces-refuse, error.tsx, not-found.tsx, /api/auth/* (BFF), phase 1 :
+                          /app/bailleurs, /app/bailleurs/[id], /app/locataires,
+                          /app/locataires/[id], /app/locataires/nouveau, /app/immeubles,
+                          /app/immeubles/[id], /app/immeubles/nouveau, /app/lots/[id]
   components/
     ui/                   Primitives shadcn/ui (Radix + class-variance-authority)
     business/             Composants métier : MoneyXaf, MoneyInput, PhoneInput, StatusBadge,
-                          EmptyState, PageHeader, DataTable (pagination par curseur)
+                          EmptyState, PageHeader, DataTable (pagination par curseur), PhoneDisplay,
+                          OccupancyBadge, AddressBlock, BankAccountCard, EnumSelect,
+                          DocumentUploader/DocumentList (glisser-déposer, aperçu, progression)
     layout/                En-tête applicatif, sélecteur d'organisation
   lib/
     api/                   client.ts (fetch typé, Authorization + X-Organization-Id,
-                          rafraîchissement automatique sur 401), types.ts (contrat phase 0),
-                          hooks/ (TanStack Query par ressource)
+                          rafraîchissement automatique sur 401), types.ts (phase 0 & 1),
+                          hooks/ (TanStack Query par ressource : landlords, tenants, guarantors,
+                          contact-channels, properties, units, bank-accounts, documents)
     auth/                  Contexte d'authentification client, cookie httpOnly du refresh token
     money.ts, phone.ts     Formatage XAF et téléphone congolais
+    enum-labels.ts         Labels pour énumérations (statuts, types, genres)
+    bank-reference.ts      Référentiel des banques congolaises (BGFI, LCB, Ecobank, UBA)
   mocks/                   Handlers MSW partagés (navigateur + serveur), utilisés en e2e uniquement
   styles/tokens.css        Design tokens (couleurs clair/sombre, rayon, palette sobre
                           vert/ocre inspirée du Congo-Brazzaville)
-e2e/                       Scénario Playwright (login OTP → création d'organisation → invitation)
+e2e/                       Scénarios Playwright : phase 0 (login OTP → création d'organisation
+                          → invitation), phase 1 (création bailleur → immeuble → 12 lots →
+                          locataire + garant → téléversement pièce d'identité)
 ```
 
 ## Authentification
@@ -75,22 +85,48 @@ e2e/                       Scénario Playwright (login OTP → création d'organ
 rafraîchissement en vol, les appels concurrents attendent la même promesse). Les erreurs suivent le
 format stable du contrat `{ code, message, details? }` (`ApiError`).
 
-`src/lib/api/types.ts` recopie le contrat `docs/api/phase0-contract.md` en attendant le client
-généré depuis `openapi.json` dans `@immodesk/shared` (en cours de création par un autre chantier) :
-ce fichier sera alors retiré au profit du client généré.
+`src/lib/api/types.ts` recopie les contrats `docs/api/phase0-contract.md` (phase 0) et
+`docs/api/phase1-contract.md` (phase 1 : tiers, patrimoine) en attendant le client généré depuis
+`openapi.json` dans `@immodesk/shared` : ce fichier sera alors retiré au profit du client généré.
+
+### Tiers & patrimoine (phase 1)
+
+Module couvrant la gestion complète des ressources indépendamment du cycle locatif : **bailleurs**
+(propriétaires), **locataires** (demandeurs de location), **garants** (tiers caution), **canaux de
+contact** (téléphone, email, WhatsApp par défaut), **immeubles** (immeuble complet avec adresse,
+référence cadastrale), **lots** (création en série avec formule de numérotation),
+**comptes bancaires** (IBAN/nombre de compte par banque), et composant transverse de
+**téléversement de documents** (glisser-déposer, URL signée S3, PUT direct, barre de progression,
+aperçu image/PDF, limites : 15 Mo images JPEG/PNG/WebP/HEIC, 25 Mo PDF). Les parties et biens
+sont isolés en tant que ressources du domaine et n'interfèrent pas avec les scénarios transactionnels
+(location, versement).
 
 ## Tests
 
 - **Unitaires** (`pnpm test`, Vitest + Testing Library) : formatage XAF (`MoneyXaf`), saisie
-  téléphone congolaise (`PhoneInput`), client API (`apiFetch`) incluant le rafraîchissement
-  automatique de token et la déduplication des requêtes concurrentes en 401.
-- **e2e** (`pnpm test:e2e`, Playwright) : parcours « connexion OTP → création d'organisation →
-  invitation », entièrement mocké via MSW (`src/mocks/handlers.ts`), interceptée côté serveur
-  (`msw/node`, activé dans `instrumentation.ts` quand `E2E_MOCK=1`). Les appels directs du
-  navigateur vers l'API passent par le proxy same-origin `src/app/api/proxy/[...path]/route.ts`
-  (actif uniquement quand `E2E_MOCK=1`, 404 sinon) afin de traverser le même process Next — et donc
-  le même état mocké en mémoire — que les route handlers `/api/auth/*`. Aucune dépendance à un
-  backend réel.
+  téléphone congolaise (`PhoneInput`), affichage téléphone (`PhoneDisplay`), badge occupation
+  (`OccupancyBadge`), validation taille et MIME de `DocumentUploader`, client API (`apiFetch`)
+  incluant le rafraîchissement automatique de token et la déduplication des requêtes concurrentes
+  en 401.
+- **e2e** (`pnpm test:e2e`, Playwright) :
+  - **Phase 0** (`e2e/phase0-onboarding.spec.ts`) : connexion OTP → création d'organisation
+    → invitation, entièrement mocké via MSW.
+  - **Phase 1** (`e2e/phase1-portfolio.spec.ts`) : création bailleur → création immeuble →
+    création 12 lots en série → création locataire avec garant → téléversement pièce d'identité,
+    entièrement mocké via MSW.
+
+Tous les scénarios e2e utilisent MSW (`src/mocks/handlers.ts`), interceptée côté serveur
+(`msw/node`, activé dans `instrumentation.ts` quand `E2E_MOCK=1`). Les appels directs du navigateur
+vers l'API passent par le proxy same-origin `src/app/api/proxy/[...path]/route.ts` (actif uniquement
+quand `E2E_MOCK=1`, 404 sinon) afin de traverser le même process Next — et donc le même état mocké
+en mémoire — que les route handlers `/api/auth/*`. Aucune dépendance à un backend réel.
+
+## Mocks MSW
+
+`src/mocks/handlers.ts` inclut des données de démonstration congolaises (quartiers de Brazzaville,
+banques locales : BGFI, LCB, Ecobank, UBA, et institutions de microfinance), isolées sous une
+organisation de démonstration dédiée (`demoOrgId`). Ces données pré-peuplent le store en mémoire
+sans interférer avec les scénarios e2e : chaque test crée son propre contexte d'organisation.
 
 ## Accessibilité et performance
 

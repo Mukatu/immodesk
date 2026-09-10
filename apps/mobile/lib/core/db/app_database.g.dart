@@ -857,16 +857,1291 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
   }
 }
 
+class $CachedPropertiesTable extends CachedProperties
+    with TableInfo<$CachedPropertiesTable, CachedPropertyRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedPropertiesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _organizationIdMeta = const VerificationMeta(
+    'organizationId',
+  );
+  @override
+  late final GeneratedColumn<String> organizationId = GeneratedColumn<String>(
+    'organization_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cityMeta = const VerificationMeta('city');
+  @override
+  late final GeneratedColumn<String> city = GeneratedColumn<String>(
+    'city',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    organizationId,
+    name,
+    city,
+    payload,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_properties';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedPropertyRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('organization_id')) {
+      context.handle(
+        _organizationIdMeta,
+        organizationId.isAcceptableOrUnknown(
+          data['organization_id']!,
+          _organizationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_organizationIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('city')) {
+      context.handle(
+        _cityMeta,
+        city.isAcceptableOrUnknown(data['city']!, _cityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cityMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedPropertyRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedPropertyRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      organizationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}organization_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      city: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}city'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedPropertiesTable createAlias(String alias) {
+    return $CachedPropertiesTable(attachedDatabase, alias);
+  }
+}
+
+class CachedPropertyRow extends DataClass
+    implements Insertable<CachedPropertyRow> {
+  final String id;
+  final String organizationId;
+  final String name;
+  final String city;
+
+  /// JSON complet de `PropertySummary`.
+  final String payload;
+  final DateTime cachedAt;
+  const CachedPropertyRow({
+    required this.id,
+    required this.organizationId,
+    required this.name,
+    required this.city,
+    required this.payload,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['organization_id'] = Variable<String>(organizationId);
+    map['name'] = Variable<String>(name);
+    map['city'] = Variable<String>(city);
+    map['payload'] = Variable<String>(payload);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedPropertiesCompanion toCompanion(bool nullToAbsent) {
+    return CachedPropertiesCompanion(
+      id: Value(id),
+      organizationId: Value(organizationId),
+      name: Value(name),
+      city: Value(city),
+      payload: Value(payload),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedPropertyRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedPropertyRow(
+      id: serializer.fromJson<String>(json['id']),
+      organizationId: serializer.fromJson<String>(json['organizationId']),
+      name: serializer.fromJson<String>(json['name']),
+      city: serializer.fromJson<String>(json['city']),
+      payload: serializer.fromJson<String>(json['payload']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'organizationId': serializer.toJson<String>(organizationId),
+      'name': serializer.toJson<String>(name),
+      'city': serializer.toJson<String>(city),
+      'payload': serializer.toJson<String>(payload),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedPropertyRow copyWith({
+    String? id,
+    String? organizationId,
+    String? name,
+    String? city,
+    String? payload,
+    DateTime? cachedAt,
+  }) => CachedPropertyRow(
+    id: id ?? this.id,
+    organizationId: organizationId ?? this.organizationId,
+    name: name ?? this.name,
+    city: city ?? this.city,
+    payload: payload ?? this.payload,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedPropertyRow copyWithCompanion(CachedPropertiesCompanion data) {
+    return CachedPropertyRow(
+      id: data.id.present ? data.id.value : this.id,
+      organizationId: data.organizationId.present
+          ? data.organizationId.value
+          : this.organizationId,
+      name: data.name.present ? data.name.value : this.name,
+      city: data.city.present ? data.city.value : this.city,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedPropertyRow(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('name: $name, ')
+          ..write('city: $city, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, organizationId, name, city, payload, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedPropertyRow &&
+          other.id == this.id &&
+          other.organizationId == this.organizationId &&
+          other.name == this.name &&
+          other.city == this.city &&
+          other.payload == this.payload &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedPropertiesCompanion extends UpdateCompanion<CachedPropertyRow> {
+  final Value<String> id;
+  final Value<String> organizationId;
+  final Value<String> name;
+  final Value<String> city;
+  final Value<String> payload;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedPropertiesCompanion({
+    this.id = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.city = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedPropertiesCompanion.insert({
+    required String id,
+    required String organizationId,
+    required String name,
+    required String city,
+    required String payload,
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       organizationId = Value(organizationId),
+       name = Value(name),
+       city = Value(city),
+       payload = Value(payload);
+  static Insertable<CachedPropertyRow> custom({
+    Expression<String>? id,
+    Expression<String>? organizationId,
+    Expression<String>? name,
+    Expression<String>? city,
+    Expression<String>? payload,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (organizationId != null) 'organization_id': organizationId,
+      if (name != null) 'name': name,
+      if (city != null) 'city': city,
+      if (payload != null) 'payload': payload,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedPropertiesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? organizationId,
+    Value<String>? name,
+    Value<String>? city,
+    Value<String>? payload,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedPropertiesCompanion(
+      id: id ?? this.id,
+      organizationId: organizationId ?? this.organizationId,
+      name: name ?? this.name,
+      city: city ?? this.city,
+      payload: payload ?? this.payload,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (organizationId.present) {
+      map['organization_id'] = Variable<String>(organizationId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (city.present) {
+      map['city'] = Variable<String>(city.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedPropertiesCompanion(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('name: $name, ')
+          ..write('city: $city, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedUnitsTable extends CachedUnits
+    with TableInfo<$CachedUnitsTable, CachedUnitRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedUnitsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _organizationIdMeta = const VerificationMeta(
+    'organizationId',
+  );
+  @override
+  late final GeneratedColumn<String> organizationId = GeneratedColumn<String>(
+    'organization_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _propertyIdMeta = const VerificationMeta(
+    'propertyId',
+  );
+  @override
+  late final GeneratedColumn<String> propertyId = GeneratedColumn<String>(
+    'property_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    organizationId,
+    propertyId,
+    payload,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_units';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedUnitRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('organization_id')) {
+      context.handle(
+        _organizationIdMeta,
+        organizationId.isAcceptableOrUnknown(
+          data['organization_id']!,
+          _organizationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_organizationIdMeta);
+    }
+    if (data.containsKey('property_id')) {
+      context.handle(
+        _propertyIdMeta,
+        propertyId.isAcceptableOrUnknown(data['property_id']!, _propertyIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_propertyIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedUnitRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedUnitRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      organizationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}organization_id'],
+      )!,
+      propertyId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}property_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedUnitsTable createAlias(String alias) {
+    return $CachedUnitsTable(attachedDatabase, alias);
+  }
+}
+
+class CachedUnitRow extends DataClass implements Insertable<CachedUnitRow> {
+  final String id;
+  final String organizationId;
+  final String propertyId;
+
+  /// JSON de `Unit` (caractéristiques + loyer de référence).
+  final String payload;
+  final DateTime cachedAt;
+  const CachedUnitRow({
+    required this.id,
+    required this.organizationId,
+    required this.propertyId,
+    required this.payload,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['organization_id'] = Variable<String>(organizationId);
+    map['property_id'] = Variable<String>(propertyId);
+    map['payload'] = Variable<String>(payload);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedUnitsCompanion toCompanion(bool nullToAbsent) {
+    return CachedUnitsCompanion(
+      id: Value(id),
+      organizationId: Value(organizationId),
+      propertyId: Value(propertyId),
+      payload: Value(payload),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedUnitRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedUnitRow(
+      id: serializer.fromJson<String>(json['id']),
+      organizationId: serializer.fromJson<String>(json['organizationId']),
+      propertyId: serializer.fromJson<String>(json['propertyId']),
+      payload: serializer.fromJson<String>(json['payload']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'organizationId': serializer.toJson<String>(organizationId),
+      'propertyId': serializer.toJson<String>(propertyId),
+      'payload': serializer.toJson<String>(payload),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedUnitRow copyWith({
+    String? id,
+    String? organizationId,
+    String? propertyId,
+    String? payload,
+    DateTime? cachedAt,
+  }) => CachedUnitRow(
+    id: id ?? this.id,
+    organizationId: organizationId ?? this.organizationId,
+    propertyId: propertyId ?? this.propertyId,
+    payload: payload ?? this.payload,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedUnitRow copyWithCompanion(CachedUnitsCompanion data) {
+    return CachedUnitRow(
+      id: data.id.present ? data.id.value : this.id,
+      organizationId: data.organizationId.present
+          ? data.organizationId.value
+          : this.organizationId,
+      propertyId: data.propertyId.present
+          ? data.propertyId.value
+          : this.propertyId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedUnitRow(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('propertyId: $propertyId, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, organizationId, propertyId, payload, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedUnitRow &&
+          other.id == this.id &&
+          other.organizationId == this.organizationId &&
+          other.propertyId == this.propertyId &&
+          other.payload == this.payload &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedUnitsCompanion extends UpdateCompanion<CachedUnitRow> {
+  final Value<String> id;
+  final Value<String> organizationId;
+  final Value<String> propertyId;
+  final Value<String> payload;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedUnitsCompanion({
+    this.id = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.propertyId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedUnitsCompanion.insert({
+    required String id,
+    required String organizationId,
+    required String propertyId,
+    required String payload,
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       organizationId = Value(organizationId),
+       propertyId = Value(propertyId),
+       payload = Value(payload);
+  static Insertable<CachedUnitRow> custom({
+    Expression<String>? id,
+    Expression<String>? organizationId,
+    Expression<String>? propertyId,
+    Expression<String>? payload,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (organizationId != null) 'organization_id': organizationId,
+      if (propertyId != null) 'property_id': propertyId,
+      if (payload != null) 'payload': payload,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedUnitsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? organizationId,
+    Value<String>? propertyId,
+    Value<String>? payload,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedUnitsCompanion(
+      id: id ?? this.id,
+      organizationId: organizationId ?? this.organizationId,
+      propertyId: propertyId ?? this.propertyId,
+      payload: payload ?? this.payload,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (organizationId.present) {
+      map['organization_id'] = Variable<String>(organizationId.value);
+    }
+    if (propertyId.present) {
+      map['property_id'] = Variable<String>(propertyId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedUnitsCompanion(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('propertyId: $propertyId, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedTenantsTable extends CachedTenants
+    with TableInfo<$CachedTenantsTable, CachedTenantRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedTenantsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _organizationIdMeta = const VerificationMeta(
+    'organizationId',
+  );
+  @override
+  late final GeneratedColumn<String> organizationId = GeneratedColumn<String>(
+    'organization_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _normalizedSearchTextMeta =
+      const VerificationMeta('normalizedSearchText');
+  @override
+  late final GeneratedColumn<String> normalizedSearchText =
+      GeneratedColumn<String>(
+        'normalized_search_text',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    organizationId,
+    displayName,
+    phone,
+    normalizedSearchText,
+    payload,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_tenants';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedTenantRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('organization_id')) {
+      context.handle(
+        _organizationIdMeta,
+        organizationId.isAcceptableOrUnknown(
+          data['organization_id']!,
+          _organizationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_organizationIdMeta);
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayNameMeta);
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_phoneMeta);
+    }
+    if (data.containsKey('normalized_search_text')) {
+      context.handle(
+        _normalizedSearchTextMeta,
+        normalizedSearchText.isAcceptableOrUnknown(
+          data['normalized_search_text']!,
+          _normalizedSearchTextMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_normalizedSearchTextMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedTenantRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedTenantRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      organizationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}organization_id'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      )!,
+      normalizedSearchText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}normalized_search_text'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedTenantsTable createAlias(String alias) {
+    return $CachedTenantsTable(attachedDatabase, alias);
+  }
+}
+
+class CachedTenantRow extends DataClass implements Insertable<CachedTenantRow> {
+  final String id;
+  final String organizationId;
+  final String displayName;
+  final String phone;
+  final String normalizedSearchText;
+
+  /// JSON de `Tenant`.
+  final String payload;
+  final DateTime cachedAt;
+  const CachedTenantRow({
+    required this.id,
+    required this.organizationId,
+    required this.displayName,
+    required this.phone,
+    required this.normalizedSearchText,
+    required this.payload,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['organization_id'] = Variable<String>(organizationId);
+    map['display_name'] = Variable<String>(displayName);
+    map['phone'] = Variable<String>(phone);
+    map['normalized_search_text'] = Variable<String>(normalizedSearchText);
+    map['payload'] = Variable<String>(payload);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedTenantsCompanion toCompanion(bool nullToAbsent) {
+    return CachedTenantsCompanion(
+      id: Value(id),
+      organizationId: Value(organizationId),
+      displayName: Value(displayName),
+      phone: Value(phone),
+      normalizedSearchText: Value(normalizedSearchText),
+      payload: Value(payload),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedTenantRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedTenantRow(
+      id: serializer.fromJson<String>(json['id']),
+      organizationId: serializer.fromJson<String>(json['organizationId']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      phone: serializer.fromJson<String>(json['phone']),
+      normalizedSearchText: serializer.fromJson<String>(
+        json['normalizedSearchText'],
+      ),
+      payload: serializer.fromJson<String>(json['payload']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'organizationId': serializer.toJson<String>(organizationId),
+      'displayName': serializer.toJson<String>(displayName),
+      'phone': serializer.toJson<String>(phone),
+      'normalizedSearchText': serializer.toJson<String>(normalizedSearchText),
+      'payload': serializer.toJson<String>(payload),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedTenantRow copyWith({
+    String? id,
+    String? organizationId,
+    String? displayName,
+    String? phone,
+    String? normalizedSearchText,
+    String? payload,
+    DateTime? cachedAt,
+  }) => CachedTenantRow(
+    id: id ?? this.id,
+    organizationId: organizationId ?? this.organizationId,
+    displayName: displayName ?? this.displayName,
+    phone: phone ?? this.phone,
+    normalizedSearchText: normalizedSearchText ?? this.normalizedSearchText,
+    payload: payload ?? this.payload,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedTenantRow copyWithCompanion(CachedTenantsCompanion data) {
+    return CachedTenantRow(
+      id: data.id.present ? data.id.value : this.id,
+      organizationId: data.organizationId.present
+          ? data.organizationId.value
+          : this.organizationId,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      normalizedSearchText: data.normalizedSearchText.present
+          ? data.normalizedSearchText.value
+          : this.normalizedSearchText,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedTenantRow(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('displayName: $displayName, ')
+          ..write('phone: $phone, ')
+          ..write('normalizedSearchText: $normalizedSearchText, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    organizationId,
+    displayName,
+    phone,
+    normalizedSearchText,
+    payload,
+    cachedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedTenantRow &&
+          other.id == this.id &&
+          other.organizationId == this.organizationId &&
+          other.displayName == this.displayName &&
+          other.phone == this.phone &&
+          other.normalizedSearchText == this.normalizedSearchText &&
+          other.payload == this.payload &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedTenantsCompanion extends UpdateCompanion<CachedTenantRow> {
+  final Value<String> id;
+  final Value<String> organizationId;
+  final Value<String> displayName;
+  final Value<String> phone;
+  final Value<String> normalizedSearchText;
+  final Value<String> payload;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedTenantsCompanion({
+    this.id = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.normalizedSearchText = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedTenantsCompanion.insert({
+    required String id,
+    required String organizationId,
+    required String displayName,
+    required String phone,
+    required String normalizedSearchText,
+    required String payload,
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       organizationId = Value(organizationId),
+       displayName = Value(displayName),
+       phone = Value(phone),
+       normalizedSearchText = Value(normalizedSearchText),
+       payload = Value(payload);
+  static Insertable<CachedTenantRow> custom({
+    Expression<String>? id,
+    Expression<String>? organizationId,
+    Expression<String>? displayName,
+    Expression<String>? phone,
+    Expression<String>? normalizedSearchText,
+    Expression<String>? payload,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (organizationId != null) 'organization_id': organizationId,
+      if (displayName != null) 'display_name': displayName,
+      if (phone != null) 'phone': phone,
+      if (normalizedSearchText != null)
+        'normalized_search_text': normalizedSearchText,
+      if (payload != null) 'payload': payload,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedTenantsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? organizationId,
+    Value<String>? displayName,
+    Value<String>? phone,
+    Value<String>? normalizedSearchText,
+    Value<String>? payload,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedTenantsCompanion(
+      id: id ?? this.id,
+      organizationId: organizationId ?? this.organizationId,
+      displayName: displayName ?? this.displayName,
+      phone: phone ?? this.phone,
+      normalizedSearchText: normalizedSearchText ?? this.normalizedSearchText,
+      payload: payload ?? this.payload,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (organizationId.present) {
+      map['organization_id'] = Variable<String>(organizationId.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (normalizedSearchText.present) {
+      map['normalized_search_text'] = Variable<String>(
+        normalizedSearchText.value,
+      );
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedTenantsCompanion(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('displayName: $displayName, ')
+          ..write('phone: $phone, ')
+          ..write('normalizedSearchText: $normalizedSearchText, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $OutboxTable outbox = $OutboxTable(this);
+  late final $CachedPropertiesTable cachedProperties = $CachedPropertiesTable(
+    this,
+  );
+  late final $CachedUnitsTable cachedUnits = $CachedUnitsTable(this);
+  late final $CachedTenantsTable cachedTenants = $CachedTenantsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [appSettings, outbox];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    appSettings,
+    outbox,
+    cachedProperties,
+    cachedUnits,
+    cachedTenants,
+  ];
 }
 
 typedef $$AppSettingsTableCreateCompanionBuilder =
@@ -1307,6 +2582,685 @@ typedef $$OutboxTableProcessedTableManager =
       OutboxRow,
       PrefetchHooks Function()
     >;
+typedef $$CachedPropertiesTableCreateCompanionBuilder =
+    CachedPropertiesCompanion Function({
+      required String id,
+      required String organizationId,
+      required String name,
+      required String city,
+      required String payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedPropertiesTableUpdateCompanionBuilder =
+    CachedPropertiesCompanion Function({
+      Value<String> id,
+      Value<String> organizationId,
+      Value<String> name,
+      Value<String> city,
+      Value<String> payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedPropertiesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedPropertiesTable> {
+  $$CachedPropertiesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get city => $composableBuilder(
+    column: $table.city,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedPropertiesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedPropertiesTable> {
+  $$CachedPropertiesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get city => $composableBuilder(
+    column: $table.city,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedPropertiesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedPropertiesTable> {
+  $$CachedPropertiesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get city =>
+      $composableBuilder(column: $table.city, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$CachedPropertiesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedPropertiesTable,
+          CachedPropertyRow,
+          $$CachedPropertiesTableFilterComposer,
+          $$CachedPropertiesTableOrderingComposer,
+          $$CachedPropertiesTableAnnotationComposer,
+          $$CachedPropertiesTableCreateCompanionBuilder,
+          $$CachedPropertiesTableUpdateCompanionBuilder,
+          (
+            CachedPropertyRow,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedPropertiesTable,
+              CachedPropertyRow
+            >,
+          ),
+          CachedPropertyRow,
+          PrefetchHooks Function()
+        > {
+  $$CachedPropertiesTableTableManager(
+    _$AppDatabase db,
+    $CachedPropertiesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedPropertiesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedPropertiesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedPropertiesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> organizationId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> city = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedPropertiesCompanion(
+                id: id,
+                organizationId: organizationId,
+                name: name,
+                city: city,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String organizationId,
+                required String name,
+                required String city,
+                required String payload,
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedPropertiesCompanion.insert(
+                id: id,
+                organizationId: organizationId,
+                name: name,
+                city: city,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedPropertiesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedPropertiesTable,
+      CachedPropertyRow,
+      $$CachedPropertiesTableFilterComposer,
+      $$CachedPropertiesTableOrderingComposer,
+      $$CachedPropertiesTableAnnotationComposer,
+      $$CachedPropertiesTableCreateCompanionBuilder,
+      $$CachedPropertiesTableUpdateCompanionBuilder,
+      (
+        CachedPropertyRow,
+        BaseReferences<
+          _$AppDatabase,
+          $CachedPropertiesTable,
+          CachedPropertyRow
+        >,
+      ),
+      CachedPropertyRow,
+      PrefetchHooks Function()
+    >;
+typedef $$CachedUnitsTableCreateCompanionBuilder =
+    CachedUnitsCompanion Function({
+      required String id,
+      required String organizationId,
+      required String propertyId,
+      required String payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedUnitsTableUpdateCompanionBuilder =
+    CachedUnitsCompanion Function({
+      Value<String> id,
+      Value<String> organizationId,
+      Value<String> propertyId,
+      Value<String> payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedUnitsTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedUnitsTable> {
+  $$CachedUnitsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get propertyId => $composableBuilder(
+    column: $table.propertyId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedUnitsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedUnitsTable> {
+  $$CachedUnitsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get propertyId => $composableBuilder(
+    column: $table.propertyId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedUnitsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedUnitsTable> {
+  $$CachedUnitsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get propertyId => $composableBuilder(
+    column: $table.propertyId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$CachedUnitsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedUnitsTable,
+          CachedUnitRow,
+          $$CachedUnitsTableFilterComposer,
+          $$CachedUnitsTableOrderingComposer,
+          $$CachedUnitsTableAnnotationComposer,
+          $$CachedUnitsTableCreateCompanionBuilder,
+          $$CachedUnitsTableUpdateCompanionBuilder,
+          (
+            CachedUnitRow,
+            BaseReferences<_$AppDatabase, $CachedUnitsTable, CachedUnitRow>,
+          ),
+          CachedUnitRow,
+          PrefetchHooks Function()
+        > {
+  $$CachedUnitsTableTableManager(_$AppDatabase db, $CachedUnitsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedUnitsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedUnitsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedUnitsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> organizationId = const Value.absent(),
+                Value<String> propertyId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedUnitsCompanion(
+                id: id,
+                organizationId: organizationId,
+                propertyId: propertyId,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String organizationId,
+                required String propertyId,
+                required String payload,
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedUnitsCompanion.insert(
+                id: id,
+                organizationId: organizationId,
+                propertyId: propertyId,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedUnitsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedUnitsTable,
+      CachedUnitRow,
+      $$CachedUnitsTableFilterComposer,
+      $$CachedUnitsTableOrderingComposer,
+      $$CachedUnitsTableAnnotationComposer,
+      $$CachedUnitsTableCreateCompanionBuilder,
+      $$CachedUnitsTableUpdateCompanionBuilder,
+      (
+        CachedUnitRow,
+        BaseReferences<_$AppDatabase, $CachedUnitsTable, CachedUnitRow>,
+      ),
+      CachedUnitRow,
+      PrefetchHooks Function()
+    >;
+typedef $$CachedTenantsTableCreateCompanionBuilder =
+    CachedTenantsCompanion Function({
+      required String id,
+      required String organizationId,
+      required String displayName,
+      required String phone,
+      required String normalizedSearchText,
+      required String payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedTenantsTableUpdateCompanionBuilder =
+    CachedTenantsCompanion Function({
+      Value<String> id,
+      Value<String> organizationId,
+      Value<String> displayName,
+      Value<String> phone,
+      Value<String> normalizedSearchText,
+      Value<String> payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedTenantsTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedTenantsTable> {
+  $$CachedTenantsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get normalizedSearchText => $composableBuilder(
+    column: $table.normalizedSearchText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedTenantsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedTenantsTable> {
+  $$CachedTenantsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get normalizedSearchText => $composableBuilder(
+    column: $table.normalizedSearchText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedTenantsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedTenantsTable> {
+  $$CachedTenantsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get normalizedSearchText => $composableBuilder(
+    column: $table.normalizedSearchText,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$CachedTenantsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedTenantsTable,
+          CachedTenantRow,
+          $$CachedTenantsTableFilterComposer,
+          $$CachedTenantsTableOrderingComposer,
+          $$CachedTenantsTableAnnotationComposer,
+          $$CachedTenantsTableCreateCompanionBuilder,
+          $$CachedTenantsTableUpdateCompanionBuilder,
+          (
+            CachedTenantRow,
+            BaseReferences<_$AppDatabase, $CachedTenantsTable, CachedTenantRow>,
+          ),
+          CachedTenantRow,
+          PrefetchHooks Function()
+        > {
+  $$CachedTenantsTableTableManager(_$AppDatabase db, $CachedTenantsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedTenantsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedTenantsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedTenantsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> organizationId = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<String> phone = const Value.absent(),
+                Value<String> normalizedSearchText = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedTenantsCompanion(
+                id: id,
+                organizationId: organizationId,
+                displayName: displayName,
+                phone: phone,
+                normalizedSearchText: normalizedSearchText,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String organizationId,
+                required String displayName,
+                required String phone,
+                required String normalizedSearchText,
+                required String payload,
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedTenantsCompanion.insert(
+                id: id,
+                organizationId: organizationId,
+                displayName: displayName,
+                phone: phone,
+                normalizedSearchText: normalizedSearchText,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedTenantsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedTenantsTable,
+      CachedTenantRow,
+      $$CachedTenantsTableFilterComposer,
+      $$CachedTenantsTableOrderingComposer,
+      $$CachedTenantsTableAnnotationComposer,
+      $$CachedTenantsTableCreateCompanionBuilder,
+      $$CachedTenantsTableUpdateCompanionBuilder,
+      (
+        CachedTenantRow,
+        BaseReferences<_$AppDatabase, $CachedTenantsTable, CachedTenantRow>,
+      ),
+      CachedTenantRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1315,4 +3269,10 @@ class $AppDatabaseManager {
       $$AppSettingsTableTableManager(_db, _db.appSettings);
   $$OutboxTableTableManager get outbox =>
       $$OutboxTableTableManager(_db, _db.outbox);
+  $$CachedPropertiesTableTableManager get cachedProperties =>
+      $$CachedPropertiesTableTableManager(_db, _db.cachedProperties);
+  $$CachedUnitsTableTableManager get cachedUnits =>
+      $$CachedUnitsTableTableManager(_db, _db.cachedUnits);
+  $$CachedTenantsTableTableManager get cachedTenants =>
+      $$CachedTenantsTableTableManager(_db, _db.cachedTenants);
 }

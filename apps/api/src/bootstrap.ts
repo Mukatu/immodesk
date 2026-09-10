@@ -6,17 +6,23 @@ import { AppModule } from './app.module';
 import { buildOpenApiDocument } from './modules/platform/infrastructure/openapi';
 import { AppConfigService } from './shared/config/config.module';
 import { DomainError } from './shared/errors/domain-error';
+import { toJsonAmount } from './shared/money/amount';
 
 /**
- * Les montants Immodesk sont des BigInt. `JSON.stringify` refuse ce type par
- * défaut : on le sérialise en chaîne, jamais en nombre flottant (qui
- * perdrait de la précision au-delà de 2^53).
+ * Les montants Immodesk sont des BigInt en base et dans le domaine, mais les
+ * contrats d'API les typent en `number`. `JSON.stringify` refusant le type
+ * BigInt, ce filet de sécurité global applique la même conversion gardée que
+ * les mappers de présentation : au-delà de `Number.MAX_SAFE_INTEGER`, on lève
+ * plutôt que de transmettre un montant arrondi.
+ *
+ * Les mappers restent la voie normale ; ceci ne rattrape que les BigInt qui
+ * atteindraient la réponse sans passer par eux.
  */
 function enableBigIntSerialization(): void {
-  const proto = BigInt.prototype as unknown as { toJSON?: () => string };
+  const proto = BigInt.prototype as unknown as { toJSON?: () => number };
   if (!proto.toJSON) {
-    proto.toJSON = function toJSON(this: bigint): string {
-      return this.toString(10);
+    proto.toJSON = function toJSON(this: bigint): number {
+      return toJsonAmount(this);
     };
   }
 }

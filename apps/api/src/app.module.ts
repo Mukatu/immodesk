@@ -1,10 +1,14 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditModule } from './modules/audit/audit.module';
+import { BankingModule } from './modules/banking/banking.module';
+import { DocumentsModule } from './modules/documents/documents.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
+import { PartiesModule } from './modules/parties/parties.module';
 import { PlatformModule } from './modules/platform/platform.module';
+import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { IdempotencyInterceptor } from './modules/platform/presentation/idempotency.interceptor';
 import { JwtAuthGuard } from './shared/auth/jwt-auth.guard';
 import { AppConfigModule } from './shared/config/config.module';
@@ -34,6 +38,14 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     NotificationsModule,
     IdentityModule,
     OrganizationsModule,
+    // Phase 1 — tiers et patrimoine. Ces quatre modules sont `@Global()` :
+    // ils échangent par des ports (jetons `Symbol`) dans les deux sens, ce
+    // qu'un jeu d'imports croisés transformerait en cycle de modules alors
+    // qu'aucun cycle n'existe entre les classes.
+    PartiesModule,
+    PortfolioModule,
+    BankingModule,
+    DocumentsModule,
     PlatformModule,
   ],
   providers: [

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, LogOut, Settings, Users } from 'lucide-react';
+import { Building2, Home, LayoutDashboard, LogOut, Settings, Users, Users2 } from 'lucide-react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,9 @@ import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { href: '/app', label: 'Tableau de bord', icon: LayoutDashboard },
+  { href: '/app/bailleurs', label: 'Bailleurs', icon: Home },
+  { href: '/app/locataires', label: 'Locataires', icon: Users2 },
+  { href: '/app/immeubles', label: 'Immeubles', icon: Building2 },
   { href: '/app/equipe', label: 'Équipe', icon: Users },
   { href: '/app/parametres', label: 'Paramètres', icon: Settings },
 ];
@@ -77,7 +80,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <nav aria-label="Navigation principale" className="mx-auto flex max-w-6xl gap-1 px-4 pb-2">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href;
+            const active =
+              pathname === href || (href !== '/app' && pathname.startsWith(`${href}/`));
             return (
               <Link
                 key={href}

@@ -1043,6 +1043,2107 @@
         "tags": ["Organisations"]
       }
     },
+    "/v1/landlords": {
+      "post": {
+        "description": "Personne physique (`lastName` obligatoire) ou morale (`companyName` obligatoire). Le téléphone est normalisé en E.164 `+242…`.",
+        "operationId": "LandlordsController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLandlordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LandlordDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "PARTIES.NAME_REQUIRED, PARTIES.PHONE_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer un bailleur",
+        "tags": ["Bailleurs"]
+      },
+      "get": {
+        "description": "Recherche `q` sur le nom, la raison sociale et les téléphones, insensible à la casse et aux accents. Pagination par curseur signé.",
+        "operationId": "LandlordsController_list",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Recherche insensible à la casse et aux accents.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "city",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "Brazzaville",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Curseur opaque signé, issu de `pageInfo.nextCursor`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LandlordPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister et rechercher les bailleurs",
+        "tags": ["Bailleurs"]
+      }
+    },
+    "/v1/landlords/{id}": {
+      "get": {
+        "description": "Bailleur, ses biens avec taux d’occupation, ses comptes bancaires et ses canaux de contact.",
+        "operationId": "LandlordsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LandlordDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PARTIES.LANDLORD_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fiche d'un bailleur",
+        "tags": ["Bailleurs"]
+      },
+      "patch": {
+        "operationId": "LandlordsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLandlordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LandlordDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mettre à jour un bailleur",
+        "tags": ["Bailleurs"]
+      },
+      "delete": {
+        "description": "Refusé pour le bailleur « self » de l’organisation (409 `PARTIES.SELF_LANDLORD_PROTECTED`) et pour un bailleur portant encore des biens (409 `PARTIES.LANDLORD_HAS_PROPERTIES`).",
+        "operationId": "LandlordsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Supprimer un bailleur (suppression logique)",
+        "tags": ["Bailleurs"]
+      }
+    },
+    "/v1/tenants": {
+      "post": {
+        "description": "Un numéro déjà porté par un autre locataire de l’organisation déclenche un AVERTISSEMENT : 409 `PARTIES.PHONE_ALREADY_USED` avec `details.existingTenantId`. Renvoyer la même requête avec `confirmDuplicatePhone: true` la valide — les foyers partagent couramment un téléphone.",
+        "operationId": "TenantsController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PARTIES.PHONE_ALREADY_USED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer un locataire",
+        "tags": ["Locataires"]
+      },
+      "get": {
+        "operationId": "TenantsController_list",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Nom, raison sociale ou téléphone normalisé.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister et rechercher les locataires",
+        "tags": ["Locataires"]
+      }
+    },
+    "/v1/tenants/{id}": {
+      "get": {
+        "description": "Locataire, ses garants, ses canaux de contact et ses pièces jointes.",
+        "operationId": "TenantsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PARTIES.TENANT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fiche d'un locataire",
+        "tags": ["Locataires"]
+      },
+      "patch": {
+        "operationId": "TenantsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mettre à jour un locataire",
+        "tags": ["Locataires"]
+      },
+      "delete": {
+        "operationId": "TenantsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Supprimer un locataire (suppression logique)",
+        "tags": ["Locataires"]
+      }
+    },
+    "/v1/tenants/{id}/guarantors": {
+      "post": {
+        "operationId": "TenantsController_addGuarantor",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGuarantorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuarantorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PARTIES.TENANT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ajouter un garant à un locataire",
+        "tags": ["Locataires"]
+      }
+    },
+    "/v1/guarantors/{id}": {
+      "patch": {
+        "operationId": "GuarantorsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGuarantorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuarantorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PARTIES.GUARANTOR_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mettre à jour un garant",
+        "tags": ["Garants"]
+      },
+      "delete": {
+        "operationId": "GuarantorsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Supprimer un garant (suppression logique)",
+        "tags": ["Garants"]
+      }
+    },
+    "/v1/parties/{ownerType}/{ownerId}/contact-channels": {
+      "get": {
+        "operationId": "ContactChannelsController_list",
+        "parameters": [
+          {
+            "name": "ownerType",
+            "required": true,
+            "in": "path",
+            "description": "Type de tiers porteur : `landlords`, `tenants` ou `guarantors`.",
+            "schema": {
+              "enum": ["landlords", "tenants", "guarantors"],
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactChannelListDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Canaux de contact d'un tiers",
+        "tags": ["Canaux de contact"]
+      },
+      "post": {
+        "description": "Téléphone normalisé en E.164, e-mail en minuscules. Le couple (tiers, type, valeur) est unique : 409 `PARTIES.CHANNEL_DUPLICATE`. `isPrimary` démarque le canal préféré précédent.",
+        "operationId": "ContactChannelsController_create",
+        "parameters": [
+          {
+            "name": "ownerType",
+            "required": true,
+            "in": "path",
+            "description": "Type de tiers porteur : `landlords`, `tenants` ou `guarantors`.",
+            "schema": {
+              "enum": ["landlords", "tenants", "guarantors"],
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContactChannelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactChannelDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PARTIES.CHANNEL_DUPLICATE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ajouter un canal de contact",
+        "tags": ["Canaux de contact"]
+      }
+    },
+    "/v1/contact-channels/{id}": {
+      "patch": {
+        "operationId": "ContactChannelsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateContactChannelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactChannelDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PARTIES.CHANNEL_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier un canal de contact",
+        "tags": ["Canaux de contact"]
+      },
+      "delete": {
+        "operationId": "ContactChannelsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Supprimer un canal de contact",
+        "tags": ["Canaux de contact"]
+      }
+    },
+    "/v1/properties": {
+      "post": {
+        "description": "Localisation congolaise : ville, arrondissement, quartier et repère, l'adressage postal étant peu fiable. Le bailleur doit exister dans l’organisation.",
+        "operationId": "PropertiesController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePropertyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PARTIES.LANDLORD_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PORTFOLIO.PROPERTY_CODE_TAKEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer un immeuble",
+        "tags": ["Patrimoine"]
+      },
+      "get": {
+        "description": "`occupancyRateBps` : 100 % = 10 000 points de base, jamais un flottant.",
+        "operationId": "PropertiesController_list",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "landlordId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "city",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les immeubles avec leur taux d’occupation",
+        "tags": ["Patrimoine"]
+      }
+    },
+    "/v1/properties/{id}": {
+      "get": {
+        "operationId": "PropertiesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PORTFOLIO.PROPERTY_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fiche d'un immeuble : bailleur, lots et occupation",
+        "tags": ["Patrimoine"]
+      },
+      "patch": {
+        "operationId": "PropertiesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePropertyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mettre à jour un immeuble",
+        "tags": ["Patrimoine"]
+      },
+      "delete": {
+        "description": "409 `PORTFOLIO.PROPERTY_HAS_UNITS` tant que des lots non supprimés subsistent.",
+        "operationId": "PropertiesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "409": {
+            "description": "PORTFOLIO.PROPERTY_HAS_UNITS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Supprimer un immeuble (suppression logique)",
+        "tags": ["Patrimoine"]
+      }
+    },
+    "/v1/properties/{id}/units": {
+      "post": {
+        "operationId": "PropertiesController_createUnit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUnitDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PORTFOLIO.UNIT_CODE_TAKEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer un lot",
+        "tags": ["Patrimoine"]
+      }
+    },
+    "/v1/properties/{id}/units/bulk": {
+      "post": {
+        "description": "« A », 1 → 12 engendre A1…A12 ; `padding: 2` donne A01…A12. TOUT OU RIEN : un seul code déjà pris annule toute la série (409 `PORTFOLIO.UNIT_CODE_TAKEN`).",
+        "operationId": "PropertiesController_createUnitsBulk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkUnitsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkUnitsResultDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PORTFOLIO.UNIT_CODE_TAKEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "PORTFOLIO.BULK_RANGE_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer des lots en série",
+        "tags": ["Patrimoine"]
+      }
+    },
+    "/v1/units": {
+      "get": {
+        "operationId": "UnitsController_list",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["AVAILABLE", "RESERVED", "OCCUPIED", "UNDER_MAINTENANCE", "UNAVAILABLE"]
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les lots, filtrables par immeuble et par statut",
+        "tags": ["Lots"]
+      }
+    },
+    "/v1/units/{id}": {
+      "get": {
+        "operationId": "UnitsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PORTFOLIO.UNIT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fiche d'un lot : immeuble et pièces jointes",
+        "tags": ["Lots"]
+      },
+      "patch": {
+        "operationId": "UnitsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUnitDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mettre à jour un lot",
+        "tags": ["Lots"]
+      },
+      "delete": {
+        "description": "Un lot rattaché à un bail ACTIF ne peut pas être supprimé : 409 `PORTFOLIO.UNIT_HAS_ACTIVE_LEASE`, et `deletedAt` reste nul.",
+        "operationId": "UnitsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "409": {
+            "description": "PORTFOLIO.UNIT_HAS_ACTIVE_LEASE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Supprimer un lot (suppression logique)",
+        "tags": ["Lots"]
+      }
+    },
+    "/v1/bank-accounts": {
+      "post": {
+        "description": "Banque locale (BGFI, LCB, Ecobank…) ou portefeuille Mobile Money. Au moins un identifiant est requis : numéro de compte, IBAN ou `momoMsisdn`.",
+        "operationId": "BankAccountsController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBankAccountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAccountDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BANKING.ACCOUNT_DUPLICATE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "BANKING.IDENTIFIER_REQUIRED, BANKING.HOLDER_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enregistrer un compte de règlement",
+        "tags": ["Comptes bancaires"]
+      },
+      "get": {
+        "operationId": "BankAccountsController_list",
+        "parameters": [
+          {
+            "name": "holderType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["ORGANIZATION", "LANDLORD", "TENANT"]
+            }
+          },
+          {
+            "name": "landlordId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAccountListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Comptes de l'organisation et des bailleurs",
+        "tags": ["Comptes bancaires"]
+      }
+    },
+    "/v1/bank-accounts/{id}": {
+      "patch": {
+        "operationId": "BankAccountsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBankAccountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAccountDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "BANKING.ACCOUNT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mettre à jour un compte",
+        "tags": ["Comptes bancaires"]
+      },
+      "delete": {
+        "description": "Jamais de suppression physique : un compte est cité par des paiements passés. La ligne passe à `isActive: false` et perd son statut de compte par défaut.",
+        "operationId": "BankAccountsController_deactivate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Désactiver un compte",
+        "tags": ["Comptes bancaires"]
+      }
+    },
+    "/v1/documents/upload-url": {
+      "post": {
+        "description": "Le fichier part directement du navigateur ou du téléphone vers le stockage objet : il ne transite jamais par l'API. Le `Content-Type` est signé — le client doit envoyer exactement le même en-tête. Aucune ligne n’est créée en base à cette étape.",
+        "operationId": "DocumentsController_createUploadUrl",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadUrlRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadUrlResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "DOCUMENTS.FILE_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "DOCUMENTS.MIME_NOT_ALLOWED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Demander une URL signée de téléversement",
+        "tags": ["Documents"]
+      }
+    },
+    "/v1/documents": {
+      "post": {
+        "description": "L'API vérifie par un HEAD que l'objet existe réellement dans le stockage avant d'écrire la fiche : 409 `DOCUMENTS.OBJECT_MISSING` sinon. La taille retenue est celle constatée dans le stockage, pas celle annoncée.",
+        "operationId": "DocumentsController_register",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DOCUMENTS.OBJECT_MISSING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "DOCUMENTS.OBJECT_KEY_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enregistrer un document téléversé",
+        "tags": ["Documents"]
+      },
+      "get": {
+        "operationId": "DocumentsController_list",
+        "parameters": [
+          {
+            "name": "relatedEntityType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["landlord", "tenant", "guarantor", "property", "unit", "organization"]
+            }
+          },
+          {
+            "name": "relatedEntityId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ID_DOCUMENT",
+                "LEASE_CONTRACT",
+                "MANDATE",
+                "RECEIPT_PDF",
+                "INVOICE_PDF",
+                "CASH_RECEIPT_PDF",
+                "TRANSFER_PROOF",
+                "CHECK_IMAGE",
+                "BANK_STATEMENT",
+                "INSPECTION_REPORT",
+                "INSPECTION_PHOTO",
+                "MAINTENANCE_PHOTO",
+                "SIGNATURE",
+                "OWNER_STATEMENT_PDF",
+                "EXPENSE_INVOICE",
+                "PROPERTY_PHOTO",
+                "OTHER"
+              ]
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les documents d’une entité",
+        "tags": ["Documents"]
+      }
+    },
+    "/v1/documents/{id}/download-url": {
+      "get": {
+        "description": "Le document d'une autre organisation est invisible sous RLS : la réponse est 404, jamais 403 — un 403 révélerait son existence.",
+        "operationId": "DocumentsController_downloadUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadUrlDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "DOCUMENTS.NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "URL signée de téléchargement (10 minutes)",
+        "tags": ["Documents"]
+      }
+    },
+    "/v1/documents/{id}": {
+      "delete": {
+        "description": "La fiche est marquée supprimée ; l'objet est détruit par la tâche de purge après le délai de rétractation (`DOCUMENTS_PURGE_GRACE_HOURS`, 24 h par défaut).",
+        "operationId": "DocumentsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Supprimer un document (suppression logique)",
+        "tags": ["Documents"]
+      }
+    },
     "/v1/health": {
       "get": {
         "description": "Vérifie la base PostgreSQL, Redis et le stockage objet. Répond toujours 200 : le champ `status` vaut `degraded` si une dépendance est en panne, ce qui permet aux sondes de distinguer « API morte » de « dépendance morte ».",
@@ -1098,6 +3199,38 @@
     {
       "name": "Invitations",
       "description": "Invitation de collaborateurs et acceptation."
+    },
+    {
+      "name": "Bailleurs",
+      "description": "Propriétaires des biens, personnes physiques ou morales."
+    },
+    {
+      "name": "Locataires",
+      "description": "Locataires, leur dossier et leurs pièces justificatives."
+    },
+    {
+      "name": "Garants",
+      "description": "Cautions rattachées à un locataire."
+    },
+    {
+      "name": "Canaux de contact",
+      "description": "Téléphones, WhatsApp et e-mails par tiers, avec consentement."
+    },
+    {
+      "name": "Patrimoine",
+      "description": "Immeubles, localisation congolaise et taux d’occupation."
+    },
+    {
+      "name": "Lots",
+      "description": "Lots louables : caractéristiques, loyer de référence, statut."
+    },
+    {
+      "name": "Comptes bancaires",
+      "description": "Comptes de règlement : banques locales et Mobile Money."
+    },
+    {
+      "name": "Documents",
+      "description": "Stockage objet, URL signées, rattachement polymorphe."
     },
     {
       "name": "Plateforme",
@@ -1708,6 +3841,3064 @@
           }
         },
         "required": ["flags"]
+      },
+      "CreateLandlordDto": {
+        "type": "object",
+        "properties": {
+          "partyType": {
+            "type": "string",
+            "enum": ["INDIVIDUAL", "COMPANY"],
+            "default": "INDIVIDUAL"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Célestin"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Nkodia",
+            "description": "Obligatoire pour une personne physique (`PARTIES.NAME_REQUIRED`)."
+          },
+          "companyName": {
+            "type": "string",
+            "example": "SCI Les Manguiers",
+            "description": "Obligatoire pour une personne morale (`PARTIES.NAME_REQUIRED`)."
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "1972-04-18",
+            "format": "date"
+          },
+          "nationality": {
+            "type": "string",
+            "example": "CG",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "idDocumentType": {
+            "type": "string",
+            "enum": [
+              "CNI",
+              "PASSPORT",
+              "RESIDENCE_PERMIT",
+              "DRIVING_LICENSE",
+              "VOTER_CARD",
+              "RCCM",
+              "NIU",
+              "OTHER"
+            ]
+          },
+          "idDocumentNumber": {
+            "type": "string",
+            "example": "CG-1234567"
+          },
+          "idDocumentExpiry": {
+            "type": "string",
+            "format": "date"
+          },
+          "idDocumentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Pièce scannée dans `documents`."
+          },
+          "rccmNumber": {
+            "type": "string",
+            "example": "CG-BZV-01-2019-B12-00045"
+          },
+          "niuNumber": {
+            "type": "string",
+            "example": "M2019110000123"
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "example": "066123456",
+            "description": "Toute forme congolaise acceptée, normalisée en E.164 `+242…`."
+          },
+          "email": {
+            "type": "string",
+            "example": "celestin.nkodia@example.cg"
+          },
+          "addressLine": {
+            "type": "string",
+            "example": "15, rue Mbochis"
+          },
+          "district": {
+            "type": "string",
+            "example": "Moungali",
+            "description": "Quartier de Brazzaville."
+          },
+          "city": {
+            "type": "string",
+            "example": "Brazzaville",
+            "default": "Brazzaville"
+          },
+          "countryCode": {
+            "type": "string",
+            "example": "CG",
+            "default": "CG"
+          },
+          "defaultBankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "payoutMethod": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"],
+            "default": "MOBILE_MONEY"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "primaryPhone": {
+            "type": "string",
+            "example": "066123456",
+            "description": "Normalisé en E.164 `+242…`."
+          }
+        },
+        "required": ["primaryPhone"]
+      },
+      "LandlordDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "SCI Les Manguiers"
+          },
+          "primaryPhone": {
+            "type": "string",
+            "example": "+242066123456"
+          },
+          "isSelf": {
+            "type": "boolean"
+          },
+          "partyType": {
+            "type": "string",
+            "enum": ["INDIVIDUAL", "COMPANY"]
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "companyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
+          },
+          "birthDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "nationality": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentExpiry": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "rccmNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "niuNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "addressLine": {
+            "type": "string",
+            "nullable": true
+          },
+          "district": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "defaultBankAccountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "payoutMethod": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertiesCount": {
+            "type": "number",
+            "example": 3
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "primaryPhone",
+          "isSelf",
+          "partyType",
+          "firstName",
+          "lastName",
+          "companyName",
+          "gender",
+          "birthDate",
+          "nationality",
+          "idDocumentType",
+          "idDocumentNumber",
+          "idDocumentExpiry",
+          "idDocumentId",
+          "rccmNumber",
+          "niuNumber",
+          "secondaryPhone",
+          "email",
+          "addressLine",
+          "district",
+          "city",
+          "countryCode",
+          "defaultBankAccountId",
+          "payoutMethod",
+          "notes",
+          "propertiesCount",
+          "createdAt",
+          "updatedAt",
+          "deletedAt"
+        ]
+      },
+      "PageInfoDto": {
+        "type": "object",
+        "properties": {
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": ["nextCursor", "hasNextPage", "limit"]
+      },
+      "LandlordPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LandlordDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "UpdateLandlordDto": {
+        "type": "object",
+        "properties": {
+          "partyType": {
+            "type": "string",
+            "enum": ["INDIVIDUAL", "COMPANY"],
+            "default": "INDIVIDUAL"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Célestin"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Nkodia",
+            "description": "Obligatoire pour une personne physique (`PARTIES.NAME_REQUIRED`)."
+          },
+          "companyName": {
+            "type": "string",
+            "example": "SCI Les Manguiers",
+            "description": "Obligatoire pour une personne morale (`PARTIES.NAME_REQUIRED`)."
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "1972-04-18",
+            "format": "date"
+          },
+          "nationality": {
+            "type": "string",
+            "example": "CG",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "idDocumentType": {
+            "type": "string",
+            "enum": [
+              "CNI",
+              "PASSPORT",
+              "RESIDENCE_PERMIT",
+              "DRIVING_LICENSE",
+              "VOTER_CARD",
+              "RCCM",
+              "NIU",
+              "OTHER"
+            ]
+          },
+          "idDocumentNumber": {
+            "type": "string",
+            "example": "CG-1234567"
+          },
+          "idDocumentExpiry": {
+            "type": "string",
+            "format": "date"
+          },
+          "idDocumentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Pièce scannée dans `documents`."
+          },
+          "rccmNumber": {
+            "type": "string",
+            "example": "CG-BZV-01-2019-B12-00045"
+          },
+          "niuNumber": {
+            "type": "string",
+            "example": "M2019110000123"
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "example": "066123456",
+            "description": "Toute forme congolaise acceptée, normalisée en E.164 `+242…`."
+          },
+          "email": {
+            "type": "string",
+            "example": "celestin.nkodia@example.cg"
+          },
+          "addressLine": {
+            "type": "string",
+            "example": "15, rue Mbochis"
+          },
+          "district": {
+            "type": "string",
+            "example": "Moungali",
+            "description": "Quartier de Brazzaville."
+          },
+          "city": {
+            "type": "string",
+            "example": "Brazzaville",
+            "default": "Brazzaville"
+          },
+          "countryCode": {
+            "type": "string",
+            "example": "CG",
+            "default": "CG"
+          },
+          "defaultBankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "payoutMethod": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"],
+            "default": "MOBILE_MONEY"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "primaryPhone": {
+            "type": "string",
+            "example": "+242066123456"
+          }
+        }
+      },
+      "CreateTenantDto": {
+        "type": "object",
+        "properties": {
+          "partyType": {
+            "type": "string",
+            "enum": ["INDIVIDUAL", "COMPANY"],
+            "default": "INDIVIDUAL"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Bernadette"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Loemba"
+          },
+          "companyName": {
+            "type": "string",
+            "example": "Ets Congo Négoce"
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
+          },
+          "birthDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "birthPlace": {
+            "type": "string",
+            "example": "Pointe-Noire"
+          },
+          "nationality": {
+            "type": "string",
+            "example": "CG"
+          },
+          "idDocumentType": {
+            "type": "string",
+            "enum": [
+              "CNI",
+              "PASSPORT",
+              "RESIDENCE_PERMIT",
+              "DRIVING_LICENSE",
+              "VOTER_CARD",
+              "RCCM",
+              "NIU",
+              "OTHER"
+            ]
+          },
+          "idDocumentNumber": {
+            "type": "string"
+          },
+          "idDocumentExpiry": {
+            "type": "string",
+            "format": "date"
+          },
+          "idDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rccmNumber": {
+            "type": "string"
+          },
+          "niuNumber": {
+            "type": "string"
+          },
+          "profession": {
+            "type": "string",
+            "example": "Institutrice"
+          },
+          "employerName": {
+            "type": "string",
+            "example": "Lycée de la Révolution"
+          },
+          "monthlyIncome": {
+            "type": "integer",
+            "format": "int64",
+            "example": 350000,
+            "description": "Revenu mensuel déclaré, entier XAF sans décimale."
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "example": "066123456"
+          },
+          "whatsappPhone": {
+            "type": "string",
+            "example": "066123456"
+          },
+          "email": {
+            "type": "string"
+          },
+          "addressLine": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string",
+            "example": "Poto-Poto"
+          },
+          "city": {
+            "type": "string",
+            "default": "Brazzaville"
+          },
+          "countryCode": {
+            "type": "string",
+            "default": "CG"
+          },
+          "emergencyContactName": {
+            "type": "string"
+          },
+          "emergencyContactPhone": {
+            "type": "string"
+          },
+          "clientRef": {
+            "type": "string",
+            "description": "ULID de l'appareil mobile, clé d'idempotence."
+          },
+          "notes": {
+            "type": "string"
+          },
+          "primaryPhone": {
+            "type": "string",
+            "example": "066123456"
+          },
+          "confirmDuplicatePhone": {
+            "type": "boolean",
+            "description": "Confirme sciemment un numéro déjà utilisé par un autre locataire (foyer partagé). Sans lui, la création répond 409 `PARTIES.PHONE_ALREADY_USED`."
+          }
+        },
+        "required": ["primaryPhone"]
+      },
+      "TenantDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "partyType": {
+            "type": "string",
+            "enum": ["INDIVIDUAL", "COMPANY"]
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Bernadette Loemba"
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "companyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
+          },
+          "birthDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "birthPlace": {
+            "type": "string",
+            "nullable": true
+          },
+          "nationality": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentExpiry": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "rccmNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "niuNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "profession": {
+            "type": "string",
+            "nullable": true
+          },
+          "employerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "monthlyIncome": {
+            "type": "integer",
+            "nullable": true,
+            "format": "int64",
+            "example": 280000,
+            "description": "Entier XAF, sans décimale — le franc CFA n’a pas de sous-unité."
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["XAF"]
+          },
+          "primaryPhone": {
+            "type": "string"
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsappPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "addressLine": {
+            "type": "string",
+            "nullable": true
+          },
+          "district": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "emergencyContactName": {
+            "type": "string",
+            "nullable": true
+          },
+          "emergencyContactPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "partyType",
+          "displayName",
+          "firstName",
+          "lastName",
+          "companyName",
+          "gender",
+          "birthDate",
+          "birthPlace",
+          "nationality",
+          "idDocumentType",
+          "idDocumentNumber",
+          "idDocumentExpiry",
+          "idDocumentId",
+          "rccmNumber",
+          "niuNumber",
+          "profession",
+          "employerName",
+          "monthlyIncome",
+          "currency",
+          "primaryPhone",
+          "secondaryPhone",
+          "whatsappPhone",
+          "email",
+          "addressLine",
+          "district",
+          "city",
+          "countryCode",
+          "emergencyContactName",
+          "emergencyContactPhone",
+          "clientRef",
+          "notes",
+          "createdAt",
+          "updatedAt",
+          "deletedAt"
+        ]
+      },
+      "TenantPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "UpdateTenantDto": {
+        "type": "object",
+        "properties": {
+          "partyType": {
+            "type": "string",
+            "enum": ["INDIVIDUAL", "COMPANY"],
+            "default": "INDIVIDUAL"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Bernadette"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Loemba"
+          },
+          "companyName": {
+            "type": "string",
+            "example": "Ets Congo Négoce"
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
+          },
+          "birthDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "birthPlace": {
+            "type": "string",
+            "example": "Pointe-Noire"
+          },
+          "nationality": {
+            "type": "string",
+            "example": "CG"
+          },
+          "idDocumentType": {
+            "type": "string",
+            "enum": [
+              "CNI",
+              "PASSPORT",
+              "RESIDENCE_PERMIT",
+              "DRIVING_LICENSE",
+              "VOTER_CARD",
+              "RCCM",
+              "NIU",
+              "OTHER"
+            ]
+          },
+          "idDocumentNumber": {
+            "type": "string"
+          },
+          "idDocumentExpiry": {
+            "type": "string",
+            "format": "date"
+          },
+          "idDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rccmNumber": {
+            "type": "string"
+          },
+          "niuNumber": {
+            "type": "string"
+          },
+          "profession": {
+            "type": "string",
+            "example": "Institutrice"
+          },
+          "employerName": {
+            "type": "string",
+            "example": "Lycée de la Révolution"
+          },
+          "monthlyIncome": {
+            "type": "integer",
+            "format": "int64",
+            "example": 350000,
+            "description": "Revenu mensuel déclaré, entier XAF sans décimale."
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "example": "066123456"
+          },
+          "whatsappPhone": {
+            "type": "string",
+            "example": "066123456"
+          },
+          "email": {
+            "type": "string"
+          },
+          "addressLine": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string",
+            "example": "Poto-Poto"
+          },
+          "city": {
+            "type": "string",
+            "default": "Brazzaville"
+          },
+          "countryCode": {
+            "type": "string",
+            "default": "CG"
+          },
+          "emergencyContactName": {
+            "type": "string"
+          },
+          "emergencyContactPhone": {
+            "type": "string"
+          },
+          "clientRef": {
+            "type": "string",
+            "description": "ULID de l'appareil mobile, clé d'idempotence."
+          },
+          "notes": {
+            "type": "string"
+          },
+          "primaryPhone": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateGuarantorDto": {
+        "type": "object",
+        "properties": {
+          "partyType": {
+            "type": "string",
+            "enum": ["INDIVIDUAL", "COMPANY"],
+            "default": "INDIVIDUAL"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "relationship": {
+            "type": "string",
+            "example": "Frère aîné"
+          },
+          "idDocumentType": {
+            "type": "string",
+            "enum": [
+              "CNI",
+              "PASSPORT",
+              "RESIDENCE_PERMIT",
+              "DRIVING_LICENSE",
+              "VOTER_CARD",
+              "RCCM",
+              "NIU",
+              "OTHER"
+            ]
+          },
+          "idDocumentNumber": {
+            "type": "string"
+          },
+          "idDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profession": {
+            "type": "string"
+          },
+          "employerName": {
+            "type": "string"
+          },
+          "monthlyIncome": {
+            "type": "integer",
+            "format": "int64",
+            "example": 600000
+          },
+          "guaranteeAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1800000,
+            "description": "Plafond de caution en XAF."
+          },
+          "email": {
+            "type": "string"
+          },
+          "addressLine": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string",
+            "default": "Brazzaville"
+          },
+          "countryCode": {
+            "type": "string",
+            "default": "CG"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "primaryPhone": {
+            "type": "string",
+            "example": "066123456"
+          }
+        },
+        "required": ["primaryPhone"]
+      },
+      "GuarantorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "partyType": {
+            "type": "string",
+            "enum": ["INDIVIDUAL", "COMPANY"]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "companyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "relationship": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "profession": {
+            "type": "string",
+            "nullable": true
+          },
+          "employerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "monthlyIncome": {
+            "type": "integer",
+            "nullable": true,
+            "format": "int64",
+            "example": 600000
+          },
+          "guaranteeAmount": {
+            "type": "integer",
+            "nullable": true,
+            "format": "int64",
+            "example": 1800000
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["XAF"]
+          },
+          "primaryPhone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "addressLine": {
+            "type": "string",
+            "nullable": true
+          },
+          "district": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "partyType",
+          "displayName",
+          "firstName",
+          "lastName",
+          "companyName",
+          "relationship",
+          "idDocumentType",
+          "idDocumentNumber",
+          "idDocumentId",
+          "profession",
+          "employerName",
+          "monthlyIncome",
+          "guaranteeAmount",
+          "currency",
+          "primaryPhone",
+          "email",
+          "addressLine",
+          "district",
+          "city",
+          "countryCode",
+          "notes",
+          "createdAt",
+          "updatedAt",
+          "deletedAt"
+        ]
+      },
+      "UpdateGuarantorDto": {
+        "type": "object",
+        "properties": {
+          "partyType": {
+            "type": "string",
+            "enum": ["INDIVIDUAL", "COMPANY"],
+            "default": "INDIVIDUAL"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "relationship": {
+            "type": "string",
+            "example": "Frère aîné"
+          },
+          "idDocumentType": {
+            "type": "string",
+            "enum": [
+              "CNI",
+              "PASSPORT",
+              "RESIDENCE_PERMIT",
+              "DRIVING_LICENSE",
+              "VOTER_CARD",
+              "RCCM",
+              "NIU",
+              "OTHER"
+            ]
+          },
+          "idDocumentNumber": {
+            "type": "string"
+          },
+          "idDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profession": {
+            "type": "string"
+          },
+          "employerName": {
+            "type": "string"
+          },
+          "monthlyIncome": {
+            "type": "integer",
+            "format": "int64",
+            "example": 600000
+          },
+          "guaranteeAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1800000,
+            "description": "Plafond de caution en XAF."
+          },
+          "email": {
+            "type": "string"
+          },
+          "addressLine": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string",
+            "default": "Brazzaville"
+          },
+          "countryCode": {
+            "type": "string",
+            "default": "CG"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "primaryPhone": {
+            "type": "string"
+          }
+        }
+      },
+      "ContactChannelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerType": {
+            "type": "string",
+            "enum": ["LANDLORD", "TENANT", "GUARANTOR", "MEMBER", "SUPPLIER"]
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channelType": {
+            "type": "string",
+            "enum": ["PHONE", "MOBILE", "WHATSAPP", "EMAIL", "FAX"]
+          },
+          "value": {
+            "type": "string",
+            "example": "+242066123456"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "optIn": {
+            "type": "boolean"
+          },
+          "optOutAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "ownerType",
+          "ownerId",
+          "channelType",
+          "value",
+          "label",
+          "isPrimary",
+          "isVerified",
+          "verifiedAt",
+          "optIn",
+          "optOutAt",
+          "createdAt"
+        ]
+      },
+      "ContactChannelListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContactChannelDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "CreateContactChannelDto": {
+        "type": "object",
+        "properties": {
+          "channelType": {
+            "type": "string",
+            "enum": ["PHONE", "MOBILE", "WHATSAPP", "EMAIL", "FAX"]
+          },
+          "value": {
+            "type": "string",
+            "example": "066123456",
+            "description": "Téléphone normalisé en E.164 `+242…` ; adresse e-mail mise en minuscules. Le couple (tiers, type, valeur) est unique : 409 `PARTIES.CHANNEL_DUPLICATE`."
+          },
+          "label": {
+            "type": "string",
+            "example": "Numéro de la boutique"
+          },
+          "isPrimary": {
+            "type": "boolean",
+            "description": "Canal préféré pour ce type. Un seul par tiers et par type : l'ancien est démarqué."
+          },
+          "optIn": {
+            "type": "boolean",
+            "default": true,
+            "description": "Consentement aux relances et quittances."
+          }
+        },
+        "required": ["channelType", "value"]
+      },
+      "UpdateContactChannelDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "optIn": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreatePropertyDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "RES-MPILA"
+          },
+          "propertyType": {
+            "type": "string",
+            "enum": [
+              "HOUSE",
+              "VILLA",
+              "APARTMENT_BUILDING",
+              "COMPOUND",
+              "COMMERCIAL_BUILDING",
+              "MIXED_USE",
+              "LAND",
+              "WAREHOUSE",
+              "OTHER"
+            ],
+            "default": "HOUSE"
+          },
+          "arrondissement": {
+            "type": "string",
+            "example": "3e arrondissement"
+          },
+          "landmark": {
+            "type": "string",
+            "example": "Derrière l'école Nganga Édouard",
+            "description": "Repère d'orientation : l'adressage postal local est peu fiable."
+          },
+          "city": {
+            "type": "string",
+            "default": "Brazzaville"
+          },
+          "countryCode": {
+            "type": "string",
+            "default": "CG"
+          },
+          "latitude": {
+            "type": "number",
+            "example": -4.2634
+          },
+          "longitude": {
+            "type": "number",
+            "example": 15.2429
+          },
+          "landTitleReference": {
+            "type": "string"
+          },
+          "parcelNumber": {
+            "type": "string"
+          },
+          "builtYear": {
+            "type": "number",
+            "example": 2014
+          },
+          "totalAreaSqm": {
+            "type": "number",
+            "example": 540.5
+          },
+          "floorsCount": {
+            "type": "number",
+            "example": 3
+          },
+          "hasWater": {
+            "type": "boolean",
+            "default": true
+          },
+          "hasElectricity": {
+            "type": "boolean",
+            "default": true
+          },
+          "hasBorehole": {
+            "type": "boolean",
+            "default": false
+          },
+          "caretakerName": {
+            "type": "string",
+            "example": "Papa Célestin"
+          },
+          "caretakerPhone": {
+            "type": "string",
+            "example": "066123456"
+          },
+          "coverDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Résidence Mpila"
+          },
+          "addressLine": {
+            "type": "string",
+            "example": "45, avenue de la Corniche"
+          },
+          "district": {
+            "type": "string",
+            "example": "Mpila",
+            "description": "Quartier — adressage principal au Congo."
+          }
+        },
+        "required": ["landlordId", "name", "addressLine", "district"]
+      },
+      "PropertyDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "propertyType": {
+            "type": "string",
+            "enum": [
+              "HOUSE",
+              "VILLA",
+              "APARTMENT_BUILDING",
+              "COMPOUND",
+              "COMMERCIAL_BUILDING",
+              "MIXED_USE",
+              "LAND",
+              "WAREHOUSE",
+              "OTHER"
+            ]
+          },
+          "addressLine": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "arrondissement": {
+            "type": "string",
+            "nullable": true
+          },
+          "landmark": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "landTitleReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "parcelNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "builtYear": {
+            "type": "number",
+            "nullable": true
+          },
+          "totalAreaSqm": {
+            "type": "number",
+            "nullable": true
+          },
+          "floorsCount": {
+            "type": "number",
+            "nullable": true
+          },
+          "unitsCount": {
+            "type": "number",
+            "example": 12
+          },
+          "hasWater": {
+            "type": "boolean"
+          },
+          "hasElectricity": {
+            "type": "boolean"
+          },
+          "hasBorehole": {
+            "type": "boolean"
+          },
+          "caretakerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "caretakerPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "coverDocumentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "landlordId",
+          "code",
+          "name",
+          "propertyType",
+          "addressLine",
+          "district",
+          "arrondissement",
+          "landmark",
+          "city",
+          "countryCode",
+          "latitude",
+          "longitude",
+          "landTitleReference",
+          "parcelNumber",
+          "builtYear",
+          "totalAreaSqm",
+          "floorsCount",
+          "unitsCount",
+          "hasWater",
+          "hasElectricity",
+          "hasBorehole",
+          "caretakerName",
+          "caretakerPhone",
+          "coverDocumentId",
+          "notes",
+          "createdAt",
+          "updatedAt",
+          "deletedAt"
+        ]
+      },
+      "LandlordSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "SCI Les Manguiers"
+          },
+          "primaryPhone": {
+            "type": "string",
+            "example": "+242066123456"
+          },
+          "isSelf": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "displayName", "primaryPhone", "isSelf"]
+      },
+      "OccupancyDto": {
+        "type": "object",
+        "properties": {
+          "unitsCount": {
+            "type": "number",
+            "example": 12
+          },
+          "occupiedCount": {
+            "type": "number",
+            "example": 4
+          },
+          "availableCount": {
+            "type": "number",
+            "example": 8
+          },
+          "occupancyRateBps": {
+            "type": "number",
+            "example": 3333,
+            "description": "100 % = 10 000 points de base."
+          }
+        },
+        "required": ["unitsCount", "occupiedCount", "availableCount", "occupancyRateBps"]
+      },
+      "PropertySummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "propertyType": {
+            "type": "string",
+            "enum": [
+              "HOUSE",
+              "VILLA",
+              "APARTMENT_BUILDING",
+              "COMPOUND",
+              "COMMERCIAL_BUILDING",
+              "MIXED_USE",
+              "LAND",
+              "WAREHOUSE",
+              "OTHER"
+            ]
+          },
+          "district": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "landlord": {
+            "$ref": "#/components/schemas/LandlordSummaryDto"
+          },
+          "occupancy": {
+            "$ref": "#/components/schemas/OccupancyDto"
+          },
+          "coverDocumentId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "propertyType",
+          "district",
+          "city",
+          "landlord",
+          "occupancy",
+          "coverDocumentId"
+        ]
+      },
+      "PropertyPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PropertySummaryDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "UnitDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "A1"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitType": {
+            "type": "string",
+            "enum": [
+              "STUDIO",
+              "ROOM",
+              "APARTMENT",
+              "HOUSE",
+              "SHOP",
+              "OFFICE",
+              "WAREHOUSE",
+              "PARKING",
+              "LAND_PLOT",
+              "OTHER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["AVAILABLE", "RESERVED", "OCCUPIED", "UNDER_MAINTENANCE", "UNAVAILABLE"]
+          },
+          "floorNumber": {
+            "type": "number",
+            "nullable": true
+          },
+          "roomsCount": {
+            "type": "number",
+            "nullable": true
+          },
+          "bedroomsCount": {
+            "type": "number",
+            "nullable": true
+          },
+          "bathroomsCount": {
+            "type": "number",
+            "nullable": true
+          },
+          "areaSqm": {
+            "type": "number",
+            "nullable": true
+          },
+          "isFurnished": {
+            "type": "boolean"
+          },
+          "hasPrivateMeter": {
+            "type": "boolean"
+          },
+          "baseRentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 120000,
+            "description": "Loyer de référence en XAF, entier sans décimale."
+          },
+          "baseChargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 15000,
+            "description": "Charges forfaitaires en XAF, entier sans décimale."
+          },
+          "depositMonths": {
+            "type": "number",
+            "example": 2
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["XAF"]
+          },
+          "amenities": {
+            "type": "object"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "propertyId",
+          "code",
+          "label",
+          "unitType",
+          "status",
+          "floorNumber",
+          "roomsCount",
+          "bedroomsCount",
+          "bathroomsCount",
+          "areaSqm",
+          "isFurnished",
+          "hasPrivateMeter",
+          "baseRentAmount",
+          "baseChargesAmount",
+          "depositMonths",
+          "currency",
+          "amenities",
+          "notes",
+          "createdAt",
+          "updatedAt",
+          "deletedAt"
+        ]
+      },
+      "PropertyDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "propertyType": {
+            "type": "string",
+            "enum": [
+              "HOUSE",
+              "VILLA",
+              "APARTMENT_BUILDING",
+              "COMPOUND",
+              "COMMERCIAL_BUILDING",
+              "MIXED_USE",
+              "LAND",
+              "WAREHOUSE",
+              "OTHER"
+            ]
+          },
+          "addressLine": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "arrondissement": {
+            "type": "string",
+            "nullable": true
+          },
+          "landmark": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "landTitleReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "parcelNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "builtYear": {
+            "type": "number",
+            "nullable": true
+          },
+          "totalAreaSqm": {
+            "type": "number",
+            "nullable": true
+          },
+          "floorsCount": {
+            "type": "number",
+            "nullable": true
+          },
+          "unitsCount": {
+            "type": "number",
+            "example": 12
+          },
+          "hasWater": {
+            "type": "boolean"
+          },
+          "hasElectricity": {
+            "type": "boolean"
+          },
+          "hasBorehole": {
+            "type": "boolean"
+          },
+          "caretakerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "caretakerPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "coverDocumentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "summary": {
+            "$ref": "#/components/schemas/PropertySummaryDto"
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitDto"
+            }
+          },
+          "occupancy": {
+            "$ref": "#/components/schemas/OccupancyDto"
+          }
+        },
+        "required": [
+          "id",
+          "landlordId",
+          "code",
+          "name",
+          "propertyType",
+          "addressLine",
+          "district",
+          "arrondissement",
+          "landmark",
+          "city",
+          "countryCode",
+          "latitude",
+          "longitude",
+          "landTitleReference",
+          "parcelNumber",
+          "builtYear",
+          "totalAreaSqm",
+          "floorsCount",
+          "unitsCount",
+          "hasWater",
+          "hasElectricity",
+          "hasBorehole",
+          "caretakerName",
+          "caretakerPhone",
+          "coverDocumentId",
+          "notes",
+          "createdAt",
+          "updatedAt",
+          "deletedAt",
+          "summary",
+          "units",
+          "occupancy"
+        ]
+      },
+      "UpdatePropertyDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "RES-MPILA"
+          },
+          "propertyType": {
+            "type": "string",
+            "enum": [
+              "HOUSE",
+              "VILLA",
+              "APARTMENT_BUILDING",
+              "COMPOUND",
+              "COMMERCIAL_BUILDING",
+              "MIXED_USE",
+              "LAND",
+              "WAREHOUSE",
+              "OTHER"
+            ],
+            "default": "HOUSE"
+          },
+          "arrondissement": {
+            "type": "string",
+            "example": "3e arrondissement"
+          },
+          "landmark": {
+            "type": "string",
+            "example": "Derrière l'école Nganga Édouard",
+            "description": "Repère d'orientation : l'adressage postal local est peu fiable."
+          },
+          "city": {
+            "type": "string",
+            "default": "Brazzaville"
+          },
+          "countryCode": {
+            "type": "string",
+            "default": "CG"
+          },
+          "latitude": {
+            "type": "number",
+            "example": -4.2634
+          },
+          "longitude": {
+            "type": "number",
+            "example": 15.2429
+          },
+          "landTitleReference": {
+            "type": "string"
+          },
+          "parcelNumber": {
+            "type": "string"
+          },
+          "builtYear": {
+            "type": "number",
+            "example": 2014
+          },
+          "totalAreaSqm": {
+            "type": "number",
+            "example": 540.5
+          },
+          "floorsCount": {
+            "type": "number",
+            "example": 3
+          },
+          "hasWater": {
+            "type": "boolean",
+            "default": true
+          },
+          "hasElectricity": {
+            "type": "boolean",
+            "default": true
+          },
+          "hasBorehole": {
+            "type": "boolean",
+            "default": false
+          },
+          "caretakerName": {
+            "type": "string",
+            "example": "Papa Célestin"
+          },
+          "caretakerPhone": {
+            "type": "string",
+            "example": "066123456"
+          },
+          "coverDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "addressLine": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateUnitDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Studio rez-de-chaussée"
+          },
+          "unitType": {
+            "type": "string",
+            "enum": [
+              "STUDIO",
+              "ROOM",
+              "APARTMENT",
+              "HOUSE",
+              "SHOP",
+              "OFFICE",
+              "WAREHOUSE",
+              "PARKING",
+              "LAND_PLOT",
+              "OTHER"
+            ],
+            "default": "APARTMENT"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["AVAILABLE", "RESERVED", "OCCUPIED", "UNDER_MAINTENANCE", "UNAVAILABLE"],
+            "default": "AVAILABLE"
+          },
+          "floorNumber": {
+            "type": "number"
+          },
+          "roomsCount": {
+            "type": "number"
+          },
+          "bedroomsCount": {
+            "type": "number"
+          },
+          "bathroomsCount": {
+            "type": "number"
+          },
+          "areaSqm": {
+            "type": "number",
+            "example": 42.5
+          },
+          "isFurnished": {
+            "type": "boolean",
+            "default": false
+          },
+          "hasPrivateMeter": {
+            "type": "boolean",
+            "default": false
+          },
+          "baseRentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 120000,
+            "description": "Loyer de référence, entier XAF sans décimale."
+          },
+          "baseChargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 15000,
+            "description": "Charges forfaitaires en XAF."
+          },
+          "depositMonths": {
+            "type": "number",
+            "example": 2,
+            "description": "Usage local : 2 à 3 mois de caution."
+          },
+          "amenities": {
+            "type": "object",
+            "example": {
+              "climatisation": true,
+              "cour": "partagée",
+              "ventilateurs": 2
+            }
+          },
+          "notes": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "A1"
+          }
+        },
+        "required": ["code"]
+      },
+      "UnitBodyDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Studio rez-de-chaussée"
+          },
+          "unitType": {
+            "type": "string",
+            "enum": [
+              "STUDIO",
+              "ROOM",
+              "APARTMENT",
+              "HOUSE",
+              "SHOP",
+              "OFFICE",
+              "WAREHOUSE",
+              "PARKING",
+              "LAND_PLOT",
+              "OTHER"
+            ],
+            "default": "APARTMENT"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["AVAILABLE", "RESERVED", "OCCUPIED", "UNDER_MAINTENANCE", "UNAVAILABLE"],
+            "default": "AVAILABLE"
+          },
+          "floorNumber": {
+            "type": "number"
+          },
+          "roomsCount": {
+            "type": "number"
+          },
+          "bedroomsCount": {
+            "type": "number"
+          },
+          "bathroomsCount": {
+            "type": "number"
+          },
+          "areaSqm": {
+            "type": "number",
+            "example": 42.5
+          },
+          "isFurnished": {
+            "type": "boolean",
+            "default": false
+          },
+          "hasPrivateMeter": {
+            "type": "boolean",
+            "default": false
+          },
+          "baseRentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 120000,
+            "description": "Loyer de référence, entier XAF sans décimale."
+          },
+          "baseChargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 15000,
+            "description": "Charges forfaitaires en XAF."
+          },
+          "depositMonths": {
+            "type": "number",
+            "example": 2,
+            "description": "Usage local : 2 à 3 mois de caution."
+          },
+          "amenities": {
+            "type": "object",
+            "example": {
+              "climatisation": true,
+              "cour": "partagée",
+              "ventilateurs": 2
+            }
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "BulkUnitsDto": {
+        "type": "object",
+        "properties": {
+          "prefix": {
+            "type": "string",
+            "example": "A",
+            "description": "Préfixe des codes engendrés."
+          },
+          "from": {
+            "type": "number",
+            "example": 1
+          },
+          "to": {
+            "type": "number",
+            "example": 12,
+            "description": "Au plus 200 lots par appel."
+          },
+          "padding": {
+            "type": "number",
+            "example": 2,
+            "description": "2 donne A01…A12 (tri alphabétique correct)."
+          },
+          "template": {
+            "description": "Caractéristiques communes à tous les lots.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnitBodyDto"
+              }
+            ]
+          }
+        },
+        "required": ["prefix", "from", "to", "template"]
+      },
+      "BulkUnitsResultDto": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitDto"
+            }
+          }
+        },
+        "required": ["created"]
+      },
+      "UnitPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "UnitDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "A1"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitType": {
+            "type": "string",
+            "enum": [
+              "STUDIO",
+              "ROOM",
+              "APARTMENT",
+              "HOUSE",
+              "SHOP",
+              "OFFICE",
+              "WAREHOUSE",
+              "PARKING",
+              "LAND_PLOT",
+              "OTHER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["AVAILABLE", "RESERVED", "OCCUPIED", "UNDER_MAINTENANCE", "UNAVAILABLE"]
+          },
+          "floorNumber": {
+            "type": "number",
+            "nullable": true
+          },
+          "roomsCount": {
+            "type": "number",
+            "nullable": true
+          },
+          "bedroomsCount": {
+            "type": "number",
+            "nullable": true
+          },
+          "bathroomsCount": {
+            "type": "number",
+            "nullable": true
+          },
+          "areaSqm": {
+            "type": "number",
+            "nullable": true
+          },
+          "isFurnished": {
+            "type": "boolean"
+          },
+          "hasPrivateMeter": {
+            "type": "boolean"
+          },
+          "baseRentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 120000,
+            "description": "Loyer de référence en XAF, entier sans décimale."
+          },
+          "baseChargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 15000,
+            "description": "Charges forfaitaires en XAF, entier sans décimale."
+          },
+          "depositMonths": {
+            "type": "number",
+            "example": 2
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["XAF"]
+          },
+          "amenities": {
+            "type": "object"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "property": {
+            "$ref": "#/components/schemas/PropertySummaryDto"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "propertyId",
+          "code",
+          "label",
+          "unitType",
+          "status",
+          "floorNumber",
+          "roomsCount",
+          "bedroomsCount",
+          "bathroomsCount",
+          "areaSqm",
+          "isFurnished",
+          "hasPrivateMeter",
+          "baseRentAmount",
+          "baseChargesAmount",
+          "depositMonths",
+          "currency",
+          "amenities",
+          "notes",
+          "createdAt",
+          "updatedAt",
+          "deletedAt",
+          "property",
+          "documents"
+        ]
+      },
+      "UpdateUnitDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Studio rez-de-chaussée"
+          },
+          "unitType": {
+            "type": "string",
+            "enum": [
+              "STUDIO",
+              "ROOM",
+              "APARTMENT",
+              "HOUSE",
+              "SHOP",
+              "OFFICE",
+              "WAREHOUSE",
+              "PARKING",
+              "LAND_PLOT",
+              "OTHER"
+            ],
+            "default": "APARTMENT"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["AVAILABLE", "RESERVED", "OCCUPIED", "UNDER_MAINTENANCE", "UNAVAILABLE"],
+            "default": "AVAILABLE"
+          },
+          "floorNumber": {
+            "type": "number"
+          },
+          "roomsCount": {
+            "type": "number"
+          },
+          "bedroomsCount": {
+            "type": "number"
+          },
+          "bathroomsCount": {
+            "type": "number"
+          },
+          "areaSqm": {
+            "type": "number",
+            "example": 42.5
+          },
+          "isFurnished": {
+            "type": "boolean",
+            "default": false
+          },
+          "hasPrivateMeter": {
+            "type": "boolean",
+            "default": false
+          },
+          "baseRentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 120000,
+            "description": "Loyer de référence, entier XAF sans décimale."
+          },
+          "baseChargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 15000,
+            "description": "Charges forfaitaires en XAF."
+          },
+          "depositMonths": {
+            "type": "number",
+            "example": 2,
+            "description": "Usage local : 2 à 3 mois de caution."
+          },
+          "amenities": {
+            "type": "object",
+            "example": {
+              "climatisation": true,
+              "cour": "partagée",
+              "ventilateurs": 2
+            }
+          },
+          "notes": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateBankAccountDto": {
+        "type": "object",
+        "properties": {
+          "landlordId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Requis si `holderType` vaut LANDLORD."
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Requis si `holderType` vaut TENANT."
+          },
+          "branchName": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string",
+            "example": "00012345678901"
+          },
+          "ribKey": {
+            "type": "string",
+            "example": "76",
+            "description": "Clé RIB à 2 chiffres (plan CEMAC)."
+          },
+          "iban": {
+            "type": "string",
+            "example": "CG3930011000012345678901234"
+          },
+          "swiftBic": {
+            "type": "string",
+            "example": "BGFICGCGXXX"
+          },
+          "momoProvider": {
+            "type": "string",
+            "enum": ["MTN_MOMO", "AIRTEL_MONEY", "CINETPAY", "PAWAPAY", "OTHER"]
+          },
+          "momoMsisdn": {
+            "type": "string",
+            "example": "066123456",
+            "description": "Portefeuille Mobile Money, normalisé en E.164 `+242…`."
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "Compte par défaut du titulaire. Le précédent est démarqué."
+          },
+          "holderType": {
+            "type": "string",
+            "enum": ["ORGANIZATION", "LANDLORD", "TENANT"],
+            "default": "ORGANIZATION"
+          },
+          "label": {
+            "type": "string",
+            "example": "Compte courant BGFI"
+          },
+          "bankCode": {
+            "type": "string",
+            "example": "BGFI",
+            "description": "Voir les banques de référence du contrat."
+          },
+          "bankName": {
+            "type": "string",
+            "example": "BGFIBank Congo"
+          },
+          "accountHolderName": {
+            "type": "string",
+            "example": "SCI Les Manguiers"
+          }
+        },
+        "required": ["holderType", "label", "bankCode", "bankName", "accountHolderName"]
+      },
+      "BankAccountDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "holderType": {
+            "type": "string",
+            "enum": ["ORGANIZATION", "LANDLORD", "TENANT"]
+          },
+          "landlordId": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string"
+          },
+          "bankCode": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "branchName": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountHolderName": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "ribKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "iban": {
+            "type": "string",
+            "nullable": true
+          },
+          "swiftBic": {
+            "type": "string",
+            "nullable": true
+          },
+          "momoProvider": {
+            "type": "string",
+            "nullable": true,
+            "enum": ["MTN_MOMO", "AIRTEL_MONEY", "CINETPAY", "PAWAPAY", "OTHER"]
+          },
+          "momoMsisdn": {
+            "type": "string",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["XAF"]
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "holderType",
+          "landlordId",
+          "tenantId",
+          "label",
+          "bankCode",
+          "bankName",
+          "branchName",
+          "accountHolderName",
+          "accountNumber",
+          "ribKey",
+          "iban",
+          "swiftBic",
+          "momoProvider",
+          "momoMsisdn",
+          "currency",
+          "isDefault",
+          "isActive",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "BankAccountListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankAccountDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "UpdateBankAccountDto": {
+        "type": "object",
+        "properties": {
+          "landlordId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Requis si `holderType` vaut LANDLORD."
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Requis si `holderType` vaut TENANT."
+          },
+          "branchName": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string",
+            "example": "00012345678901"
+          },
+          "ribKey": {
+            "type": "string",
+            "example": "76",
+            "description": "Clé RIB à 2 chiffres (plan CEMAC)."
+          },
+          "iban": {
+            "type": "string",
+            "example": "CG3930011000012345678901234"
+          },
+          "swiftBic": {
+            "type": "string",
+            "example": "BGFICGCGXXX"
+          },
+          "momoProvider": {
+            "type": "string",
+            "enum": ["MTN_MOMO", "AIRTEL_MONEY", "CINETPAY", "PAWAPAY", "OTHER"]
+          },
+          "momoMsisdn": {
+            "type": "string",
+            "example": "066123456",
+            "description": "Portefeuille Mobile Money, normalisé en E.164 `+242…`."
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "Compte par défaut du titulaire. Le précédent est démarqué."
+          },
+          "holderType": {
+            "type": "string",
+            "enum": ["ORGANIZATION", "LANDLORD", "TENANT"]
+          },
+          "label": {
+            "type": "string"
+          },
+          "bankCode": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "accountHolderName": {
+            "type": "string"
+          }
+        }
+      },
+      "UploadUrlRequestDto": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "example": "cni-bernadette-loemba.jpg"
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/heic",
+              "image/heif",
+              "application/pdf"
+            ],
+            "example": "image/jpeg",
+            "description": "Hors liste : 415 `DOCUMENTS.MIME_NOT_ALLOWED`."
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64",
+            "example": 2400000,
+            "description": "15 Mo pour une image, 25 Mo pour un PDF : au-delà, 413 `DOCUMENTS.FILE_TOO_LARGE`.",
+            "maximum": 26214400
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ID_DOCUMENT",
+              "LEASE_CONTRACT",
+              "MANDATE",
+              "RECEIPT_PDF",
+              "INVOICE_PDF",
+              "CASH_RECEIPT_PDF",
+              "TRANSFER_PROOF",
+              "CHECK_IMAGE",
+              "BANK_STATEMENT",
+              "INSPECTION_REPORT",
+              "INSPECTION_PHOTO",
+              "MAINTENANCE_PHOTO",
+              "SIGNATURE",
+              "OWNER_STATEMENT_PDF",
+              "EXPENSE_INVOICE",
+              "PROPERTY_PHOTO",
+              "OTHER"
+            ],
+            "example": "ID_DOCUMENT"
+          },
+          "relatedEntityType": {
+            "type": "string",
+            "enum": ["landlord", "tenant", "guarantor", "property", "unit", "organization"]
+          },
+          "relatedEntityId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["fileName", "mimeType", "sizeBytes", "kind"]
+      },
+      "UploadUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string",
+            "description": "URL signée à appeler en PUT avec le même `Content-Type`."
+          },
+          "objectKey": {
+            "type": "string",
+            "example": "org/018f.../id_document/018f....jpg",
+            "description": "Clé décidée par l'API : le client ne la choisit jamais."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "maxSizeBytes": {
+            "type": "number",
+            "example": 15728640
+          }
+        },
+        "required": ["uploadUrl", "objectKey", "expiresAt", "maxSizeBytes"]
+      },
+      "RegisterDocumentDto": {
+        "type": "object",
+        "properties": {
+          "objectKey": {
+            "type": "string",
+            "description": "Clé rendue par `/documents/upload-url`."
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/heic",
+              "image/heif",
+              "application/pdf"
+            ]
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64",
+            "example": 2400000
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ID_DOCUMENT",
+              "LEASE_CONTRACT",
+              "MANDATE",
+              "RECEIPT_PDF",
+              "INVOICE_PDF",
+              "CASH_RECEIPT_PDF",
+              "TRANSFER_PROOF",
+              "CHECK_IMAGE",
+              "BANK_STATEMENT",
+              "INSPECTION_REPORT",
+              "INSPECTION_PHOTO",
+              "MAINTENANCE_PHOTO",
+              "SIGNATURE",
+              "OWNER_STATEMENT_PDF",
+              "EXPENSE_INVOICE",
+              "PROPERTY_PHOTO",
+              "OTHER"
+            ]
+          },
+          "relatedEntityType": {
+            "type": "string",
+            "enum": ["landlord", "tenant", "guarantor", "property", "unit", "organization"]
+          },
+          "relatedEntityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "checksumSha256": {
+            "type": "string",
+            "description": "Empreinte SHA-256 du contenu, pour vérifier l’intégrité."
+          },
+          "clientRef": {
+            "type": "string",
+            "description": "ULID de l'appareil mobile, clé d'idempotence."
+          }
+        },
+        "required": ["objectKey", "fileName", "mimeType", "sizeBytes", "kind"]
+      },
+      "DocumentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ID_DOCUMENT",
+              "LEASE_CONTRACT",
+              "MANDATE",
+              "RECEIPT_PDF",
+              "INVOICE_PDF",
+              "CASH_RECEIPT_PDF",
+              "TRANSFER_PROOF",
+              "CHECK_IMAGE",
+              "BANK_STATEMENT",
+              "INSPECTION_REPORT",
+              "INSPECTION_PHOTO",
+              "MAINTENANCE_PHOTO",
+              "SIGNATURE",
+              "OWNER_STATEMENT_PDF",
+              "EXPENSE_INVOICE",
+              "PROPERTY_PHOTO",
+              "OTHER"
+            ]
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64",
+            "example": 2400000,
+            "description": "Taille constatée dans le stockage, pas celle annoncée par le client."
+          },
+          "widthPx": {
+            "type": "number",
+            "nullable": true
+          },
+          "heightPx": {
+            "type": "number",
+            "nullable": true
+          },
+          "pagesCount": {
+            "type": "number",
+            "nullable": true
+          },
+          "relatedEntityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "relatedEntityId": {
+            "type": "string",
+            "nullable": true
+          },
+          "uploadedByUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "retentionUntil": {
+            "type": "string",
+            "nullable": true
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "fileName",
+          "mimeType",
+          "sizeBytes",
+          "widthPx",
+          "heightPx",
+          "pagesCount",
+          "relatedEntityType",
+          "relatedEntityId",
+          "uploadedByUserId",
+          "uploadedAt",
+          "retentionUntil",
+          "deletedAt"
+        ]
+      },
+      "DocumentListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "DownloadUrlDto": {
+        "type": "object",
+        "properties": {
+          "downloadUrl": {
+            "type": "string",
+            "description": "URL signée valable 10 minutes."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["downloadUrl", "expiresAt"]
       },
       "HealthCheckDto": {
         "type": "object",

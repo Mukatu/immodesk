@@ -27,8 +27,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # turbo silently skips workspaces that don't define the requested
-      # script, so these run cleanly even while apps/api doesn't exist yet.
+      - name: Generate Prisma client
+        run: pnpm --filter @immodesk/api prisma:generate
+
+      - name: Format check
+        run: pnpm format:check
+
       - name: Lint
         run: pnpm lint
 
@@ -40,10 +44,6 @@ jobs:
 
   api-integration:
     runs-on: ubuntu-latest
-    # apps/api does not exist yet. Guarding the whole job with hashFiles
-    # means this job shows as "skipped" (not failed) in the PR checks UI
-    # until apps/api/package.json is added.
-    if: hashFiles('apps/api/package.json') != ''
     services:
       postgres:
         image: postgres:16
@@ -88,14 +88,21 @@ jobs:
       - name: Load reference schema
         run: PGPASSWORD=immodesk psql -v ON_ERROR_STOP=1 -h localhost -U immodesk -d immodesk_test -f docs/schema/schema.sql
 
+      - name: Enable login for the application role
+        run: PGPASSWORD=immodesk psql -v ON_ERROR_STOP=1 -h localhost -U immodesk -d immodesk_test -c "ALTER ROLE immodesk_app WITH LOGIN PASSWORD 'immodesk_app';"
+
+      - name: Generate Prisma client
+        run: pnpm --filter @immodesk/api prisma:generate
+
       - name: Run API integration tests
+        env:
+          DATABASE_URL: postgresql://immodesk_app:immodesk_app@localhost:5432/immodesk_test
+          DATABASE_ADMIN_URL: postgresql://immodesk:immodesk@localhost:5432/immodesk_test
+          REDIS_URL: redis://localhost:6379
         run: pnpm --filter @immodesk/api test:integration
 
   web-build:
     runs-on: ubuntu-latest
-    # apps/web is under active development; guard so this job skips
-    # cleanly rather than failing if its package.json is ever absent.
-    if: hashFiles('apps/web/package.json') != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -117,25 +124,18 @@ jobs:
 
   mobile:
     runs-on: ubuntu-latest
-    # apps/mobile is still being actively developed by another agent;
-    # guard so this job skips cleanly if pubspec.yaml is ever absent.
-    if: hashFiles('apps/mobile/pubspec.yaml') != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Pinned to the 3.41 line as required; bump the patch version here
-      # when the mobile team upgrades to a newer 3.41.x release.
+      # Aligned with the local toolchain (Flutter 3.41.6 / Dart 3.11.4); the
+      # dependency pins in apps/mobile/pubspec.yaml assume this exact SDK.
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.0'
+          flutter-version: '3.41.6'
           channel: stable
 
-      # Verified directly in the repo: apps/mobile/pubspec.yaml lives at the
-      # root of apps/mobile (no nested melos-style app directory), so all
-      # Flutter commands run from apps/mobile itself. Re-check this if the
-      # mobile team restructures the package.
       - name: Install dependencies
         working-directory: apps/mobile
         run: flutter pub get
@@ -150,8 +150,6 @@ jobs:
 
   schema-check:
     runs-on: ubuntu-latest
-    # No hashFiles guard: the reference schema always exists, so this job
-    # must always run regardless of which apps are present.
     services:
       postgres:
         image: postgres:16

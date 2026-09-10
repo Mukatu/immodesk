@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "Prisma.prisma",
+    "bradlc.vscode-tailwindcss",
+    "Dart-Code.dart-code",
+    "Dart-Code.flutter",
+    "redhat.vscode-yaml",
+    "EditorConfig.EditorConfig",
+    "mikestead.dotenv"
+  ]
+}

@@ -1,0 +1,39 @@
+# CODEOWNERS
+#
+# This file specifies code ownership patterns and team review requirements.
+# GitHub uses CODEOWNERS to automatically request reviews from designated teams.
+#
+# IMPORTANT: Pattern Matching Order
+# GitHub matches the LAST matching pattern for each file, so order matters.
+# More specific rules should generally come after general ones to ensure specificity wins.
+#
+# PLACEHOLDER TEAMS
+# The team handles below (@team-backend, @team-web, @team-mobile, @team-devops)
+# are GENERIC PLACEHOLDERS and MUST be replaced with real GitHub team handles
+# before this file is activated or enforced.
+#
+# Expected format: @org-name/team-slug
+# Example: @mycompany/backend-team, @mycompany/platform-team
+#
+# Until real team handles are configured, CODEOWNERS entries with no matching teams
+# simply have no effect — GitHub will not request reviews, but it won't break anything.
+#
+# Uncomment and update the lines below with real GitHub team handles to enable enforcement.
+
+# Backend application
+# /apps/api/ @team-backend
+
+# Web application
+# /apps/web/ @team-web
+
+# Mobile application
+# /apps/mobile/ @team-mobile
+
+# Infrastructure and DevOps
+# /infra/ @team-devops
+
+# Shared packages
+# /packages/shared/ @team-devops
+
+# GitHub workflows and configuration
+# /.github/ @team-devops

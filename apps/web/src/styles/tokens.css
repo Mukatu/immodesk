@@ -1,0 +1,82 @@
+/*
+ * Design tokens Immodesk.
+ * Palette sobre inspirée du Congo-Brazzaville : vert profond (primaire) et ocre (accent),
+ * sans référence directe au drapeau — usage fonctionnel, pas décoratif.
+ */
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 150 18% 12%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 150 18% 12%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 150 18% 12%;
+
+  --primary: 152 42% 26%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 36 32% 94%;
+  --secondary-foreground: 150 18% 14%;
+
+  --muted: 150 10% 95%;
+  --muted-foreground: 150 8% 42%;
+
+  --accent: 32 58% 45%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 68% 42%;
+  --destructive-foreground: 0 0% 100%;
+
+  --success: 152 42% 30%;
+  --success-foreground: 0 0% 100%;
+
+  --warning: 36 82% 44%;
+  --warning-foreground: 0 0% 100%;
+
+  --border: 150 12% 87%;
+  --input: 150 12% 87%;
+  --ring: 152 42% 26%;
+
+  --radius: 0.6rem;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.dark {
+  --background: 150 20% 7%;
+  --foreground: 150 8% 94%;
+
+  --card: 150 16% 10%;
+  --card-foreground: 150 8% 94%;
+
+  --popover: 150 16% 10%;
+  --popover-foreground: 150 8% 94%;
+
+  --primary: 152 40% 52%;
+  --primary-foreground: 150 20% 8%;
+
+  --secondary: 150 12% 16%;
+  --secondary-foreground: 150 8% 94%;
+
+  --muted: 150 12% 16%;
+  --muted-foreground: 150 8% 68%;
+
+  --accent: 32 55% 55%;
+  --accent-foreground: 150 20% 8%;
+
+  --destructive: 0 62% 52%;
+  --destructive-foreground: 0 0% 100%;
+
+  --success: 152 40% 48%;
+  --success-foreground: 150 20% 8%;
+
+  --warning: 36 75% 55%;
+  --warning-foreground: 150 20% 8%;
+
+  --border: 150 12% 20%;
+  --input: 150 12% 20%;
+  --ring: 152 40% 52%;
+}

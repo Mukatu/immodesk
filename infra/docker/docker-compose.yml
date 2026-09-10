@@ -1,0 +1,111 @@
+name: immodesk
+
+# Pile de développement local pour Immodesk : PostgreSQL, Redis, MinIO (S3) et
+# Mailpit (capture SMTP, optionnel). Voir infra/README.md pour l'usage complet.
+#
+# IMPORTANT : le port hôte de PostgreSQL est 5433 (et non 5432, déjà occupé par
+# un PostgreSQL 18 local sur cette machine). Ne jamais changer ce mapping.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: immodesk_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-immodesk}
+      POSTGRES_USER: ${POSTGRES_USER:-immodesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-immodesk}
+      IMMODESK_APP_PASSWORD: ${IMMODESK_APP_PASSWORD:-immodesk_app}
+    ports:
+      # Hôte 5433 -> conteneur 5432. Ne jamais utiliser 5432 côté hôte.
+      - "5440:5432"
+    volumes:
+      - immodesk_postgres_data:/var/lib/postgresql/data
+      # Scripts exécutés automatiquement (ordre alphabétique) au tout premier
+      # démarrage (volume de données vide) par l'image postgres officielle.
+      - ./init:/docker-entrypoint-initdb.d:ro
+      # Schéma consolidé, monté HORS de /docker-entrypoint-initdb.d pour ne
+      # pas être auto-exécuté une seconde fois (il est déjà chargé par
+      # 01-schema.sh). Chemin en lecture seule.
+      - ../../docs/schema/schema.sql:/docker-entrypoint-initdb.d-source/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U immodesk -d immodesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7
+    container_name: immodesk_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6390:6379"
+    volumes:
+      - immodesk_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  minio:
+    image: minio/minio
+    container_name: immodesk_minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-immodesk}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-immodesk123}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9010:9000" # API S3
+      - "9011:9001" # Console web
+    volumes:
+      - immodesk_minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  minio-init:
+    image: minio/mc
+    container_name: immodesk_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-immodesk}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-immodesk123}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\" &&
+      mc mb -p local/immodesk &&
+      mc anonymous set none local/immodesk &&
+      echo 'Bucket immodesk pret.'
+      "
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: immodesk_mailpit
+    restart: unless-stopped
+    profiles: ["mail"]
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # UI web
+    volumes:
+      - immodesk_mailpit_data:/data
+
+volumes:
+  immodesk_postgres_data:
+    name: immodesk_postgres_data
+  immodesk_redis_data:
+    name: immodesk_redis_data
+  immodesk_minio_data:
+    name: immodesk_minio_data
+  immodesk_mailpit_data:
+    name: immodesk_mailpit_data

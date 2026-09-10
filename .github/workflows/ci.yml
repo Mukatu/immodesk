@@ -1,0 +1,174 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint-typecheck-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm must be installed before actions/setup-node so that setup-node's
+      # built-in pnpm cache (cache: 'pnpm') can find pnpm on PATH.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # turbo silently skips workspaces that don't define the requested
+      # script, so these run cleanly even while apps/api doesn't exist yet.
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+  api-integration:
+    runs-on: ubuntu-latest
+    # apps/api does not exist yet. Guarding the whole job with hashFiles
+    # means this job shows as "skipped" (not failed) in the PR checks UI
+    # until apps/api/package.json is added.
+    if: hashFiles('apps/api/package.json') != ''
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: immodesk_test
+          POSTGRES_USER: immodesk
+          POSTGRES_PASSWORD: immodesk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # postgresql-client (psql) is preinstalled on GitHub's ubuntu-latest
+      # runners, so no apt-get install step is needed here.
+      - name: Load reference schema
+        run: PGPASSWORD=immodesk psql -v ON_ERROR_STOP=1 -h localhost -U immodesk -d immodesk_test -f docs/schema/schema.sql
+
+      - name: Run API integration tests
+        run: pnpm --filter @immodesk/api test:integration
+
+  web-build:
+    runs-on: ubuntu-latest
+    # apps/web is under active development; guard so this job skips
+    # cleanly rather than failing if its package.json is ever absent.
+    if: hashFiles('apps/web/package.json') != ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web app
+        run: pnpm --filter @immodesk/web build
+
+  mobile:
+    runs-on: ubuntu-latest
+    # apps/mobile is still being actively developed by another agent;
+    # guard so this job skips cleanly if pubspec.yaml is ever absent.
+    if: hashFiles('apps/mobile/pubspec.yaml') != ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Pinned to the 3.41 line as required; bump the patch version here
+      # when the mobile team upgrades to a newer 3.41.x release.
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+
+      # Verified directly in the repo: apps/mobile/pubspec.yaml lives at the
+      # root of apps/mobile (no nested melos-style app directory), so all
+      # Flutter commands run from apps/mobile itself. Re-check this if the
+      # mobile team restructures the package.
+      - name: Install dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: apps/mobile
+        run: flutter analyze
+
+      - name: Test
+        working-directory: apps/mobile
+        run: flutter test
+
+  schema-check:
+    runs-on: ubuntu-latest
+    # No hashFiles guard: the reference schema always exists, so this job
+    # must always run regardless of which apps are present.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: immodesk_test
+          POSTGRES_USER: immodesk
+          POSTGRES_PASSWORD: immodesk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load reference schema
+        run: PGPASSWORD=immodesk psql -v ON_ERROR_STOP=1 -h localhost -U immodesk -d immodesk_test -f docs/schema/schema.sql

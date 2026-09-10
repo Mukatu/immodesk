@@ -1,0 +1,1967 @@
+{
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/auth/otp/request": {
+      "post": {
+        "description": "Génère un code à 6 chiffres, le stocke haché dans `otp_codes` (expiration 5 minutes, 5 tentatives) et l'envoie par SMS. La réponse est identique que le numéro soit connu ou non. Limitation : 3 demandes / 10 min par numéro, 20 / heure par adresse IP.",
+        "operationId": "AuthController_requestOtp",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpRequestResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "IAM.PHONE_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "IAM.RATE_LIMITED ou IAM.OTP_RESEND_TOO_SOON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Demander un code de connexion",
+        "tags": [
+          "Authentification"
+        ]
+      }
+    },
+    "/v1/auth/otp/verify": {
+      "post": {
+        "description": "Crée le compte au premier succès. Émet un JWT d'accès (15 min) et un refresh token opaque (30 jours). À la 5e erreur, le code est verrouillé, une entrée `OTP_LOCKED` est écrite dans `audit_logs` et l'API répond 429.",
+        "operationId": "AuthController_verifyOtp",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpVerifyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpVerifyResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "IAM.OTP_INVALID / IAM.OTP_EXPIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "IAM.OTP_LOCKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Vérifier le code et ouvrir une session",
+        "tags": [
+          "Authentification"
+        ]
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "description": "Rotation systématique : le jeton présenté est révoqué et un nouveau est émis dans la même famille. Le rejeu d'un jeton déjà révoqué révoque TOUTE la famille et répond 401 `IAM.REFRESH_REVOKED`.",
+        "operationId": "AuthController_refresh",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "IAM.REFRESH_INVALID / IAM.REFRESH_EXPIRED / IAM.REFRESH_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Faire tourner le refresh token",
+        "tags": [
+          "Authentification"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "description": "Révoque toute la famille de jetons de l'appareil. Idempotent.",
+        "operationId": "AuthController_logout",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Session fermée."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Se déconnecter",
+        "tags": [
+          "Authentification"
+        ]
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "description": "Retourne l'utilisateur et la liste de ses adhésions actives. C'est cette liste qui alimente le sélecteur d'organisation des clients web et mobile.",
+        "operationId": "MeController_me",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Profil et organisations de l’utilisateur connecté",
+        "tags": [
+          "Profil"
+        ]
+      },
+      "patch": {
+        "description": "`fullName`, `email` et `locale` sont persistés. `timezone` est lu depuis les paramètres de l'organisation principale et n'est pas modifiable ici en phase 0.",
+        "operationId": "MeController_update",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mettre à jour son profil",
+        "tags": [
+          "Profil"
+        ]
+      }
+    },
+    "/v1/organizations": {
+      "post": {
+        "description": "Le créateur devient automatiquement OWNER. Un `slug` unique est dérivé du nom commercial (ou de la raison sociale) et sert ensuite à la numérotation des reçus : il n'est plus modifiable.",
+        "operationId": "OrganizationsController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrganizationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer une organisation",
+        "tags": [
+          "Organisations"
+        ]
+      }
+    },
+    "/v1/organizations/{id}": {
+      "get": {
+        "operationId": "OrganizationsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ORG.NOT_MEMBER",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d'une organisation",
+        "tags": [
+          "Organisations"
+        ]
+      },
+      "patch": {
+        "operationId": "OrganizationsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrganizationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mettre à jour une organisation",
+        "tags": [
+          "Organisations"
+        ]
+      }
+    },
+    "/v1/organizations/{id}/settings": {
+      "get": {
+        "operationId": "OrganizationsController_getSettings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Paramètres de l'organisation",
+        "tags": [
+          "Organisations"
+        ]
+      },
+      "patch": {
+        "description": "La devise est verrouillée à XAF par contrainte SQL et ne peut pas être modifiée.",
+        "operationId": "OrganizationsController_updateSettings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrganizationSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mettre à jour les paramètres",
+        "tags": [
+          "Organisations"
+        ]
+      }
+    },
+    "/v1/organizations/{id}/members": {
+      "get": {
+        "operationId": "OrganizationsController_listMembers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les membres",
+        "tags": [
+          "Organisations"
+        ]
+      }
+    },
+    "/v1/organizations/{id}/members/{memberId}": {
+      "patch": {
+        "description": "Le dernier OWNER actif ne peut pas être rétrogradé : 409 `ORG.LAST_OWNER`.",
+        "operationId": "OrganizationsController_changeMemberRole",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ORG.LAST_OWNER",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Changer le rôle d'un membre",
+        "tags": [
+          "Organisations"
+        ]
+      },
+      "delete": {
+        "description": "Le dernier OWNER actif ne peut pas être retiré : 409 `ORG.LAST_OWNER`.",
+        "operationId": "OrganizationsController_removeMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "409": {
+            "description": "ORG.LAST_OWNER",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retirer un membre",
+        "tags": [
+          "Organisations"
+        ]
+      }
+    },
+    "/v1/organizations/{id}/invitations": {
+      "get": {
+        "operationId": "OrganizationsController_listInvitations",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les invitations",
+        "tags": [
+          "Organisations"
+        ]
+      },
+      "post": {
+        "description": "Un jeton de 32 octets est envoyé par SMS ; seul son condensat SHA-256 est stocké. L'invitation est nominative : seul le titulaire du numéro peut l'accepter.",
+        "operationId": "OrganizationsController_createInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Inviter un collaborateur",
+        "tags": [
+          "Organisations"
+        ]
+      }
+    },
+    "/v1/organizations/{id}/invitations/{invitationId}": {
+      "delete": {
+        "operationId": "OrganizationsController_revokeInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Annuler une invitation",
+        "tags": [
+          "Organisations"
+        ]
+      }
+    },
+    "/v1/invitations/{token}": {
+      "get": {
+        "description": "Route publique : la connaissance du jeton (32 octets) vaut autorisation de lire l'entête de l'invitation. Aucune donnée métier de l'organisation n'est exposée.",
+        "operationId": "InvitationsController_peek",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicInvitationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "INVITATION.NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "INVITATION.EXPIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Consulter une invitation avant de l'accepter",
+        "tags": [
+          "Invitations"
+        ]
+      }
+    },
+    "/v1/invitations/{token}/accept": {
+      "post": {
+        "description": "L'utilisateur connecté doit être le titulaire du numéro invité. L'acceptation est atomique : un lien ne peut être consommé qu'une fois.",
+        "operationId": "InvitationsController_accept",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedMembershipDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "INVITATION.PHONE_MISMATCH",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "INVITATION.ALREADY_USED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accepter une invitation",
+        "tags": [
+          "Invitations"
+        ]
+      }
+    },
+    "/v1/feature-flags": {
+      "get": {
+        "description": "Réunit les drapeaux globaux (`organization_id` nul) et ceux du tenant ; en cas de clé commune, celui du tenant l'emporte. Les fenêtres `starts_at`/`ends_at` sont respectées.",
+        "operationId": "FeatureFlagsController_list",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Drapeaux actifs pour l'organisation courante",
+        "tags": [
+          "Organisations"
+        ]
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "description": "Vérifie la base PostgreSQL, Redis et le stockage objet. Répond toujours 200 : le champ `status` vaut `degraded` si une dépendance est en panne, ce qui permet aux sondes de distinguer « API morte » de « dépendance morte ».",
+        "operationId": "HealthController_check",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Sonde de disponibilité",
+        "tags": [
+          "Plateforme"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Immodesk API",
+    "description": "API de la plateforme Immodesk (gestion immobilière, Congo-Brazzaville).\n\n**Conventions**\n- Préfixe : `/v1`. Dates ISO 8601 UTC, montants entiers XAF (BigInt sérialisé en chaîne).\n- Authentification : `Authorization: Bearer <accessToken>` (JWT, 15 minutes).\n- Contexte d'organisation : en-tête `X-Organization-Id` obligatoire sur toute route d'organisation.\n- Erreurs : `{ code, message, details }`, codes stables `DOMAINE.RAISON`, messages en français (fr-CG).\n- Toute ressource appartenant à une autre organisation répond **404**, jamais 403.\n- Pagination par curseur : `?limit=50&cursor=...` → `{ items, pageInfo }`.\n- Idempotence : en-tête facultatif `Idempotency-Key` sur les POST.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "Authentification",
+      "description": "Connexion par téléphone et code OTP, sessions."
+    },
+    {
+      "name": "Profil",
+      "description": "Profil de l'utilisateur connecté et ses organisations."
+    },
+    {
+      "name": "Organisations",
+      "description": "Tenant SaaS : paramétrage, membres, drapeaux."
+    },
+    {
+      "name": "Invitations",
+      "description": "Invitation de collaborateurs et acceptation."
+    },
+    {
+      "name": "Plateforme",
+      "description": "Santé, contrat OpenAPI."
+    }
+  ],
+  "servers": [
+    {
+      "url": "http://localhost:3000/v1",
+      "description": "Développement local"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "Jeton d'accès (15 min)."
+      }
+    },
+    "schemas": {
+      "OtpRequestDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "+242066000001",
+            "description": "Numéro de téléphone. Les formes nationales (066000001, 06 600 00 01) et internationales (00242..., 242...) sont normalisées en E.164 avec l'indicatif +242."
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "SMS",
+              "WHATSAPP"
+            ],
+            "default": "SMS"
+          }
+        },
+        "required": [
+          "phone"
+        ]
+      },
+      "OtpRequestResponseDto": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "SMS",
+              "WHATSAPP"
+            ]
+          },
+          "expiresInSeconds": {
+            "type": "number",
+            "example": 300
+          },
+          "resendAfterSeconds": {
+            "type": "number",
+            "example": 60
+          }
+        },
+        "required": [
+          "requestId",
+          "channel",
+          "expiresInSeconds",
+          "resendAfterSeconds"
+        ]
+      },
+      "ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "IAM.OTP_INVALID",
+            "description": "Code stable `DOMAINE.RAISON`."
+          },
+          "message": {
+            "type": "string",
+            "example": "Code incorrect.",
+            "description": "Message en français (fr-CG)."
+          },
+          "details": {
+            "type": "object",
+            "example": {
+              "remainingAttempts": 3
+            }
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "details"
+        ]
+      },
+      "OtpVerifyDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "+242066000001"
+          },
+          "code": {
+            "type": "string",
+            "example": "123456",
+            "description": "Code à 6 chiffres reçu par SMS."
+          },
+          "deviceName": {
+            "type": "string",
+            "example": "Samsung A14 — Brazzaville"
+          }
+        },
+        "required": [
+          "phone",
+          "code"
+        ]
+      },
+      "UserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+242066000001"
+          },
+          "fullName": {
+            "type": "string",
+            "example": "Jean Mabiala"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "locale": {
+            "type": "string",
+            "example": "fr-CG"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Africa/Brazzaville"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "phone",
+          "fullName",
+          "email",
+          "locale",
+          "timezone",
+          "createdAt"
+        ]
+      },
+      "OrganizationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "AGENCY",
+              "INDEPENDENT_LANDLORD",
+              "INDEPENDENT_MANAGER"
+            ]
+          },
+          "legalName": {
+            "type": "string"
+          },
+          "tradeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "slug": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string",
+            "example": "Brazzaville"
+          },
+          "district": {
+            "type": "string",
+            "nullable": true
+          },
+          "contactPhone": {
+            "type": "string"
+          },
+          "contactEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "logoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "legalName",
+          "tradeName",
+          "slug",
+          "city",
+          "district",
+          "contactPhone",
+          "contactEmail",
+          "logoUrl",
+          "status",
+          "createdAt"
+        ]
+      },
+      "OrganizationMembershipDto": {
+        "type": "object",
+        "properties": {
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationDto"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "MANAGER",
+              "COLLECTOR",
+              "ACCOUNTANT",
+              "VIEWER"
+            ]
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "organization",
+          "role",
+          "joinedAt"
+        ]
+      },
+      "OtpVerifyResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserDto"
+          },
+          "organizations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrganizationMembershipDto"
+            }
+          }
+        },
+        "required": [
+          "accessToken",
+          "refreshToken",
+          "user",
+          "organizations"
+        ]
+      },
+      "RefreshDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Refresh token opaque émis par /v1/auth/otp/verify."
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "RefreshResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessToken",
+          "refreshToken"
+        ]
+      },
+      "LogoutDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Refresh token de l'appareil à déconnecter."
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "MeResponseDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserDto"
+          },
+          "organizations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrganizationMembershipDto"
+            }
+          }
+        },
+        "required": [
+          "user",
+          "organizations"
+        ]
+      },
+      "UpdateMeDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "Jean Mabiala"
+          },
+          "email": {
+            "type": "string",
+            "example": "jean.mabiala@example.cg"
+          },
+          "locale": {
+            "type": "string",
+            "example": "fr-CG"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Africa/Brazzaville",
+            "description": "Lecture seule en phase 0 : `users` ne porte pas de fuseau, celui de l'organisation principale fait foi. La valeur transmise est ignorée."
+          }
+        }
+      },
+      "CreateOrganizationDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "AGENCY",
+              "INDEPENDENT_LANDLORD",
+              "INDEPENDENT_MANAGER"
+            ]
+          },
+          "legalName": {
+            "type": "string",
+            "example": "Agence Mpila Immo SARL"
+          },
+          "tradeName": {
+            "type": "string",
+            "example": "Agence Mpila Immo"
+          },
+          "city": {
+            "type": "string",
+            "example": "Brazzaville"
+          },
+          "district": {
+            "type": "string",
+            "example": "Mpila"
+          },
+          "contactPhone": {
+            "type": "string",
+            "example": "+242066000001"
+          },
+          "contactEmail": {
+            "type": "string",
+            "example": "contact@mpila-immo.cg"
+          }
+        },
+        "required": [
+          "type",
+          "legalName",
+          "city",
+          "contactPhone"
+        ]
+      },
+      "UpdateOrganizationDto": {
+        "type": "object",
+        "properties": {
+          "legalName": {
+            "type": "string"
+          },
+          "tradeName": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "contactPhone": {
+            "type": "string"
+          },
+          "contactEmail": {
+            "type": "string"
+          },
+          "logoDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "OrganizationSettingsDto": {
+        "type": "object",
+        "properties": {
+          "defaultPaymentDueDay": {
+            "type": "number",
+            "example": 5,
+            "minimum": 1,
+            "maximum": 28
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Africa/Brazzaville"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "XAF"
+            ],
+            "example": "XAF"
+          },
+          "defaultGraceDays": {
+            "type": "number",
+            "example": 5
+          },
+          "receiptFooterText": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsappEnabled": {
+            "type": "boolean"
+          },
+          "smsEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "defaultPaymentDueDay",
+          "timezone",
+          "currency",
+          "defaultGraceDays",
+          "receiptFooterText",
+          "whatsappEnabled",
+          "smsEnabled"
+        ]
+      },
+      "UpdateOrganizationSettingsDto": {
+        "type": "object",
+        "properties": {
+          "defaultPaymentDueDay": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 28
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Africa/Brazzaville"
+          },
+          "defaultGraceDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 60
+          },
+          "receiptFooterText": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsappEnabled": {
+            "type": "boolean"
+          },
+          "smsEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MemberUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "phone",
+          "fullName"
+        ]
+      },
+      "MemberDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user": {
+            "$ref": "#/components/schemas/MemberUserDto"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "MANAGER",
+              "ACCOUNTANT",
+              "COLLECTOR",
+              "VIEWER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED"
+            ]
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "role",
+          "status",
+          "joinedAt"
+        ]
+      },
+      "MemberListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "UpdateMemberRoleDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "MANAGER",
+              "ACCOUNTANT",
+              "COLLECTOR",
+              "VIEWER"
+            ]
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "InvitationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "MANAGER",
+              "ACCOUNTANT",
+              "COLLECTOR",
+              "VIEWER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "EXPIRED",
+              "REVOKED"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "phone",
+          "role",
+          "status",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "InvitationListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvitationDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CreateInvitationDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "+242066000002"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "MANAGER",
+              "ACCOUNTANT",
+              "COLLECTOR",
+              "VIEWER"
+            ]
+          },
+          "fullName": {
+            "type": "string",
+            "example": "Alphonse Ngoma"
+          }
+        },
+        "required": [
+          "phone",
+          "role"
+        ]
+      },
+      "PublicInvitationDto": {
+        "type": "object",
+        "properties": {
+          "organizationName": {
+            "type": "string",
+            "example": "Agence Mpila Immo"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "MANAGER",
+              "ACCOUNTANT",
+              "COLLECTOR",
+              "VIEWER"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "organizationName",
+          "role",
+          "expiresAt"
+        ]
+      },
+      "AcceptedMembershipDto": {
+        "type": "object",
+        "properties": {
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationDto"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "MANAGER",
+              "ACCOUNTANT",
+              "COLLECTOR",
+              "VIEWER"
+            ]
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "organization",
+          "role",
+          "joinedAt"
+        ]
+      },
+      "FeatureFlagsDto": {
+        "type": "object",
+        "properties": {
+          "flags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "example": {
+              "demo.banner": true
+            }
+          }
+        },
+        "required": [
+          "flags"
+        ]
+      },
+      "HealthCheckDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down",
+              "skipped"
+            ]
+          },
+          "latencyMs": {
+            "type": "number"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "HealthChecksDto": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "$ref": "#/components/schemas/HealthCheckDto"
+          },
+          "redis": {
+            "$ref": "#/components/schemas/HealthCheckDto"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/HealthCheckDto"
+          }
+        },
+        "required": [
+          "database",
+          "redis",
+          "storage"
+        ]
+      },
+      "HealthResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ]
+          },
+          "checks": {
+            "$ref": "#/components/schemas/HealthChecksDto"
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ]
+      }
+    }
+  }
+}

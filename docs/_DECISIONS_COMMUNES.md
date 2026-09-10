@@ -6,7 +6,7 @@ Langue produit : français (fr-CG). Langue du code : anglais (identifiants, tabl
 
 ## Cibles et acteurs
 
-- **Organisation (organization)** = le tenant SaaS. Deux types : `AGENCY` (agence immobilière / gestionnaire) et `INDEPENDENT_LANDLORD` (bailleur qui gère seul).
+- **Organisation (organization)** = le tenant SaaS. Trois types : `AGENCY` (agence immobilière), `INDEPENDENT_LANDLORD` (bailleur qui gère seul) et `INDEPENDENT_MANAGER` (démarcheur ou gestionnaire indépendant, voir section dédiée).
 - **Rôles dans une organisation** : OWNER (créateur/admin), MANAGER (gestionnaire), COLLECTOR (démarcheur / encaisseur terrain), ACCOUNTANT (lecture financière), VIEWER.
 - **Bailleur (landlord)** : propriétaire du bien. Dans une agence, il est un tiers sous mandat de gestion. Chez un bailleur indépendant, l'organisation possède un landlord "self".
 - **Locataire (tenant)** : personne physique ou morale. Peut avoir un compte utilisateur (app locataire) ou non.
@@ -19,11 +19,11 @@ Langue produit : français (fr-CG). Langue du code : anglais (identifiants, tabl
 - Base : **PostgreSQL 16**. Row Level Security activée sur toutes les tables portant `organization_id`.
 - Web (dashboard agences/bailleurs + portail locataire) : **Next.js 15 (App Router), Tailwind CSS, shadcn/ui, TanStack Query**.
 - Mobile (démarcheurs, bailleurs, locataires) : **Flutter 3.x, Riverpod, Drift (SQLite), go_router, dio**. Offline-first.
-- Fichiers : **Cloudflare R2** (compatible S3), URLs signées.
+- Fichiers : stockage objet compatible S3, **MinIO auto-hébergé** en pilote, Cloudflare R2 si le volume l'exige ; URLs signées.
 - PDF : **Puppeteer** (Chromium headless) dans un worker BullMQ dédié.
-- WhatsApp : **Meta WhatsApp Cloud API** (templates approuvés). SMS de secours : passerelle SMS locale via interface `SmsProvider`.
-- Mobile Money : **agrégateur** (interface `MobileMoneyProvider`, première implémentation CinetPay ; PawaPay et connexion directe MTN MoMo / Airtel Money prévues derrière la même interface). Confirmation d'un paiement = re-interrogation du statut côté agrégateur, jamais sur la seule foi du webhook.
-- Auth : **téléphone + OTP** (SMS ou WhatsApp), email optionnel. JWT access (15 min) + refresh token rotatif (30 j). Mot de passe optionnel pour le web.
+- Messagerie : **WhatsApp d'abord**, via **Meta WhatsApp Cloud API** en accès direct (pas d'intermédiaire type Twilio : même API, marge en plus). Sert aux codes de connexion (templates d'authentification), aux quittances et aux relances. Repli automatique par **SMS via une passerelle open source sur téléphone Android** (SIM MTN, forfait SMS illimité) pour les numéros sans WhatsApp ou en cas d'échec de remise ; interface `SmsProvider` pour brancher plus tard une passerelle commerciale. Décision du 10 septembre 2026.
+- Mobile Money : **deux modes au choix de chaque organisation**, activables ensemble ou séparément dans `organization_settings` : (1) **paiement déclaré** sur le numéro Mobile Money du bailleur ou de l'agence (le locataire saisit la référence de transaction de l'opérateur, validation manuelle ou par relevé opérateur, zéro commission) ; (2) **agrégateur** (interface `MobileMoneyProvider`, première implémentation CinetPay ; PawaPay et connexion directe MTN MoMo / Airtel Money derrière la même interface, commission par transaction). Confirmation d'un paiement agrégateur = re-interrogation du statut côté agrégateur, jamais sur la seule foi du webhook. Décision du 10 septembre 2026.
+- Auth : **téléphone + OTP**, canal **WhatsApp par défaut**, repli SMS automatique (voir Messagerie), email optionnel. JWT access (15 min) + refresh token rotatif (30 j). Mot de passe optionnel pour le web.
 - Contrat d'API : **OpenAPI 3.1** généré par NestJS, client TypeScript (web) et Dart (mobile) générés.
 - Infra : Docker, déploiement sur un **VPS** loué en région **Europe (Paris)** (Hetzner ou OVH, tarif d'entrée), reverse proxy Caddy, CI/CD **GitHub Actions**, suivi des erreurs **GlitchTip auto-hébergé** (open source, compatible avec les SDK Sentry), métriques Grafana + Prometheus, sauvegardes PostgreSQL quotidiennes chiffrées (pgBackRest vers un stockage objet).
 - Principe « open source d'abord » (décision du 10 septembre 2026) : tout composant est auto-hébergé et open source quand une alternative crédible existe ; les services payants sont limités à ce qui n'a pas d'équivalent (opérateurs Mobile Money, WhatsApp officiel, envoi de SMS, location du serveur, nom de domaine). Stockage de fichiers : MinIO auto-hébergé sur le VPS en phase pilote, Cloudflare R2 seulement si le volume l'exige.

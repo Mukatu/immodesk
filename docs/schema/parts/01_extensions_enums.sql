@@ -5,6 +5,8 @@
 -- =====================================================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- btree_gist : contrainte d'exclusion anti-chevauchement des baux (uuid = et daterange &&).
+CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 -- Rôle applicatif utilisé par l'API NestJS (soumis au RLS).
 DO $$
@@ -107,7 +109,7 @@ CREATE TYPE statement_line_direction AS ENUM ('CREDIT', 'DEBIT');
 CREATE TYPE match_type AS ENUM ('EXACT', 'SUGGESTED', 'MANUAL', 'PARTIAL', 'SPLIT');
 CREATE TYPE match_status AS ENUM ('PROPOSED', 'CONFIRMED', 'REJECTED', 'REVERSED');
 CREATE TYPE receipt_status AS ENUM ('DRAFT', 'GENERATING', 'ISSUED', 'SENT', 'CANCELLED');
-CREATE TYPE sequence_kind AS ENUM ('CASH_RECEIPT', 'RENT_INVOICE', 'RECEIPT', 'OWNER_STATEMENT', 'REMITTANCE', 'EXPENSE', 'PAYOUT', 'SUBSCRIPTION_INVOICE');
+CREATE TYPE sequence_kind AS ENUM ('LEASE', 'CASH_RECEIPT', 'RENT_INVOICE', 'RECEIPT', 'OWNER_STATEMENT', 'REMITTANCE', 'EXPENSE', 'PAYOUT', 'SUBSCRIPTION_INVOICE');
 
 -- ---------------------------------------------------------------------
 -- Gestion d'agence

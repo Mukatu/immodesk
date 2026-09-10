@@ -54,6 +54,7 @@ ALTER TABLE leases ADD CONSTRAINT leases_signature_fk FOREIGN KEY (signature_doc
 ALTER TABLE leases ADD CONSTRAINT leases_contract_fk FOREIGN KEY (contract_document_id) REFERENCES documents(id) ON DELETE SET NULL;
 ALTER TABLE lease_parties ADD CONSTRAINT lease_parties_signature_fk FOREIGN KEY (signature_document_id) REFERENCES documents(id) ON DELETE SET NULL;
 ALTER TABLE lease_documents ADD CONSTRAINT lease_documents_document_fk FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE RESTRICT;
+ALTER TABLE lease_rent_revisions ADD CONSTRAINT lease_rent_revisions_document_fk FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE SET NULL;
 ALTER TABLE inspections ADD CONSTRAINT inspections_signature_fk FOREIGN KEY (signature_document_id) REFERENCES documents(id) ON DELETE SET NULL;
 ALTER TABLE inspections ADD CONSTRAINT inspections_report_fk FOREIGN KEY (report_document_id) REFERENCES documents(id) ON DELETE SET NULL;
 ALTER TABLE inspection_photos ADD CONSTRAINT inspection_photos_document_fk FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE RESTRICT;

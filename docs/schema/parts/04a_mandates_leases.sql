@@ -112,3 +112,38 @@ CREATE INDEX leases_unpaid_idx ON leases (organization_id, balance_amount DESC) 
 -- FK différée : meter_readings.lease_id (déclarée en partie 03c avant l'existence de leases).
 ALTER TABLE meter_readings
     ADD CONSTRAINT meter_readings_lease_fk FOREIGN KEY (lease_id) REFERENCES leases(id) ON DELETE SET NULL;
+
+-- ---------------------------------------------------------------------
+-- Anti-chevauchement : un lot ne peut porter qu'un bail en cours à la fois.
+-- Garanti en base (et non seulement applicativement) par une contrainte
+-- d'exclusion GiST sur (unit_id, période). end_date NULL = durée indéterminée.
+-- ---------------------------------------------------------------------
+ALTER TABLE leases ADD CONSTRAINT leases_no_overlap_excl
+    EXCLUDE USING gist (
+        unit_id WITH =,
+        daterange(start_date, COALESCE(end_date, DATE '9999-12-31'), '[)') WITH &&
+    )
+    WHERE (status IN ('ACTIVE', 'NOTICE_GIVEN') AND deleted_at IS NULL);
+
+-- ---------------------------------------------------------------------
+-- Révisions de loyer : historique daté, les factures passées restent inchangées.
+-- ---------------------------------------------------------------------
+CREATE TABLE lease_rent_revisions (
+    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id          UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    lease_id                 UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
+    effective_date           DATE NOT NULL,
+    previous_rent_amount     BIGINT NOT NULL CHECK (previous_rent_amount >= 0),
+    new_rent_amount          BIGINT NOT NULL CHECK (new_rent_amount >= 0),
+    previous_charges_amount  BIGINT NOT NULL DEFAULT 0 CHECK (previous_charges_amount >= 0),
+    new_charges_amount       BIGINT NOT NULL DEFAULT 0 CHECK (new_charges_amount >= 0),
+    currency                 CHAR(3) NOT NULL DEFAULT 'XAF',
+    reason                   TEXT,
+    document_id              UUID,
+    created_by_user_id       UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT lease_rent_revisions_uk UNIQUE (lease_id, effective_date)
+);
+COMMENT ON TABLE lease_rent_revisions IS 'Révisions de loyer et de charges d''un bail, datées ; le loyer applicable à une date est la dernière révision effective à cette date, sinon le loyer initial du bail. Une révision ne peut pas être antérieure à une période déjà facturée.';
+CREATE INDEX lease_rent_revisions_lease_idx ON lease_rent_revisions (lease_id, effective_date DESC);

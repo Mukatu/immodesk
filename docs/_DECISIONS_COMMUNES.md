@@ -55,7 +55,7 @@ Langue produit : français (fr-CG). Langue du code : anglais (identifiants, tabl
 Tenancy & sécurité : organizations, organization_settings, organization_members, users, user_credentials, otp_codes, refresh_tokens, invitations, api_keys.
 Tiers : landlords, tenants, guarantors, contact_channels (téléphones/emails/WhatsApp par tiers).
 Patrimoine : properties, units, bank_accounts, meters, meter_readings, utility_tariffs.
-Contrats : management_mandates, leases, lease_parties, lease_documents, deposits, deposit_movements, inspections, inspection_items, inspection_photos.
+Contrats : management_mandates, leases, lease_parties, lease_rent_revisions, lease_documents, deposits, deposit_movements, inspections, inspection_items, inspection_photos.
 Facturation & encaissement : sequences, rent_invoices, invoice_lines, penalty_rules, payments, payment_allocations, tenant_credits, cash_receipts, cash_remittances, cash_remittance_items, bank_transfer_declarations, bank_checks, mobile_money_transactions, bank_statements, bank_statement_lines, reconciliation_matches, receipts.
 Gestion d'agence : expenses, commissions, owner_statements, owner_statement_lines, owner_payouts.
 Exploitation : maintenance_requests, maintenance_updates.

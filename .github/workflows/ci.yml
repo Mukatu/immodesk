@@ -67,6 +67,17 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      # Stockage objet compatible S3 pour les tests du module documents.
+      # L'image Bitnami démarre le serveur sans commande explicite (les
+      # services GitHub Actions n'acceptent pas de `command`).
+      minio:
+        image: bitnami/minio:2025
+        env:
+          MINIO_ROOT_USER: immodesk
+          MINIO_ROOT_PASSWORD: immodesk123
+          MINIO_DEFAULT_BUCKETS: immodesk
+        ports:
+          - 9000:9000
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,6 +93,14 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Wait for MinIO
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:9000/minio/health/live >/dev/null; then echo "MinIO prêt"; exit 0; fi
+            sleep 2
+          done
+          echo "MinIO indisponible"; exit 1
 
       # postgresql-client (psql) is preinstalled on GitHub's ubuntu-latest
       # runners, so no apt-get install step is needed here.
@@ -99,6 +118,10 @@ jobs:
           DATABASE_URL: postgresql://immodesk_app:immodesk_app@localhost:5432/immodesk_test
           DATABASE_ADMIN_URL: postgresql://immodesk:immodesk@localhost:5432/immodesk_test
           REDIS_URL: redis://localhost:6379
+          S3_ENDPOINT: http://localhost:9000
+          S3_BUCKET: immodesk
+          S3_ACCESS_KEY: immodesk
+          S3_SECRET_KEY: immodesk123
         run: pnpm --filter @immodesk/api test:integration
 
   web-build:

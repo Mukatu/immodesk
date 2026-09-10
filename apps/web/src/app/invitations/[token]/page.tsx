@@ -92,9 +92,7 @@ export default function InvitationPage() {
                 </Button>
               ) : (
                 <Button asChild className="w-full">
-                  <Link href={`/login?next=/invitations/${token}`}>
-                    Se connecter pour accepter
-                  </Link>
+                  <Link href={`/login?next=/invitations/${token}`}>Se connecter pour accepter</Link>
                 </Button>
               )}
             </>

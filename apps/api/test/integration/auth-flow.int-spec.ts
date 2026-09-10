@@ -164,7 +164,7 @@ describe("Cycle d'authentification OTP", () => {
     }
   });
 
-  it("impose un délai de renvoi de 60 secondes puis limite à 3 demandes / 10 min", async () => {
+  it('impose un délai de renvoi de 60 secondes puis limite à 3 demandes / 10 min', async () => {
     const limitedPhone = uniquePhone();
     try {
       await resetOtpLimits(ctx, limitedPhone);
@@ -173,7 +173,9 @@ describe("Cycle d'authentification OTP", () => {
       expect(first.status).toBe(201);
 
       // Deuxième demande immédiate : refusée par le délai plancher.
-      const tooSoon = await api(ctx, 'POST', '/auth/otp/request', { body: { phone: limitedPhone } });
+      const tooSoon = await api(ctx, 'POST', '/auth/otp/request', {
+        body: { phone: limitedPhone },
+      });
       expect(tooSoon.status).toBe(429);
       expect(tooSoon.body.code).toBe('IAM.OTP_RESEND_TOO_SOON');
       expect(tooSoon.body.details.retryAfterSeconds).toBeGreaterThan(0);

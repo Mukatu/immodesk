@@ -38,6 +38,6 @@ Un paiement n'est jamais confirmé sur la seule foi d'un webhook : le webhook r�
 
 ## Alternatives écartées
 
-| Option | Pourquoi écartée |
-| --- | --- |
+| Option                                        | Pourquoi écartée                                                        |
+| --------------------------------------------- | ----------------------------------------------------------------------- |
 | Intégration directe MTN/Airtel dès la phase 0 | Délai de plusieurs mois par opérateur, incompatible avec le calendrier. |

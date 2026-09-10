@@ -40,6 +40,6 @@ Bonne. L'ajout de TOTP ou de passkeys se greffe sans remettre en cause le modèl
 
 ## Alternatives écartées
 
-| Option | Pourquoi écartée |
-| --- | --- |
+| Option               | Pourquoi écartée                                           |
+| -------------------- | ---------------------------------------------------------- |
 | Email + mot de passe | Peu adopté sur la cible, base de mots de passe à protéger. |

@@ -118,7 +118,8 @@ export class NotificationsService {
         id: newId(),
         organization_id: organizationId,
         channel,
-        status: result.status === 'SENT' ? 'SENT' : result.status === 'QUEUED' ? 'QUEUED' : 'FAILED',
+        status:
+          result.status === 'SENT' ? 'SENT' : result.status === 'QUEUED' ? 'QUEUED' : 'FAILED',
         provider: result.provider,
         provider_message_id: result.providerMessageId,
         direction: 'OUTBOUND',

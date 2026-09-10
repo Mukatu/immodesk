@@ -38,7 +38,10 @@ export default tseslint.config(
       // Les montants sont toujours des BigInt : interdiction de parseFloat/Number sur un montant.
       'no-restricted-globals': [
         'error',
-        { name: 'parseFloat', message: 'Les montants sont en BigInt (XAF). parseFloat est interdit.' },
+        {
+          name: 'parseFloat',
+          message: 'Les montants sont en BigInt (XAF). parseFloat est interdit.',
+        },
       ],
     },
   },

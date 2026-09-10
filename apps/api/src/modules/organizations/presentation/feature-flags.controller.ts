@@ -21,7 +21,7 @@ export class FeatureFlagsController {
   @ApiHeader({
     name: 'X-Organization-Id',
     required: true,
-    description: "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+    description: 'Organisation courante. Positionne `app.current_organization_id` (RLS).',
   })
   @ApiOperation({
     summary: "Drapeaux actifs pour l'organisation courante",

@@ -152,6 +152,7 @@ silencieusement.
 ```
 
 ## 3. Gabarit de prompt d'implémentation
+
 ```text
 PHASE : <numéro et titre de la phase — 04_plan_de_phases.md>
 EPIC : <identifiant et titre de l'epic>
@@ -171,6 +172,7 @@ CRITÈRES D'ACCEPTATION : <scénarios Gherkin copiés depuis 04_plan_de_phases.m
 ```
 
 ### Exemple rempli — Enregistrement d'un reçu de caisse (Phase 3)
+
 ```text
 PHASE : Phase 3 — Facturation & espèces
 EPIC : 3.C — Encaissement en espèces
@@ -235,7 +237,9 @@ Scénario : Paiement partiel en espèces et statut de la facture
 ```
 
 ## 4. Prompts transverses
+
 ### 4.1 Revue de code d'un module
+
 ```text
 Fais une revue de code du module <nom-module> à l'aune de _DECISIONS_COMMUNES.md
 et du prompt système. Vérifie couche par couche : séparation domain/application/
@@ -246,7 +250,9 @@ intégration, concurrence). Rends un rapport avec, pour chaque problème : fichi
 ligne, gravité (bloquant/majeur/mineur), explication, correctif proposé. Ne
 modifie aucun fichier sans qu'on te le demande explicitement.
 ```
+
 ### 4.2 Tests d'isolation multi-tenant (RLS)
+
 ```text
 Génère la suite de tests d'intégration vérifiant l'isolation multi-tenant par Row
 Level Security sur les tables du module <nom-module>. Pour chaque table portant
@@ -257,7 +263,9 @@ devinant leur UUID. Teste aussi le cas d'un rôle élevé (OWNER) qui ne doit pa
 franchir la frontière d'organisation. Un test par table et par opération
 (SELECT/INSERT/UPDATE/DELETE pertinents).
 ```
+
 ### 4.3 Jeu de données de démo congolais
+
 ```text
 Génère un script de seed Prisma produisant un jeu de données de démonstration
 réaliste pour le Congo-Brazzaville. Utilise des noms congolais courants (ex.
@@ -269,7 +277,9 @@ Congo et Airtel Congo. Référence des banques locales plausibles (ex. BGFIBank
 Congo, LCB Bank, Ecobank Congo). Respecte strictement les invariants financiers
 (BIGINT XAF, séquences, append-only). Le script doit être idempotent.
 ```
+
 ### 4.4 Audit de sécurité d'un module
+
 ```text
 Audite la sécurité du module <nom-module> : authentification et autorisation par
 rôle (OWNER/MANAGER/COLLECTOR/ACCOUNTANT/VIEWER/TENANT/PUBLIC) sur chaque
@@ -279,7 +289,9 @@ les logs, protection contre le rejeu (client_ref), gestion des secrets (clés AP
 WhatsApp, Mobile Money). Rends un rapport classé par gravité avec preuve de
 concept quand c'est pertinent, sans exploiter réellement une faille en production.
 ```
+
 ### 4.5 Rédaction d'un ADR
+
 ```text
 Rédige un ADR (Architecture Decision Record) pour la décision suivante : <décision
 à documenter>. Format : Titre, Statut (proposé/accepté), Contexte (contraintes du
@@ -288,7 +300,9 @@ référentiel Immodesk, alternatives considérées), Décision, Conséquences
 cohérent avec _DECISIONS_COMMUNES.md : si l'ADR s'en écarte, dis-le explicitement
 comme un amendement à faire valider par le lead, ne l'impose pas silencieusement.
 ```
+
 ### 4.6 Migration Prisma sûre (expand/contract)
+
 ```text
 Prépare la migration Prisma pour <changement de schéma> selon la stratégie
 expand/contract, en deux temps déployables indépendamment :

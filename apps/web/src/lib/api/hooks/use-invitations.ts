@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiFetch } from '@/lib/api/client';
-import type { CreateInvitationBody, Invitation, InvitationPreview, OrganizationMembership } from '@/lib/api/types';
+import type {
+  CreateInvitationBody,
+  Invitation,
+  InvitationPreview,
+  OrganizationMembership,
+} from '@/lib/api/types';
 
 export function useInvitations(organizationId: string | null) {
   return useQuery({

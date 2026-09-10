@@ -29,19 +29,19 @@ export const ERROR_CATALOG = {
     message: 'Ce jeton a déjà été utilisé. Toutes les sessions de cet appareil ont été fermées.',
   },
   'IAM.USER_SUSPENDED': { status: 403, message: 'Ce compte est suspendu.' },
-  'IAM.FORBIDDEN': { status: 403, message: "Votre rôle ne permet pas cette action." },
+  'IAM.FORBIDDEN': { status: 403, message: 'Votre rôle ne permet pas cette action.' },
 
   // --- Domaine ORG (organisations, membres, invitations) ----------------
   'ORG.NOT_FOUND': { status: 404, message: 'Organisation introuvable.' },
   'ORG.CONTEXT_MISSING': {
     status: 400,
-    message: "En-tête X-Organization-Id manquant ou invalide.",
+    message: 'En-tête X-Organization-Id manquant ou invalide.',
   },
   'ORG.NOT_MEMBER': { status: 404, message: 'Organisation introuvable.' },
   'ORG.SLUG_TAKEN': { status: 409, message: 'Ce nom d’organisation est déjà utilisé.' },
   'ORG.LAST_OWNER': {
     status: 409,
-    message: "Impossible : une organisation doit conserver au moins un OWNER.",
+    message: 'Impossible : une organisation doit conserver au moins un OWNER.',
   },
   'ORG.MEMBER_NOT_FOUND': { status: 404, message: 'Membre introuvable.' },
   'ORG.ALREADY_MEMBER': { status: 409, message: 'Cet utilisateur est déjà membre.' },
@@ -54,7 +54,7 @@ export const ERROR_CATALOG = {
   'INVITATION.REVOKED': { status: 410, message: 'Cette invitation a été annulée.' },
   'INVITATION.PHONE_MISMATCH': {
     status: 403,
-    message: "Cette invitation a été émise pour un autre numéro de téléphone.",
+    message: 'Cette invitation a été émise pour un autre numéro de téléphone.',
   },
 
   // --- Domaine VALIDATION / plateforme ----------------------------------

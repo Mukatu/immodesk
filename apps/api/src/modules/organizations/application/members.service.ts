@@ -94,7 +94,11 @@ export class MembersService {
         operation: AUDIT_OPERATIONS.MEMBER_REMOVED,
         entityType: 'organization_members',
         entityId: memberId,
-        previousState: toJsonState({ role: member.role, status: member.status, userId: member.user_id }),
+        previousState: toJsonState({
+          role: member.role,
+          status: member.status,
+          userId: member.user_id,
+        }),
         newState: toJsonState({ status: 'REMOVED', userId: member.user_id }),
       });
     });

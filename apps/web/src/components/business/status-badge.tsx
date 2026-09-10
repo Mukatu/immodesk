@@ -28,7 +28,12 @@ export interface StatusBadgeProps extends Omit<BadgeProps, 'variant'> {
   variantOverride?: StatusVariant;
 }
 
-export function StatusBadge({ status, labelOverride, variantOverride, ...props }: StatusBadgeProps) {
+export function StatusBadge({
+  status,
+  labelOverride,
+  variantOverride,
+  ...props
+}: StatusBadgeProps) {
   const config = STATUS_MAP[status];
   const label = labelOverride ?? config?.label ?? status;
   const variant = variantOverride ?? config?.variant ?? 'outline';

@@ -1,11 +1,11 @@
-import { z } from "zod";
-import { phoneSchema } from "./phone-schema.js";
+import { z } from 'zod';
+import { phoneSchema } from './phone-schema.js';
 
 /**
  * Schéma de création d'une organisation.
  */
 export const createOrganizationSchema = z.object({
-  type: z.enum(["AGENCY", "INDEPENDENT_LANDLORD", "INDEPENDENT_MANAGER"]),
+  type: z.enum(['AGENCY', 'INDEPENDENT_LANDLORD', 'INDEPENDENT_MANAGER']),
   legalName: z.string().min(1),
   tradeName: z.string().optional(),
   city: z.string().min(1),
@@ -23,7 +23,7 @@ export const updateSettingsSchema = z
   .object({
     defaultPaymentDueDay: z.number().int().min(1).max(31),
     timezone: z.string().min(1),
-    currency: z.literal("XAF"),
+    currency: z.literal('XAF'),
     defaultGraceDays: z.number().int().min(0),
     receiptFooterText: z.string().nullable(),
     whatsappEnabled: z.boolean(),
@@ -37,7 +37,7 @@ export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
  */
 export const inviteSchema = z.object({
   phone: phoneSchema,
-  role: z.enum(["OWNER", "MANAGER", "COLLECTOR", "ACCOUNTANT", "VIEWER"]),
+  role: z.enum(['OWNER', 'MANAGER', 'COLLECTOR', 'ACCOUNTANT', 'VIEWER']),
   fullName: z.string().optional(),
 });
 export type InviteInput = z.infer<typeof inviteSchema>;

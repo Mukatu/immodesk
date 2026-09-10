@@ -11,11 +11,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import {
-  CurrentUser,
-  Roles,
-  type AuthenticatedUser,
-} from '../../../shared/auth/auth.contracts';
+import { CurrentUser, Roles, type AuthenticatedUser } from '../../../shared/auth/auth.contracts';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { ErrorResponseDto, OrganizationDto } from '../../identity/presentation/dto/auth.dto';
 import { InvitationsService } from '../application/invitations.service';
@@ -37,7 +33,7 @@ import {
 const ORG_HEADER = {
   name: 'X-Organization-Id',
   required: true,
-  description: "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+  description: 'Organisation courante. Positionne `app.current_organization_id` (RLS).',
 };
 
 @ApiTags('Organisations')
@@ -137,7 +133,7 @@ export class OrganizationsController {
   @ApiHeader(ORG_HEADER)
   @ApiOperation({
     summary: "Changer le rôle d'un membre",
-    description: "Le dernier OWNER actif ne peut pas être rétrogradé : 409 `ORG.LAST_OWNER`.",
+    description: 'Le dernier OWNER actif ne peut pas être rétrogradé : 409 `ORG.LAST_OWNER`.',
   })
   @ApiResponse({ status: 200, type: MemberDto })
   @ApiResponse({ status: 409, type: ErrorResponseDto, description: 'ORG.LAST_OWNER' })
@@ -156,7 +152,7 @@ export class OrganizationsController {
   @ApiHeader(ORG_HEADER)
   @ApiOperation({
     summary: 'Retirer un membre',
-    description: "Le dernier OWNER actif ne peut pas être retiré : 409 `ORG.LAST_OWNER`.",
+    description: 'Le dernier OWNER actif ne peut pas être retiré : 409 `ORG.LAST_OWNER`.',
   })
   @ApiResponse({ status: 204 })
   @ApiResponse({ status: 409, type: ErrorResponseDto, description: 'ORG.LAST_OWNER' })

@@ -5,6 +5,7 @@ Marché : Congo-Brazzaville (Brazzaville, Pointe-Noire) puis zone CEMAC. Devise 
 Langue produit : français (fr-CG). Langue du code : anglais (identifiants, tables, colonnes). Documentation : français.
 
 ## Cibles et acteurs
+
 - **Organisation (organization)** = le tenant SaaS. Deux types : `AGENCY` (agence immobilière / gestionnaire) et `INDEPENDENT_LANDLORD` (bailleur qui gère seul).
 - **Rôles dans une organisation** : OWNER (créateur/admin), MANAGER (gestionnaire), COLLECTOR (démarcheur / encaisseur terrain), ACCOUNTANT (lecture financière), VIEWER.
 - **Bailleur (landlord)** : propriétaire du bien. Dans une agence, il est un tiers sous mandat de gestion. Chez un bailleur indépendant, l'organisation possède un landlord "self".
@@ -13,6 +14,7 @@ Langue produit : français (fr-CG). Langue du code : anglais (identifiants, tabl
 - Un même `user` peut appartenir à plusieurs organisations et être locataire ailleurs : `users` est global, les rôles sont portés par `organization_members`.
 
 ## Stack tranchée (aucune alternative)
+
 - Backend : **NestJS 11 (TypeScript 5)**, monolithe modulaire en Clean Architecture (domain / application / infrastructure / presentation par module). ORM : **Prisma**. File d'attente : **BullMQ sur Redis**. Cron : BullMQ repeatable jobs.
 - Base : **PostgreSQL 16**. Row Level Security activée sur toutes les tables portant `organization_id`.
 - Web (dashboard agences/bailleurs + portail locataire) : **Next.js 15 (App Router), Tailwind CSS, shadcn/ui, TanStack Query**.
@@ -27,6 +29,7 @@ Langue produit : français (fr-CG). Langue du code : anglais (identifiants, tabl
 - Monorepo : `apps/api`, `apps/web`, `apps/mobile`, `packages/shared` (types, enums, validation zod), `infra/`.
 
 ## Règles financières et techniques non négociables
+
 - Montants : **BIGINT en XAF**, colonne `currency CHAR(3) DEFAULT 'XAF'`. Jamais de float, jamais de décimales.
 - Clés primaires : **UUID** (v7 généré par l'application, `gen_random_uuid()` en valeur par défaut SQL).
 - Toute table métier porte `organization_id`, `created_at`, `updated_at`. Suppression logique via `deleted_at` sur les entités de référence (properties, units, leases, tenants, landlords) ; jamais sur les tables financières.
@@ -36,6 +39,7 @@ Langue produit : français (fr-CG). Langue du code : anglais (identifiants, tabl
 - Audit : toute transition d'état (bail, facture, paiement, remise) écrit dans `audit_logs` (JSONB avant/après).
 
 ## Modèle de facturation (séparation facture / paiement)
+
 - `rent_invoices` : une facture par bail et par période (générée par cron mensuel J-N jours avant échéance), lignes dans `invoice_lines` (loyer, charges eau/électricité, pénalités, autres). Statuts : DRAFT, ISSUED, PARTIALLY_PAID, PAID, OVERDUE, CANCELLED.
 - `payments` : un règlement (n par facture possible, paiements partiels), avec `method` : CASH, MOBILE_MONEY, BANK_TRANSFER, BANK_CHECK. Statuts : PENDING, PENDING_VERIFICATION, CONFIRMED, REJECTED, CANCELLED, REVERSED.
 - `payment_allocations` : affectation d'un paiement à une ou plusieurs factures (trop-perçu → crédit locataire).
@@ -46,6 +50,7 @@ Langue produit : français (fr-CG). Langue du code : anglais (identifiants, tabl
 - Quittance : `receipts` (PDF, token QR de vérification publique, envoi WhatsApp tracé dans `message_logs`).
 
 ## Liste canonique des tables (à modéliser intégralement)
+
 Tenancy & sécurité : organizations, organization_settings, organization_members, users, user_credentials, otp_codes, refresh_tokens, invitations, api_keys.
 Tiers : landlords, tenants, guarantors, contact_channels (téléphones/emails/WhatsApp par tiers).
 Patrimoine : properties, units, bank_accounts, meters, meter_readings, utility_tariffs.
@@ -58,12 +63,14 @@ Technique : documents, webhook_events, idempotency_keys, sync_batches, audit_log
 SaaS : subscription_plans, subscriptions, subscription_invoices.
 
 ## Démarcheurs et gestionnaires informels : des prescripteurs, pas des concurrents
+
 - **Espace gestionnaire indépendant** : troisième type d'organisation `INDEPENDENT_MANAGER` (démarcheur ou gestionnaire informel, agence unipersonnelle). Mêmes capacités qu'une `AGENCY` (mandats de gestion, commissions, relevés de gérance, remises de caisse), plan tarifaire dédié moins cher, onboarding mobile-first en moins de 10 minutes. Commission par défaut du mandat : 10 % du loyer encaissé (`commission_basis = RATE_BPS_ON_RENT_COLLECTED`, 1000 bps), modifiable par mandat.
 - **Preuve d'honnêteté envers le propriétaire** : tout bailleur sous mandat peut recevoir un accès **portail bailleur** en lecture seule (compte `users` lié à `landlords.user_id`) : encaissements, quittances, relevés de gérance, reversements. L'invitation est envoyée par WhatsApp par le gestionnaire ; le bailleur en diaspora est la cible première.
 - **Programme d'apport d'affaires (parrainage)** : tout utilisateur (démarcheur en priorité) peut devenir `referral_partner` avec un code unique. Chaque organisation bailleur ou gestionnaire qui s'abonne en indiquant ce code (ou dont le premier immeuble est enregistré par le partenaire, avec confirmation du bailleur par OTP) devient un `referral` rattaché à un `referral_program` défini par la plateforme : taux en bps sur chaque `subscription_invoice` payée, durée en mois, montant minimum de versement. Les commissions s'accumulent dans `referral_commissions` (ACCRUED → APPROVED → PAID, contre-passée si la facture est remboursée) et sont versées par Mobile Money via `referral_payouts`. Règles anti-abus : un partenaire ne peut pas parrainer sa propre organisation, une organisation n'a qu'un seul parrain, commission uniquement sur facture réellement encaissée, vérification d'identité légère (CNI + numéro Mobile Money) avant tout versement, plafond mensuel par partenaire.
 - Tables ajoutées à la liste canonique (globales, gérées par la plateforme, non rattachées à une organisation) : `referral_programs`, `referral_partners`, `referrals`, `referral_commissions`, `referral_payouts`. Phases concernées : 7 (espace gestionnaire, portail bailleur) et 10 (programme d'apport d'affaires).
 
 ## Phases (numérotation de référence)
+
 - Phase 0 : Cadrage, monorepo, CI/CD, infra, auth OTP, multi-tenant, design system, OpenAPI.
 - Phase 1 : Tiers & patrimoine (landlords, tenants, properties, units, bank_accounts, documents).
 - Phase 2 : Baux & dépôts (leases, deposits, lease_documents, génération de contrat PDF).

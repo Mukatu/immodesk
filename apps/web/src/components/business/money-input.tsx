@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { formatXafInputValue, parseXafInput } from '@/lib/money';
 
-export interface MoneyInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> {
+export interface MoneyInputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'value' | 'onChange' | 'type'
+> {
   /** Montant entier en XAF, ou null si vide. */
   value: number | null;
   onValueChange: (value: number | null) => void;

@@ -3,10 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { APP_CONFIG } from '../../../shared/config/config.module';
 import type { AppConfig } from '../../../shared/config/config.schema';
 import { DomainError } from '../../../shared/errors/domain-error';
-import type {
-  AccessTokenPayload,
-  AccessTokenVerifier,
-} from '../../../shared/auth/auth.contracts';
+import type { AccessTokenPayload, AccessTokenVerifier } from '../../../shared/auth/auth.contracts';
 
 /**
  * Émission et vérification des jetons d'accès.

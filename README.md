@@ -8,14 +8,14 @@ Le dossier de cadrage complet est dans [docs/](docs/00_README.md) : lettre de ca
 
 ## Structure
 
-| Dossier | Contenu |
-| :--- | :--- |
-| `apps/api` | API NestJS (TypeScript, Prisma, BullMQ) |
-| `apps/web` | Dashboard Next.js (agences, bailleurs, portail locataire) |
-| `apps/mobile` | Application Flutter (démarcheurs, bailleurs, locataires) |
+| Dossier           | Contenu                                                    |
+| :---------------- | :--------------------------------------------------------- |
+| `apps/api`        | API NestJS (TypeScript, Prisma, BullMQ)                    |
+| `apps/web`        | Dashboard Next.js (agences, bailleurs, portail locataire)  |
+| `apps/mobile`     | Application Flutter (démarcheurs, bailleurs, locataires)   |
 | `packages/shared` | Énumérations, schémas de validation zod, client API généré |
-| `infra` | Docker Compose, scripts de déploiement, CI |
-| `docs` | Dossier de cadrage et d'architecture |
+| `infra`           | Docker Compose, scripts de déploiement, CI                 |
+| `docs`            | Dossier de cadrage et d'architecture                       |
 
 ## Démarrage rapide
 

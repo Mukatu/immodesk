@@ -72,19 +72,21 @@ describe('Protection du dernier OWNER', () => {
     ['laisser un OWNER OWNER', 'OWNER', 'OWNER', 1, false],
   ];
 
-  it.each(cases)('%s → refus attendu : %s', (_label, currentRole, nextRole, owners, shouldThrow) => {
-    const run = () =>
-      assertNotLastOwner({ activeOwnerCount: owners, currentRole, nextRole });
-    if (shouldThrow) {
-      expect(run).toThrow(DomainError);
-      try {
-        run();
-      } catch (error) {
-        expect((error as DomainError).code).toBe('ORG.LAST_OWNER');
-        expect((error as DomainError).status).toBe(409);
+  it.each(cases)(
+    '%s → refus attendu : %s',
+    (_label, currentRole, nextRole, owners, shouldThrow) => {
+      const run = () => assertNotLastOwner({ activeOwnerCount: owners, currentRole, nextRole });
+      if (shouldThrow) {
+        expect(run).toThrow(DomainError);
+        try {
+          run();
+        } catch (error) {
+          expect((error as DomainError).code).toBe('ORG.LAST_OWNER');
+          expect((error as DomainError).status).toBe(409);
+        }
+      } else {
+        expect(run).not.toThrow();
       }
-    } else {
-      expect(run).not.toThrow();
-    }
-  });
+    },
+  );
 });

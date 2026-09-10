@@ -18,7 +18,7 @@ services:
       IMMODESK_APP_PASSWORD: ${IMMODESK_APP_PASSWORD:-immodesk_app}
     ports:
       # Hôte 5433 -> conteneur 5432. Ne jamais utiliser 5432 côté hôte.
-      - "5440:5432"
+      - '5440:5432'
     volumes:
       - immodesk_postgres_data:/var/lib/postgresql/data
       # Scripts exécutés automatiquement (ordre alphabétique) au tout premier
@@ -29,7 +29,7 @@ services:
       # 01-schema.sh). Chemin en lecture seule.
       - ../../docs/schema/schema.sql:/docker-entrypoint-initdb.d-source/schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U immodesk -d immodesk"]
+      test: ['CMD-SHELL', 'pg_isready -U immodesk -d immodesk']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -39,13 +39,13 @@ services:
     image: redis:7
     container_name: immodesk_redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ['redis-server', '--appendonly', 'yes']
     ports:
-      - "6390:6379"
+      - '6390:6379'
     volumes:
       - immodesk_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -60,12 +60,12 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-immodesk123}
     command: server /data --console-address ":9001"
     ports:
-      - "9010:9000" # API S3
-      - "9011:9001" # Console web
+      - '9010:9000' # API S3
+      - '9011:9001' # Console web
     volumes:
       - immodesk_minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -87,16 +87,16 @@ services:
       mc anonymous set none local/immodesk &&
       echo 'Bucket immodesk pret.'
       "
-    restart: "no"
+    restart: 'no'
 
   mailpit:
     image: axllent/mailpit
     container_name: immodesk_mailpit
     restart: unless-stopped
-    profiles: ["mail"]
+    profiles: ['mail']
     ports:
-      - "1025:1025" # SMTP
-      - "8025:8025" # UI web
+      - '1025:1025' # SMTP
+      - '8025:8025' # UI web
     volumes:
       - immodesk_mailpit_data:/data
 

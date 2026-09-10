@@ -41,7 +41,9 @@ export function decodeCursor(cursor: string, secret: string): CursorPayload {
   const a = Buffer.from(signature);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    throw new DomainError('VALIDATION.INVALID_PAYLOAD', { cursor: 'Signature de curseur invalide.' });
+    throw new DomainError('VALIDATION.INVALID_PAYLOAD', {
+      cursor: 'Signature de curseur invalide.',
+    });
   }
   try {
     const parsed = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) as CursorPayload;

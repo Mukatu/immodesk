@@ -117,7 +117,12 @@ export const handlers = [
     const body = (await request.json()) as { phone: string };
     findOrCreateUser(body.phone);
     return HttpResponse.json(
-      { requestId: nextId('otpreq'), channel: 'SMS', expiresInSeconds: 300, resendAfterSeconds: 60 },
+      {
+        requestId: nextId('otpreq'),
+        channel: 'SMS',
+        expiresInSeconds: 300,
+        resendAfterSeconds: 60,
+      },
       { status: 201 },
     );
   }),
@@ -157,7 +162,10 @@ export const handlers = [
   http.get(`${API_BASE}/me`, ({ request }) => {
     const user = userFromAuthHeader(request);
     if (!user) {
-      return HttpResponse.json({ code: 'IAM.UNAUTHORIZED', message: 'Non authentifié.' }, { status: 401 });
+      return HttpResponse.json(
+        { code: 'IAM.UNAUTHORIZED', message: 'Non authentifié.' },
+        { status: 401 },
+      );
     }
     return HttpResponse.json({ user, organizations: membershipsForUser(user.id) });
   }),
@@ -165,7 +173,10 @@ export const handlers = [
   http.post(`${API_BASE}/organizations`, async ({ request }) => {
     const user = userFromAuthHeader(request);
     if (!user) {
-      return HttpResponse.json({ code: 'IAM.UNAUTHORIZED', message: 'Non authentifié.' }, { status: 401 });
+      return HttpResponse.json(
+        { code: 'IAM.UNAUTHORIZED', message: 'Non authentifié.' },
+        { status: 401 },
+      );
     }
     const body = (await request.json()) as {
       type: MockOrganization['type'];
@@ -203,7 +214,8 @@ export const handlers = [
 
   http.get(`${API_BASE}/organizations/:id`, ({ params }) => {
     const org = organizations.get(String(params.id));
-    if (!org) return HttpResponse.json({ code: 'ORG.NOT_FOUND', message: 'Introuvable.' }, { status: 404 });
+    if (!org)
+      return HttpResponse.json({ code: 'ORG.NOT_FOUND', message: 'Introuvable.' }, { status: 404 });
     return HttpResponse.json(org);
   }),
 
@@ -273,7 +285,10 @@ export const handlers = [
   http.get(`${API_BASE}/invitations/:token`, ({ params }) => {
     const invitation = invitations.get(String(params.token));
     if (!invitation || invitation.status !== 'PENDING') {
-      return HttpResponse.json({ code: 'ORG.INVITATION_NOT_FOUND', message: 'Invitation introuvable.' }, { status: 404 });
+      return HttpResponse.json(
+        { code: 'ORG.INVITATION_NOT_FOUND', message: 'Invitation introuvable.' },
+        { status: 404 },
+      );
     }
     const org = organizations.get(invitation.organizationId)!;
     return HttpResponse.json({
@@ -287,7 +302,10 @@ export const handlers = [
     const user = userFromAuthHeader(request);
     const invitation = invitations.get(String(params.token));
     if (!user || !invitation) {
-      return HttpResponse.json({ code: 'ORG.INVITATION_NOT_FOUND', message: 'Invitation introuvable.' }, { status: 404 });
+      return HttpResponse.json(
+        { code: 'ORG.INVITATION_NOT_FOUND', message: 'Invitation introuvable.' },
+        { status: 404 },
+      );
     }
     invitation.status = 'PENDING';
     memberships.push({
@@ -298,7 +316,11 @@ export const handlers = [
       joinedAt: new Date().toISOString(),
     });
     const org = organizations.get(invitation.organizationId)!;
-    return HttpResponse.json({ organization: org, role: invitation.role, joinedAt: new Date().toISOString() });
+    return HttpResponse.json({
+      organization: org,
+      role: invitation.role,
+      joinedAt: new Date().toISOString(),
+    });
   }),
 
   http.get(`${API_BASE}/feature-flags`, () => HttpResponse.json({ flags: { demo: true } })),

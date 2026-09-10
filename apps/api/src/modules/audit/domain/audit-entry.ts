@@ -9,13 +9,7 @@
  * requêtable par nom d'opération sans modifier l'énumération SQL.
  */
 export type AuditAction =
-  | 'CREATE'
-  | 'UPDATE'
-  | 'DELETE'
-  | 'STATE_TRANSITION'
-  | 'LOGIN'
-  | 'EXPORT'
-  | 'IMPORT';
+  'CREATE' | 'UPDATE' | 'DELETE' | 'STATE_TRANSITION' | 'LOGIN' | 'EXPORT' | 'IMPORT';
 
 /** Noms d'opérations métier tracés en phase 0. */
 export const AUDIT_OPERATIONS = {

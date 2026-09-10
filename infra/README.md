@@ -33,12 +33,12 @@ docker compose -f infra/docker/docker-compose.yml --profile mail up -d
 
 ## Ports exposés (hôte)
 
-| Service            | Port(s) hôte | Détail                                   |
-|--------------------|--------------|-------------------------------------------|
-| postgres           | **5440**     | mappé vers 5432 dans le conteneur          |
-| redis              | 6390         |                                             |
-| minio              | 9010 / 9011  | API S3 / console web                       |
-| mailpit (optionnel)| 1025 / 8025  | SMTP / UI web (profile `mail`)             |
+| Service             | Port(s) hôte | Détail                            |
+| ------------------- | ------------ | --------------------------------- |
+| postgres            | **5440**     | mappé vers 5432 dans le conteneur |
+| redis               | 6390         |                                   |
+| minio               | 9010 / 9011  | API S3 / console web              |
+| mailpit (optionnel) | 1025 / 8025  | SMTP / UI web (profile `mail`)    |
 
 **Important : le port hôte de PostgreSQL est 5440, jamais 5432.** Le port
 5432 est déjà utilisé par un PostgreSQL 18 installé localement sur la
@@ -51,14 +51,14 @@ Définies avec des valeurs par défaut inline dans
 `infra/docker/docker-compose.yml` (surchargeables via l'environnement ou
 `--env-file infra/env/docker.env.example`, voir ce fichier) :
 
-| Variable                | Défaut dev        | Usage                                    |
-|--------------------------|-------------------|-------------------------------------------|
-| `POSTGRES_DB`            | `immodesk`        | Nom de la base                             |
-| `POSTGRES_USER`          | `immodesk`        | Rôle admin/owner Postgres                  |
-| `POSTGRES_PASSWORD`      | `immodesk`        | Mot de passe du rôle admin/owner           |
-| `IMMODESK_APP_PASSWORD`  | `immodesk_app`    | Mot de passe attribué à `immodesk_app`     |
-| `MINIO_ROOT_USER`        | `immodesk`        | Utilisateur admin MinIO                    |
-| `MINIO_ROOT_PASSWORD`    | `immodesk123`     | Mot de passe admin MinIO                   |
+| Variable                | Défaut dev     | Usage                                  |
+| ----------------------- | -------------- | -------------------------------------- |
+| `POSTGRES_DB`           | `immodesk`     | Nom de la base                         |
+| `POSTGRES_USER`         | `immodesk`     | Rôle admin/owner Postgres              |
+| `POSTGRES_PASSWORD`     | `immodesk`     | Mot de passe du rôle admin/owner       |
+| `IMMODESK_APP_PASSWORD` | `immodesk_app` | Mot de passe attribué à `immodesk_app` |
+| `MINIO_ROOT_USER`       | `immodesk`     | Utilisateur admin MinIO                |
+| `MINIO_ROOT_PASSWORD`   | `immodesk123`  | Mot de passe admin MinIO               |
 
 Ces valeurs correspondent exactement à celles utilisées dans `.env.example`
 à la racine du repo (`DATABASE_URL`, `DATABASE_ADMIN_URL`, `S3_*`, etc.).

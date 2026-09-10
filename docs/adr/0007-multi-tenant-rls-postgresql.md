@@ -38,7 +38,7 @@ Les tests d'isolation multi-tenant sont bloquants en CI et énumèrent automatiq
 
 ## Alternatives écartées
 
-| Option | Pourquoi écartée |
-| --- | --- |
-| Base par tenant | Isolation maximale mais exploitation et migrations ingérables à l'échelle visée. |
-| Schéma par tenant | Même difficulté à moindre degré. |
+| Option            | Pourquoi écartée                                                                 |
+| ----------------- | -------------------------------------------------------------------------------- |
+| Base par tenant   | Isolation maximale mais exploitation et migrations ingérables à l'échelle visée. |
+| Schéma par tenant | Même difficulté à moindre degré.                                                 |

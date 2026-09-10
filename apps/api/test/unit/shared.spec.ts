@@ -8,7 +8,12 @@ import {
   THOUSANDS_SEPARATOR,
   toAmount,
 } from '../../src/shared/money/amount';
-import { clampLimit, decodeCursor, encodeCursor, MAX_PAGE_LIMIT } from '../../src/shared/pagination/cursor';
+import {
+  clampLimit,
+  decodeCursor,
+  encodeCursor,
+  MAX_PAGE_LIMIT,
+} from '../../src/shared/pagination/cursor';
 import { maskPhone, normalizePhoneE164 } from '../../src/shared/phone/e164';
 import { renderTemplate } from '../../src/modules/notifications/domain/template-renderer';
 import { changedFields, toJsonState } from '../../src/modules/audit/domain/audit-entry';
@@ -157,9 +162,9 @@ describe('Slug d’organisation', () => {
 
 describe('Rendu des modèles de message', () => {
   it('remplace les variables nommées et positionnelles', () => {
-    expect(renderTemplate('Code {{code}} valable {{minutes}} min', { code: '123456', minutes: '5' })).toBe(
-      'Code 123456 valable 5 min',
-    );
+    expect(
+      renderTemplate('Code {{code}} valable {{minutes}} min', { code: '123456', minutes: '5' }),
+    ).toBe('Code 123456 valable 5 min');
     expect(renderTemplate('Bonjour {{1}}, code {{2}}', { nom: 'Jean', code: '123456' })).toBe(
       'Bonjour Jean, code 123456',
     );
@@ -172,7 +177,9 @@ describe('Rendu des modèles de message', () => {
 
 describe('Journal d’audit', () => {
   it('calcule les champs modifiés', () => {
-    expect(changedFields({ role: 'VIEWER', name: 'a' }, { role: 'MANAGER', name: 'a' })).toEqual(['role']);
+    expect(changedFields({ role: 'VIEWER', name: 'a' }, { role: 'MANAGER', name: 'a' })).toEqual([
+      'role',
+    ]);
     expect(changedFields(null, { role: 'OWNER' })).toEqual(['role']);
   });
 

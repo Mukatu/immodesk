@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { isValidCongoMobile, normalizePhoneCongo } from "../phone.js";
+import { z } from 'zod';
+import { isValidCongoMobile, normalizePhoneCongo } from '../phone.js';
 
 /**
  * Schéma zod réutilisable pour un numéro de téléphone mobile congolais.
@@ -17,7 +17,7 @@ export const phoneSchema = z.string().transform((val, ctx) => {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "Numéro de téléphone invalide : attendu un mobile congolais valide " +
+          'Numéro de téléphone invalide : attendu un mobile congolais valide ' +
           '(+242 suivi de "06" ou "05" puis 7 chiffres).',
       });
       return z.NEVER;
@@ -27,7 +27,7 @@ export const phoneSchema = z.string().transform((val, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message:
-        "Numéro de téléphone invalide : attendu un mobile congolais valide " +
+        'Numéro de téléphone invalide : attendu un mobile congolais valide ' +
         '(+242 suivi de "06" ou "05" puis 7 chiffres).',
     });
     return z.NEVER;

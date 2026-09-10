@@ -45,7 +45,10 @@ async function requestOtpBff(body: OtpRequestBody): Promise<OtpRequestResponse> 
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new ApiError(response.status, payload ?? { code: 'HTTP.UNKNOWN', message: 'Erreur inconnue.' });
+    throw new ApiError(
+      response.status,
+      payload ?? { code: 'HTTP.UNKNOWN', message: 'Erreur inconnue.' },
+    );
   }
   return payload as OtpRequestResponse;
 }
@@ -63,7 +66,10 @@ async function verifyOtpBff(
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new ApiError(response.status, payload ?? { code: 'HTTP.UNKNOWN', message: 'Erreur inconnue.' });
+    throw new ApiError(
+      response.status,
+      payload ?? { code: 'HTTP.UNKNOWN', message: 'Erreur inconnue.' },
+    );
   }
   return payload as OtpVerifyResponse;
 }
@@ -121,22 +127,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const requestOtp = React.useCallback((body: OtpRequestBody) => requestOtpBff(body), []);
 
-  const verifyOtp = React.useCallback(
-    async (phone: string, code: string, deviceName?: string) => {
-      const result = await verifyOtpBff(phone, code, deviceName);
-      setAccessToken(result.accessToken);
-      setUser(result.user);
-      setOrganizations(result.organizations);
-      const firstOrgId = result.organizations[0]?.organization.id ?? null;
-      if (firstOrgId) {
-        setCurrentOrganizationId(firstOrgId);
-        setCurrentOrganizationIdState(firstOrgId);
-      }
-      setStatus('authenticated');
-      return result;
-    },
-    [],
-  );
+  const verifyOtp = React.useCallback(async (phone: string, code: string, deviceName?: string) => {
+    const result = await verifyOtpBff(phone, code, deviceName);
+    setAccessToken(result.accessToken);
+    setUser(result.user);
+    setOrganizations(result.organizations);
+    const firstOrgId = result.organizations[0]?.organization.id ?? null;
+    if (firstOrgId) {
+      setCurrentOrganizationId(firstOrgId);
+      setCurrentOrganizationIdState(firstOrgId);
+    }
+    setStatus('authenticated');
+    return result;
+  }, []);
 
   const logout = React.useCallback(async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => null);
@@ -167,7 +170,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       refresh: hydrate,
     }),
-    [status, user, organizations, currentOrganizationId, setCurrentOrganization, requestOtp, verifyOtp, logout, hydrate],
+    [
+      status,
+      user,
+      organizations,
+      currentOrganizationId,
+      setCurrentOrganization,
+      requestOtp,
+      verifyOtp,
+      logout,
+      hydrate,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

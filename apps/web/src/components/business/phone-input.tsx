@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { digitsOnly, formatLocalCongo } from '@/lib/phone';
 
-export interface PhoneInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> {
+export interface PhoneInputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'value' | 'onChange' | 'type'
+> {
   /** 9 chiffres locaux (sans indicatif), ou chaîne vide. */
   value: string;
   onValueChange: (localDigits: string) => void;

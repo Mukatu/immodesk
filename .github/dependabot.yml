@@ -2,7 +2,7 @@ version: 2
 updates:
   # NPM ecosystem: manages pnpm workspace root dependencies
   - package-ecosystem: npm
-    directory: "/"
+    directory: '/'
     schedule:
       interval: weekly
     groups:
@@ -19,7 +19,7 @@ updates:
 
   # GitHub Actions ecosystem: keeps workflow actions up to date
   - package-ecosystem: github-actions
-    directory: "/"
+    directory: '/'
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
@@ -28,7 +28,7 @@ updates:
   # Note: /apps/mobile may be temporarily incomplete/empty as development is ongoing.
   # Dependabot tolerates missing/empty manifests and will simply find nothing to update.
   - package-ecosystem: pub
-    directory: "/apps/mobile"
+    directory: '/apps/mobile'
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -37,7 +37,7 @@ updates:
   # Note: /infra/docker directory structure may be temporarily incomplete/empty.
   # Dependabot tolerates missing/empty manifests and will simply find nothing to update.
   - package-ecosystem: docker
-    directory: "/infra/docker"
+    directory: '/infra/docker'
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

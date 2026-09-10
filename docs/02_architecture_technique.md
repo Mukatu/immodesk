@@ -20,7 +20,7 @@
 10. [Application mobile offline-first](#10-application-mobile-offline-first)
 11. [Application web Next.js](#11-application-web-nextjs)
 12. [Notifications et relances](#12-notifications-et-relances)
-12bis. [Cycle de la commission d'apport d'affaires](#12bis-cycle-de-la-commission-dapport-daffaires)
+    12bis. [Cycle de la commission d'apport d'affaires](#12bis-cycle-de-la-commission-dapport-daffaires)
 13. [Sécurité](#13-sécurité)
 14. [Infrastructure et exploitation](#14-infrastructure-et-exploitation)
 15. [Stratégie de tests](#15-stratégie-de-tests)
@@ -39,11 +39,11 @@ La modularité est obtenue par la discipline de découpage (§4) et non par la d
 
 Trois contraintes de terrain façonnent l'architecture bien plus que les préférences technologiques :
 
-| Contrainte terrain | Conséquence architecturale |
-| :--- | :--- |
-| Réseau mobile intermittent (démarcheurs en tournée à Poto-Poto, Mpila, Ngoyo) | Mobile **offline-first** obligatoire, outbox durable, idempotence par `client_ref` ULID |
-| Webhooks Mobile Money non fiables (perdus, dupliqués, hors ordre) | Confirmation **jamais** sur la seule foi du webhook : re-interrogation systématique du statut + job de rattrapage |
-| Coût des données et des SMS pour l'utilisateur final | Budget de bundle web strict, images optimisées, WhatsApp privilégié sur le SMS, quiet hours et opt-out |
+| Contrainte terrain                                                            | Conséquence architecturale                                                                                        |
+| :---------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
+| Réseau mobile intermittent (démarcheurs en tournée à Poto-Poto, Mpila, Ngoyo) | Mobile **offline-first** obligatoire, outbox durable, idempotence par `client_ref` ULID                           |
+| Webhooks Mobile Money non fiables (perdus, dupliqués, hors ordre)             | Confirmation **jamais** sur la seule foi du webhook : re-interrogation systématique du statut + job de rattrapage |
+| Coût des données et des SMS pour l'utilisateur final                          | Budget de bundle web strict, images optimisées, WhatsApp privilégié sur le SMS, quiet hours et opt-out            |
 
 ### 1.2 Schéma des composants
 
@@ -148,13 +148,13 @@ sequenceDiagram
 
 ### 1.4 Découpage en processus et dimensionnement initial
 
-| Processus | Rôle | Réplication initiale | Ressources cibles |
-| :--- | :--- | :--- | :--- |
-| `api` | HTTP, OpenAPI, webhooks entrants | 2 instances | 1 vCPU / 1 Go chacune |
-| `worker-general` | billing, dunning, notifications, sync, reconciliation | 2 instances | 1 vCPU / 1 Go |
-| `worker-pdf` | Puppeteer / Chromium | 1 instance | 2 vCPU / 2 Go (Chromium est gourmand) |
-| `postgres` | Base primaire + réplica logique de secours | 1 primaire | 4 vCPU / 8 Go / SSD NVMe |
-| `redis` | BullMQ, cache, compteurs de rate limit | 1 | 1 vCPU / 1 Go, AOF activé |
+| Processus        | Rôle                                                  | Réplication initiale | Ressources cibles                     |
+| :--------------- | :---------------------------------------------------- | :------------------- | :------------------------------------ |
+| `api`            | HTTP, OpenAPI, webhooks entrants                      | 2 instances          | 1 vCPU / 1 Go chacune                 |
+| `worker-general` | billing, dunning, notifications, sync, reconciliation | 2 instances          | 1 vCPU / 1 Go                         |
+| `worker-pdf`     | Puppeteer / Chromium                                  | 1 instance           | 2 vCPU / 2 Go (Chromium est gourmand) |
+| `postgres`       | Base primaire + réplica logique de secours            | 1 primaire           | 4 vCPU / 8 Go / SSD NVMe              |
+| `redis`          | BullMQ, cache, compteurs de rate limit                | 1                    | 1 vCPU / 1 Go, AOF activé             |
 
 Le worker PDF est isolé parce que Chromium a un profil mémoire irrégulier : un pic de rendu ne doit jamais faire tomber la génération de factures ou le traitement des webhooks de paiement.
 
@@ -162,19 +162,19 @@ Le worker PDF est isolé parce que Chromium a un profil mémoire irrégulier : u
 
 ## 2. Justification des choix de stack
 
-Cette section justifie les arbitrages du référentiel commun. Elle ne les rouvre pas : elle documente *pourquoi* ils ont été tranchés, afin qu'un développeur qui rejoint le projet comprenne la contrainte plutôt que la préférence.
+Cette section justifie les arbitrages du référentiel commun. Elle ne les rouvre pas : elle documente _pourquoi_ ils ont été tranchés, afin qu'un développeur qui rejoint le projet comprenne la contrainte plutôt que la préférence.
 
 ### 2.1 NestJS 11 + Prisma plutôt que Laravel 12
 
-| Critère | NestJS + Prisma | Laravel + Eloquent | Verdict |
-| :--- | :--- | :--- | :--- |
-| Langage partagé client/serveur | TypeScript sur API, web, et `packages/shared` (types, enums, schémas zod) | PHP côté serveur, TypeScript côté web : duplication des contrats | **NestJS** |
-| Contrat d'API typé de bout en bout | OpenAPI 3.1 généré, clients TS et Dart générés, rupture détectée à la compilation | OpenAPI via annotations tierces, dérive fréquente | **NestJS** |
-| Modularité imposée | Modules, providers, injection de dépendances : la Clean Architecture est le chemin naturel | Structure MVC par défaut plate, la discipline repose entièrement sur l'équipe | **NestJS** |
-| Migrations et introspection SQL | Prisma Migrate produit du SQL versionné, lisible, revu en PR | Migrations PHP expressives mais moins proches du SQL réel | **NestJS** |
-| Files d'attente et cron | BullMQ (Redis) : retries exponentiels, jobs répétables, DLQ, dashboard | Horizon, très bon, mais lié à l'écosystème PHP | Égalité fonctionnelle |
-| Vivier de développeurs à Brazzaville | PHP/Laravel plus répandu localement | Avantage réel de Laravel | **Laravel** |
-| Rendu PDF | Puppeteer natif dans le même runtime Node | Passerelle vers un service Node de toute façon | **NestJS** |
+| Critère                              | NestJS + Prisma                                                                            | Laravel + Eloquent                                                            | Verdict               |
+| :----------------------------------- | :----------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- | :-------------------- |
+| Langage partagé client/serveur       | TypeScript sur API, web, et `packages/shared` (types, enums, schémas zod)                  | PHP côté serveur, TypeScript côté web : duplication des contrats              | **NestJS**            |
+| Contrat d'API typé de bout en bout   | OpenAPI 3.1 généré, clients TS et Dart générés, rupture détectée à la compilation          | OpenAPI via annotations tierces, dérive fréquente                             | **NestJS**            |
+| Modularité imposée                   | Modules, providers, injection de dépendances : la Clean Architecture est le chemin naturel | Structure MVC par défaut plate, la discipline repose entièrement sur l'équipe | **NestJS**            |
+| Migrations et introspection SQL      | Prisma Migrate produit du SQL versionné, lisible, revu en PR                               | Migrations PHP expressives mais moins proches du SQL réel                     | **NestJS**            |
+| Files d'attente et cron              | BullMQ (Redis) : retries exponentiels, jobs répétables, DLQ, dashboard                     | Horizon, très bon, mais lié à l'écosystème PHP                                | Égalité fonctionnelle |
+| Vivier de développeurs à Brazzaville | PHP/Laravel plus répandu localement                                                        | Avantage réel de Laravel                                                      | **Laravel**           |
+| Rendu PDF                            | Puppeteer natif dans le même runtime Node                                                  | Passerelle vers un service Node de toute façon                                | **NestJS**            |
 
 **Décision.** L'argument décisif est l'unification du contrat : le domaine financier d'Immodesk (montants BIGINT, statuts de paiement, règles d'allocation) doit être exprimé **une seule fois** dans `packages/shared` et consommé sans retranscription par l'API et par le web. Le seul avantage de Laravel — le vivier local — se compense par la formation, alors qu'une duplication de contrat financier se paie en incidents de production.
 
@@ -182,42 +182,42 @@ Cette section justifie les arbitrages du référentiel commun. Elle ne les rouvr
 
 ### 2.2 Riverpod + Drift plutôt que BLoC + Hive
 
-| Critère | Riverpod + Drift | BLoC + Hive | Verdict |
-| :--- | :--- | :--- | :--- |
-| Requêtes locales relationnelles | SQLite : jointures bail ↔ facture ↔ paiement, agrégats de tournée, index | Hive est un store clé-valeur : les jointures se font en Dart, en mémoire | **Drift** |
-| Réactivité sur la base locale | `Stream` Drift : l'UI se rafraîchit dès qu'une ligne d'outbox change | Nécessite une couche d'invalidation manuelle | **Drift** |
-| Migrations du schéma local | Migrations Drift versionnées et testables | Migrations Hive manuelles, risque de perte de données terrain | **Drift** |
-| Chiffrement au repos | `sqlcipher_flutter_libs` : base entièrement chiffrée | Chiffrement par boîte, clé gérée à la main | **Drift** |
-| Verbosité | Providers concis, `ref.watch`, invalidation déclarative | Beaucoup d'événements/états à écrire pour un simple formulaire | **Riverpod** |
-| Testabilité | `ProviderContainer` avec overrides, sans widget tree | Excellente aussi (`bloc_test`) | Égalité |
-| Cache dérivé et dépendances | Providers composables, `family`, `autoDispose` | Composition de BLoC plus lourde | **Riverpod** |
+| Critère                         | Riverpod + Drift                                                         | BLoC + Hive                                                              | Verdict      |
+| :------------------------------ | :----------------------------------------------------------------------- | :----------------------------------------------------------------------- | :----------- |
+| Requêtes locales relationnelles | SQLite : jointures bail ↔ facture ↔ paiement, agrégats de tournée, index | Hive est un store clé-valeur : les jointures se font en Dart, en mémoire | **Drift**    |
+| Réactivité sur la base locale   | `Stream` Drift : l'UI se rafraîchit dès qu'une ligne d'outbox change     | Nécessite une couche d'invalidation manuelle                             | **Drift**    |
+| Migrations du schéma local      | Migrations Drift versionnées et testables                                | Migrations Hive manuelles, risque de perte de données terrain            | **Drift**    |
+| Chiffrement au repos            | `sqlcipher_flutter_libs` : base entièrement chiffrée                     | Chiffrement par boîte, clé gérée à la main                               | **Drift**    |
+| Verbosité                       | Providers concis, `ref.watch`, invalidation déclarative                  | Beaucoup d'événements/états à écrire pour un simple formulaire           | **Riverpod** |
+| Testabilité                     | `ProviderContainer` avec overrides, sans widget tree                     | Excellente aussi (`bloc_test`)                                           | Égalité      |
+| Cache dérivé et dépendances     | Providers composables, `family`, `autoDispose`                           | Composition de BLoC plus lourde                                          | **Riverpod** |
 
 **Décision.** Le mobile Immodesk n'est pas un client REST à cache : c'est une **base de données locale synchronisée** avec un outbox transactionnel. Ce besoin est relationnel (§10.2) et disqualifie un store clé-valeur. Riverpod suit parce qu'il compose naturellement avec les streams Drift et évite la cérémonie BLoC sur les dizaines d'écrans de saisie.
 
 ### 2.3 WhatsApp Cloud API (Meta) plutôt qu'Evolution API
 
-| Critère | Cloud API officielle | Evolution API / bridges WhatsApp Web | Verdict |
-| :--- | :--- | :--- | :--- |
-| Conformité aux CGU Meta | Canal officiel, compte Business vérifié | Automatisation d'un client WhatsApp Web : violation des CGU | **Cloud API** |
-| Risque de bannissement | Nul en usage conforme | Élevé — un ban coupe le canal de quittance de toute la clientèle | **Cloud API** |
-| SLA et statuts de livraison | Webhooks `sent`/`delivered`/`read`/`failed` normalisés | Best effort, dépend d'une session téléphone active | **Cloud API** |
-| Pièces jointes PDF | Supporté nativement (media upload) | Supporté mais instable | **Cloud API** |
-| Coût | Facturation Meta par conversation | Quasi nul (hors hébergement) | **Evolution** |
-| Messages libres | Fenêtre de service de 24 h, sinon template approuvé | Libre | **Evolution** |
-| Délai de mise en route | Vérification Business + approbation des templates : 1 à 3 semaines | Immédiat | **Evolution** |
+| Critère                     | Cloud API officielle                                               | Evolution API / bridges WhatsApp Web                             | Verdict       |
+| :-------------------------- | :----------------------------------------------------------------- | :--------------------------------------------------------------- | :------------ |
+| Conformité aux CGU Meta     | Canal officiel, compte Business vérifié                            | Automatisation d'un client WhatsApp Web : violation des CGU      | **Cloud API** |
+| Risque de bannissement      | Nul en usage conforme                                              | Élevé — un ban coupe le canal de quittance de toute la clientèle | **Cloud API** |
+| SLA et statuts de livraison | Webhooks `sent`/`delivered`/`read`/`failed` normalisés             | Best effort, dépend d'une session téléphone active               | **Cloud API** |
+| Pièces jointes PDF          | Supporté nativement (media upload)                                 | Supporté mais instable                                           | **Cloud API** |
+| Coût                        | Facturation Meta par conversation                                  | Quasi nul (hors hébergement)                                     | **Evolution** |
+| Messages libres             | Fenêtre de service de 24 h, sinon template approuvé                | Libre                                                            | **Evolution** |
+| Délai de mise en route      | Vérification Business + approbation des templates : 1 à 3 semaines | Immédiat                                                         | **Evolution** |
 
 **Décision.** La quittance de loyer est une **pièce à valeur probante** : son acheminement ne peut pas dépendre d'un canal susceptible d'être coupé du jour au lendemain, ni d'un téléphone qui doit rester appairé. Le surcoût par conversation est intégré au prix de l'abonnement. La contrainte de la fenêtre de 24 h est absorbée par une bibliothèque de templates approuvés (§12.3), ce qui est de toute façon souhaitable pour la cohérence du ton.
 
 ### 2.4 Agrégateur Mobile Money plutôt qu'intégration directe MTN / Airtel au démarrage
 
-| Critère | Agrégateur (CinetPay) | Direct MTN MoMo + Airtel Money | Verdict |
-| :--- | :--- | :--- | :--- |
-| Délai contractuel | Compte marchand en quelques jours | Négociation opérateur par opérateur, plusieurs mois au Congo | **Agrégateur** |
-| Surface d'intégration | Une API, un format de webhook | Deux API, deux signatures, deux modèles d'état, deux environnements de test | **Agrégateur** |
-| Réconciliation des frais | Frais agrégateur explicites dans la réponse | Grilles opérateur, souvent hors API | **Agrégateur** |
-| Coût par transaction | Marge agrégateur au-dessus du coût opérateur | Meilleur taux à volume | **Direct** |
-| Dépendance | Point de défaillance unique commercial | Résilience par diversification | **Direct** |
-| Couverture multi-pays CEMAC | Immédiate pour l'expansion | À renégocier pays par pays | **Agrégateur** |
+| Critère                     | Agrégateur (CinetPay)                        | Direct MTN MoMo + Airtel Money                                              | Verdict        |
+| :-------------------------- | :------------------------------------------- | :-------------------------------------------------------------------------- | :------------- |
+| Délai contractuel           | Compte marchand en quelques jours            | Négociation opérateur par opérateur, plusieurs mois au Congo                | **Agrégateur** |
+| Surface d'intégration       | Une API, un format de webhook                | Deux API, deux signatures, deux modèles d'état, deux environnements de test | **Agrégateur** |
+| Réconciliation des frais    | Frais agrégateur explicites dans la réponse  | Grilles opérateur, souvent hors API                                         | **Agrégateur** |
+| Coût par transaction        | Marge agrégateur au-dessus du coût opérateur | Meilleur taux à volume                                                      | **Direct**     |
+| Dépendance                  | Point de défaillance unique commercial       | Résilience par diversification                                              | **Direct**     |
+| Couverture multi-pays CEMAC | Immédiate pour l'expansion                   | À renégocier pays par pays                                                  | **Agrégateur** |
 
 **Décision.** Démarrer par l'agrégateur, **mais derrière l'interface `MobileMoneyProvider`** (§8.2.1), ce qui rend le choix réversible. La bascule vers du direct devient rentable au-delà d'un seuil de volume mensuel : elle sera alors une nouvelle implémentation de la même interface, activable par organisation via `feature_flags`, sans modifier une ligne du domaine `payments-mobile-money`.
 
@@ -225,28 +225,28 @@ Cette section justifie les arbitrages du référentiel commun. Elle ne les rouvr
 
 ### 2.5 Hébergement en région Europe (Paris)
 
-| Critère | Paris (Hetzner / OVH / Scaleway) | Afrique du Sud / Nairobi | Congo (datacenter local) |
-| :--- | :--- | :--- | :--- |
-| Latence depuis Brazzaville | 130–180 ms via câbles WACS/SAT-3 | 180–260 ms (routage souvent via l'Europe) | < 30 ms théorique |
-| Disponibilité électrique et réseau | Tier III+, redondance éprouvée | Bonne | Irrégulière, coupures fréquentes |
-| Coût au Go et au vCPU | Le plus bas du marché | Moyen à élevé | Élevé |
-| Écosystème managé (PostgreSQL, sauvegardes, CDN) | Complet | Partiel | Quasi inexistant |
-| Proximité des API tierces (Meta, CinetPay, R2) | Excellente | Moyenne | Moyenne |
-| Cadre juridique des données | RGPD, socle exigeant et lisible | Variable | Loi congolaise de 2019 (§13.6) |
+| Critère                                          | Paris (Hetzner / OVH / Scaleway) | Afrique du Sud / Nairobi                  | Congo (datacenter local)         |
+| :----------------------------------------------- | :------------------------------- | :---------------------------------------- | :------------------------------- |
+| Latence depuis Brazzaville                       | 130–180 ms via câbles WACS/SAT-3 | 180–260 ms (routage souvent via l'Europe) | < 30 ms théorique                |
+| Disponibilité électrique et réseau               | Tier III+, redondance éprouvée   | Bonne                                     | Irrégulière, coupures fréquentes |
+| Coût au Go et au vCPU                            | Le plus bas du marché            | Moyen à élevé                             | Élevé                            |
+| Écosystème managé (PostgreSQL, sauvegardes, CDN) | Complet                          | Partiel                                   | Quasi inexistant                 |
+| Proximité des API tierces (Meta, CinetPay, R2)   | Excellente                       | Moyenne                                   | Moyenne                          |
+| Cadre juridique des données                      | RGPD, socle exigeant et lisible  | Variable                                  | Loi congolaise de 2019 (§13.6)   |
 
 **Décision.** Paris. La latence n'est pas le facteur limitant : l'expérience terrain est gouvernée par l'**offline-first mobile**, pas par le RTT serveur, et le web est optimisé pour les connexions lentes (§11.6). L'argument de souveraineté est traité par conformité (§13.6) — consentement, finalité, durée de conservation, droit d'accès — et par la capacité d'exporter l'intégralité des données d'une organisation, pas par la géographie du serveur. Une réplique locale reste envisageable si le cadre réglementaire l'impose (voir ADR-010).
 
 ### 2.6 Choix secondaires, en une ligne
 
-| Choix | Raison |
-| :--- | :--- |
-| **PostgreSQL 16** | RLS native (pilier du multi-tenant), `BIGINT` exact, JSONB pour les payloads bruts, contraintes d'exclusion pour les chevauchements de baux |
-| **BullMQ sur Redis** | Retries exponentiels, jobs répétables (cron), DLQ, verrous distribués ; déjà présent pour le cache et le rate limit |
-| **Cloudflare R2** | Compatible S3, **pas de frais de sortie** — décisif pour des PDF et photos servis à des mobiles africains |
-| **Puppeteer** | Le rendu HTML/CSS est le seul moyen réaliste d'obtenir des quittances typographiquement correctes et modifiables par un non-développeur |
-| **Next.js 15 App Router** | Rendu serveur (bundle réduit sur connexion lente), Server Actions pour les mutations simples, streaming |
-| **UUID v7** | Ordonnancement temporel (index B-tree performant à l'insertion) tout en restant un UUID standard |
-| **ULID pour `client_ref`** | Généré hors ligne sur l'appareil, triable, court, lisible dans les logs de synchronisation |
+| Choix                      | Raison                                                                                                                                      |
+| :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| **PostgreSQL 16**          | RLS native (pilier du multi-tenant), `BIGINT` exact, JSONB pour les payloads bruts, contraintes d'exclusion pour les chevauchements de baux |
+| **BullMQ sur Redis**       | Retries exponentiels, jobs répétables (cron), DLQ, verrous distribués ; déjà présent pour le cache et le rate limit                         |
+| **Cloudflare R2**          | Compatible S3, **pas de frais de sortie** — décisif pour des PDF et photos servis à des mobiles africains                                   |
+| **Puppeteer**              | Le rendu HTML/CSS est le seul moyen réaliste d'obtenir des quittances typographiquement correctes et modifiables par un non-développeur     |
+| **Next.js 15 App Router**  | Rendu serveur (bundle réduit sur connexion lente), Server Actions pour les mutations simples, streaming                                     |
+| **UUID v7**                | Ordonnancement temporel (index B-tree performant à l'insertion) tout en restant un UUID standard                                            |
+| **ULID pour `client_ref`** | Généré hors ligne sur l'appareil, triable, court, lisible dans les logs de synchronisation                                                  |
 
 ---
 
@@ -421,19 +421,19 @@ immodesk/
 
 ### 3.2 Outillage JavaScript / TypeScript
 
-| Outil | Version cible | Rôle |
-| :--- | :--- | :--- |
-| **pnpm workspaces** | ≥ 9 | Gestion des dépendances, store dur (économie de disque et de bande passante, non négligeable en CI) |
-| **Turborepo** | ≥ 2 | Orchestration des tâches, cache local et distant, graphe de dépendances entre `api`, `web`, `shared` |
-| **TypeScript** | 5.x, `strict: true` | `noUncheckedIndexedAccess` et `exactOptionalPropertyTypes` activés |
-| **ESLint** | 9 (flat config) | Règles partagées + **règles de frontière d'architecture** (§4.3) via `eslint-plugin-boundaries` |
-| **Prettier** | 3 | Formatage unique, non discutable en revue |
-| **Vitest** | 2 | Tests unitaires du domaine (rapides, sans base) |
-| **Jest + supertest** | — | Tests e2e API (l'écosystème NestJS y est mieux outillé) |
-| **Testcontainers** | — | PostgreSQL 16 réel pour les tests d'intégration Prisma et de RLS |
-| **Husky + lint-staged** | — | Hooks pre-commit (format + lint sur les fichiers modifiés) et pre-push (typecheck + tests unitaires) |
-| **commitlint** | — | Conventional Commits obligatoires |
-| **Changesets** | — | Versionnement de `packages/shared` et génération du CHANGELOG |
+| Outil                   | Version cible       | Rôle                                                                                                 |
+| :---------------------- | :------------------ | :--------------------------------------------------------------------------------------------------- |
+| **pnpm workspaces**     | ≥ 9                 | Gestion des dépendances, store dur (économie de disque et de bande passante, non négligeable en CI)  |
+| **Turborepo**           | ≥ 2                 | Orchestration des tâches, cache local et distant, graphe de dépendances entre `api`, `web`, `shared` |
+| **TypeScript**          | 5.x, `strict: true` | `noUncheckedIndexedAccess` et `exactOptionalPropertyTypes` activés                                   |
+| **ESLint**              | 9 (flat config)     | Règles partagées + **règles de frontière d'architecture** (§4.3) via `eslint-plugin-boundaries`      |
+| **Prettier**            | 3                   | Formatage unique, non discutable en revue                                                            |
+| **Vitest**              | 2                   | Tests unitaires du domaine (rapides, sans base)                                                      |
+| **Jest + supertest**    | —                   | Tests e2e API (l'écosystème NestJS y est mieux outillé)                                              |
+| **Testcontainers**      | —                   | PostgreSQL 16 réel pour les tests d'intégration Prisma et de RLS                                     |
+| **Husky + lint-staged** | —                   | Hooks pre-commit (format + lint sur les fichiers modifiés) et pre-push (typecheck + tests unitaires) |
+| **commitlint**          | —                   | Conventional Commits obligatoires                                                                    |
+| **Changesets**          | —                   | Versionnement de `packages/shared` et génération du CHANGELOG                                        |
 
 `turbo.json` définit trois pipelines clés :
 
@@ -452,14 +452,14 @@ immodesk/
 
 ### 3.3 Outillage Flutter
 
-| Outil | Rôle |
-| :--- | :--- |
-| **melos** | Orchestration du multi-package Dart : `melos bootstrap`, `melos run analyze`, `melos run test` |
-| **build_runner** | Génération Drift, `freezed`, `json_serializable`, Riverpod generator |
-| **very_good_analysis** | Jeu de règles `analysis_options.yaml`, strict |
-| **openapi-generator (dart-dio)** | Client Dart généré depuis `openapi.json` de l'API — jamais écrit à la main |
-| **flutter_test / integration_test** | Widget tests et parcours critiques |
-| **fastlane** | Build et publication Play Store / TestFlight depuis GitHub Actions |
+| Outil                               | Rôle                                                                                           |
+| :---------------------------------- | :--------------------------------------------------------------------------------------------- |
+| **melos**                           | Orchestration du multi-package Dart : `melos bootstrap`, `melos run analyze`, `melos run test` |
+| **build_runner**                    | Génération Drift, `freezed`, `json_serializable`, Riverpod generator                           |
+| **very_good_analysis**              | Jeu de règles `analysis_options.yaml`, strict                                                  |
+| **openapi-generator (dart-dio)**    | Client Dart généré depuis `openapi.json` de l'API — jamais écrit à la main                     |
+| **flutter_test / integration_test** | Widget tests et parcours critiques                                                             |
+| **fastlane**                        | Build et publication Play Store / TestFlight depuis GitHub Actions                             |
 
 ### 3.4 Convention de commits
 
@@ -477,7 +477,6 @@ Portées autorisées : les noms de modules du §4.1, plus `api`, `web`, `mobile`
 
 Une PR qui touche une règle financière doit citer dans son corps l'invariant concerné (§15.6).
 
-
 ---
 
 ## 4. Architecture du backend
@@ -486,33 +485,33 @@ Une PR qui touche une règle financière doit citer dans son corps l'invariant c
 
 Un module = un domaine métier, un dossier sous `apps/api/src/modules/`, un propriétaire de tables. **Une table a un et un seul module propriétaire** : lui seul l'écrit. Les autres modules la lisent via une façade applicative exposée par le propriétaire, jamais via `prisma.<table>` directement.
 
-| Module | Responsabilités | Tables possédées | Événements émis / consommés | Dépendances autorisées |
-| :--- | :--- | :--- | :--- | :--- |
-| `identity` | Comptes utilisateurs globaux, OTP, sessions, jetons, clés API | `users`, `user_credentials`, `otp_codes`, `refresh_tokens`, `api_keys` | émet `user.registered`, `user.session_revoked` | `notifications` (port `OtpSender`) |
-| `organizations` | Tenants, adhésions, rôles, paramètres, invitations, drapeaux | `organizations`, `organization_settings`, `organization_members`, `invitations`, `feature_flags` | émet `organization.created`, `member.role_changed` ; consomme `user.registered` | `identity`, `notifications` |
-| `parties` | Bailleurs, locataires, garants, canaux de contact | `landlords`, `tenants`, `guarantors`, `contact_channels` | émet `tenant.created`, `contact_channel.verified` | `organizations`, `documents` |
-| `portfolio` | Biens, lots, comptes bancaires, compteurs, relevés, tarifs | `properties`, `units`, `bank_accounts`, `meters`, `meter_readings`, `utility_tariffs` | émet `unit.status_changed`, `meter_reading.recorded` | `organizations`, `parties`, `documents` |
-| `leases` | Mandats de gestion, baux, parties au bail, dépôts de garantie | `management_mandates`, `leases`, `lease_parties`, `lease_documents`, `deposits`, `deposit_movements` | émet `lease.activated`, `lease.terminated`, `deposit.movement_recorded` ; consomme `unit.status_changed` | `portfolio`, `parties`, `documents` |
-| `billing` | Factures de loyer, lignes, pénalités, numérotation, cron mensuel | `rent_invoices`, `invoice_lines`, `penalty_rules`, `sequences`, `tenant_credits` | émet `invoice.issued`, `invoice.paid`, `invoice.overdue`, `invoice.cancelled` ; consomme `lease.activated`, `lease.terminated`, `payment.confirmed`, `payment.reversed`, `meter_reading.recorded` | `leases`, `portfolio` |
-| `payments-cash` | Encaissement espèces, reçus signés, remises des démarcheurs | `cash_receipts`, `cash_remittances`, `cash_remittance_items` | émet `payment.confirmed`, `remittance.closed`, `remittance.discrepancy_detected` | `payments` (noyau partagé), `billing`, `documents` |
-| `payments-mobile-money` | Initiation MoMo, webhooks, re-vérification, frais, rattrapage | `mobile_money_transactions`, `webhook_events` | émet `payment.initiated`, `payment.confirmed`, `payment.rejected` | `payments`, `billing` |
-| `payments-bank` | Déclarations de virement, chèques, cycle de compensation | `bank_transfer_declarations`, `bank_checks` | émet `payment.pending_verification`, `payment.confirmed`, `payment.rejected` | `payments`, `billing`, `documents`, `portfolio` |
-| `payments` (noyau) | Agrégat `payment`, allocations, machine à états, idempotence | `payments`, `payment_allocations`, `idempotency_keys` | émet `payment.confirmed`, `payment.reversed`, `payment.allocated` | `billing` (lecture seule via façade) |
-| `reconciliation` | Import de relevés (CSV / MT940), rapprochement 3 niveaux | `bank_statements`, `bank_statement_lines`, `reconciliation_matches` | émet `statement.imported`, `match.confirmed` ; consomme `payment.pending_verification` | `payments-bank`, `portfolio` |
-| `receipts` | Quittances : émission, numérotation, token QR, vérification publique | `receipts` | émet `receipt.generated` ; consomme `invoice.paid`, `payment.confirmed` | `billing`, `documents`, `notifications` |
-| `agency-accounting` | Dépenses, commissions, relevés de gérance, reversements bailleurs | `expenses`, `commissions`, `owner_statements`, `owner_statement_lines`, `owner_payouts` | émet `owner_statement.closed`, `owner_payout.executed` ; consomme `payment.confirmed`, `invoice.paid` | `leases`, `parties`, `documents` |
-| `inspections` | États des lieux d'entrée et de sortie, postes, photos | `inspections`, `inspection_items`, `inspection_photos` | émet `inspection.signed` ; consomme `lease.activated`, `lease.terminated` | `leases`, `portfolio`, `documents` |
-| `maintenance` | Demandes d'intervention, suivi, imputation bailleur / locataire | `maintenance_requests`, `maintenance_updates` | émet `maintenance.created`, `maintenance.resolved` | `portfolio`, `leases`, `notifications` |
-| `notifications` | Templates, envois WhatsApp / SMS / push, relances, journalisation | `notification_templates`, `notifications`, `message_logs`, `dunning_rules`, `dunning_runs` | consomme la quasi-totalité des événements métier ; émet `message.delivered`, `message.failed` | aucune (module feuille, ports sortants uniquement) |
-| `documents` | Dépôt R2, URLs signées, antivirus, cycle de vie des fichiers | `documents` | émet `document.uploaded`, `document.deleted` | aucune (module feuille) |
-| `sync` | Lots de synchronisation mobile, rejeu idempotent, conflits | `sync_batches` | consomme les commandes des modules cibles via façades | tous les modules (orchestrateur, en écriture par façade uniquement) |
-| `audit` | Journal append-only des transitions d'état, traçabilité | `audit_logs` | consomme tous les événements de domaine | aucune (module feuille) |
-| `subscriptions` | Plans SaaS, abonnements des organisations, facturation Immodesk | `subscription_plans`, `subscriptions`, `subscription_invoices` | émet `subscription.activated`, `subscription.suspended` | `organizations`, `documents`, `notifications` |
-| `referrals` | Partenaires d'apport d'affaires, qualification des filleuls, cumul et approbation des commissions, versements groupés | `referral_programs`, `referral_partners`, `referrals`, `referral_commissions`, `referral_payouts` | émet `referral.qualified`, `referral_commission.accrued` ; consomme `subscription_invoice.paid` | `subscriptions`, `notifications`, `payments-mobile-money` |
+| Module                  | Responsabilités                                                                                                       | Tables possédées                                                                                     | Événements émis / consommés                                                                                                                                                                       | Dépendances autorisées                                              |
+| :---------------------- | :-------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------ |
+| `identity`              | Comptes utilisateurs globaux, OTP, sessions, jetons, clés API                                                         | `users`, `user_credentials`, `otp_codes`, `refresh_tokens`, `api_keys`                               | émet `user.registered`, `user.session_revoked`                                                                                                                                                    | `notifications` (port `OtpSender`)                                  |
+| `organizations`         | Tenants, adhésions, rôles, paramètres, invitations, drapeaux                                                          | `organizations`, `organization_settings`, `organization_members`, `invitations`, `feature_flags`     | émet `organization.created`, `member.role_changed` ; consomme `user.registered`                                                                                                                   | `identity`, `notifications`                                         |
+| `parties`               | Bailleurs, locataires, garants, canaux de contact                                                                     | `landlords`, `tenants`, `guarantors`, `contact_channels`                                             | émet `tenant.created`, `contact_channel.verified`                                                                                                                                                 | `organizations`, `documents`                                        |
+| `portfolio`             | Biens, lots, comptes bancaires, compteurs, relevés, tarifs                                                            | `properties`, `units`, `bank_accounts`, `meters`, `meter_readings`, `utility_tariffs`                | émet `unit.status_changed`, `meter_reading.recorded`                                                                                                                                              | `organizations`, `parties`, `documents`                             |
+| `leases`                | Mandats de gestion, baux, parties au bail, dépôts de garantie                                                         | `management_mandates`, `leases`, `lease_parties`, `lease_documents`, `deposits`, `deposit_movements` | émet `lease.activated`, `lease.terminated`, `deposit.movement_recorded` ; consomme `unit.status_changed`                                                                                          | `portfolio`, `parties`, `documents`                                 |
+| `billing`               | Factures de loyer, lignes, pénalités, numérotation, cron mensuel                                                      | `rent_invoices`, `invoice_lines`, `penalty_rules`, `sequences`, `tenant_credits`                     | émet `invoice.issued`, `invoice.paid`, `invoice.overdue`, `invoice.cancelled` ; consomme `lease.activated`, `lease.terminated`, `payment.confirmed`, `payment.reversed`, `meter_reading.recorded` | `leases`, `portfolio`                                               |
+| `payments-cash`         | Encaissement espèces, reçus signés, remises des démarcheurs                                                           | `cash_receipts`, `cash_remittances`, `cash_remittance_items`                                         | émet `payment.confirmed`, `remittance.closed`, `remittance.discrepancy_detected`                                                                                                                  | `payments` (noyau partagé), `billing`, `documents`                  |
+| `payments-mobile-money` | Initiation MoMo, webhooks, re-vérification, frais, rattrapage                                                         | `mobile_money_transactions`, `webhook_events`                                                        | émet `payment.initiated`, `payment.confirmed`, `payment.rejected`                                                                                                                                 | `payments`, `billing`                                               |
+| `payments-bank`         | Déclarations de virement, chèques, cycle de compensation                                                              | `bank_transfer_declarations`, `bank_checks`                                                          | émet `payment.pending_verification`, `payment.confirmed`, `payment.rejected`                                                                                                                      | `payments`, `billing`, `documents`, `portfolio`                     |
+| `payments` (noyau)      | Agrégat `payment`, allocations, machine à états, idempotence                                                          | `payments`, `payment_allocations`, `idempotency_keys`                                                | émet `payment.confirmed`, `payment.reversed`, `payment.allocated`                                                                                                                                 | `billing` (lecture seule via façade)                                |
+| `reconciliation`        | Import de relevés (CSV / MT940), rapprochement 3 niveaux                                                              | `bank_statements`, `bank_statement_lines`, `reconciliation_matches`                                  | émet `statement.imported`, `match.confirmed` ; consomme `payment.pending_verification`                                                                                                            | `payments-bank`, `portfolio`                                        |
+| `receipts`              | Quittances : émission, numérotation, token QR, vérification publique                                                  | `receipts`                                                                                           | émet `receipt.generated` ; consomme `invoice.paid`, `payment.confirmed`                                                                                                                           | `billing`, `documents`, `notifications`                             |
+| `agency-accounting`     | Dépenses, commissions, relevés de gérance, reversements bailleurs                                                     | `expenses`, `commissions`, `owner_statements`, `owner_statement_lines`, `owner_payouts`              | émet `owner_statement.closed`, `owner_payout.executed` ; consomme `payment.confirmed`, `invoice.paid`                                                                                             | `leases`, `parties`, `documents`                                    |
+| `inspections`           | États des lieux d'entrée et de sortie, postes, photos                                                                 | `inspections`, `inspection_items`, `inspection_photos`                                               | émet `inspection.signed` ; consomme `lease.activated`, `lease.terminated`                                                                                                                         | `leases`, `portfolio`, `documents`                                  |
+| `maintenance`           | Demandes d'intervention, suivi, imputation bailleur / locataire                                                       | `maintenance_requests`, `maintenance_updates`                                                        | émet `maintenance.created`, `maintenance.resolved`                                                                                                                                                | `portfolio`, `leases`, `notifications`                              |
+| `notifications`         | Templates, envois WhatsApp / SMS / push, relances, journalisation                                                     | `notification_templates`, `notifications`, `message_logs`, `dunning_rules`, `dunning_runs`           | consomme la quasi-totalité des événements métier ; émet `message.delivered`, `message.failed`                                                                                                     | aucune (module feuille, ports sortants uniquement)                  |
+| `documents`             | Dépôt R2, URLs signées, antivirus, cycle de vie des fichiers                                                          | `documents`                                                                                          | émet `document.uploaded`, `document.deleted`                                                                                                                                                      | aucune (module feuille)                                             |
+| `sync`                  | Lots de synchronisation mobile, rejeu idempotent, conflits                                                            | `sync_batches`                                                                                       | consomme les commandes des modules cibles via façades                                                                                                                                             | tous les modules (orchestrateur, en écriture par façade uniquement) |
+| `audit`                 | Journal append-only des transitions d'état, traçabilité                                                               | `audit_logs`                                                                                         | consomme tous les événements de domaine                                                                                                                                                           | aucune (module feuille)                                             |
+| `subscriptions`         | Plans SaaS, abonnements des organisations, facturation Immodesk                                                       | `subscription_plans`, `subscriptions`, `subscription_invoices`                                       | émet `subscription.activated`, `subscription.suspended`                                                                                                                                           | `organizations`, `documents`, `notifications`                       |
+| `referrals`             | Partenaires d'apport d'affaires, qualification des filleuls, cumul et approbation des commissions, versements groupés | `referral_programs`, `referral_partners`, `referrals`, `referral_commissions`, `referral_payouts`    | émet `referral.qualified`, `referral_commission.accrued` ; consomme `subscription_invoice.paid`                                                                                                   | `subscriptions`, `notifications`, `payments-mobile-money`           |
 
 Trois règles de lecture de ce tableau :
 
-1. `payments` est un **noyau partagé** entre les trois modules d'encaissement. Il détient l'agrégat `payment` et sa machine à états (§8.5) ; `payments-cash`, `payments-mobile-money` et `payments-bank` sont des *adaptateurs de mode* qui produisent des transitions via sa façade. Aucun d'eux n'écrit dans `payments`.
+1. `payments` est un **noyau partagé** entre les trois modules d'encaissement. Il détient l'agrégat `payment` et sa machine à états (§8.5) ; `payments-cash`, `payments-mobile-money` et `payments-bank` sont des _adaptateurs de mode_ qui produisent des transitions via sa façade. Aucun d'eux n'écrit dans `payments`.
 2. `notifications`, `documents` et `audit` sont des **modules feuilles** : ils ne dépendent d'aucun module métier. C'est ce qui rend possible leur consommation d'événements sans créer de cycle.
 3. `sync` est le seul module autorisé à dépendre de tous les autres, et exclusivement en écriture par façade applicative. Il ne contient aucune règle métier : il rejoue des commandes.
 
@@ -524,12 +523,12 @@ Chaque module reproduit la même structure en couches. La dépendance va **toujo
 presentation  ──▶  application  ──▶  domain  ◀──  infrastructure
 ```
 
-| Couche | Contient | Ne contient jamais |
-| :--- | :--- | :--- |
-| `domain/` | Entités, value objects (`Money`, `PhoneNumber`, `InvoicePeriod`), règles d'invariant, machines à états, événements de domaine, **ports** (interfaces de repository et de service externe) | Aucun import de `@nestjs/*`, `@prisma/client`, `axios`, `bullmq`. Zéro dépendance technique. |
-| `application/` | Commandes, requêtes, handlers, orchestration transactionnelle, façade exposée aux autres modules | SQL, HTTP, DTO de transport, décorateurs Swagger |
-| `infrastructure/` | Implémentations Prisma des ports, clients HTTP, producteurs BullMQ, mappers entité ↔ ligne | Règle métier. Une implémentation qui contient un `if` métier est un bug de conception. |
-| `presentation/` | Contrôleurs NestJS, DTO d'entrée/sortie, décorateurs OpenAPI, gardes, mapping erreur → HTTP | Accès direct à Prisma, logique de calcul |
+| Couche            | Contient                                                                                                                                                                                  | Ne contient jamais                                                                           |
+| :---------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------- |
+| `domain/`         | Entités, value objects (`Money`, `PhoneNumber`, `InvoicePeriod`), règles d'invariant, machines à états, événements de domaine, **ports** (interfaces de repository et de service externe) | Aucun import de `@nestjs/*`, `@prisma/client`, `axios`, `bullmq`. Zéro dépendance technique. |
+| `application/`    | Commandes, requêtes, handlers, orchestration transactionnelle, façade exposée aux autres modules                                                                                          | SQL, HTTP, DTO de transport, décorateurs Swagger                                             |
+| `infrastructure/` | Implémentations Prisma des ports, clients HTTP, producteurs BullMQ, mappers entité ↔ ligne                                                                                                | Règle métier. Une implémentation qui contient un `if` métier est un bug de conception.       |
+| `presentation/`   | Contrôleurs NestJS, DTO d'entrée/sortie, décorateurs OpenAPI, gardes, mapping erreur → HTTP                                                                                               | Accès direct à Prisma, logique de calcul                                                     |
 
 Le `domain/` est testable par Vitest sans base ni conteneur : c'est le critère de validation de la couche. Si un test de domaine réclame PostgreSQL, la règle est au mauvais endroit.
 
@@ -553,21 +552,20 @@ Les frontières sont **mécanisées**, pas conventionnelles. `eslint-plugin-boun
 
 Interdictions explicites, vérifiées en revue et par le linter :
 
-| Interdit | Raison |
-| :--- | :--- |
-| `import { PrismaService }` dans `domain/` ou `application/` | La couche applicative orchestre des ports, elle n'écrit pas de SQL |
-| `import ... from '../../billing/infrastructure/...'` | Franchir la frontière d'un autre module ailleurs que par sa façade `BillingFacade` |
-| Import croisé entre deux modules qui se citent mutuellement | Un cycle de modules interdit toute extraction ultérieure ; le découplage passe par un événement |
-| `import { PrismaClient }` hors de `infrastructure/prisma/` | Toute connexion doit passer par le client étendu qui pose le contexte RLS (§5.3) |
-| Import d'un type Prisma généré dans une signature de façade publique | La façade expose des types de `packages/shared`, jamais le schéma physique |
-| `number` pour un montant | Les montants sont `bigint` XAF de bout en bout, encapsulés dans `Money` |
-
+| Interdit                                                             | Raison                                                                                          |
+| :------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------- |
+| `import { PrismaService }` dans `domain/` ou `application/`          | La couche applicative orchestre des ports, elle n'écrit pas de SQL                              |
+| `import ... from '../../billing/infrastructure/...'`                 | Franchir la frontière d'un autre module ailleurs que par sa façade `BillingFacade`              |
+| Import croisé entre deux modules qui se citent mutuellement          | Un cycle de modules interdit toute extraction ultérieure ; le découplage passe par un événement |
+| `import { PrismaClient }` hors de `infrastructure/prisma/`           | Toute connexion doit passer par le client étendu qui pose le contexte RLS (§5.3)                |
+| Import d'un type Prisma généré dans une signature de façade publique | La façade expose des types de `packages/shared`, jamais le schéma physique                      |
+| `number` pour un montant                                             | Les montants sont `bigint` XAF de bout en bout, encapsulés dans `Money`                         |
 
 ---
 
 ### 4.4 CQRS léger
 
-Pas de bus CQRS complet, pas d'*event sourcing*, pas de base de lecture séparée. On retient uniquement la **séparation des chemins** :
+Pas de bus CQRS complet, pas d'_event sourcing_, pas de base de lecture séparée. On retient uniquement la **séparation des chemins** :
 
 - **Commandes** (`application/commands/`) : muter l'état, retourner un identifiant ou rien, toujours transactionnelles, toujours auditées, toujours idempotentes lorsqu'elles sont exposées au mobile.
 - **Requêtes** (`application/queries/`) : lecture seule, autorisées à contourner les entités de domaine et à utiliser `$queryRaw` typé pour projeter directement le DTO de sortie (tableaux de bord, balances âgées, rapprochement).
@@ -596,11 +594,11 @@ export interface PaymentConfirmedEvent {
   version: 1;
   organizationId: string;
   correlationId: string;
-  occurredAt: string;          // ISO 8601, UTC
+  occurredAt: string; // ISO 8601, UTC
   payload: {
     paymentId: string;
     method: PaymentMethod;
-    amount: string;            // bigint sérialisé en chaîne
+    amount: string; // bigint sérialisé en chaîne
     currency: 'XAF';
     allocations: Array<{ invoiceId: string; amount: string }>;
   };
@@ -609,10 +607,10 @@ export interface PaymentConfirmedEvent {
 
 **Deux temps de propagation, une seule API pour le producteur.** Le module émetteur appelle `eventBus.publish(event)`. Le bus décide du transport :
 
-| Type d'abonné | Transport | Garantie | Exemple |
-| :--- | :--- | :--- | :--- |
-| Synchrone, dans la transaction | `EventEmitter2` appelé **après** commit via un outbox mémoire | Au plus une fois, même processus | Recalcul du statut d'une facture après allocation |
-| Asynchrone, hors transaction | Job BullMQ (`domain-events`), payload = l'événement | Au moins une fois, retries exponentiels, DLQ | Génération PDF de quittance, envoi WhatsApp, écriture d'audit |
+| Type d'abonné                  | Transport                                                     | Garantie                                     | Exemple                                                       |
+| :----------------------------- | :------------------------------------------------------------ | :------------------------------------------- | :------------------------------------------------------------ |
+| Synchrone, dans la transaction | `EventEmitter2` appelé **après** commit via un outbox mémoire | Au plus une fois, même processus             | Recalcul du statut d'une facture après allocation             |
+| Asynchrone, hors transaction   | Job BullMQ (`domain-events`), payload = l'événement           | Au moins une fois, retries exponentiels, DLQ | Génération PDF de quittance, envoi WhatsApp, écriture d'audit |
 
 **Règle d'ordre.** Aucun événement n'est publié avant le `COMMIT`. Les événements produits pendant la transaction sont accumulés dans le contexte `AsyncLocalStorage` et vidés par un `onCommit` hook. Un rollback les jette. Cela évite le cas classique « la quittance est envoyée alors que le paiement n'a jamais été écrit ».
 
@@ -629,7 +627,7 @@ await this.prisma.$transaction(
     await tx.$executeRaw`SELECT set_config('app.current_organization_id', ${orgId}, true)`;
     await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true)`;
     const result = await work(tx);
-    collectEvents(result);           // publiés après commit uniquement
+    collectEvents(result); // publiés après commit uniquement
     return result;
   },
   {
@@ -642,16 +640,14 @@ await this.prisma.$transaction(
 
 Le troisième argument `true` de `set_config` équivaut à `SET LOCAL` : la valeur est **portée par la transaction** et disparaît au commit ou au rollback. C'est indispensable avec un pool de connexions — sans cela, une connexion recyclée conserverait le tenant du requêteur précédent.
 
-| Situation | Niveau d'isolation | Justification |
-| :--- | :--- | :--- |
-| Écriture courante (facture, allocation, quittance) | `READ COMMITTED` | Suffisant : les invariants sont protégés par des contraintes et des verrous de ligne explicites |
-| Attribution d'un numéro de séquence | `READ COMMITTED` + `SELECT ... FOR UPDATE` sur `sequences` | Sérialise les concurrents sur la seule ligne du compteur, sans pénaliser le reste |
-| Clôture d'une remise de caisse, clôture d'un relevé de gérance | `SERIALIZABLE` | Agrégation d'un ensemble de lignes dont la composition ne doit pas changer sous les pieds ; retry automatique sur `40001` |
-| Rapprochement bancaire automatique | `REPEATABLE READ` | Le lot de lignes candidates doit être stable pendant tout l'algorithme de matching |
+| Situation                                                      | Niveau d'isolation                                         | Justification                                                                                                             |
+| :------------------------------------------------------------- | :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| Écriture courante (facture, allocation, quittance)             | `READ COMMITTED`                                           | Suffisant : les invariants sont protégés par des contraintes et des verrous de ligne explicites                           |
+| Attribution d'un numéro de séquence                            | `READ COMMITTED` + `SELECT ... FOR UPDATE` sur `sequences` | Sérialise les concurrents sur la seule ligne du compteur, sans pénaliser le reste                                         |
+| Clôture d'une remise de caisse, clôture d'un relevé de gérance | `SERIALIZABLE`                                             | Agrégation d'un ensemble de lignes dont la composition ne doit pas changer sous les pieds ; retry automatique sur `40001` |
+| Rapprochement bancaire automatique                             | `REPEATABLE READ`                                          | Le lot de lignes candidates doit être stable pendant tout l'algorithme de matching                                        |
 
-Trois règles complémentaires : pas d'appel réseau (Mobile Money, WhatsApp, R2) à l'intérieur d'une transaction ; une transaction de plus de 15 s est annulée et remontée en incident ; toute transaction en `SERIALIZABLE` est retentée jusqu'à 3 fois sur erreur de sérialisation, avec *jitter*.
-
-
+Trois règles complémentaires : pas d'appel réseau (Mobile Money, WhatsApp, R2) à l'intérieur d'une transaction ; une transaction de plus de 15 s est annulée et remontée en incident ; toute transaction en `SERIALIZABLE` est retentée jusqu'à 3 fois sur erreur de sérialisation, avec _jitter_.
 
 ---
 
@@ -677,24 +673,24 @@ Réponse HTTP normalisée :
 }
 ```
 
-| Code | HTTP | Message `fr-CG` |
-| :--- | :--- | :--- |
-| `IAM.OTP_INVALID` | 401 | Code de vérification incorrect. |
-| `IAM.OTP_TOO_MANY_ATTEMPTS` | 429 | Trop de tentatives. Réessayez dans %{minutes} minutes. |
-| `IAM.SESSION_REVOKED` | 401 | Votre session a été fermée. Reconnectez-vous. |
-| `TENANCY.ORGANIZATION_MISMATCH` | 403 | Cette ressource n'appartient pas à votre organisation. |
-| `RBAC.PERMISSION_DENIED` | 403 | Votre rôle ne permet pas cette action. |
-| `BILLING.PERIOD_ALREADY_INVOICED` | 409 | Une facture existe déjà pour ce bail sur cette période. |
-| `BILLING.INVOICE_ALREADY_PAID` | 409 | Cette facture est déjà soldée. |
-| `BILLING.METER_READING_MISSING` | 422 | Relevé de compteur manquant pour la période. |
-| `PAYMENT.AMOUNT_EXCEEDS_BALANCE` | 422 | Le montant dépasse le solde restant dû. |
-| `PAYMENT.ALREADY_CONFIRMED` | 409 | Ce paiement est déjà confirmé. |
-| `PAYMENT.PROVIDER_UNAVAILABLE` | 503 | Opérateur momentanément indisponible. Réessayez. |
-| `MOMO.STATUS_MISMATCH` | 409 | Le statut opérateur ne confirme pas ce paiement. |
-| `CASH.REMITTANCE_DISCREPANCY` | 422 | Écart entre les reçus et le montant remis. |
-| `BANK.DUPLICATE_PROOF` | 409 | Cette preuve de virement a déjà été déposée. |
-| `SYNC.CLIENT_REF_CONFLICT` | 409 | Cette opération a déjà été enregistrée. |
-| `SUBSCRIPTION.QUOTA_EXCEEDED` | 402 | Votre formule ne permet pas d'ajouter ce lot. |
+| Code                              | HTTP | Message `fr-CG`                                         |
+| :-------------------------------- | :--- | :------------------------------------------------------ |
+| `IAM.OTP_INVALID`                 | 401  | Code de vérification incorrect.                         |
+| `IAM.OTP_TOO_MANY_ATTEMPTS`       | 429  | Trop de tentatives. Réessayez dans %{minutes} minutes.  |
+| `IAM.SESSION_REVOKED`             | 401  | Votre session a été fermée. Reconnectez-vous.           |
+| `TENANCY.ORGANIZATION_MISMATCH`   | 403  | Cette ressource n'appartient pas à votre organisation.  |
+| `RBAC.PERMISSION_DENIED`          | 403  | Votre rôle ne permet pas cette action.                  |
+| `BILLING.PERIOD_ALREADY_INVOICED` | 409  | Une facture existe déjà pour ce bail sur cette période. |
+| `BILLING.INVOICE_ALREADY_PAID`    | 409  | Cette facture est déjà soldée.                          |
+| `BILLING.METER_READING_MISSING`   | 422  | Relevé de compteur manquant pour la période.            |
+| `PAYMENT.AMOUNT_EXCEEDS_BALANCE`  | 422  | Le montant dépasse le solde restant dû.                 |
+| `PAYMENT.ALREADY_CONFIRMED`       | 409  | Ce paiement est déjà confirmé.                          |
+| `PAYMENT.PROVIDER_UNAVAILABLE`    | 503  | Opérateur momentanément indisponible. Réessayez.        |
+| `MOMO.STATUS_MISMATCH`            | 409  | Le statut opérateur ne confirme pas ce paiement.        |
+| `CASH.REMITTANCE_DISCREPANCY`     | 422  | Écart entre les reçus et le montant remis.              |
+| `BANK.DUPLICATE_PROOF`            | 409  | Cette preuve de virement a déjà été déposée.            |
+| `SYNC.CLIENT_REF_CONFLICT`        | 409  | Cette opération a déjà été enregistrée.                 |
+| `SUBSCRIPTION.QUOTA_EXCEEDED`     | 402  | Votre formule ne permet pas d'ajouter ce lot.           |
 
 Un test de non-régression parcourt le catalogue et échoue si un code disparaît ou change de statut HTTP entre deux versions de `packages/shared`.
 
@@ -706,7 +702,7 @@ La **source de vérité** est le schéma zod de `packages/shared/src/schemas/` :
 // packages/shared/src/schemas/cash-receipt.schema.ts
 export const createCashReceiptSchema = z.object({
   leaseId: z.string().uuid(),
-  amount: z.coerce.bigint().positive(),         // XAF, jamais de décimale
+  amount: z.coerce.bigint().positive(), // XAF, jamais de décimale
   collectedAt: z.string().datetime(),
   clientRef: z.string().ulid(),
   signaturePng: z.string().base64().max(512_000),
@@ -726,7 +722,7 @@ GET /v1/payments?limit=50&cursor=eyJpZCI6IjAxOGYuLi4iLCJjIjoiMjAyNi0wMy0wNVQwOTo
 
 ```json
 {
-  "data": [ /* ... */ ],
+  "data": [/* ... */],
   "pageInfo": { "nextCursor": "eyJpZCI6...", "hasNextPage": true, "limit": 50 }
 }
 ```
@@ -769,7 +765,6 @@ Le fichier `payments-cash.facade.ts` est le seul export du `index.ts` du module.
 
 ---
 
-
 ---
 
 ## 5. Multi-tenant
@@ -784,11 +779,11 @@ La RLS n'est pas une optimisation : c'est le **dernier rempart**. Le filtrage ap
 
 Un utilisateur appartenant à plusieurs organisations doit dire laquelle il utilise. La résolution suit un ordre strict :
 
-| Rang | Source | Cas d'usage |
-| :--- | :--- | :--- |
-| 1 | En-tête `X-Organization-Id` | Web et mobile : bascule d'organisation sans reconnexion |
-| 2 | Revendication `org` du JWT d'accès | Session mono-organisation, jetons de service |
-| 3 | Organisation par défaut de l'utilisateur (`users.default_organization_id`) | Première requête après connexion |
+| Rang | Source                                                                     | Cas d'usage                                             |
+| :--- | :------------------------------------------------------------------------- | :------------------------------------------------------ |
+| 1    | En-tête `X-Organization-Id`                                                | Web et mobile : bascule d'organisation sans reconnexion |
+| 2    | Revendication `org` du JWT d'accès                                         | Session mono-organisation, jetons de service            |
+| 3    | Organisation par défaut de l'utilisateur (`users.default_organization_id`) | Première requête après connexion                        |
 
 **Invariant.** Si l'en-tête est présent, il doit correspondre à une adhésion active de l'utilisateur (`organization_members` avec `status = 'ACTIVE'`), sinon `TENANCY.ORGANIZATION_MISMATCH` (403). Si le JWT porte déjà un `org` et que l'en-tête en désigne un autre, l'en-tête gagne **uniquement** après revérification de l'adhésion en base ; le rôle effectif est alors relu, jamais repris du jeton.
 
@@ -841,13 +836,13 @@ CREATE POLICY tenant_isolation ON payments
 
 Cinq catégories échappent à la RLS, et la liste est fermée :
 
-| Table | Statut | Contrôle d'accès |
-| :--- | :--- | :--- |
-| `users`, `user_credentials`, `otp_codes`, `refresh_tokens` | Globales — un utilisateur existe indépendamment des organisations | Filtrage applicatif par `user_id` du jeton ; jamais exposées en liste |
-| `organizations` | Globale, lue par le porteur d'une adhésion | Policy fondée sur l'existence d'une ligne `organization_members` |
-| `subscription_plans`, référentiels (quartiers, types de bien, devises) | Publiques en lecture | Lecture seule, écriture réservée aux migrations |
-| `webhook_events` | Globale à l'ingestion (le tenant n'est connu qu'après résolution du payload) | Table non exposée par l'API ; résolution puis rattachement |
-| `audit_logs` | Porte `organization_id`, mais **append-only** | RLS en lecture, `INSERT` seul autorisé, aucun `UPDATE`/`DELETE` (révoqué au niveau du rôle) |
+| Table                                                                  | Statut                                                                       | Contrôle d'accès                                                                            |
+| :--------------------------------------------------------------------- | :--------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------ |
+| `users`, `user_credentials`, `otp_codes`, `refresh_tokens`             | Globales — un utilisateur existe indépendamment des organisations            | Filtrage applicatif par `user_id` du jeton ; jamais exposées en liste                       |
+| `organizations`                                                        | Globale, lue par le porteur d'une adhésion                                   | Policy fondée sur l'existence d'une ligne `organization_members`                            |
+| `subscription_plans`, référentiels (quartiers, types de bien, devises) | Publiques en lecture                                                         | Lecture seule, écriture réservée aux migrations                                             |
+| `webhook_events`                                                       | Globale à l'ingestion (le tenant n'est connu qu'après résolution du payload) | Table non exposée par l'API ; résolution puis rattachement                                  |
+| `audit_logs`                                                           | Porte `organization_id`, mais **append-only**                                | RLS en lecture, `INSERT` seul autorisé, aucun `UPDATE`/`DELETE` (révoqué au niveau du rôle) |
 
 ### 5.5 Tests d'isolation obligatoires
 
@@ -861,15 +856,16 @@ describe('isolation multi-tenant', () => {
       tx.payment.create({ data: { ...basePayment, organizationId: orgA } }),
     );
 
-    const visible = await asOrganization(orgB, (tx) =>
-      tx.payment.findMany({ where: {} }),           // volontairement sans filtre
+    const visible = await asOrganization(
+      orgB,
+      (tx) => tx.payment.findMany({ where: {} }), // volontairement sans filtre
     );
     expect(visible).toHaveLength(0);
 
     const direct = await asOrganization(orgB, (tx) =>
       tx.payment.findUnique({ where: { id: paymentA.id } }),
     );
-    expect(direct).toBeNull();                       // RLS, pas 403 : la ligne n'existe pas
+    expect(direct).toBeNull(); // RLS, pas 403 : la ligne n'existe pas
   });
 
   it('une ecriture avec un organization_id etranger est rejetee par WITH CHECK', async () => {
@@ -889,7 +885,6 @@ describe('isolation multi-tenant', () => {
 Trois assertions structurantes en découlent : une fuite se manifeste par une **liste vide**, jamais par un 403 ; une écriture croisée est refusée par `WITH CHECK` et non par le code applicatif ; l'absence de contexte est une **erreur**, jamais un accès non filtré. Un test de charge nocturne rejoue en outre le parcours complet (facture → paiement → quittance) sur deux organisations en parallèle et vérifie qu'aucune séquence, aucun numéro de quittance et aucun document R2 ne se croise.
 
 ---
-
 
 ---
 
@@ -946,24 +941,24 @@ Le code est stocké **haché en argon2id**, jamais en clair. La comparaison est 
 
 L'OTP est le point d'entrée le plus exposé : il coûte de l'argent à chaque envoi (SMS et conversation WhatsApp facturés) et il ouvre l'accès à des données financières.
 
-| Contrôle | Seuil | Portée | Réaction au dépassement |
-| :--- | :--- | :--- | :--- |
-| Demandes par numéro | 3 / 15 min, 8 / 24 h | `otp:req:{phone}` | 429, délai renvoyé au client |
-| Demandes par IP | 20 / heure | `otp:ip:{ip}` | 429 puis blocage progressif 1 h |
-| Demandes par appareil | 5 / heure | `otp:dev:{deviceId}` | 429 |
-| Tentatives de vérification | 5 par code | colonne `otp_codes.attempts` | Code invalidé, nouvelle demande obligatoire |
-| Durée de vie du code | 5 minutes | `expires_at` | Expiration, `IAM.OTP_EXPIRED` |
-| Réutilisation d'un code consommé | — | `consumed_at` | Refus + alerte Sentry |
-| Coût d'envoi par organisation | Plafond quotidien selon la formule | `subscriptions` | Bascule SMS → WhatsApp only, alerte à l'OWNER |
+| Contrôle                         | Seuil                              | Portée                       | Réaction au dépassement                       |
+| :------------------------------- | :--------------------------------- | :--------------------------- | :-------------------------------------------- |
+| Demandes par numéro              | 3 / 15 min, 8 / 24 h               | `otp:req:{phone}`            | 429, délai renvoyé au client                  |
+| Demandes par IP                  | 20 / heure                         | `otp:ip:{ip}`                | 429 puis blocage progressif 1 h               |
+| Demandes par appareil            | 5 / heure                          | `otp:dev:{deviceId}`         | 429                                           |
+| Tentatives de vérification       | 5 par code                         | colonne `otp_codes.attempts` | Code invalidé, nouvelle demande obligatoire   |
+| Durée de vie du code             | 5 minutes                          | `expires_at`                 | Expiration, `IAM.OTP_EXPIRED`                 |
+| Réutilisation d'un code consommé | —                                  | `consumed_at`                | Refus + alerte Sentry                         |
+| Coût d'envoi par organisation    | Plafond quotidien selon la formule | `subscriptions`              | Bascule SMS → WhatsApp only, alerte à l'OWNER |
 
 Trois mesures complémentaires : délai plancher de 30 s entre deux demandes pour un même numéro ; réponse **identique** que le numéro existe ou non (pas d'énumération de comptes) ; les numéros marqués `blocked` par abus répété sont refusés en amont de tout envoi. Les compteurs Redis utilisent une fenêtre glissante (`INCR` + `EXPIRE`), et les envois transitent par la file `notifications` afin d'absorber les pics sans multiplier les appels opérateur.
 
 ### 6.4 Jetons, rotation et révocation
 
-| Jeton | Durée | Contenu | Stockage client |
-| :--- | :--- | :--- | :--- |
-| **Access token** (JWT, RS256) | 15 min | `sub`, `org`, `role`, `perms` (bitmask), `sid`, `jti`, `exp` | Mémoire (web : cookie `HttpOnly` `Secure` `SameSite=Lax` ; mobile : mémoire seule) |
-| **Refresh token** | 30 j glissants | Opaque (32 octets aléatoires), haché en base | `Keychain` / `EncryptedSharedPreferences` (mobile), cookie `HttpOnly` (web) |
+| Jeton                         | Durée          | Contenu                                                      | Stockage client                                                                    |
+| :---------------------------- | :------------- | :----------------------------------------------------------- | :--------------------------------------------------------------------------------- |
+| **Access token** (JWT, RS256) | 15 min         | `sub`, `org`, `role`, `perms` (bitmask), `sid`, `jti`, `exp` | Mémoire (web : cookie `HttpOnly` `Secure` `SameSite=Lax` ; mobile : mémoire seule) |
+| **Refresh token**             | 30 j glissants | Opaque (32 octets aléatoires), haché en base                 | `Keychain` / `EncryptedSharedPreferences` (mobile), cookie `HttpOnly` (web)        |
 
 La **rotation est systématique** : chaque `POST /v1/auth/refresh` invalide le jeton présenté et en émet un nouveau dans la même `family_id`. Si un jeton déjà consommé est rejoué — signature d'un vol — toute la famille est révoquée immédiatement, un `user.session_revoked` est émis, et une notification est envoyée au titulaire. Chaque famille est liée à un `device_id` et à un empreinte User-Agent ; un changement d'empreinte n'invalide pas mais est journalisé.
 
@@ -977,41 +972,41 @@ Les permissions sont des chaînes `domaine:action`, définies **une seule fois**
 
 Légende : ● autorisé — ◐ autorisé sur son propre périmètre (ses tournées, ses baux, ses factures) — ○ interdit.
 
-| Permission | OWNER | MANAGER | COLLECTOR | ACCOUNTANT | VIEWER | TENANT | LANDLORD_PORTAL | REFERRAL_PARTNER |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `organization:read` | ● | ● | ● | ● | ● | ○ | ○ | ○ |
-| `organization:update` | ● | ○ | ○ | ○ | ○ | ○ | ○ | ○ |
-| `member:invite` / `member:role_change` | ● | ○ | ○ | ○ | ○ | ○ | ○ | ○ |
-| `subscription:manage` | ● | ○ | ○ | ○ | ○ | ○ | ○ | ○ |
-| `apikey:manage` | ● | ○ | ○ | ○ | ○ | ○ | ○ | ○ |
-| `party:read` | ● | ● | ◐ | ● | ● | ○ | ○ | ○ |
-| `party:write` | ● | ● | ○ | ○ | ○ | ○ | ○ | ○ |
-| `property:read` / `unit:read` | ● | ● | ◐ | ● | ● | ◐ | ◐ | ○ |
-| `property:write` / `unit:write` | ● | ● | ○ | ○ | ○ | ○ | ○ | ○ |
-| `lease:read` | ● | ● | ◐ | ● | ● | ◐ | ◐ | ○ |
-| `lease:write` / `lease:terminate` | ● | ● | ○ | ○ | ○ | ○ | ○ | ○ |
-| `invoice:read` | ● | ● | ◐ | ● | ● | ◐ | ◐ | ○ |
-| `invoice:issue` / `invoice:cancel` | ● | ● | ○ | ○ | ○ | ○ | ○ | ○ |
-| `payment:read` | ● | ● | ◐ | ● | ● | ◐ | ◐ | ○ |
-| `payment:record_cash` | ● | ● | ● | ○ | ○ | ○ | ○ | ○ |
-| `payment:initiate_momo` | ● | ● | ● | ○ | ○ | ● | ○ | ○ |
-| `payment:validate_transfer` | ● | ● | ○ | ● | ○ | ○ | ○ | ○ |
-| `payment:reverse` | ● | ○ | ○ | ○ | ○ | ○ | ○ | ○ |
-| `remittance:submit` | ○ | ○ | ● | ○ | ○ | ○ | ○ | ○ |
-| `remittance:validate` | ● | ● | ○ | ● | ○ | ○ | ○ | ○ |
-| `receipt:read` | ● | ● | ◐ | ● | ● | ◐ | ◐ | ○ |
-| `receipt:resend` | ● | ● | ◐ | ● | ○ | ○ | ○ | ○ |
-| `reconciliation:import` / `reconciliation:match` | ● | ● | ○ | ● | ○ | ○ | ○ | ○ |
-| `expense:write` / `commission:read` | ● | ● | ○ | ● | ○ | ○ | ○ | ○ |
-| `owner_statement:close` / `owner_payout:execute` | ● | ○ | ○ | ◐ (préparer) | ○ | ○ | ○ | ○ |
-| `owner_statement:read` / `owner_payout:read` | ● | ● | ○ | ● | ● | ○ | ◐ | ○ |
-| `inspection:conduct` / `inspection:sign` | ● | ● | ● | ○ | ○ | ◐ (contresigner) | ○ | ○ |
-| `maintenance:create` | ● | ● | ● | ○ | ○ | ● | ○ | ○ |
-| `maintenance:resolve` | ● | ● | ○ | ○ | ○ | ○ | ○ | ○ |
-| `notification:send_manual` | ● | ● | ○ | ○ | ○ | ○ | ○ | ○ |
-| `audit:read` | ● | ○ | ○ | ● | ○ | ○ | ○ | ○ |
-| `export:full` | ● | ○ | ○ | ● | ○ | ○ | ○ | ○ |
-| `referral:read` / `referral_payout:read` | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ◐ |
+| Permission                                       | OWNER | MANAGER | COLLECTOR |  ACCOUNTANT  | VIEWER |      TENANT      | LANDLORD_PORTAL | REFERRAL_PARTNER |
+| :----------------------------------------------- | :---: | :-----: | :-------: | :----------: | :----: | :--------------: | :-------------: | :--------------: |
+| `organization:read`                              |   ●   |    ●    |     ●     |      ●       |   ●    |        ○         |        ○        |        ○         |
+| `organization:update`                            |   ●   |    ○    |     ○     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `member:invite` / `member:role_change`           |   ●   |    ○    |     ○     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `subscription:manage`                            |   ●   |    ○    |     ○     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `apikey:manage`                                  |   ●   |    ○    |     ○     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `party:read`                                     |   ●   |    ●    |     ◐     |      ●       |   ●    |        ○         |        ○        |        ○         |
+| `party:write`                                    |   ●   |    ●    |     ○     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `property:read` / `unit:read`                    |   ●   |    ●    |     ◐     |      ●       |   ●    |        ◐         |        ◐        |        ○         |
+| `property:write` / `unit:write`                  |   ●   |    ●    |     ○     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `lease:read`                                     |   ●   |    ●    |     ◐     |      ●       |   ●    |        ◐         |        ◐        |        ○         |
+| `lease:write` / `lease:terminate`                |   ●   |    ●    |     ○     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `invoice:read`                                   |   ●   |    ●    |     ◐     |      ●       |   ●    |        ◐         |        ◐        |        ○         |
+| `invoice:issue` / `invoice:cancel`               |   ●   |    ●    |     ○     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `payment:read`                                   |   ●   |    ●    |     ◐     |      ●       |   ●    |        ◐         |        ◐        |        ○         |
+| `payment:record_cash`                            |   ●   |    ●    |     ●     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `payment:initiate_momo`                          |   ●   |    ●    |     ●     |      ○       |   ○    |        ●         |        ○        |        ○         |
+| `payment:validate_transfer`                      |   ●   |    ●    |     ○     |      ●       |   ○    |        ○         |        ○        |        ○         |
+| `payment:reverse`                                |   ●   |    ○    |     ○     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `remittance:submit`                              |   ○   |    ○    |     ●     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `remittance:validate`                            |   ●   |    ●    |     ○     |      ●       |   ○    |        ○         |        ○        |        ○         |
+| `receipt:read`                                   |   ●   |    ●    |     ◐     |      ●       |   ●    |        ◐         |        ◐        |        ○         |
+| `receipt:resend`                                 |   ●   |    ●    |     ◐     |      ●       |   ○    |        ○         |        ○        |        ○         |
+| `reconciliation:import` / `reconciliation:match` |   ●   |    ●    |     ○     |      ●       |   ○    |        ○         |        ○        |        ○         |
+| `expense:write` / `commission:read`              |   ●   |    ●    |     ○     |      ●       |   ○    |        ○         |        ○        |        ○         |
+| `owner_statement:close` / `owner_payout:execute` |   ●   |    ○    |     ○     | ◐ (préparer) |   ○    |        ○         |        ○        |        ○         |
+| `owner_statement:read` / `owner_payout:read`     |   ●   |    ●    |     ○     |      ●       |   ●    |        ○         |        ◐        |        ○         |
+| `inspection:conduct` / `inspection:sign`         |   ●   |    ●    |     ●     |      ○       |   ○    | ◐ (contresigner) |        ○        |        ○         |
+| `maintenance:create`                             |   ●   |    ●    |     ●     |      ○       |   ○    |        ●         |        ○        |        ○         |
+| `maintenance:resolve`                            |   ●   |    ●    |     ○     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `notification:send_manual`                       |   ●   |    ●    |     ○     |      ○       |   ○    |        ○         |        ○        |        ○         |
+| `audit:read`                                     |   ●   |    ○    |     ○     |      ●       |   ○    |        ○         |        ○        |        ○         |
+| `export:full`                                    |   ●   |    ○    |     ○     |      ●       |   ○    |        ○         |        ○        |        ○         |
+| `referral:read` / `referral_payout:read`         |   ○   |    ○    |     ○     |      ○       |   ○    |        ○         |        ○        |        ◐         |
 
 Quatre points de vigilance. **TENANT n'est pas un rôle d'`organization_members`** : c'est un rôle dérivé, accordé au porteur d'un bail actif via le portail locataire, dont le périmètre se limite strictement à ses propres baux, factures, quittances et demandes. **COLLECTOR est le rôle le plus contraint** : il encaisse, il ne modifie ni bail ni facture, et son ◐ est appliqué par une clause `collector_id = :userId` ajoutée par un intercepteur, en plus de la RLS. **`payment:reverse` est réservé à l'OWNER** : la contre-passation est la seule opération capable de défaire une écriture financière. Enfin, `OWNER` ne porte pas `remittance:submit` : celui qui remet les fonds ne peut pas être celui qui valide la remise (séparation des tâches, §8.1).
 
@@ -1026,7 +1021,6 @@ Destinées aux intégrations (logiciel comptable d'une agence, portail d'un gran
 Une clé est **rattachée à une organisation et à un jeu de permissions en lecture seule par défaut** ; l'octroi d'une permission d'écriture exige une confirmation OTP de l'OWNER. Chaque clé porte une liste d'IP autorisées facultative, une date d'expiration obligatoire (365 jours maximum), un quota propre (600 requêtes/minute) et un compteur `last_used_at`. L'authentification se fait par l'en-tête `Authorization: Bearer imk_live_…`, résolue par le même garde que le JWT, qui pose le contexte de tenancy à partir de la clé. Une clé ne peut jamais porter `payment:reverse`, `apikey:manage` ni `member:role_change`, et toute utilisation est tracée dans `audit_logs` avec l'empreinte de la clé.
 
 ---
-
 
 ---
 
@@ -1065,13 +1059,13 @@ L'idempotence repose sur une contrainte physique : `UNIQUE (lease_id, period_yea
 
 Une facture est une somme de lignes typées (`invoice_lines.type`), calculées dans cet ordre :
 
-| Ordre | Type de ligne | Source | Règle de calcul |
-| :--- | :--- | :--- | :--- |
-| 1 | `RENT` | `leases.rent_amount` | Montant du bail, éventuellement prorata (§7.5) |
-| 2 | `CHARGES_FIXED` | `leases.charges_amount` | Forfait de charges, prorata identique au loyer |
-| 3 | `WATER_CHARGE` / `ELECTRICITY_CHARGE` (compteurs `WATER_LCDE`, `ELECTRICITY_E2C`) | `meter_readings` + `utility_tariffs` | (index fin − index début) × tarif applicable, plus abonnement fixe éventuel |
-| 4 | `PENALTY` | `penalty_rules` | Appliquée sur le **reliquat impayé de la période précédente**, après délai de grâce |
-| 5 | `REPAIR_REBILL` / `DISCOUNT` / `OTHER` | Saisie manuelle | Réparation refacturée, régularisation, remise commerciale (montant négatif autorisé) |
+| Ordre | Type de ligne                                                                     | Source                               | Règle de calcul                                                                      |
+| :---- | :-------------------------------------------------------------------------------- | :----------------------------------- | :----------------------------------------------------------------------------------- |
+| 1     | `RENT`                                                                            | `leases.rent_amount`                 | Montant du bail, éventuellement prorata (§7.5)                                       |
+| 2     | `CHARGES_FIXED`                                                                   | `leases.charges_amount`              | Forfait de charges, prorata identique au loyer                                       |
+| 3     | `WATER_CHARGE` / `ELECTRICITY_CHARGE` (compteurs `WATER_LCDE`, `ELECTRICITY_E2C`) | `meter_readings` + `utility_tariffs` | (index fin − index début) × tarif applicable, plus abonnement fixe éventuel          |
+| 4     | `PENALTY`                                                                         | `penalty_rules`                      | Appliquée sur le **reliquat impayé de la période précédente**, après délai de grâce  |
+| 5     | `REPAIR_REBILL` / `DISCOUNT` / `OTHER`                                            | Saisie manuelle                      | Réparation refacturée, régularisation, remise commerciale (montant négatif autorisé) |
 
 **Charges de compteur.** Le tarif est résolu par `utility_tariffs` valide à la date de fin de relevé (`valid_from` / `valid_to`), avec tranches progressives possibles : chaque tranche est une ligne de détail agrégée en une seule `invoice_line` dont le `metadata` JSONB conserve le décompte. Si le relevé de fin de période manque, la facture reste en `DRAFT` avec le code `BILLING.METER_READING_MISSING` remonté au MANAGER : **on ne facture jamais une estimation** — c'est la première source de litige locataire.
 
@@ -1090,11 +1084,11 @@ SELECT next_value FROM sequences
 UPDATE sequences SET next_value = next_value + 1 WHERE id = $2;
 ```
 
-| Portée | Format | Réinitialisation |
-| :--- | :--- | :--- |
-| `RENT_INVOICE` | `LOY-{YYYYMM}-{seq:5}` → `LOY-202603-00147` | Mensuelle, par organisation |
-| `RECEIPT` | `QUI-{YYYYMM}-{seq:5}` → `QUI-202603-00131` | Mensuelle, par organisation |
-| `CASH_RECEIPT` | `CASH-{orgCode}-{collectorCode}-{seq:6}` | Jamais, par démarcheur |
+| Portée              | Format                                              | Réinitialisation            |
+| :------------------ | :-------------------------------------------------- | :-------------------------- |
+| `RENT_INVOICE`      | `LOY-{YYYYMM}-{seq:5}` → `LOY-202603-00147`         | Mensuelle, par organisation |
+| `RECEIPT`           | `QUI-{YYYYMM}-{seq:5}` → `QUI-202603-00131`         | Mensuelle, par organisation |
+| `CASH_RECEIPT`      | `CASH-{orgCode}-{collectorCode}-{seq:6}`            | Jamais, par démarcheur      |
 | `BANK_TRANSFER_REF` | `LOY-{YYYYMM}-{seq:5}` (référence structurée, §8.3) | Mensuelle, par organisation |
 
 Le numéro n'est attribué qu'au passage `DRAFT → ISSUED` : une facture abandonnée en brouillon ne consomme pas de numéro, ce qui garantit une **série continue sans trou**, condition d'acceptation par un commissaire aux comptes. Le verrou `FOR UPDATE` porte sur une seule ligne et est pris le plus tard possible dans la transaction, afin de ne pas sérialiser toute la génération mensuelle sur un unique compteur.
@@ -1109,21 +1103,21 @@ montant_prorata = arrondi( montant_mensuel × jours_occupes / jours_du_mois )
 
 **Exemple d'entrée.** Bail sur un studio à Moungali, loyer 120 000 XAF, charges forfaitaires 15 000 XAF, entrée le 12 mars 2026 (31 jours). Jours occupés : 12 au 31 inclus = 20 jours.
 
-| Ligne | Calcul | Montant |
-| :--- | :--- | ---: |
-| `RENT` prorata | 120 000 × 20 / 31 = 77 419,35 | **77 419 XAF** |
-| `CHARGES_FIXED` prorata | 15 000 × 20 / 31 = 9 677,42 | **9 677 XAF** |
-| **Total facture `LOY-202603-00147`** | | **87 096 XAF** |
+| Ligne                                | Calcul                        |        Montant |
+| :----------------------------------- | :---------------------------- | -------------: |
+| `RENT` prorata                       | 120 000 × 20 / 31 = 77 419,35 | **77 419 XAF** |
+| `CHARGES_FIXED` prorata              | 15 000 × 20 / 31 = 9 677,42   |  **9 677 XAF** |
+| **Total facture `LOY-202603-00147`** |                               | **87 096 XAF** |
 
 **Exemple de sortie avec charges et pénalité.** Même bail, congé au 9 juin 2026 (30 jours), clés restituées le 9 : jours occupés = 1 au 8 inclus = 8 jours. Relevé d'eau : index 1 482 → 1 497 m³, tarif `utility_tariffs` 950 XAF/m³ plus abonnement 2 000 XAF. Reliquat impayé de mai : 30 000 XAF, `penalty_rules` = 5 %, `grace_days` = 10, échéance du 1er mai dépassée de plus de 10 jours.
 
-| Ligne | Calcul | Montant |
-| :--- | :--- | ---: |
-| `RENT` prorata sortie | 120 000 × 8 / 30 = 32 000,00 | **32 000 XAF** |
-| `CHARGES_FIXED` prorata | 15 000 × 8 / 30 = 4 000,00 | **4 000 XAF** |
-| `UTILITY_WATER` | (1 497 − 1 482) × 950 + 2 000 = 14 250 + 2 000 | **16 250 XAF** |
-| `PENALTY` sur reliquat de mai | 30 000 × 5 % = 1 500 | **1 500 XAF** |
-| **Total facture `LOY-202606-00203`** | | **53 750 XAF** |
+| Ligne                                | Calcul                                         |        Montant |
+| :----------------------------------- | :--------------------------------------------- | -------------: |
+| `RENT` prorata sortie                | 120 000 × 8 / 30 = 32 000,00                   | **32 000 XAF** |
+| `CHARGES_FIXED` prorata              | 15 000 × 8 / 30 = 4 000,00                     |  **4 000 XAF** |
+| `UTILITY_WATER`                      | (1 497 − 1 482) × 950 + 2 000 = 14 250 + 2 000 | **16 250 XAF** |
+| `PENALTY` sur reliquat de mai        | 30 000 × 5 % = 1 500                           |  **1 500 XAF** |
+| **Total facture `LOY-202606-00203`** |                                                | **53 750 XAF** |
 
 Le dépôt de garantie n'est **jamais** compensé automatiquement avec cette facture : il suit son propre cycle (`deposits`, `deposit_movements`) et sa restitution dépend de l'état des lieux de sortie (§4.1, module `inspections`). Un MANAGER peut le faire manuellement, ce qui produit un `payment` de méthode `DEPOSIT_OFFSET` et une écriture dans `deposit_movements`.
 
@@ -1157,7 +1151,6 @@ Quatre invariants de la machine, couverts par des tests dédiés (§15.6) :
 
 ---
 
-
 ---
 
 ## 8. Encaissements par mode
@@ -1176,12 +1169,12 @@ Le numéro définitif `CASH-{orgCode}-{collectorCode}-{seq}` est attribué **cô
 
 **Contrôle des écarts.** Le validateur — jamais le remettant, séparation des tâches (§6.5) — compte l'argent et saisit le montant reçu.
 
-| Situation | `expected_amount` vs `counted_amount` | Traitement |
-| :--- | :--- | :--- |
-| Conforme | Écart nul | Remise `VERIFIED` (`variance_amount = 0`), reçus marqués `REMITTED`, événement `remittance.verified` |
-| Manquant | Compté < attendu | Remise `VERIFIED` avec `variance_amount < 0` (ou `REJECTED` si l'écart dépasse le seuil), code `CASH.REMITTANCE_DISCREPANCY`, blocage de nouvelles remises pour ce démarcheur au-delà du seuil de l'organisation |
-| Excédent | Compté > attendu | Remise `DISCREPANCY`, `surplus_amount` porté en attente d'affectation, jamais absorbé silencieusement |
-| Écart régularisé | — | Écriture d'ajustement motivée par un OWNER, `audit_logs` avant/après, la remise passe `SETTLED` |
+| Situation        | `expected_amount` vs `counted_amount` | Traitement                                                                                                                                                                                                       |
+| :--------------- | :------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Conforme         | Écart nul                             | Remise `VERIFIED` (`variance_amount = 0`), reçus marqués `REMITTED`, événement `remittance.verified`                                                                                                             |
+| Manquant         | Compté < attendu                      | Remise `VERIFIED` avec `variance_amount < 0` (ou `REJECTED` si l'écart dépasse le seuil), code `CASH.REMITTANCE_DISCREPANCY`, blocage de nouvelles remises pour ce démarcheur au-delà du seuil de l'organisation |
+| Excédent         | Compté > attendu                      | Remise `DISCREPANCY`, `surplus_amount` porté en attente d'affectation, jamais absorbé silencieusement                                                                                                            |
+| Écart régularisé | —                                     | Écriture d'ajustement motivée par un OWNER, `audit_logs` avant/après, la remise passe `SETTLED`                                                                                                                  |
 
 Les paiements espèces restent `CONFIRMED` dès le reçu signé : le locataire s'est acquitté de sa dette, et le risque de remise est un risque **interne** à l'organisation. Cette dissociation est délibérée — confondre les deux ferait porter au locataire la défaillance d'un démarcheur. Le tableau de bord expose en permanence l'encours détenu par chaque démarcheur (`collector_float`) et son ancienneté.
 
@@ -1210,23 +1203,23 @@ export interface MobileMoneyProvider {
 }
 
 export interface InitiatePaymentInput {
-  amount: bigint;                 // XAF
+  amount: bigint; // XAF
   currency: 'XAF';
-  payerMsisdn: string;            // E.164, +242...
+  payerMsisdn: string; // E.164, +242...
   operator: 'MTN' | 'AIRTEL';
-  externalReference: string;      // paymentId Immodesk, idempotent cote fournisseur
-  description: string;            // "Loyer mars 2026 - LOY-202603-00147"
+  externalReference: string; // paymentId Immodesk, idempotent cote fournisseur
+  description: string; // "Loyer mars 2026 - LOY-202603-00147"
   callbackUrl: string;
 }
 
 export interface ProviderStatus {
   state: 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'EXPIRED' | 'UNKNOWN';
   providerReference: string;
-  operatorReference?: string;     // reference operateur, imprimee sur la quittance
+  operatorReference?: string; // reference operateur, imprimee sur la quittance
   amount?: bigint;
   feeAmount?: bigint;
   failureReason?: string;
-  rawPayload: unknown;            // conserve tel quel en JSONB
+  rawPayload: unknown; // conserve tel quel en JSONB
 }
 ```
 
@@ -1284,7 +1277,6 @@ sequenceDiagram
 
 **Délais.** Push USSD non validé : expiration à 3 minutes côté opérateur. Appel `initiate` : timeout HTTP 10 s, 2 tentatives avec le **même** `externalReference` (idempotent côté fournisseur). Appel `getStatus` : timeout 8 s, 5 tentatives exponentielles. Fournisseur injoignable au-delà : `PAYMENT.PROVIDER_UNAVAILABLE` (503), le paiement reste `PENDING` et le job de rattrapage prend le relais — aucun paiement n'est jamais annulé sur la seule indisponibilité d'un appel réseau.
 
-
 ---
 
 ### 8.3 Virement bancaire
@@ -1299,20 +1291,20 @@ Le virement pose un problème que les autres modes n'ont pas : la banque ne pré
 
 **Import de relevés.** Deux formats, un seul port `BankStatementParser` :
 
-| Format | Mise en œuvre | Particularités |
-| :--- | :--- | :--- |
-| CSV | Un **adaptateur par banque** (`bank_accounts.bank_code`) : mappage de colonnes, format de date, séparateur décimal, encodage | Les banques de la place (BGFI, LCB, Ecobank, UBA, BCI) exportent des CSV incompatibles entre eux ; l'adaptateur est déclaratif, décrit en JSON, testé sur un échantillon réel versionné |
-| MT940 | Parseur SWIFT standard : blocs `:20:`, `:25:`, `:28C:`, `:61:` (mouvements), `:86:` (libellé étendu) | Format normalisé, mais le libellé `:86:` est libre : c'est là que se trouve la référence structurée |
+| Format | Mise en œuvre                                                                                                                | Particularités                                                                                                                                                                          |
+| :----- | :--------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CSV    | Un **adaptateur par banque** (`bank_accounts.bank_code`) : mappage de colonnes, format de date, séparateur décimal, encodage | Les banques de la place (BGFI, LCB, Ecobank, UBA, BCI) exportent des CSV incompatibles entre eux ; l'adaptateur est déclaratif, décrit en JSON, testé sur un échantillon réel versionné |
+| MT940  | Parseur SWIFT standard : blocs `:20:`, `:25:`, `:28C:`, `:61:` (mouvements), `:86:` (libellé étendu)                         | Format normalisé, mais le libellé `:86:` est libre : c'est là que se trouve la référence structurée                                                                                     |
 
 L'import crée une ligne `bank_statements` (compte, période, soldes d'ouverture et de clôture) et ses `bank_statement_lines`. Un contrôle d'intégrité vérifie que `solde_ouverture + Σ mouvements = solde_clôture` ; en cas d'écart, l'import est refusé en bloc. Chaque ligne porte une empreinte `line_hash` sur `(compte, date, montant, libellé)` avec unicité : réimporter deux fois le même relevé ne duplique aucune ligne.
 
 **Rapprochement à trois niveaux** (module `reconciliation`) :
 
-| Niveau | Critère | Action |
-| :--- | :--- | :--- |
-| **1 — Exact** | Référence structurée trouvée dans le libellé **et** montant identique au centime **et** date dans une fenêtre de 15 jours | Rapprochement automatique, `reconciliation_matches.type = 'EXACT'`, paiement `CONFIRMED`, quittance émise |
-| **2 — Suggéré** | Score ≥ 0,75 combinant montant (±2 %), proximité de date, similarité du nom du payeur avec `tenants.full_name` (trigramme `pg_trgm`), déclaration en attente pour le même montant | Proposition affichée à l'ACCOUNTANT, acceptation ou rejet en un clic, `type = 'SUGGESTED'` |
-| **3 — Manuel** | Aucun critère automatique | L'opérateur relie une ligne de relevé à une ou plusieurs factures, motif obligatoire, `type = 'MANUAL'`, audit systématique |
+| Niveau          | Critère                                                                                                                                                                           | Action                                                                                                                      |
+| :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| **1 — Exact**   | Référence structurée trouvée dans le libellé **et** montant identique au centime **et** date dans une fenêtre de 15 jours                                                         | Rapprochement automatique, `reconciliation_matches.type = 'EXACT'`, paiement `CONFIRMED`, quittance émise                   |
+| **2 — Suggéré** | Score ≥ 0,75 combinant montant (±2 %), proximité de date, similarité du nom du payeur avec `tenants.full_name` (trigramme `pg_trgm`), déclaration en attente pour le même montant | Proposition affichée à l'ACCOUNTANT, acceptation ou rejet en un clic, `type = 'SUGGESTED'`                                  |
+| **3 — Manuel**  | Aucun critère automatique                                                                                                                                                         | L'opérateur relie une ligne de relevé à une ou plusieurs factures, motif obligatoire, `type = 'MANUAL'`, audit systématique |
 
 Une ligne de relevé peut être rapprochée de plusieurs factures (virement groupé d'un locataire ayant deux lots) et une facture de plusieurs lignes (paiement en deux fois) : `reconciliation_matches` est une table de liaison n↔n portant le montant affecté. Toute ligne non rapprochée reste visible (`is_matched = false`) ; le tableau de bord affiche l'âge du plus ancien non rapproché, indicateur de santé du processus. Un rapprochement est annulable ; l'annulation produit un `payment.reversed` et repasse la facture en `PARTIALLY_PAID` ou `OVERDUE`.
 
@@ -1322,13 +1314,13 @@ Marginal en volume, mais utilisé par les bailleurs institutionnels et quelques 
 
 `bank_checks` porte le numéro du chèque, la banque tirée, le nom du tireur, le montant, la date d'émission, la date de dépôt, la date de compensation et le motif de rejet éventuel.
 
-| Étape | État `bank_checks` | État `payment` | Règle |
-| :--- | :--- | :--- | :--- |
-| Saisie à la remise du chèque | `RECEIVED` | `PENDING_VERIFICATION` | Unicité `(bank_code, check_number)` : un chèque ne peut être saisi deux fois |
-| Dépôt en banque | `DEPOSITED` | `PENDING_VERIFICATION` | Date de dépôt obligatoire, bordereau optionnel dans `documents` |
-| Compensation | `CLEARED` | `CONFIRMED` | Confirmé par validation manuelle **ou** par rapprochement automatique avec une ligne de relevé (§8.3) |
-| Rejet | `BOUNCED` | `REJECTED` | Motif obligatoire (provision insuffisante, opposition, signature) ; si le paiement avait été confirmé, `payment.reversed` et retour de la facture en impayé |
-| Annulation avant dépôt | `CANCELLED` | `CANCELLED` | Chèque rendu au tireur, motif obligatoire |
+| Étape                        | État `bank_checks` | État `payment`         | Règle                                                                                                                                                       |
+| :--------------------------- | :----------------- | :--------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Saisie à la remise du chèque | `RECEIVED`         | `PENDING_VERIFICATION` | Unicité `(bank_code, check_number)` : un chèque ne peut être saisi deux fois                                                                                |
+| Dépôt en banque              | `DEPOSITED`        | `PENDING_VERIFICATION` | Date de dépôt obligatoire, bordereau optionnel dans `documents`                                                                                             |
+| Compensation                 | `CLEARED`          | `CONFIRMED`            | Confirmé par validation manuelle **ou** par rapprochement automatique avec une ligne de relevé (§8.3)                                                       |
+| Rejet                        | `BOUNCED`          | `REJECTED`             | Motif obligatoire (provision insuffisante, opposition, signature) ; si le paiement avait été confirmé, `payment.reversed` et retour de la facture en impayé |
+| Annulation avant dépôt       | `CANCELLED`        | `CANCELLED`            | Chèque rendu au tireur, motif obligatoire                                                                                                                   |
 
 Le délai de compensation sur la place de Brazzaville est de 3 à 10 jours ouvrés. Un job quotidien alerte sur tout chèque `DEPOSITED` depuis plus de 15 jours ouvrés sans issue. Les frais de rejet éventuellement refacturés au locataire passent par une ligne `OTHER` sur la facture suivante, jamais par une modification de la facture d'origine (§7.6).
 
@@ -1366,7 +1358,6 @@ Cinq invariants, protégés par des tests et par des contraintes SQL :
 5. **Toute transition écrit dans `audit_logs`** : état avant, état après, auteur (utilisateur, job ou webhook), `correlationId`, horodatage. C'est la trace opposable en cas de litige.
 
 ---
-
 
 ---
 
@@ -1406,12 +1397,12 @@ Le token est un JWT compact signé HMAC-SHA256 avec une clé dédiée à la vér
 
 La page publique est une route Next.js statique et légère (`(public)/verifier/[token]`), pensée pour un téléphone d'entrée de gamme sur réseau 2G. Elle expose le **minimum vérificateur** et rien d'autre :
 
-| Affiché | Volontairement masqué |
-| :--- | :--- |
-| Numéro de quittance, statut (valide / annulée) | Adresse complète et étage du lot |
-| Montant réglé et devise | Coordonnées bancaires, mode de paiement détaillé |
-| Période couverte, date de règlement | Numéro de téléphone du locataire ou du bailleur |
-| Initiales du locataire (`M. N.`), nom de l'organisation émettrice | Historique des autres factures, solde du compte |
+| Affiché                                                           | Volontairement masqué                            |
+| :---------------------------------------------------------------- | :----------------------------------------------- |
+| Numéro de quittance, statut (valide / annulée)                    | Adresse complète et étage du lot                 |
+| Montant réglé et devise                                           | Coordonnées bancaires, mode de paiement détaillé |
+| Période couverte, date de règlement                               | Numéro de téléphone du locataire ou du bailleur  |
+| Initiales du locataire (`M. N.`), nom de l'organisation émettrice | Historique des autres factures, solde du compte  |
 
 Aucun PDF n'est téléchargeable depuis cette page : elle atteste, elle ne diffuse pas. Les accès sont limités à 30 requêtes par minute et par IP, les tokens inconnus renvoient une réponse générique en temps constant (pas d'énumération), et chaque consultation est comptée dans `receipts.verification_count` avec la date du dernier accès — un bailleur voit ainsi que sa quittance a été vérifiée.
 
@@ -1457,7 +1448,6 @@ Deux exploitations directes : le tableau de bord expose le taux de délivrance p
 
 ---
 
-
 ---
 
 ## 10. Application mobile offline-first
@@ -1476,27 +1466,27 @@ Trois règles gouvernent tout le reste :
 
 Le multi-package `melos` (§3.1) matérialise physiquement les couches : une dépendance interdite ne compile pas.
 
-| Package | Couche | Contenu | Dépend de |
-| :--- | :--- | :--- | :--- |
-| `core_domain` | Domaine | Entités (`Lease`, `RentInvoice`, `CashReceipt`), value objects (`Money` en XAF entier, `PhoneNumber` +242), erreurs métier, politiques d'allocation | rien |
-| `core_data` | Données | Base Drift, DAO, tables miroir, tables `outbox`, repositories implémentant les ports du domaine | `core_domain` |
-| `core_sync` | Données | `SyncEngine`, `OutboxDispatcher`, `PullService`, résolution de conflits, file « à traiter » | `core_domain`, `core_data`, `core_network` |
-| `core_network` | Infrastructure | `dio` + intercepteurs (auth, retry, trace), client Dart généré depuis `openapi.json` | `core_domain` |
-| `core_ui` | Présentation | Design system, composants XAF, badges de synchronisation, thème | `core_domain` |
-| `immodesk_app` | Présentation | `go_router`, écrans par feature, providers Riverpod | tous |
+| Package        | Couche         | Contenu                                                                                                                                             | Dépend de                                  |
+| :------------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------- |
+| `core_domain`  | Domaine        | Entités (`Lease`, `RentInvoice`, `CashReceipt`), value objects (`Money` en XAF entier, `PhoneNumber` +242), erreurs métier, politiques d'allocation | rien                                       |
+| `core_data`    | Données        | Base Drift, DAO, tables miroir, tables `outbox`, repositories implémentant les ports du domaine                                                     | `core_domain`                              |
+| `core_sync`    | Données        | `SyncEngine`, `OutboxDispatcher`, `PullService`, résolution de conflits, file « à traiter »                                                         | `core_domain`, `core_data`, `core_network` |
+| `core_network` | Infrastructure | `dio` + intercepteurs (auth, retry, trace), client Dart généré depuis `openapi.json`                                                                | `core_domain`                              |
+| `core_ui`      | Présentation   | Design system, composants XAF, badges de synchronisation, thème                                                                                     | `core_domain`                              |
+| `immodesk_app` | Présentation   | `go_router`, écrans par feature, providers Riverpod                                                                                                 | tous                                       |
 
 **Règle de dépendance.** `core_domain` ne connaît ni Drift, ni dio, ni Flutter. Les repositories sont déclarés comme des interfaces dans le domaine et implémentés dans `core_data`. Un cas d'usage (`RecordCashPaymentUseCase`) est testable sans base ni widget tree.
 
 ### 10.3 Riverpod : conventions d'état
 
-| Type de provider | Usage | Exemple |
-| :--- | :--- | :--- |
-| `Provider` | Dépendances singleton | `appDatabaseProvider`, `apiClientProvider` |
-| `StreamProvider` | Lecture réactive de Drift : l'UI se rafraîchit dès qu'une ligne change | `overdueInvoicesProvider(leaseId)` |
-| `AsyncNotifierProvider` | Cas d'usage avec effet de bord (écriture + outbox) | `cashCollectionControllerProvider` |
-| `NotifierProvider` | État d'UI pur (filtres, étape de formulaire) | `collectionRouteFilterProvider` |
-| `.family` | Paramétrage par identifiant | `leaseDetailProvider(leaseId)` |
-| `.autoDispose` | Par défaut sur tout provider d'écran | — |
+| Type de provider        | Usage                                                                  | Exemple                                    |
+| :---------------------- | :--------------------------------------------------------------------- | :----------------------------------------- |
+| `Provider`              | Dépendances singleton                                                  | `appDatabaseProvider`, `apiClientProvider` |
+| `StreamProvider`        | Lecture réactive de Drift : l'UI se rafraîchit dès qu'une ligne change | `overdueInvoicesProvider(leaseId)`         |
+| `AsyncNotifierProvider` | Cas d'usage avec effet de bord (écriture + outbox)                     | `cashCollectionControllerProvider`         |
+| `NotifierProvider`      | État d'UI pur (filtres, étape de formulaire)                           | `collectionRouteFilterProvider`            |
+| `.family`               | Paramétrage par identifiant                                            | `leaseDetailProvider(leaseId)`             |
+| `.autoDispose`          | Par défaut sur tout provider d'écran                                   | —                                          |
 
 Les providers sont générés (`riverpod_generator`) pour éviter les erreurs de typage manuelles. **Aucun widget n'appelle `dio` directement** : la chaîne est toujours `Widget → Notifier → UseCase → Repository → Drift`, et le réseau n'intervient que depuis `core_sync`.
 
@@ -1508,14 +1498,14 @@ Les providers sont générés (`riverpod_generator`) pour éviter les erreurs de
 
 Le modèle local est un **miroir partiel** : on ne réplique jamais toute l'organisation, seulement le périmètre affecté à l'utilisateur (ses immeubles, ses baux actifs, les factures des 12 derniers mois), plus les tables de sortie.
 
-| Groupe | Tables locales | Nature | Cardinalité typique |
-| :--- | :--- | :--- | :--- |
-| Référentiels miroir | `properties`, `units`, `leases`, `tenants`, `landlords`, `contact_channels` | Lecture seule locale, écrasée par le serveur | 10²–10³ |
-| Financier miroir | `rent_invoices`, `invoice_lines`, `payments`, `payment_allocations` | Lecture seule locale | 10³ |
-| Écritures locales | `outbox`, `outbox_attachments` | Source de vérité tant que non synchronisée | 10¹–10² |
-| Brouillons | `draft_cash_receipts`, `draft_inspections`, `draft_readings` | Saisie en cours, non encore validée | 10¹ |
-| Fichiers | `local_media` (chemin, hash, statut d'upload, taille compressée) | Photos, signatures | 10²  |
-| Technique | `sync_state` (curseurs par entité), `conflict_queue`, `kv_settings` | — | 10⁰–10¹ |
+| Groupe              | Tables locales                                                              | Nature                                       | Cardinalité typique |
+| :------------------ | :-------------------------------------------------------------------------- | :------------------------------------------- | :------------------ |
+| Référentiels miroir | `properties`, `units`, `leases`, `tenants`, `landlords`, `contact_channels` | Lecture seule locale, écrasée par le serveur | 10²–10³             |
+| Financier miroir    | `rent_invoices`, `invoice_lines`, `payments`, `payment_allocations`         | Lecture seule locale                         | 10³                 |
+| Écritures locales   | `outbox`, `outbox_attachments`                                              | Source de vérité tant que non synchronisée   | 10¹–10²             |
+| Brouillons          | `draft_cash_receipts`, `draft_inspections`, `draft_readings`                | Saisie en cours, non encore validée          | 10¹                 |
+| Fichiers            | `local_media` (chemin, hash, statut d'upload, taille compressée)            | Photos, signatures                           | 10²                 |
+| Technique           | `sync_state` (curseurs par entité), `conflict_queue`, `kv_settings`         | —                                            | 10⁰–10¹             |
 
 Chaque table miroir porte `server_updated_at` et `server_version` pour piloter le pull incrémental. Chaque table d'écriture porte `client_ref TEXT NOT NULL UNIQUE` (ULID).
 
@@ -1537,20 +1527,19 @@ class Outbox extends Table {
 
 **Migrations.** Versionnées via `MigrationStrategy` Drift, testées avec des bases de référence figées (`test/migrations/vN.sqlite`). Une migration ne doit **jamais** supprimer une ligne d'`outbox` non acquittée : c'est de l'argent encaissé non encore remonté.
 
-
 ---
 
 ### 10.6 SyncEngine
 
 Le `SyncEngine` (package `core_sync`) est un automate à deux voies indépendantes : **push** (outbox → serveur) et **pull** (serveur → miroir). Le push est toujours exécuté **avant** le pull d'un cycle, afin que le miroir rafraîchi intègre déjà les écritures locales acceptées.
 
-| Étage | Responsabilité | Déclencheurs |
-| :--- | :--- | :--- |
-| `SyncScheduler` | Décide qu'un cycle doit démarrer | retour réseau, ouverture d'app, action utilisateur, tâche périodique (15 min), fin de tournée |
-| `OutboxDispatcher` | Constitue un lot, l'envoie, applique les acquittements | cycle push |
-| `PullService` | Rafraîchit les miroirs par curseur `updated_since` et par entité | cycle pull |
-| `ConflictResolver` | Applique les règles du §10.8, alimente `conflict_queue` | acquittements et pull |
-| `MediaUploader` | Envoie les photos et signatures vers R2 via URL signée | après acquittement de l'opération porteuse |
+| Étage              | Responsabilité                                                   | Déclencheurs                                                                                  |
+| :----------------- | :--------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| `SyncScheduler`    | Décide qu'un cycle doit démarrer                                 | retour réseau, ouverture d'app, action utilisateur, tâche périodique (15 min), fin de tournée |
+| `OutboxDispatcher` | Constitue un lot, l'envoie, applique les acquittements           | cycle push                                                                                    |
+| `PullService`      | Rafraîchit les miroirs par curseur `updated_since` et par entité | cycle pull                                                                                    |
+| `ConflictResolver` | Applique les règles du §10.8, alimente `conflict_queue`          | acquittements et pull                                                                         |
+| `MediaUploader`    | Envoie les photos et signatures vers R2 via URL signée           | après acquittement de l'opération porteuse                                                    |
 
 #### 10.6.1 Lot de synchronisation (`sync_batches`)
 
@@ -1558,24 +1547,24 @@ Un cycle push envoie un lot de **50 opérations maximum**, ordonné, à `POST /v
 
 La réponse est un tableau d'acquittements individuels — un lot n'est jamais « tout ou rien » :
 
-| `result` | Signification | Action locale |
-| :--- | :--- | :--- |
-| `APPLIED` | Opération appliquée, entité serveur créée | `status = ACKED`, écriture de l'`id` serveur dans le miroir |
-| `DUPLICATE` | `client_ref` déjà connu, réponse rejouée | Identique à `APPLIED` (idempotence) |
-| `REJECTED` | Refus métier définitif (voir §10.8) | `status = REJECTED` + entrée dans `conflict_queue` |
-| `RETRY` | Erreur transitoire (verrou, 5xx, timeout) | Backoff exponentiel plafonné à 30 min |
-| `SKIPPED` | Dépendance non satisfaite dans le lot | Réordonnancement au cycle suivant |
+| `result`    | Signification                             | Action locale                                               |
+| :---------- | :---------------------------------------- | :---------------------------------------------------------- |
+| `APPLIED`   | Opération appliquée, entité serveur créée | `status = ACKED`, écriture de l'`id` serveur dans le miroir |
+| `DUPLICATE` | `client_ref` déjà connu, réponse rejouée  | Identique à `APPLIED` (idempotence)                         |
+| `REJECTED`  | Refus métier définitif (voir §10.8)       | `status = REJECTED` + entrée dans `conflict_queue`          |
+| `RETRY`     | Erreur transitoire (verrou, 5xx, timeout) | Backoff exponentiel plafonné à 30 min                       |
+| `SKIPPED`   | Dépendance non satisfaite dans le lot     | Réordonnancement au cycle suivant                           |
 
 #### 10.6.2 Ordre de rejeu
 
 Les opérations sont rejouées dans l'ordre `created_at` croissant, **contraint par le graphe `depends_on_client_ref`**. Certaines dépendances sont structurelles et connues à la saisie :
 
-| Opération | Dépend de |
-| :--- | :--- |
+| Opération             | Dépend de                                                                  |
+| :-------------------- | :------------------------------------------------------------------------- |
 | `cash_receipt.create` | `tenant.create` (locataire créé hors ligne), `lease.create` le cas échéant |
-| `remittance.close` | tous les `cash_receipt.create` de la tournée |
-| `media.attach` | l'opération qui crée l'entité porteuse |
-| `inspection.finalize` | `inspection.create` + tous les `inspection_item.upsert` |
+| `remittance.close`    | tous les `cash_receipt.create` de la tournée                               |
+| `media.attach`        | l'opération qui crée l'entité porteuse                                     |
+| `inspection.finalize` | `inspection.create` + tous les `inspection_item.upsert`                    |
 
 Si une dépendance est `REJECTED`, tous ses dépendants passent en `REJECTED` avec le code `DEPENDENCY_REJECTED` et rejoignent la file « à traiter » en bloc, présentés à l'utilisateur comme un ensemble cohérent (une tournée, un état des lieux).
 
@@ -1610,15 +1599,15 @@ sequenceDiagram
 
 ### 10.8 Règles de conflit
 
-| Situation | Règle | Justification |
-| :--- | :--- | :--- |
-| Divergence sur un **référentiel** (bail, unité, locataire, tarif) | **Le serveur gagne**, écrasement du miroir local sans question | Le miroir est une copie de lecture ; il n'a pas d'autorité |
-| Opération d'**outbox** rejouée (réseau incertain, double envoi) | **Toujours acceptée** si idempotente : le `client_ref` renvoie l'acquittement d'origine | Un encaissement ne doit jamais être doublé ni perdu |
-| Facture déjà soldée entre-temps par un autre canal | Accepté : le paiement devient un **trop-perçu** → `tenant_credits` | Le démarcheur a réellement reçu l'argent |
-| Encaissement sur un **bail clôturé** | **Rejet explicite** `LEASE_CLOSED` | Aucune imputation possible sans décision humaine |
-| Encaissement sur une **facture annulée** | **Rejet explicite** `INVOICE_CANCELLED` | Idem |
-| Montant supérieur au plafond d'encaissement du démarcheur | Rejet `COLLECTION_LIMIT_EXCEEDED` | Contrôle anti-fraude (§13.7) |
-| Remise clôturée dont un reçu est rejeté | Remise remise en `OPEN`, reçu isolé | La remise doit rester équilibrée |
+| Situation                                                         | Règle                                                                                   | Justification                                              |
+| :---------------------------------------------------------------- | :-------------------------------------------------------------------------------------- | :--------------------------------------------------------- |
+| Divergence sur un **référentiel** (bail, unité, locataire, tarif) | **Le serveur gagne**, écrasement du miroir local sans question                          | Le miroir est une copie de lecture ; il n'a pas d'autorité |
+| Opération d'**outbox** rejouée (réseau incertain, double envoi)   | **Toujours acceptée** si idempotente : le `client_ref` renvoie l'acquittement d'origine | Un encaissement ne doit jamais être doublé ni perdu        |
+| Facture déjà soldée entre-temps par un autre canal                | Accepté : le paiement devient un **trop-perçu** → `tenant_credits`                      | Le démarcheur a réellement reçu l'argent                   |
+| Encaissement sur un **bail clôturé**                              | **Rejet explicite** `LEASE_CLOSED`                                                      | Aucune imputation possible sans décision humaine           |
+| Encaissement sur une **facture annulée**                          | **Rejet explicite** `INVOICE_CANCELLED`                                                 | Idem                                                       |
+| Montant supérieur au plafond d'encaissement du démarcheur         | Rejet `COLLECTION_LIMIT_EXCEEDED`                                                       | Contrôle anti-fraude (§13.7)                               |
+| Remise clôturée dont un reçu est rejeté                           | Remise remise en `OPEN`, reçu isolé                                                     | La remise doit rester équilibrée                           |
 
 **File « à traiter ».** Tout `REJECTED` alimente `conflict_queue` et remonte dans un écran dédié, non masquable, avec un compteur permanent dans la barre d'application. L'utilisateur y dispose de trois actions : **réaffecter** (choisir une autre facture ou un autre bail), **convertir en avoir** (`tenant_credits`), **annuler avec motif** (trace conservée). Aucune ligne ne peut être supprimée silencieusement : la donnée correspond à des espèces physiques.
 
@@ -1632,16 +1621,15 @@ sequenceDiagram
 
 ### 10.10 Indicateurs de synchronisation dans l'UI
 
-| Indicateur | Emplacement | États |
-| :--- | :--- | :--- |
-| Pastille par entité | Ligne de liste, en-tête de détail | **En attente** (horloge, gris), **Envoi** (spinner), **Synchronisé** (coche verte), **À traiter** (triangle orange) |
-| Bandeau global | Sous la barre d'application | « Hors ligne — N opérations en attente » / « Synchronisation… k/N » / masqué si tout est à jour |
-| Compteur de conflits | Badge permanent sur l'icône de la file | Nombre de `conflict_queue` non résolus |
-| Horodatage | Écran Réglages → Synchronisation | Dernier push réussi, dernier pull réussi, taille de l'outbox, volume média en attente |
-| Bouton « Synchroniser maintenant » | Écran Réglages et fin de tournée | Déclenche un cycle et affiche le journal du dernier lot |
+| Indicateur                         | Emplacement                            | États                                                                                                               |
+| :--------------------------------- | :------------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| Pastille par entité                | Ligne de liste, en-tête de détail      | **En attente** (horloge, gris), **Envoi** (spinner), **Synchronisé** (coche verte), **À traiter** (triangle orange) |
+| Bandeau global                     | Sous la barre d'application            | « Hors ligne — N opérations en attente » / « Synchronisation… k/N » / masqué si tout est à jour                     |
+| Compteur de conflits               | Badge permanent sur l'icône de la file | Nombre de `conflict_queue` non résolus                                                                              |
+| Horodatage                         | Écran Réglages → Synchronisation       | Dernier push réussi, dernier pull réussi, taille de l'outbox, volume média en attente                               |
+| Bouton « Synchroniser maintenant » | Écran Réglages et fin de tournée       | Déclenche un cycle et affiche le journal du dernier lot                                                             |
 
 **Règle d'UX non négociable :** un reçu non synchronisé est **imprimable et présentable** au locataire ; son numéro provisoire porte le préfixe `CASH-…-LOCAL` et est remplacé par le numéro définitif issu de `sequences` à l'acquittement. La quittance officielle (`receipts`, PDF signé) n'est en revanche émise que côté serveur.
-
 
 ---
 
@@ -1651,12 +1639,12 @@ sequenceDiagram
 
 Le web sert trois publics distincts avec une exigence commune : **fonctionner sur une connexion 3G instable et un forfait data compté**. Next.js 15 App Router est retenu pour cette raison précise : le rendu se fait côté serveur par défaut, et seul ce qui est réellement interactif descend dans le bundle client.
 
-| Public | Zone | Besoin dominant |
-| :--- | :--- | :--- |
-| Agence (`OWNER`, `MANAGER`, `COLLECTOR`, `ACCOUNTANT`, `VIEWER`) | `(dashboard)/[orgSlug]/…` | Densité d'information, saisie rapide, exports |
-| Bailleur (agence tierce ou indépendant) | `(dashboard)/[orgSlug]/gerance/…` | Lecture de relevés, reversements, transparence |
-| Locataire | `(tenant-portal)/mon-espace/…` | Consulter sa facture, payer, télécharger sa quittance |
-| Public non authentifié | `(public)/verifier/[token]` | Vérifier l'authenticité d'une quittance par QR |
+| Public                                                           | Zone                              | Besoin dominant                                       |
+| :--------------------------------------------------------------- | :-------------------------------- | :---------------------------------------------------- |
+| Agence (`OWNER`, `MANAGER`, `COLLECTOR`, `ACCOUNTANT`, `VIEWER`) | `(dashboard)/[orgSlug]/…`         | Densité d'information, saisie rapide, exports         |
+| Bailleur (agence tierce ou indépendant)                          | `(dashboard)/[orgSlug]/gerance/…` | Lecture de relevés, reversements, transparence        |
+| Locataire                                                        | `(tenant-portal)/mon-espace/…`    | Consulter sa facture, payer, télécharger sa quittance |
+| Public non authentifié                                           | `(public)/verifier/[token]`       | Vérifier l'authenticité d'une quittance par QR        |
 
 **Règle de composition.** Server Component par défaut ; `"use client"` uniquement sur les feuilles interactives (formulaire, tableau filtrable, sélecteur de date). Un layout ou une page n'est jamais un client component.
 
@@ -1664,13 +1652,13 @@ Le web sert trois publics distincts avec une exigence commune : **fonctionner su
 
 La session vit dans un cookie `__Host-immodesk_session`, **HttpOnly, Secure, SameSite=Lax**, contenant uniquement une référence de session opaque. Les JWT access (15 min) et refresh (30 j, rotatif) restent côté serveur, dans un store Redis lié à cette référence : **aucun jeton n'est exposé au JavaScript du navigateur**, ce qui neutralise l'exfiltration par XSS.
 
-| Étape | Mécanisme |
-| :--- | :--- |
-| Connexion | Téléphone + OTP (SMS/WhatsApp) via Route Handler `POST /api/auth/otp/verify` ; mot de passe optionnel |
-| Lecture de session | `getSession()` en `cache()` React, appelé dans les layouts serveur |
-| Rafraîchissement | Silencieux côté serveur quand l'access token expire, avec verrou Redis pour éviter la course de rotation |
+| Étape                | Mécanisme                                                                                                                               |
+| :------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| Connexion            | Téléphone + OTP (SMS/WhatsApp) via Route Handler `POST /api/auth/otp/verify` ; mot de passe optionnel                                   |
+| Lecture de session   | `getSession()` en `cache()` React, appelé dans les layouts serveur                                                                      |
+| Rafraîchissement     | Silencieux côté serveur quand l'access token expire, avec verrou Redis pour éviter la course de rotation                                |
 | Choix d'organisation | `orgSlug` de l'URL confronté aux `organization_members` de l'utilisateur ; incohérence → 404, jamais 403 (pas d'énumération de tenants) |
-| Déconnexion | Révocation du refresh token côté API + suppression du cookie |
+| Déconnexion          | Révocation du refresh token côté API + suppression du cookie                                                                            |
 
 Le middleware Next se limite au strict nécessaire (présence du cookie, redirection vers `/connexion`, en-têtes de sécurité). **L'autorisation réelle n'est jamais dans le middleware** : elle est appliquée dans les layouts serveur et, surtout, par l'API et la RLS PostgreSQL (§5, §6).
 
@@ -1678,13 +1666,13 @@ Le middleware Next se limite au strict nécessaire (présence du cookie, redirec
 
 La matrice permissions × rôles vit dans `packages/shared/permissions` et est consommée à l'identique par l'API et le web — une seule source de vérité.
 
-| Rôle | Voit | Écrit | Interdit |
-| :--- | :--- | :--- | :--- |
-| `OWNER` | Tout le tenant | Tout, y compris paramètres et facturation SaaS | — |
-| `MANAGER` | Portefeuille géré | Baux, factures, encaissements, relances | Paramètres d'organisation, suppression |
-| `COLLECTOR` | Sa tournée | Reçus de caisse, remises | Factures, baux, montants d'autres démarcheurs |
-| `ACCOUNTANT` | Financier complet | Rapprochement, exports | Baux, tiers, paramètres |
-| `VIEWER` | Lecture | — | Toute écriture |
+| Rôle         | Voit              | Écrit                                          | Interdit                                      |
+| :----------- | :---------------- | :--------------------------------------------- | :-------------------------------------------- |
+| `OWNER`      | Tout le tenant    | Tout, y compris paramètres et facturation SaaS | —                                             |
+| `MANAGER`    | Portefeuille géré | Baux, factures, encaissements, relances        | Paramètres d'organisation, suppression        |
+| `COLLECTOR`  | Sa tournée        | Reçus de caisse, remises                       | Factures, baux, montants d'autres démarcheurs |
+| `ACCOUNTANT` | Financier complet | Rapprochement, exports                         | Baux, tiers, paramètres                       |
+| `VIEWER`     | Lecture           | —                                              | Toute écriture                                |
 
 Le rendu masque ce qui n'est pas permis (`<Can action="payment.confirm">`), mais le masquage est un confort d'UI : toute action passe par un endpoint qui revérifie.
 
@@ -1692,14 +1680,14 @@ Le rendu masque ce qui n'est pas permis (`<Can action="payment.confirm">`), mais
 
 Le client TypeScript est **généré depuis `openapi.json`** (`openapi-typescript` + `openapi-fetch`), jamais écrit à la main ; sa régénération est une étape de CI et une rupture de contrat casse la compilation du web.
 
-| Élément | Convention |
-| :--- | :--- |
-| Clés de requête | `['invoices', orgId, filtres]` — hiérarchiques, préfixées par l'organisation |
-| Hydratation | `prefetchQuery` côté serveur + `HydrationBoundary` : première peinture sans requête client |
-| `staleTime` | 60 s pour les listes, 5 min pour les référentiels, 0 pour les soldes financiers |
-| Mutations | `useMutation` + invalidation ciblée ; **pas d'`optimistic update` sur les montants** (le solde est calculé par le serveur) |
-| Erreurs | Codes stables du catalogue `packages/shared/errors` mappés en messages fr-CG |
-| Idempotence | En-tête `Idempotency-Key` (ULID) sur toute mutation financière, y compris depuis le web |
+| Élément         | Convention                                                                                                                 |
+| :-------------- | :------------------------------------------------------------------------------------------------------------------------- |
+| Clés de requête | `['invoices', orgId, filtres]` — hiérarchiques, préfixées par l'organisation                                               |
+| Hydratation     | `prefetchQuery` côté serveur + `HydrationBoundary` : première peinture sans requête client                                 |
+| `staleTime`     | 60 s pour les listes, 5 min pour les référentiels, 0 pour les soldes financiers                                            |
+| Mutations       | `useMutation` + invalidation ciblée ; **pas d'`optimistic update` sur les montants** (le solde est calculé par le serveur) |
+| Erreurs         | Codes stables du catalogue `packages/shared/errors` mappés en messages fr-CG                                               |
+| Idempotence     | En-tête `Idempotency-Key` (ULID) sur toute mutation financière, y compris depuis le web                                    |
 
 Le cache est **cloisonné par organisation** : le changement d'`orgSlug` vide le `QueryClient`, afin qu'aucune donnée d'un tenant ne subsiste en mémoire lors d'un basculement.
 
@@ -1707,13 +1695,13 @@ Le cache est **cloisonné par organisation** : le changement d'`orgSlug` vide le
 
 Langue unique au lancement : **français (fr-CG)**, mais toutes les chaînes passent par `next-intl` (fichiers `src/i18n/fr-CG/*.json`), sans texte codé en dur, afin que l'ajout du lingala ou de l'anglais CEMAC ne soit qu'un fichier de plus.
 
-| Format | Règle |
-| :--- | :--- |
-| Montants | Entier XAF, séparateur de milliers espace insécable, suffixe ` FCFA` — **jamais de décimales** |
-| Dates | `jj/mm/aaaa`, fuseau `Africa/Brazzaville` (UTC+1, sans heure d'été) |
-| Téléphones | Saisie tolérante, stockage E.164 `+242…`, affichage groupé `+242 06 XXX XX XX` |
+| Format      | Règle                                                                                                                                      |
+| :---------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| Montants    | Entier XAF, séparateur de milliers espace insécable, suffixe ` FCFA` — **jamais de décimales**                                             |
+| Dates       | `jj/mm/aaaa`, fuseau `Africa/Brazzaville` (UTC+1, sans heure d'été)                                                                        |
+| Téléphones  | Saisie tolérante, stockage E.164 `+242…`, affichage groupé `+242 06 XXX XX XX`                                                             |
 | Vocabulaire | « quittance », « démarcheur », « bailleur », « caution », « cour », « parcelle » — le glossaire terrain prime sur le vocabulaire hexagonal |
-| Adresses | Quartier + arrondissement + ville, pas de code postal (inexistant en pratique) |
+| Adresses    | Quartier + arrondissement + ville, pas de code postal (inexistant en pratique)                                                             |
 
 ### 11.6 Accessibilité
 
@@ -1729,18 +1717,17 @@ Cible **WCAG 2.1 AA**. shadcn/ui repose sur Radix, ce qui fournit le socle (rôl
 
 Le budget est une contrainte de CI, pas une intention.
 
-| Budget | Seuil | Contrôle |
-| :--- | :--- | :--- |
-| JS initial par route (gzip) | ≤ 120 Ko | `@next/bundle-analyzer` + assertion `size-limit` en CI (échec de build au dépassement) |
-| CSS initial | ≤ 40 Ko | Tailwind purgé |
-| LCP sur 3G lente simulée | ≤ 3,5 s | Lighthouse CI sur cinq routes de référence |
-| TTI sur 3G lente | ≤ 5 s | Lighthouse CI |
-| Requêtes de la première peinture | ≤ 15 | Playwright + trace réseau |
+| Budget                           | Seuil    | Contrôle                                                                               |
+| :------------------------------- | :------- | :------------------------------------------------------------------------------------- |
+| JS initial par route (gzip)      | ≤ 120 Ko | `@next/bundle-analyzer` + assertion `size-limit` en CI (échec de build au dépassement) |
+| CSS initial                      | ≤ 40 Ko  | Tailwind purgé                                                                         |
+| LCP sur 3G lente simulée         | ≤ 3,5 s  | Lighthouse CI sur cinq routes de référence                                             |
+| TTI sur 3G lente                 | ≤ 5 s    | Lighthouse CI                                                                          |
+| Requêtes de la première peinture | ≤ 15     | Playwright + trace réseau                                                              |
 
 Mesures appliquées : `next/image` (AVIF puis WebP, `sizes` explicite, `priority` réservé au LCP, photos de biens servies depuis R2 avec transformations Cloudflare) ; `next/font` en auto-hébergement avec `display: swap` ; import dynamique de tout composant lourd (éditeur de relevé, graphiques, visionneuse PDF) ; pagination par curseur avec taille de page 20 et jamais de tableau non paginé ; `Cache-Control: public, max-age=31536000, immutable` sur les actifs empreintés et `stale-while-revalidate` sur les pages de listes ; désactivation du prefetch agressif des liens hors du viewport pour économiser le forfait de l'utilisateur.
 
 **Mode dégradé.** Un `Service Worker` minimal (Workbox) met en cache le shell applicatif et les dernières listes consultées en lecture seule, et affiche un bandeau « Vous êtes hors ligne — données du jj/mm à hh:mm ». Le web n'offre **pas** d'écriture hors ligne : cette capacité reste l'apanage du mobile (§10), afin de ne pas dupliquer un moteur de synchronisation dans deux runtimes.
-
 
 ---
 
@@ -1754,12 +1741,12 @@ Une relance mal calibrée coûte deux fois : en argent (conversation WhatsApp fa
 
 `dunning_rules` est configurable **par organisation**, avec un jeu par défaut appliqué à la création du tenant.
 
-| Palier | Décalage | Canal préféré | Repli | Ton | Destinataires |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `PRE_DUE` | **J-5** | WhatsApp | Push | Rappel courtois, montant et date | Locataire |
-| `DUE` | **J** (jour d'échéance) | WhatsApp | SMS | Échéance du jour, moyens de paiement | Locataire |
-| `OVERDUE_1` | **J+3** | WhatsApp | SMS | Retard constaté, pénalité annoncée | Locataire + copie gestionnaire |
-| `OVERDUE_2` | **J+10** | SMS | Appel à programmer | Ferme, mention des `penalty_rules` | Locataire + gestionnaire + bailleur |
+| Palier      | Décalage                | Canal préféré | Repli              | Ton                                  | Destinataires                       |
+| :---------- | :---------------------- | :------------ | :----------------- | :----------------------------------- | :---------------------------------- |
+| `PRE_DUE`   | **J-5**                 | WhatsApp      | Push               | Rappel courtois, montant et date     | Locataire                           |
+| `DUE`       | **J** (jour d'échéance) | WhatsApp      | SMS                | Échéance du jour, moyens de paiement | Locataire                           |
+| `OVERDUE_1` | **J+3**                 | WhatsApp      | SMS                | Retard constaté, pénalité annoncée   | Locataire + copie gestionnaire      |
+| `OVERDUE_2` | **J+10**                | SMS           | Appel à programmer | Ferme, mention des `penalty_rules`   | Locataire + gestionnaire + bailleur |
 
 Chaque règle porte : `offset_days`, `channel_priority[]`, `template_code`, `is_active`, `min_amount_xaf` (ne pas relancer sous 5 000 FCFA par défaut), `max_attempts`, `applies_to_lease_types[]`. Les paliers au-delà de J+10 relèvent du recouvrement humain et ne sont pas automatisés.
 
@@ -1784,12 +1771,12 @@ flowchart LR
 
 ### 12.3 Canaux
 
-| Canal | Implémentation | Usage | Coût relatif | Preuve de livraison |
-| :--- | :--- | :--- | :--- | :--- |
-| **WhatsApp** | Meta Cloud API, templates approuvés, pièce jointe PDF | Quittances, relances, confirmations | Moyen (par conversation de 24 h) | `sent` / `delivered` / `read` / `failed` |
-| **SMS** | Interface `SmsProvider` (passerelle locale), segments GSM-7 | Repli si WhatsApp échoue ou absent, OTP | Élevé à l'unité | Accusé opérateur, souvent partiel |
-| **Push FCM** | Firebase, application mobile | Alertes internes (nouvelle facture, remise à clôturer, conflit à traiter) | Nul | `success` / `failure` par token |
-| **Email** | SMTP transactionnel | Relevés de gérance, exports, factures d'abonnement | Nul | Bounce / complaint |
+| Canal        | Implémentation                                              | Usage                                                                     | Coût relatif                     | Preuve de livraison                      |
+| :----------- | :---------------------------------------------------------- | :------------------------------------------------------------------------ | :------------------------------- | :--------------------------------------- |
+| **WhatsApp** | Meta Cloud API, templates approuvés, pièce jointe PDF       | Quittances, relances, confirmations                                       | Moyen (par conversation de 24 h) | `sent` / `delivered` / `read` / `failed` |
+| **SMS**      | Interface `SmsProvider` (passerelle locale), segments GSM-7 | Repli si WhatsApp échoue ou absent, OTP                                   | Élevé à l'unité                  | Accusé opérateur, souvent partiel        |
+| **Push FCM** | Firebase, application mobile                                | Alertes internes (nouvelle facture, remise à clôturer, conflit à traiter) | Nul                              | `success` / `failure` par token          |
+| **Email**    | SMTP transactionnel                                         | Relevés de gérance, exports, factures d'abonnement                        | Nul                              | Bounce / complaint                       |
 
 **Ordre de repli.** Push (si l'appareil est actif depuis moins de 7 jours) → WhatsApp (si une ligne `contact_channels` WhatsApp est vérifiée) → SMS. Un canal n'est retenté qu'une fois ; l'échec définitif d'un palier n'entraîne **jamais** l'escalade automatique au palier suivant.
 
@@ -1805,31 +1792,30 @@ Variables canoniques disponibles : `{{tenant.firstName}}`, `{{invoice.number}}`,
 
 ### 12.5 Quiet hours, opt-out et fréquence
 
-| Garde-fou | Règle par défaut | Portée |
-| :--- | :--- | :--- |
-| Quiet hours | Aucun envoi entre **21 h et 7 h** (`Africa/Brazzaville`) ; report à 7 h le lendemain | Paramétrable par organisation |
-| Jours | Relances envoyées du lundi au samedi ; dimanche reporté au lundi | Paramétrable |
-| Plafond par destinataire | **4 messages transactionnels / 7 jours** hors OTP et quittances | Global |
-| Opt-out | Réponse `STOP` (SMS) ou blocage (WhatsApp) → `contact_channels.opted_out_at` renseigné | Par canal, par tiers |
-| Périmètre de l'opt-out | Coupe les **relances**, jamais les OTP de sécurité ni les quittances (pièces contractuelles) | — |
-| Réactivation | Uniquement par action explicite du locataire, tracée dans `audit_logs` | — |
+| Garde-fou                | Règle par défaut                                                                             | Portée                        |
+| :----------------------- | :------------------------------------------------------------------------------------------- | :---------------------------- |
+| Quiet hours              | Aucun envoi entre **21 h et 7 h** (`Africa/Brazzaville`) ; report à 7 h le lendemain         | Paramétrable par organisation |
+| Jours                    | Relances envoyées du lundi au samedi ; dimanche reporté au lundi                             | Paramétrable                  |
+| Plafond par destinataire | **4 messages transactionnels / 7 jours** hors OTP et quittances                              | Global                        |
+| Opt-out                  | Réponse `STOP` (SMS) ou blocage (WhatsApp) → `contact_channels.opted_out_at` renseigné       | Par canal, par tiers          |
+| Périmètre de l'opt-out   | Coupe les **relances**, jamais les OTP de sécurité ni les quittances (pièces contractuelles) | —                             |
+| Réactivation             | Uniquement par action explicite du locataire, tracée dans `audit_logs`                       | —                             |
 
 Les OTP sont exclus des quiet hours et du plafond : ils sont déclenchés par l'utilisateur lui-même.
 
 ### 12.6 Maîtrise des coûts
 
-| Levier | Mise en œuvre | Effet attendu |
-| :--- | :--- | :--- |
-| Priorité au canal gratuit | Push d'abord quand l'appareil est actif | Supprime des envois payants sur la population équipée |
-| Regroupement | Un locataire avec plusieurs baux reçoit **un seul** message consolidé par palier | Divise les envois par le nombre de baux |
-| Fenêtre de 24 h exploitée | Réponse du locataire → messages libres gratuits pendant 24 h : la quittance est envoyée dans la fenêtre ouverte quand c'est possible | Évite une conversation facturée supplémentaire |
-| Seuil minimal | `min_amount_xaf` par défaut à 5 000 FCFA | Évite de relancer des soldes symboliques |
-| SMS concis | Gabarits ≤ 160 caractères GSM-7, pas d'accents décoratifs, URL raccourcie | Un seul segment facturé |
-| Budget mensuel | `organization_settings.messaging_budget_xaf` ; à 80 % alerte au gestionnaire, à 100 % **suspension des relances non critiques** (OTP et quittances maintenus) | Plafonne le risque financier |
-| Suivi | Coût unitaire estimé par message dans `message_logs`, tableau Grafana « coût par organisation / par canal / par palier » | Rend le poste pilotable |
+| Levier                    | Mise en œuvre                                                                                                                                                 | Effet attendu                                         |
+| :------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------- |
+| Priorité au canal gratuit | Push d'abord quand l'appareil est actif                                                                                                                       | Supprime des envois payants sur la population équipée |
+| Regroupement              | Un locataire avec plusieurs baux reçoit **un seul** message consolidé par palier                                                                              | Divise les envois par le nombre de baux               |
+| Fenêtre de 24 h exploitée | Réponse du locataire → messages libres gratuits pendant 24 h : la quittance est envoyée dans la fenêtre ouverte quand c'est possible                          | Évite une conversation facturée supplémentaire        |
+| Seuil minimal             | `min_amount_xaf` par défaut à 5 000 FCFA                                                                                                                      | Évite de relancer des soldes symboliques              |
+| SMS concis                | Gabarits ≤ 160 caractères GSM-7, pas d'accents décoratifs, URL raccourcie                                                                                     | Un seul segment facturé                               |
+| Budget mensuel            | `organization_settings.messaging_budget_xaf` ; à 80 % alerte au gestionnaire, à 100 % **suspension des relances non critiques** (OTP et quittances maintenus) | Plafonne le risque financier                          |
+| Suivi                     | Coût unitaire estimé par message dans `message_logs`, tableau Grafana « coût par organisation / par canal / par palier »                                      | Rend le poste pilotable                               |
 
 **Facturation refacturée.** Le coût messagerie est un poste explicite du modèle SaaS : chaque plan inclut un quota, le dépassement est facturé au réel dans `subscription_invoices`. Cette transparence est ce qui rend acceptable le choix du canal officiel WhatsApp (§2.3).
-
 
 ---
 
@@ -1837,10 +1823,10 @@ Les OTP sont exclus des quiet hours et du plafond : ils sont déclenchés par l'
 
 Le programme d'apport d'affaires du référentiel commun (`_DECISIONS_COMMUNES.md`, « Démarcheurs et gestionnaires informels ») distingue deux machines à états portées par le module `referrals` (§4.1) : celle du parrainage lui-même (`referrals.status`) et celle de chaque commission qu'il génère (`referral_commissions.status`).
 
-| Table | Statuts | Portée |
-| :--- | :--- | :--- |
-| `referrals` (`referral_status`) | `PENDING` → `QUALIFIED` → `ACTIVE` (→ `EXPIRED` / `CANCELLED`) | Lien entre un `referral_partner` et l'organisation qu'il a apportée, valable pour la durée définie par le `referral_program` |
-| `referral_commissions` (`referral_commission_status`) | `ACCRUED` → `APPROVED` → `PAID` (→ `REVERSED` / `CANCELLED`) | Une commission par `subscription_invoice` payée, rattachée à un `referral` `ACTIVE` |
+| Table                                                 | Statuts                                                        | Portée                                                                                                                       |
+| :---------------------------------------------------- | :------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| `referrals` (`referral_status`)                       | `PENDING` → `QUALIFIED` → `ACTIVE` (→ `EXPIRED` / `CANCELLED`) | Lien entre un `referral_partner` et l'organisation qu'il a apportée, valable pour la durée définie par le `referral_program` |
+| `referral_commissions` (`referral_commission_status`) | `ACCRUED` → `APPROVED` → `PAID` (→ `REVERSED` / `CANCELLED`)   | Une commission par `subscription_invoice` payée, rattachée à un `referral` `ACTIVE`                                          |
 
 ```mermaid
 stateDiagram-v2
@@ -1867,29 +1853,29 @@ Si la `subscription_invoice` d'origine est remboursée, la commission correspond
 
 Immodesk vise **OWASP ASVS 4.0 niveau 2** (application manipulant des données financières et personnelles). Le niveau 2 est un engagement vérifiable : chaque chapitre ASVS est rattaché à un contrôle implémenté et à un test automatisé.
 
-| Chapitre ASVS | Contrôle Immodesk | Vérification |
-| :--- | :--- | :--- |
-| V2 Authentification | OTP téléphone à 6 chiffres, TTL 5 min, 5 tentatives, hash Argon2id du code, verrouillage progressif | e2e `auth.otp.spec.ts` |
-| V3 Session | JWT access 15 min, refresh rotatif 30 j avec détection de réutilisation (révocation de toute la famille), cookie `__Host-` | e2e + test de rejeu |
-| V4 Contrôle d'accès | Matrice `packages/shared/permissions` + **RLS PostgreSQL** comme dernier rempart | Tests d'isolation (§15.5) |
-| V5 Validation | `zod` sur toute entrée, Prisma paramétré, `$queryRaw` uniquement en template tagué | Lint interdisant `$queryRawUnsafe` |
-| V7 Journalisation | `audit_logs` append-only, logs `pino` sans données sensibles | Revue + test de non-régression |
-| V8 Données | Chiffrement au repos et en transit, minimisation, rétention (§13.6) | Audit trimestriel |
-| V9 Communications | TLS 1.3, HSTS `max-age=63072000; includeSubDomains; preload` | `testssl.sh` en CI hebdomadaire |
-| V12 Fichiers | Upload par URL signée, type MIME vérifié côté serveur, taille plafonnée, pas d'exécution | Tests d'intégration |
-| V13 API | Rate limit par IP, par utilisateur et par organisation ; pagination par curseur opaque | Tests de charge |
+| Chapitre ASVS       | Contrôle Immodesk                                                                                                          | Vérification                       |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------- | :--------------------------------- |
+| V2 Authentification | OTP téléphone à 6 chiffres, TTL 5 min, 5 tentatives, hash Argon2id du code, verrouillage progressif                        | e2e `auth.otp.spec.ts`             |
+| V3 Session          | JWT access 15 min, refresh rotatif 30 j avec détection de réutilisation (révocation de toute la famille), cookie `__Host-` | e2e + test de rejeu                |
+| V4 Contrôle d'accès | Matrice `packages/shared/permissions` + **RLS PostgreSQL** comme dernier rempart                                           | Tests d'isolation (§15.5)          |
+| V5 Validation       | `zod` sur toute entrée, Prisma paramétré, `$queryRaw` uniquement en template tagué                                         | Lint interdisant `$queryRawUnsafe` |
+| V7 Journalisation   | `audit_logs` append-only, logs `pino` sans données sensibles                                                               | Revue + test de non-régression     |
+| V8 Données          | Chiffrement au repos et en transit, minimisation, rétention (§13.6)                                                        | Audit trimestriel                  |
+| V9 Communications   | TLS 1.3, HSTS `max-age=63072000; includeSubDomains; preload`                                                               | `testssl.sh` en CI hebdomadaire    |
+| V12 Fichiers        | Upload par URL signée, type MIME vérifié côté serveur, taille plafonnée, pas d'exécution                                   | Tests d'intégration                |
+| V13 API             | Rate limit par IP, par utilisateur et par organisation ; pagination par curseur opaque                                     | Tests de charge                    |
 
 ### 13.2 Chiffrement
 
-| Périmètre | Mécanisme |
-| :--- | :--- |
-| Transit externe | TLS 1.3 obligatoire (Caddy/Traefik, certificats Let's Encrypt automatiques), HSTS preload, redirection 301 systématique |
-| Transit interne | Réseau Docker privé, PostgreSQL et Redis **non exposés publiquement**, `sslmode=require` vers la base |
-| Repos — base | Chiffrement du volume (LUKS sur le VPS) + `pgcrypto` pour les colonnes hautement sensibles (numéro de pièce d'identité, RIB) |
-| Repos — objets | R2 chiffré au repos ; accès exclusivement par **URL signée à 15 min**, jamais de bucket public |
-| Repos — mobile | SQLCipher AES-256, clé en Keystore/Keychain (§10.9) |
-| Sauvegardes | Chiffrement **age** (clé publique en CI, clé privée hors ligne) avant dépôt hors site |
-| Secrets applicatifs | Voir §13.3 |
+| Périmètre           | Mécanisme                                                                                                                    |
+| :------------------ | :--------------------------------------------------------------------------------------------------------------------------- |
+| Transit externe     | TLS 1.3 obligatoire (Caddy/Traefik, certificats Let's Encrypt automatiques), HSTS preload, redirection 301 systématique      |
+| Transit interne     | Réseau Docker privé, PostgreSQL et Redis **non exposés publiquement**, `sslmode=require` vers la base                        |
+| Repos — base        | Chiffrement du volume (LUKS sur le VPS) + `pgcrypto` pour les colonnes hautement sensibles (numéro de pièce d'identité, RIB) |
+| Repos — objets      | R2 chiffré au repos ; accès exclusivement par **URL signée à 15 min**, jamais de bucket public                               |
+| Repos — mobile      | SQLCipher AES-256, clé en Keystore/Keychain (§10.9)                                                                          |
+| Sauvegardes         | Chiffrement **age** (clé publique en CI, clé privée hors ligne) avant dépôt hors site                                        |
+| Secrets applicatifs | Voir §13.3                                                                                                                   |
 
 En-têtes de sécurité imposés par la périphérie : `Content-Security-Policy` stricte avec nonce (pas de `unsafe-inline`), `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` minimale, `X-Frame-Options: DENY` sauf sur la page publique de vérification.
 
@@ -1897,14 +1883,14 @@ En-têtes de sécurité imposés par la périphérie : `Content-Security-Policy`
 
 **Décision : SOPS + age**, avec Doppler évalué comme alternative si l'équipe dépasse cinq personnes.
 
-| Aspect | Mise en œuvre |
-| :--- | :--- |
-| Stockage | `infra/secrets/{dev,staging,prod}.enc.yaml` chiffrés SOPS, **versionnés** dans le dépôt |
-| Clés | age ; clé de production détenue par deux personnes, sauvegardée hors ligne, jamais dans le dépôt |
-| CI/CD | `SOPS_AGE_KEY` en secret GitHub Actions, déchiffrement au moment du déploiement uniquement, en mémoire |
-| Runtime | Variables d'environnement injectées par le compose de déploiement ; validation `zod` au démarrage, **le processus refuse de démarrer** si un secret est absent ou mal formé |
-| Rotation | Trimestrielle pour les clés d'API tierces, immédiate en cas de départ ou de suspicion ; `infra/scripts/rotate-secrets.sh` |
-| Détection de fuite | `gitleaks` en pre-commit et en CI, blocage de la PR |
+| Aspect             | Mise en œuvre                                                                                                                                                               |
+| :----------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stockage           | `infra/secrets/{dev,staging,prod}.enc.yaml` chiffrés SOPS, **versionnés** dans le dépôt                                                                                     |
+| Clés               | age ; clé de production détenue par deux personnes, sauvegardée hors ligne, jamais dans le dépôt                                                                            |
+| CI/CD              | `SOPS_AGE_KEY` en secret GitHub Actions, déchiffrement au moment du déploiement uniquement, en mémoire                                                                      |
+| Runtime            | Variables d'environnement injectées par le compose de déploiement ; validation `zod` au démarrage, **le processus refuse de démarrer** si un secret est absent ou mal formé |
+| Rotation           | Trimestrielle pour les clés d'API tierces, immédiate en cas de départ ou de suspicion ; `infra/scripts/rotate-secrets.sh`                                                   |
+| Détection de fuite | `gitleaks` en pre-commit et en CI, blocage de la PR                                                                                                                         |
 
 Aucun secret ne transite en clair par un canal de discussion, un ticket ou un fichier `.env` partagé.
 
@@ -1912,15 +1898,15 @@ Aucun secret ne transite en clair par un canal de discussion, un ticket ou un fi
 
 Les webhooks entrants (agrégateur Mobile Money, WhatsApp Cloud API) sont la surface la plus exposée : ils sont publics, non authentifiés par session, et déclenchent des effets financiers.
 
-| Contrôle | Règle |
-| :--- | :--- |
-| Signature | HMAC-SHA256 sur le **corps brut** (avant tout parsing JSON), comparaison à temps constant |
-| Horodatage | En-tête de timestamp obligatoire, tolérance **± 5 minutes** ; hors fenêtre → 401 |
-| Anti-rejeu | `webhook_events(provider, event_id)` en clé unique ; un doublon retourne **200** sans retraitement |
-| Persistance d'abord | Le payload brut est enregistré, puis un job BullMQ traite l'événement : la réponse HTTP est rendue en moins de 500 ms |
-| Filtrage réseau | Liste d'IP autorisées du fournisseur au niveau du reverse proxy quand elle est publiée |
-| Autorité | Un webhook **ne confirme jamais** un paiement : il déclenche une re-interrogation du statut auprès du fournisseur (règle non négociable, §2.4) |
-| Rattrapage | Job périodique de réconciliation des paiements `PENDING` de plus de 15 min, indépendant des webhooks |
+| Contrôle            | Règle                                                                                                                                          |
+| :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signature           | HMAC-SHA256 sur le **corps brut** (avant tout parsing JSON), comparaison à temps constant                                                      |
+| Horodatage          | En-tête de timestamp obligatoire, tolérance **± 5 minutes** ; hors fenêtre → 401                                                               |
+| Anti-rejeu          | `webhook_events(provider, event_id)` en clé unique ; un doublon retourne **200** sans retraitement                                             |
+| Persistance d'abord | Le payload brut est enregistré, puis un job BullMQ traite l'événement : la réponse HTTP est rendue en moins de 500 ms                          |
+| Filtrage réseau     | Liste d'IP autorisées du fournisseur au niveau du reverse proxy quand elle est publiée                                                         |
+| Autorité            | Un webhook **ne confirme jamais** un paiement : il déclenche une re-interrogation du statut auprès du fournisseur (règle non négociable, §2.4) |
+| Rattrapage          | Job périodique de réconciliation des paiements `PENDING` de plus de 15 min, indépendant des webhooks                                           |
 
 Les webhooks **sortants** (intégrations futures) sont signés de la même façon, avec un secret par abonné et une rotation sans coupure (deux secrets valides pendant 24 h).
 
@@ -1936,28 +1922,28 @@ Les logs applicatifs (`pino`, JSON) portent `request_id`, `organization_id`, `us
 
 La loi n° 29-2019 du 10 octobre 2019 sur la protection des données à caractère personnel structure les obligations. Les principes retenus, alignés sur un socle également compatible RGPD :
 
-| Principe | Mise en œuvre |
-| :--- | :--- |
-| **Consentement** | Collecte explicite et horodatée à la création d'un tiers (`contact_channels.consent_at`, `consent_source`) ; consentement distinct pour les canaux de communication (§12.5) ; jamais de case pré-cochée |
-| **Finalité** | Chaque catégorie de donnée est rattachée à une finalité déclarée (gestion locative, facturation, obligation légale) ; toute nouvelle finalité exige un nouveau consentement |
-| **Minimisation** | Pièce d'identité **hachée et non conservée en clair** au-delà de la vérification, sauf obligation contractuelle ; pas de géolocalisation continue du démarcheur, seulement le point de l'encaissement |
-| **Conservation** | Baux et pièces financières : **10 ans** (obligation comptable) ; prospects non convertis : 24 mois ; logs techniques : 12 mois ; médias d'états des lieux : durée du bail + 5 ans. Purge automatisée par job mensuel, tracée |
-| **Droit d'accès et portabilité** | Export complet des données d'une personne ou d'une organisation (JSON + PDF) sous 30 jours, en libre-service pour l'`OWNER` |
-| **Rectification et effacement** | Rectification en ligne ; effacement honoré sauf sur les pièces financières couvertes par l'obligation légale, avec réponse motivée |
-| **Responsable de traitement** | L'**organisation cliente** est responsable de traitement ; Immodesk est **sous-traitant**, lié par une annexe contractuelle (mesures de sécurité, sous-traitants ultérieurs, notification de violation sous 72 h) |
-| **Transfert hors du territoire** | Hébergement Paris déclaré aux clients dans les CGU, avec engagement de réversibilité et d'export intégral (voir ADR-010) |
-| **Registre** | Registre des traitements maintenu dans `docs/conformite/registre.md`, revu semestriellement |
+| Principe                         | Mise en œuvre                                                                                                                                                                                                                |
+| :------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Consentement**                 | Collecte explicite et horodatée à la création d'un tiers (`contact_channels.consent_at`, `consent_source`) ; consentement distinct pour les canaux de communication (§12.5) ; jamais de case pré-cochée                      |
+| **Finalité**                     | Chaque catégorie de donnée est rattachée à une finalité déclarée (gestion locative, facturation, obligation légale) ; toute nouvelle finalité exige un nouveau consentement                                                  |
+| **Minimisation**                 | Pièce d'identité **hachée et non conservée en clair** au-delà de la vérification, sauf obligation contractuelle ; pas de géolocalisation continue du démarcheur, seulement le point de l'encaissement                        |
+| **Conservation**                 | Baux et pièces financières : **10 ans** (obligation comptable) ; prospects non convertis : 24 mois ; logs techniques : 12 mois ; médias d'états des lieux : durée du bail + 5 ans. Purge automatisée par job mensuel, tracée |
+| **Droit d'accès et portabilité** | Export complet des données d'une personne ou d'une organisation (JSON + PDF) sous 30 jours, en libre-service pour l'`OWNER`                                                                                                  |
+| **Rectification et effacement**  | Rectification en ligne ; effacement honoré sauf sur les pièces financières couvertes par l'obligation légale, avec réponse motivée                                                                                           |
+| **Responsable de traitement**    | L'**organisation cliente** est responsable de traitement ; Immodesk est **sous-traitant**, lié par une annexe contractuelle (mesures de sécurité, sous-traitants ultérieurs, notification de violation sous 72 h)            |
+| **Transfert hors du territoire** | Hébergement Paris déclaré aux clients dans les CGU, avec engagement de réversibilité et d'export intégral (voir ADR-010)                                                                                                     |
+| **Registre**                     | Registre des traitements maintenu dans `docs/conformite/registre.md`, revu semestriellement                                                                                                                                  |
 
 ### 13.7 Matrice des menaces spécifiques au terrain
 
-| Menace | Scénario | Contrôles préventifs | Détection | Réponse |
-| :--- | :--- | :--- | :--- | :--- |
-| **Faux reçu de caisse** | Un démarcheur remet un reçu fabriqué (carnet, capture retouchée) et garde l'argent | Numérotation serveur `CASH-{org}-{collector}-{seq}` non devinable, QR de vérification publique sur chaque reçu, signature du locataire capturée, notification WhatsApp au locataire à l'encaissement | Écart entre reçus émis et `cash_remittances` ; reçus jamais synchronisés ; vérifications QR négatives comptabilisées | Suspension du compte démarcheur, gel de sa tournée, export des `audit_logs`, plainte |
-| **Faux justificatif de virement** | Un locataire téléverse une capture d'écran retouchée | `bank_transfer_declarations` en statut **`PENDING_VERIFICATION`** : jamais de confirmation automatique ; confrontation obligatoire à `bank_statement_lines` (§8) ; hash du fichier et conservation de l'original | Déclaration sans ligne bancaire correspondante après 5 jours ; hash identique réutilisé | Rejet motivé, facture réputée impayée, alerte gestionnaire |
-| **Appareil de démarcheur volé** | Téléphone perdu avec base locale et tournée en cours | SQLCipher + code PIN applicatif obligatoire, verrouillage après 3 échecs, session courte, plafond d'encaissement par démarcheur, aucun export local en clair | Absence de synchronisation > 24 h ; connexion depuis un `device_id` inconnu ; géolocalisation d'encaissement aberrante | Révocation immédiate des refresh tokens du `device_id`, effacement de la clé SQLCipher au prochain contact, réémission des reçus non remontés |
-| **Compte compromis** | Identifiants ou SIM d'un gestionnaire détournés (échange de SIM) | OTP avec verrouillage progressif, détection de réutilisation de refresh token, notification à toute nouvelle connexion, 2ᵉ facteur exigé pour les actions sensibles (changement d'IBAN de reversement, ajout de membre, export massif), délai de latence de 24 h sur un changement de coordonnées bancaires | Alerte sur connexion depuis un nouvel appareil ou une nouvelle géographie ; pic d'exports ; modification d'IBAN | Révocation globale de session, gel des reversements en attente, contact hors bande du bailleur |
-| **Démarcheur qui rejoue un lot** | Renvoi manuel d'un `sync_batch` pour dupliquer des encaissements | Idempotence par `client_ref` ULID unique par organisation, `idempotency_keys` côté serveur | Taux de `DUPLICATE` anormal par appareil | Enquête, plafonnement, journalisation |
-| **Fuite inter-tenant** | Un bug d'oubli de filtre expose les données d'une autre agence | RLS PostgreSQL activée sur toute table portant `organization_id`, contexte posé par `SET LOCAL`, rôle applicatif **non superutilisateur** et sans `BYPASSRLS` | Tests d'isolation obligatoires en CI (§15.5) ; alerte sur requête sans contexte org | Blocage du déploiement, notification de violation sous 72 h si avérée |
+| Menace                            | Scénario                                                                           | Contrôles préventifs                                                                                                                                                                                                                                                                                        | Détection                                                                                                              | Réponse                                                                                                                                       |
+| :-------------------------------- | :--------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Faux reçu de caisse**           | Un démarcheur remet un reçu fabriqué (carnet, capture retouchée) et garde l'argent | Numérotation serveur `CASH-{org}-{collector}-{seq}` non devinable, QR de vérification publique sur chaque reçu, signature du locataire capturée, notification WhatsApp au locataire à l'encaissement                                                                                                        | Écart entre reçus émis et `cash_remittances` ; reçus jamais synchronisés ; vérifications QR négatives comptabilisées   | Suspension du compte démarcheur, gel de sa tournée, export des `audit_logs`, plainte                                                          |
+| **Faux justificatif de virement** | Un locataire téléverse une capture d'écran retouchée                               | `bank_transfer_declarations` en statut **`PENDING_VERIFICATION`** : jamais de confirmation automatique ; confrontation obligatoire à `bank_statement_lines` (§8) ; hash du fichier et conservation de l'original                                                                                            | Déclaration sans ligne bancaire correspondante après 5 jours ; hash identique réutilisé                                | Rejet motivé, facture réputée impayée, alerte gestionnaire                                                                                    |
+| **Appareil de démarcheur volé**   | Téléphone perdu avec base locale et tournée en cours                               | SQLCipher + code PIN applicatif obligatoire, verrouillage après 3 échecs, session courte, plafond d'encaissement par démarcheur, aucun export local en clair                                                                                                                                                | Absence de synchronisation > 24 h ; connexion depuis un `device_id` inconnu ; géolocalisation d'encaissement aberrante | Révocation immédiate des refresh tokens du `device_id`, effacement de la clé SQLCipher au prochain contact, réémission des reçus non remontés |
+| **Compte compromis**              | Identifiants ou SIM d'un gestionnaire détournés (échange de SIM)                   | OTP avec verrouillage progressif, détection de réutilisation de refresh token, notification à toute nouvelle connexion, 2ᵉ facteur exigé pour les actions sensibles (changement d'IBAN de reversement, ajout de membre, export massif), délai de latence de 24 h sur un changement de coordonnées bancaires | Alerte sur connexion depuis un nouvel appareil ou une nouvelle géographie ; pic d'exports ; modification d'IBAN        | Révocation globale de session, gel des reversements en attente, contact hors bande du bailleur                                                |
+| **Démarcheur qui rejoue un lot**  | Renvoi manuel d'un `sync_batch` pour dupliquer des encaissements                   | Idempotence par `client_ref` ULID unique par organisation, `idempotency_keys` côté serveur                                                                                                                                                                                                                  | Taux de `DUPLICATE` anormal par appareil                                                                               | Enquête, plafonnement, journalisation                                                                                                         |
+| **Fuite inter-tenant**            | Un bug d'oubli de filtre expose les données d'une autre agence                     | RLS PostgreSQL activée sur toute table portant `organization_id`, contexte posé par `SET LOCAL`, rôle applicatif **non superutilisateur** et sans `BYPASSRLS`                                                                                                                                               | Tests d'isolation obligatoires en CI (§15.5) ; alerte sur requête sans contexte org                                    | Blocage du déploiement, notification de violation sous 72 h si avérée                                                                         |
 
 ### 13.8 Sauvegardes chiffrées et scans en CI
 
@@ -1965,18 +1951,17 @@ La loi n° 29-2019 du 10 octobre 2019 sur la protection des données à caractè
 
 **Scans automatisés** (`.github/workflows/security.yml`) :
 
-| Scan | Outil | Fréquence | Blocant |
-| :--- | :--- | :--- | :--- |
-| Dépendances JS/Dart | `pnpm audit`, `osv-scanner`, Dependabot | Chaque PR + quotidien | Oui à partir de « élevée » |
-| Secrets | `gitleaks` | Pre-commit + chaque PR | Oui |
-| SAST | CodeQL (TypeScript), `dart analyze` strict | Chaque PR | Oui sur « erreur » |
-| Image Docker | `trivy` (OS + bibliothèques) | Chaque build | Oui à partir de « élevée » |
-| IaC / compose | `checkov` | Chaque PR touchant `infra/` | Avertissement |
-| DAST | OWASP ZAP baseline sur staging | Hebdomadaire | Avertissement + ticket |
-| TLS | `testssl.sh` sur les domaines publics | Hebdomadaire | Avertissement |
+| Scan                | Outil                                      | Fréquence                   | Blocant                    |
+| :------------------ | :----------------------------------------- | :-------------------------- | :------------------------- |
+| Dépendances JS/Dart | `pnpm audit`, `osv-scanner`, Dependabot    | Chaque PR + quotidien       | Oui à partir de « élevée » |
+| Secrets             | `gitleaks`                                 | Pre-commit + chaque PR      | Oui                        |
+| SAST                | CodeQL (TypeScript), `dart analyze` strict | Chaque PR                   | Oui sur « erreur »         |
+| Image Docker        | `trivy` (OS + bibliothèques)               | Chaque build                | Oui à partir de « élevée » |
+| IaC / compose       | `checkov`                                  | Chaque PR touchant `infra/` | Avertissement              |
+| DAST                | OWASP ZAP baseline sur staging             | Hebdomadaire                | Avertissement + ticket     |
+| TLS                 | `testssl.sh` sur les domaines publics      | Hebdomadaire                | Avertissement              |
 
 Un test d'intrusion externe est planifié avant le lancement commercial (Phase 11).
-
 
 ---
 
@@ -1986,23 +1971,23 @@ Un test d'intrusion externe est planifié avant le lancement commercial (Phase 1
 
 Un seul prérequis pour démarrer : Docker et pnpm. `docker compose -f infra/docker/docker-compose.dev.yml up` lève PostgreSQL 16, Redis 7, MinIO (substitut R2 compatible S3), Mailpit (courriel), et un simulateur d'agrégateur Mobile Money maison qui reproduit les webhooks, y compris hors ordre, dupliqués et perdus — car un développeur doit rencontrer ces défauts **avant** la production.
 
-| Service dev | Image | Port | Note |
-| :--- | :--- | :--- | :--- |
-| `postgres` | `postgres:16-alpine` | 5432 | Volume nommé, `pg_stat_statements` activé |
-| `redis` | `redis:7-alpine` | 6379 | AOF activé, comme en production |
-| `minio` | `minio/minio` | 9000/9001 | Bucket `immodesk-dev` créé au démarrage |
-| `mailpit` | `axllent/mailpit` | 8025 | Interception de tout courriel sortant |
-| `momo-sandbox` | Image locale | 4010 | Webhooks retardés, dupliqués, signatures valides et invalides |
+| Service dev    | Image                | Port      | Note                                                          |
+| :------------- | :------------------- | :-------- | :------------------------------------------------------------ |
+| `postgres`     | `postgres:16-alpine` | 5432      | Volume nommé, `pg_stat_statements` activé                     |
+| `redis`        | `redis:7-alpine`     | 6379      | AOF activé, comme en production                               |
+| `minio`        | `minio/minio`        | 9000/9001 | Bucket `immodesk-dev` créé au démarrage                       |
+| `mailpit`      | `axllent/mailpit`    | 8025      | Interception de tout courriel sortant                         |
+| `momo-sandbox` | Image locale         | 4010      | Webhooks retardés, dupliqués, signatures valides et invalides |
 
 L'API, les workers et le web tournent **hors conteneur** en développement (rechargement à chaud rapide) ; seules les dépendances sont conteneurisées. `pnpm dev` orchestre le tout via Turborepo. `pnpm db:reset` rejoue migrations, policies RLS et seed de démo congolais (§15.4).
 
 ### 14.2 Environnements
 
-| Environnement | Hébergement | Données | Accès | Déploiement |
-| :--- | :--- | :--- | :--- | :--- |
-| **dev** | Poste développeur | Seed de démo | Local | — |
-| **staging** | VPS Paris (mutualisé, 4 vCPU / 8 Go) | Copie **anonymisée** de production, rafraîchie chaque semaine | VPN + authentification supplémentaire à la périphérie, `noindex` | Automatique à chaque fusion sur `main` |
-| **production** | VPS Paris dédiés (Hetzner CX/CCX ou OVH), 2 nœuds applicatifs + 1 nœud base | Réelles | SSH par clé uniquement, port non standard, pare-feu restrictif, aucun accès direct à la base | Manuel, sur tag `v*`, avec approbation |
+| Environnement  | Hébergement                                                                 | Données                                                       | Accès                                                                                        | Déploiement                            |
+| :------------- | :-------------------------------------------------------------------------- | :------------------------------------------------------------ | :------------------------------------------------------------------------------------------- | :------------------------------------- |
+| **dev**        | Poste développeur                                                           | Seed de démo                                                  | Local                                                                                        | —                                      |
+| **staging**    | VPS Paris (mutualisé, 4 vCPU / 8 Go)                                        | Copie **anonymisée** de production, rafraîchie chaque semaine | VPN + authentification supplémentaire à la périphérie, `noindex`                             | Automatique à chaque fusion sur `main` |
+| **production** | VPS Paris dédiés (Hetzner CX/CCX ou OVH), 2 nœuds applicatifs + 1 nœud base | Réelles                                                       | SSH par clé uniquement, port non standard, pare-feu restrictif, aucun accès direct à la base | Manuel, sur tag `v*`, avec approbation |
 
 L'anonymisation de staging est un script obligatoire (`infra/scripts/anonymize.sql`) : téléphones remplacés par une plage de test, noms substitués par un jeu congolais fictif, documents R2 non copiés, montants conservés (les invariants financiers doivent rester vérifiables).
 
@@ -2071,24 +2056,24 @@ graph TB
 
 ### 14.5 CI/CD GitHub Actions
 
-| Workflow | Déclencheur | Étapes |
-| :--- | :--- | :--- |
-| `ci.yml` | PR et push | Install pnpm (cache) → lint + Prettier + règles de frontière → typecheck → tests unitaires Vitest → tests d'intégration testcontainers → e2e supertest → `melos analyze` + `flutter test` → build API/web/mobile (APK debug) → vérification que `openapi.json` régénéré est identique au fichier versionné → budgets de bundle (§11.7) |
-| `security.yml` | PR + planifié | Scans du §13.8 |
-| `deploy-staging.yml` | Fusion sur `main` | Build et push des images (SHA du commit), `prisma migrate deploy`, application des policies RLS, déploiement, smoke tests, notification |
-| `deploy-production.yml` | Tag `v*` + approbation d'environnement | Sauvegarde préalable → migrations → déploiement progressif nœud par nœud → healthchecks → smoke tests → étiquetage de la version dans Sentry ; rollback automatique si les healthchecks échouent |
-| `mobile-release.yml` | Tag `mobile-v*` | fastlane : build signé, montée sur Play Store (piste interne) et TestFlight |
+| Workflow                | Déclencheur                            | Étapes                                                                                                                                                                                                                                                                                                                                 |
+| :---------------------- | :------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`                | PR et push                             | Install pnpm (cache) → lint + Prettier + règles de frontière → typecheck → tests unitaires Vitest → tests d'intégration testcontainers → e2e supertest → `melos analyze` + `flutter test` → build API/web/mobile (APK debug) → vérification que `openapi.json` régénéré est identique au fichier versionné → budgets de bundle (§11.7) |
+| `security.yml`          | PR + planifié                          | Scans du §13.8                                                                                                                                                                                                                                                                                                                         |
+| `deploy-staging.yml`    | Fusion sur `main`                      | Build et push des images (SHA du commit), `prisma migrate deploy`, application des policies RLS, déploiement, smoke tests, notification                                                                                                                                                                                                |
+| `deploy-production.yml` | Tag `v*` + approbation d'environnement | Sauvegarde préalable → migrations → déploiement progressif nœud par nœud → healthchecks → smoke tests → étiquetage de la version dans Sentry ; rollback automatique si les healthchecks échouent                                                                                                                                       |
+| `mobile-release.yml`    | Tag `mobile-v*`                        | fastlane : build signé, montée sur Play Store (piste interne) et TestFlight                                                                                                                                                                                                                                                            |
 
 **Règles de migration.** Les migrations sont **compatibles en avant** : on ajoute une colonne nullable, on déploie le code, on remplit, on contraint dans une migration ultérieure. Aucune migration bloquante longue en heure ouvrée ; `lock_timeout` et `statement_timeout` positionnés pour échouer vite plutôt que verrouiller la production. Toute migration est accompagnée d'une procédure de retour arrière décrite dans la PR.
 
 ### 14.6 Observabilité
 
-| Pilier | Outil | Contenu |
-| :--- | :--- | :--- |
-| Erreurs | **Sentry** (API, workers, web, Flutter) | Traces, version, `release`, `organization_id` en tag, données personnelles filtrées avant envoi |
-| Métriques | **Prometheus + Grafana** | Techniques : latence p50/p95/p99, taux d'erreur, profondeur des files, âge du plus vieux job, connexions PostgreSQL, mémoire Chromium. Métier : factures émises, taux d'encaissement, paiements `PENDING` > 15 min, lots de sync rejetés, coût messagerie |
-| Logs | **pino** JSON → Loki | `request_id` propagé de bout en bout (en-tête `X-Request-Id` fourni par le mobile), rédaction des champs sensibles (§13.5) |
-| Disponibilité | Sonde externe (UptimeRobot ou équivalent) | `/health/live`, `/health/ready`, page publique de vérification de quittance |
+| Pilier        | Outil                                     | Contenu                                                                                                                                                                                                                                                   |
+| :------------ | :---------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Erreurs       | **Sentry** (API, workers, web, Flutter)   | Traces, version, `release`, `organization_id` en tag, données personnelles filtrées avant envoi                                                                                                                                                           |
+| Métriques     | **Prometheus + Grafana**                  | Techniques : latence p50/p95/p99, taux d'erreur, profondeur des files, âge du plus vieux job, connexions PostgreSQL, mémoire Chromium. Métier : factures émises, taux d'encaissement, paiements `PENDING` > 15 min, lots de sync rejetés, coût messagerie |
+| Logs          | **pino** JSON → Loki                      | `request_id` propagé de bout en bout (en-tête `X-Request-Id` fourni par le mobile), rédaction des champs sensibles (§13.5)                                                                                                                                |
+| Disponibilité | Sonde externe (UptimeRobot ou équivalent) | `/health/live`, `/health/ready`, page publique de vérification de quittance                                                                                                                                                                               |
 
 **Healthchecks.** `/health/live` répond sans dépendance (le processus est vivant) ; `/health/ready` vérifie PostgreSQL, Redis et R2 et conditionne la réception du trafic. Les workers exposent une sonde de battement dans Redis, dont l'absence pendant 2 min déclenche une alerte.
 
@@ -2096,27 +2081,26 @@ graph TB
 
 ### 14.7 Sauvegarde, restauration et plan de reprise
 
-| Objectif | Valeur | Moyen |
-| :--- | :--- | :--- |
-| **RPO** | **24 h** au pire, **≤ 5 min** en pratique | Sauvegarde quotidienne + archivage WAL continu (PITR) |
-| **RTO** | **4 h** | Procédure de restauration scriptée et répétée |
-| Rétention | 7 quotidiennes, 4 hebdomadaires, 12 mensuelles | pgBackRest |
-| Chiffrement | `age`, clé privée hors ligne | Avant tout dépôt hors site |
-| Localisation | Deux fournisseurs distincts, dont un hors du fournisseur d'hébergement | Règle 3-2-1 |
-| Vérification | **Exercice trimestriel chronométré** : `infra/scripts/restore-drill.sh` restaure la dernière sauvegarde sur un environnement jetable, rejoue les invariants financiers (§15.6), et le résultat est consigné dans `docs/exploitation/journal-restaurations.md` | Bloquant : un exercice raté ouvre un incident |
+| Objectif     | Valeur                                                                                                                                                                                                                                                        | Moyen                                                 |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------- |
+| **RPO**      | **24 h** au pire, **≤ 5 min** en pratique                                                                                                                                                                                                                     | Sauvegarde quotidienne + archivage WAL continu (PITR) |
+| **RTO**      | **4 h**                                                                                                                                                                                                                                                       | Procédure de restauration scriptée et répétée         |
+| Rétention    | 7 quotidiennes, 4 hebdomadaires, 12 mensuelles                                                                                                                                                                                                                | pgBackRest                                            |
+| Chiffrement  | `age`, clé privée hors ligne                                                                                                                                                                                                                                  | Avant tout dépôt hors site                            |
+| Localisation | Deux fournisseurs distincts, dont un hors du fournisseur d'hébergement                                                                                                                                                                                        | Règle 3-2-1                                           |
+| Vérification | **Exercice trimestriel chronométré** : `infra/scripts/restore-drill.sh` restaure la dernière sauvegarde sur un environnement jetable, rejoue les invariants financiers (§15.6), et le résultat est consigné dans `docs/exploitation/journal-restaurations.md` | Bloquant : un exercice raté ouvre un incident         |
 
 **Plan de reprise.** Scénarios prévus et documentés dans `docs/exploitation/pra.md` :
 
-| Scénario | Réponse | Cible |
-| :--- | :--- | :--- |
-| Perte d'un nœud applicatif | Le second nœud absorbe le trafic ; recréation par script d'approvisionnement | < 30 min |
-| Corruption logique (mauvaise migration, suppression massive) | PITR à l'instant précédant l'incident, rejeu des `sync_batches` postérieurs depuis les outbox mobiles encore présentes | < 4 h |
-| Perte du nœud base | Promotion du réplica, ou restauration pgBackRest complète sur un nœud neuf | < 4 h |
-| Perte du datacenter | Reconstruction chez le fournisseur secondaire depuis les sauvegardes hors site (procédure complète scriptée) | < 24 h |
-| Compromission | Isolation réseau, révocation de tous les jetons et secrets, restauration à un point sain, notification sous 72 h (§13.6) | Immédiat |
+| Scénario                                                     | Réponse                                                                                                                  | Cible    |
+| :----------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- | :------- |
+| Perte d'un nœud applicatif                                   | Le second nœud absorbe le trafic ; recréation par script d'approvisionnement                                             | < 30 min |
+| Corruption logique (mauvaise migration, suppression massive) | PITR à l'instant précédant l'incident, rejeu des `sync_batches` postérieurs depuis les outbox mobiles encore présentes   | < 4 h    |
+| Perte du nœud base                                           | Promotion du réplica, ou restauration pgBackRest complète sur un nœud neuf                                               | < 4 h    |
+| Perte du datacenter                                          | Reconstruction chez le fournisseur secondaire depuis les sauvegardes hors site (procédure complète scriptée)             | < 24 h   |
+| Compromission                                                | Isolation réseau, révocation de tous les jetons et secrets, restauration à un point sain, notification sous 72 h (§13.6) | Immédiat |
 
 **Atout structurel.** L'offline-first du mobile est un filet de sécurité opérationnel : pendant une indisponibilité de l'API, les démarcheurs continuent d'encaisser et l'outbox rejoue à la reprise. C'est la raison pour laquelle le RTO de 4 h est tenable sans architecture haute disponibilité coûteuse.
-
 
 ---
 
@@ -2126,13 +2110,13 @@ graph TB
 
 La contrainte est double : les invariants financiers ne tolèrent aucune régression, et la CI doit rester sous **15 minutes** sinon elle est contournée.
 
-| Étage | Périmètre | Outil | Volume cible | Durée cible |
-| :--- | :--- | :--- | :--- | :--- |
-| Unitaires domaine | Règles métier pures : prorata, pénalités, allocation, `Money` XAF, numérotation | **Vitest** (aucune base, aucun mock de framework) | ~70 % des tests | < 30 s |
-| Intégration Prisma | Repositories, transactions, contraintes SQL, **policies RLS**, migrations | **Testcontainers** (PostgreSQL 16 réel) | ~20 % | < 5 min |
-| e2e API | Parcours HTTP complets, authentification, idempotence, webhooks | **Jest + supertest** sur une base testcontainers | ~7 % | < 4 min |
-| Widget / unitaires Flutter | Domaine Dart, DAO Drift, `SyncEngine`, écrans critiques | `flutter_test`, `drift` en mémoire | — | < 3 min |
-| e2e web | Cinq parcours critiques, deux navigateurs | **Playwright** | ~3 % | < 5 min |
+| Étage                      | Périmètre                                                                       | Outil                                             | Volume cible    | Durée cible |
+| :------------------------- | :------------------------------------------------------------------------------ | :------------------------------------------------ | :-------------- | :---------- |
+| Unitaires domaine          | Règles métier pures : prorata, pénalités, allocation, `Money` XAF, numérotation | **Vitest** (aucune base, aucun mock de framework) | ~70 % des tests | < 30 s      |
+| Intégration Prisma         | Repositories, transactions, contraintes SQL, **policies RLS**, migrations       | **Testcontainers** (PostgreSQL 16 réel)           | ~20 %           | < 5 min     |
+| e2e API                    | Parcours HTTP complets, authentification, idempotence, webhooks                 | **Jest + supertest** sur une base testcontainers  | ~7 %            | < 4 min     |
+| Widget / unitaires Flutter | Domaine Dart, DAO Drift, `SyncEngine`, écrans critiques                         | `flutter_test`, `drift` en mémoire                | —               | < 3 min     |
+| e2e web                    | Cinq parcours critiques, deux navigateurs                                       | **Playwright**                                    | ~3 %            | < 5 min     |
 
 **Règle d'écriture.** Aucun mock de PostgreSQL : une base réelle est plus rapide à faire fonctionner qu'un double fidèle, et seule elle valide RLS, contraintes d'exclusion et comportement transactionnel. Inversement, aucun test unitaire ne touche la base : si un test du domaine a besoin d'une base, c'est que la règle a fui hors du domaine.
 
@@ -2144,28 +2128,28 @@ Sont couverts en priorité : contrainte d'exclusion sur le chevauchement de baux
 
 ### 15.3 e2e API et parcours couverts
 
-| Parcours | Assertions clés |
-| :--- | :--- |
-| Inscription + OTP + création d'organisation | Verrouillage après 5 échecs, expiration à 5 min, rotation du refresh token et détection de réutilisation |
-| Cycle de vie complet d'un loyer | Génération de facture → paiement partiel → paiement soldant → statut `PAID` → émission de quittance → vérification publique du QR |
-| Encaissement espèces terrain | `POST /v1/sync/batches` avec `client_ref`, **rejeu du même lot** → `DUPLICATE` sans double écriture, remise et contrôle d'équilibre |
-| Mobile Money | Webhook signé → **aucune confirmation** avant re-interrogation du statut ; webhook dupliqué → 200 sans effet ; webhook hors fenêtre de 5 min → 401 ; signature invalide → 401 |
-| Virement déclaré | Déclaration `PENDING_VERIFICATION`, import de relevé, appariement, confirmation ; justificatif au hash déjà vu → alerte |
-| Relance | J-5 / J / J+3 / J+10, quiet hours, opt-out, non-envoi si la facture est soldée entre planification et émission, unicité `dunning_runs` |
-| Gérance | Relevé de bailleur, commissions, reversement, cohérence avec les encaissements de la période |
+| Parcours                                    | Assertions clés                                                                                                                                                               |
+| :------------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inscription + OTP + création d'organisation | Verrouillage après 5 échecs, expiration à 5 min, rotation du refresh token et détection de réutilisation                                                                      |
+| Cycle de vie complet d'un loyer             | Génération de facture → paiement partiel → paiement soldant → statut `PAID` → émission de quittance → vérification publique du QR                                             |
+| Encaissement espèces terrain                | `POST /v1/sync/batches` avec `client_ref`, **rejeu du même lot** → `DUPLICATE` sans double écriture, remise et contrôle d'équilibre                                           |
+| Mobile Money                                | Webhook signé → **aucune confirmation** avant re-interrogation du statut ; webhook dupliqué → 200 sans effet ; webhook hors fenêtre de 5 min → 401 ; signature invalide → 401 |
+| Virement déclaré                            | Déclaration `PENDING_VERIFICATION`, import de relevé, appariement, confirmation ; justificatif au hash déjà vu → alerte                                                       |
+| Relance                                     | J-5 / J / J+3 / J+10, quiet hours, opt-out, non-envoi si la facture est soldée entre planification et émission, unicité `dunning_runs`                                        |
+| Gérance                                     | Relevé de bailleur, commissions, reversement, cohérence avec les encaissements de la période                                                                                  |
 
 ### 15.4 Données de démo congolaises
 
 Un jeu de données unique (`prisma/seed/demo-brazzaville.ts`) sert au développement, à la démonstration commerciale et de socle aux tests e2e. Il doit être **crédible pour un professionnel de Brazzaville**, sinon les anomalies métier passent inaperçues.
 
-| Élément | Contenu |
-| :--- | :--- |
-| Organisations | « Agence Kimbouala Immobilier » (`AGENCY`, Brazzaville) et « M. Ngoma Bailleur » (`INDEPENDENT_LANDLORD`, Pointe-Noire) |
-| Patrimoine | Immeubles et parcelles à Bacongo, Poto-Poto, Moungali, Ouenzé, Mpita et Ngoyo ; studios, appartements 2 et 3 chambres, boutiques, cours communes |
-| Loyers | 45 000 à 350 000 FCFA/mois, cautions de 1 à 3 mois, charges eau et électricité relevées au compteur |
-| Personnes | Noms usuels (Mabiala, Nkodia, Loemba, Bouya, Samba), numéros `+242 06 / +242 05`, quelques locataires sans compte utilisateur |
-| Situations | Un bail clôturé, une facture annulée, un trop-perçu converti en avoir, un impayé de 4 mois en relance J+10, une remise de démarcheur non clôturée, un virement déclaré non apparié, un chèque en compensation |
-| Volumétrie « perf » | Variante à 5 000 baux et 60 000 factures pour les tests de charge et l'évaluation des index |
+| Élément             | Contenu                                                                                                                                                                                                       |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Organisations       | « Agence Kimbouala Immobilier » (`AGENCY`, Brazzaville) et « M. Ngoma Bailleur » (`INDEPENDENT_LANDLORD`, Pointe-Noire)                                                                                       |
+| Patrimoine          | Immeubles et parcelles à Bacongo, Poto-Poto, Moungali, Ouenzé, Mpita et Ngoyo ; studios, appartements 2 et 3 chambres, boutiques, cours communes                                                              |
+| Loyers              | 45 000 à 350 000 FCFA/mois, cautions de 1 à 3 mois, charges eau et électricité relevées au compteur                                                                                                           |
+| Personnes           | Noms usuels (Mabiala, Nkodia, Loemba, Bouya, Samba), numéros `+242 06 / +242 05`, quelques locataires sans compte utilisateur                                                                                 |
+| Situations          | Un bail clôturé, une facture annulée, un trop-perçu converti en avoir, un impayé de 4 mois en relance J+10, une remise de démarcheur non clôturée, un virement déclaré non apparié, un chèque en compensation |
+| Volumétrie « perf » | Variante à 5 000 baux et 60 000 factures pour les tests de charge et l'évaluation des index                                                                                                                   |
 
 Le seed est **déterministe** (graine fixe) : deux exécutions produisent des identifiants et des montants identiques, condition nécessaire à des tests e2e stables.
 
@@ -2173,44 +2157,43 @@ Le seed est **déterministe** (graine fixe) : deux exécutions produisent des id
 
 Ces tests sont **bloquants et non contournables** : une fuite inter-tenant est l'incident qui tue le produit.
 
-| Test | Attendu |
-| :--- | :--- |
-| Lecture croisée | Un jeton de l'organisation A ne retourne **aucune** ligne de B — sur les 60+ tables portant `organization_id`, vérifié par un test paramétré qui énumère la métadonnée du schéma |
-| Écriture croisée | `INSERT`/`UPDATE` avec un `organization_id` étranger → erreur RLS, jamais une écriture silencieuse |
-| Accès direct par identifiant | `GET /v1/invoices/{id}` d'une facture de B avec un jeton de A → **404**, pas 403 (aucune divulgation d'existence) |
-| Contexte manquant | Toute requête exécutée sans `SET LOCAL app.organization_id` → **0 ligne**, jamais toutes les lignes |
-| Rôle applicatif | Le rôle de connexion n'est ni superutilisateur ni `BYPASSRLS` — assertion au démarrage de l'API et en test |
-| Nouvelle table | Un test de métadonnée échoue si une table porte `organization_id` **sans** policy RLS associée : le filet se maintient tout seul |
-| Fichiers | Une URL signée d'un document de B, présentée par A, est refusée ; les URL expirent bien à 15 min |
-| Cache | Les clés Redis et les clés TanStack Query sont préfixées par l'organisation ; test de non-collision |
+| Test                         | Attendu                                                                                                                                                                          |
+| :--------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lecture croisée              | Un jeton de l'organisation A ne retourne **aucune** ligne de B — sur les 60+ tables portant `organization_id`, vérifié par un test paramétré qui énumère la métadonnée du schéma |
+| Écriture croisée             | `INSERT`/`UPDATE` avec un `organization_id` étranger → erreur RLS, jamais une écriture silencieuse                                                                               |
+| Accès direct par identifiant | `GET /v1/invoices/{id}` d'une facture de B avec un jeton de A → **404**, pas 403 (aucune divulgation d'existence)                                                                |
+| Contexte manquant            | Toute requête exécutée sans `SET LOCAL app.organization_id` → **0 ligne**, jamais toutes les lignes                                                                              |
+| Rôle applicatif              | Le rôle de connexion n'est ni superutilisateur ni `BYPASSRLS` — assertion au démarrage de l'API et en test                                                                       |
+| Nouvelle table               | Un test de métadonnée échoue si une table porte `organization_id` **sans** policy RLS associée : le filet se maintient tout seul                                                 |
+| Fichiers                     | Une URL signée d'un document de B, présentée par A, est refusée ; les URL expirent bien à 15 min                                                                                 |
+| Cache                        | Les clés Redis et les clés TanStack Query sont préfixées par l'organisation ; test de non-collision                                                                              |
 
 ### 15.6 Invariants financiers
 
 Ces invariants sont vérifiés à trois endroits : en **test unitaire** (règle pure), en **test d'intégration** (après chaque scénario, sur la base réelle), et en **production** par un job de contrôle nocturne qui lève une alerte et ouvre un incident en cas de violation. Ils sont également rejoués après chaque exercice de restauration (§14.7).
 
-| # | Invariant | Expression |
-| :--- | :--- | :--- |
-| I1 | Somme des allocations = montant du paiement | `Σ payment_allocations.amount (payment_id = P) + trop_perçu(P) = payments.amount(P)` pour tout paiement `CONFIRMED` |
-| I2 | Solde d'une facture | `solde(F) = rent_invoices.total(F) − Σ payment_allocations.amount(invoice_id = F)`, toujours **≥ 0** |
-| I3 | Statut cohérent avec le solde | `solde = 0 ⇒ PAID` ; `0 < solde < total ⇒ PARTIALLY_PAID` ; `solde = total ∧ échéance dépassée ⇒ OVERDUE` |
-| I4 | Total de facture | `rent_invoices.total = Σ invoice_lines.amount` (loyer + charges + pénalités + autres) |
-| I5 | Remise de caisse | `cash_remittances.total = Σ cash_remittance_items.amount = Σ cash_receipts.amount` des reçus rattachés |
-| I6 | Reçu non orphelin | Tout `cash_receipts.status = ISSUED` a `remittance_id` nul ; tout `REMITTED` est rattaché à exactement une remise `VERIFIED` ou `DEPOSITED` |
-| I7 | Trop-perçu | Tout excédent d'un paiement crée un `tenant_credits` de montant égal ; `Σ crédits utilisés ≤ Σ crédits émis` par locataire |
-| I8 | Dépôt de garantie | `deposits.balance = Σ deposit_movements.amount`, jamais négatif ; la restitution n'excède jamais le solde |
-| I9 | Contre-passation | Toute annulation est une **écriture inverse** de même montant absolu référençant l'écriture d'origine ; aucun `UPDATE` sur `payments` ou `receipts` |
-| I10 | Devise et type | Tout montant est un `BIGINT` en XAF ; aucune colonne monétaire n'est `NUMERIC` ni `FLOAT` — vérifié par un test de métadonnée du schéma |
-| I11 | Numérotation | Les séquences de reçus, quittances et factures sont **contiguës par organisation et par exercice**, sans doublon, y compris sous concurrence |
-| I12 | Relevé de gérance | `owner_statements.net_payout = Σ encaissements de la période − Σ commissions − Σ expenses imputées`, et `Σ owner_payouts ≤ net_payout cumulé` |
-| I13 | Mobile Money | `payments.amount = mobile_money_transactions.amount − frais` selon la convention de l'organisation ; les frais sont toujours explicitement imputés |
-| I14 | Audit exhaustif | Toute transition d'état d'une entité financière possède une ligne `audit_logs` correspondante ; test comparant les transitions d'un scénario complet au journal produit |
+| #   | Invariant                                   | Expression                                                                                                                                                              |
+| :-- | :------------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| I1  | Somme des allocations = montant du paiement | `Σ payment_allocations.amount (payment_id = P) + trop_perçu(P) = payments.amount(P)` pour tout paiement `CONFIRMED`                                                     |
+| I2  | Solde d'une facture                         | `solde(F) = rent_invoices.total(F) − Σ payment_allocations.amount(invoice_id = F)`, toujours **≥ 0**                                                                    |
+| I3  | Statut cohérent avec le solde               | `solde = 0 ⇒ PAID` ; `0 < solde < total ⇒ PARTIALLY_PAID` ; `solde = total ∧ échéance dépassée ⇒ OVERDUE`                                                               |
+| I4  | Total de facture                            | `rent_invoices.total = Σ invoice_lines.amount` (loyer + charges + pénalités + autres)                                                                                   |
+| I5  | Remise de caisse                            | `cash_remittances.total = Σ cash_remittance_items.amount = Σ cash_receipts.amount` des reçus rattachés                                                                  |
+| I6  | Reçu non orphelin                           | Tout `cash_receipts.status = ISSUED` a `remittance_id` nul ; tout `REMITTED` est rattaché à exactement une remise `VERIFIED` ou `DEPOSITED`                             |
+| I7  | Trop-perçu                                  | Tout excédent d'un paiement crée un `tenant_credits` de montant égal ; `Σ crédits utilisés ≤ Σ crédits émis` par locataire                                              |
+| I8  | Dépôt de garantie                           | `deposits.balance = Σ deposit_movements.amount`, jamais négatif ; la restitution n'excède jamais le solde                                                               |
+| I9  | Contre-passation                            | Toute annulation est une **écriture inverse** de même montant absolu référençant l'écriture d'origine ; aucun `UPDATE` sur `payments` ou `receipts`                     |
+| I10 | Devise et type                              | Tout montant est un `BIGINT` en XAF ; aucune colonne monétaire n'est `NUMERIC` ni `FLOAT` — vérifié par un test de métadonnée du schéma                                 |
+| I11 | Numérotation                                | Les séquences de reçus, quittances et factures sont **contiguës par organisation et par exercice**, sans doublon, y compris sous concurrence                            |
+| I12 | Relevé de gérance                           | `owner_statements.net_payout = Σ encaissements de la période − Σ commissions − Σ expenses imputées`, et `Σ owner_payouts ≤ net_payout cumulé`                           |
+| I13 | Mobile Money                                | `payments.amount = mobile_money_transactions.amount − frais` selon la convention de l'organisation ; les frais sont toujours explicitement imputés                      |
+| I14 | Audit exhaustif                             | Toute transition d'état d'une entité financière possède une ligne `audit_logs` correspondante ; test comparant les transitions d'un scénario complet au journal produit |
 
 ### 15.7 Couverture, qualité et données de test
 
 Seuils de couverture exigés : **90 %** sur `core_domain` (Dart) et sur les modules `billing`, `payments-*`, `receipts` et `agency-accounting` (TypeScript) ; **70 %** ailleurs ; aucun seuil sur l'UI, où la valeur est apportée par les tests de parcours. La couverture est un garde-fou, jamais un objectif : une PR touchant une règle financière doit citer l'invariant concerné (§3.4) et présenter un test qui **échoue sans le correctif**.
 
 Les tests utilisent des constructeurs de données explicites (`aLease().withRent(120_000).closed()`) plutôt que des fixtures JSON opaques, afin que l'intention du scénario soit lisible dans le test lui-même. Toute correction d'anomalie en production commence par un test de régression reproduisant l'anomalie.
-
 
 ---
 
@@ -2220,24 +2203,24 @@ Les tests utilisent des constructeurs de données explicites (`aLease().withRent
 
 **Le code est en anglais, le produit est en français.** La frontière est nette : identifiants, tables, colonnes, messages de commit et commentaires en anglais ; libellés d'interface, documentation et messages destinés à l'utilisateur en `fr-CG`, via les fichiers d'internationalisation. Un `catch` ne renvoie jamais une chaîne française : il renvoie un **code d'erreur stable** que la couche de présentation traduit.
 
-| Élément | Convention | Exemple |
-| :--- | :--- | :--- |
-| Table PostgreSQL | `snake_case`, **pluriel** | `payment_allocations`, `cash_remittances` |
-| Colonne | `snake_case` ; suffixes normalisés `_id`, `_at`, `_xaf`, `is_`, `has_` | `confirmed_at`, `total_xaf`, `is_active` |
-| Modèle Prisma | `PascalCase` singulier, mappé par `@@map` | `model PaymentAllocation { @@map("payment_allocations") }` |
-| Enum partagé | `PascalCase` pour le type, `SCREAMING_SNAKE_CASE` pour les valeurs | `PaymentStatus.PENDING_VERIFICATION` |
-| Fichier TypeScript | `kebab-case.role.ts` | `confirm-payment.use-case.ts`, `payment.repository.ts` |
-| Classe / interface | `PascalCase`, **sans préfixe `I`** | `MobileMoneyProvider`, `ConfirmPaymentUseCase` |
-| Cas d'usage | Verbe à l'impératif + objet | `IssueRentInvoice`, `CloseCashRemittance` |
-| Événement de domaine | `entité.verbe-au-passé` | `payment.confirmed`, `invoice.issued` |
-| File BullMQ / job | `kebab-case` | `billing:issue-monthly-invoices` |
-| Route API | `kebab-case`, ressources au pluriel, versionnée | `POST /v1/cash-remittances/{id}/close` |
-| Route web (URL) | **En français**, car visible de l'utilisateur | `/agence-x/encaissements` |
-| Fichier Dart | `snake_case.dart` | `cash_collection_controller.dart` |
-| Provider Riverpod | `camelCase` + suffixe `Provider` | `overdueInvoicesProvider` |
-| Montant | Toujours suffixé `_xaf`, type `BIGINT`/`int`/`bigint` | `amount_xaf` |
-| Booléen | Préfixe `is_`, `has_`, `can_` | `has_guarantor` |
-| Migration | `AAAAMMJJHHMMSS_verbe_objet` | `20260401120000_add_dunning_rules` |
+| Élément              | Convention                                                             | Exemple                                                    |
+| :------------------- | :--------------------------------------------------------------------- | :--------------------------------------------------------- |
+| Table PostgreSQL     | `snake_case`, **pluriel**                                              | `payment_allocations`, `cash_remittances`                  |
+| Colonne              | `snake_case` ; suffixes normalisés `_id`, `_at`, `_xaf`, `is_`, `has_` | `confirmed_at`, `total_xaf`, `is_active`                   |
+| Modèle Prisma        | `PascalCase` singulier, mappé par `@@map`                              | `model PaymentAllocation { @@map("payment_allocations") }` |
+| Enum partagé         | `PascalCase` pour le type, `SCREAMING_SNAKE_CASE` pour les valeurs     | `PaymentStatus.PENDING_VERIFICATION`                       |
+| Fichier TypeScript   | `kebab-case.role.ts`                                                   | `confirm-payment.use-case.ts`, `payment.repository.ts`     |
+| Classe / interface   | `PascalCase`, **sans préfixe `I`**                                     | `MobileMoneyProvider`, `ConfirmPaymentUseCase`             |
+| Cas d'usage          | Verbe à l'impératif + objet                                            | `IssueRentInvoice`, `CloseCashRemittance`                  |
+| Événement de domaine | `entité.verbe-au-passé`                                                | `payment.confirmed`, `invoice.issued`                      |
+| File BullMQ / job    | `kebab-case`                                                           | `billing:issue-monthly-invoices`                           |
+| Route API            | `kebab-case`, ressources au pluriel, versionnée                        | `POST /v1/cash-remittances/{id}/close`                     |
+| Route web (URL)      | **En français**, car visible de l'utilisateur                          | `/agence-x/encaissements`                                  |
+| Fichier Dart         | `snake_case.dart`                                                      | `cash_collection_controller.dart`                          |
+| Provider Riverpod    | `camelCase` + suffixe `Provider`                                       | `overdueInvoicesProvider`                                  |
+| Montant              | Toujours suffixé `_xaf`, type `BIGINT`/`int`/`bigint`                  | `amount_xaf`                                               |
+| Booléen              | Préfixe `is_`, `has_`, `can_`                                          | `has_guarantor`                                            |
+| Migration            | `AAAAMMJJHHMMSS_verbe_objet`                                           | `20260401120000_add_dunning_rules`                         |
 
 **Interdits de nommage** : abréviations non conventionnelles (`pmt`, `inv`), `data`/`info`/`manager` comme nom de classe, pluriel sur une variable scalaire, et surtout tout identifiant mêlant français et anglais (`montantTotal`, `factureRepository`).
 
@@ -2292,18 +2275,25 @@ Toute décision structurante (choix de bibliothèque, modèle de données transv
 - **Phase concernée** : Phase N
 
 ## Contexte
+
 Situation, contrainte terrain, options considérées et ce qui les départage.
 
 ## Décision
+
 Ce qui est tranché, à la voix active, sans conditionnel.
 
 ## Conséquences
+
 ### Positives
+
 ### Négatives / dette acceptée
+
 ### Réversibilité
+
 Coût et déclencheur d'un retour en arrière.
 
 ## Alternatives écartées
+
 | Option | Pourquoi écartée |
 ```
 
@@ -2321,23 +2311,22 @@ Ton attendu : les remarques bloquantes sont préfixées `[bloquant]`, les sugges
 
 Une tâche n'est terminée que lorsque **tous** ces points sont vrais :
 
-| # | Critère |
-| :--- | :--- |
-| 1 | Le comportement attendu est implémenté, y compris les cas d'erreur, d'annulation et de contre-passation |
-| 2 | Tests au bon étage de la pyramide (§15.1) ; une correction d'anomalie est accompagnée d'un test qui échouait avant |
-| 3 | Les invariants financiers touchés (§15.6) sont couverts par un test |
-| 4 | L'isolation multi-tenant est préservée : nouvelle table ⇒ policy RLS **et** test d'isolation |
-| 5 | Migration réversible, compatible en avant, procédure de retour arrière documentée dans la PR |
-| 6 | `openapi.json` régénéré et versionné ; clients TypeScript et Dart régénérés si le contrat change |
-| 7 | Toute action mobile hors ligne possède son opération d'outbox, son `client_ref` et sa règle de conflit (§10.8) |
-| 8 | Toute transition d'état écrit dans `audit_logs` |
-| 9 | Textes utilisateur dans `fr-CG`, aucune chaîne codée en dur ; montants formatés en XAF entier |
-| 10 | Accessibilité vérifiée sur les écrans web modifiés (§11.6) ; budgets de bundle respectés (§11.7) |
-| 11 | Lint, typecheck, tests, scans de sécurité au vert en CI |
-| 12 | Journalisation et métriques utiles ajoutées ; aucune donnée sensible dans les logs (§13.5) |
-| 13 | Documentation mise à jour : ADR si la décision est structurante, section concernée de ce document si l'architecture bouge |
-| 14 | Vérifié sur staging avec le jeu de démo congolais avant fusion vers la production |
-
+| #   | Critère                                                                                                                   |
+| :-- | :------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Le comportement attendu est implémenté, y compris les cas d'erreur, d'annulation et de contre-passation                   |
+| 2   | Tests au bon étage de la pyramide (§15.1) ; une correction d'anomalie est accompagnée d'un test qui échouait avant        |
+| 3   | Les invariants financiers touchés (§15.6) sont couverts par un test                                                       |
+| 4   | L'isolation multi-tenant est préservée : nouvelle table ⇒ policy RLS **et** test d'isolation                              |
+| 5   | Migration réversible, compatible en avant, procédure de retour arrière documentée dans la PR                              |
+| 6   | `openapi.json` régénéré et versionné ; clients TypeScript et Dart régénérés si le contrat change                          |
+| 7   | Toute action mobile hors ligne possède son opération d'outbox, son `client_ref` et sa règle de conflit (§10.8)            |
+| 8   | Toute transition d'état écrit dans `audit_logs`                                                                           |
+| 9   | Textes utilisateur dans `fr-CG`, aucune chaîne codée en dur ; montants formatés en XAF entier                             |
+| 10  | Accessibilité vérifiée sur les écrans web modifiés (§11.6) ; budgets de bundle respectés (§11.7)                          |
+| 11  | Lint, typecheck, tests, scans de sécurité au vert en CI                                                                   |
+| 12  | Journalisation et métriques utiles ajoutées ; aucune donnée sensible dans les logs (§13.5)                                |
+| 13  | Documentation mise à jour : ADR si la décision est structurante, section concernée de ce document si l'architecture bouge |
+| 14  | Vérifié sur staging avec le jeu de démo congolais avant fusion vers la production                                         |
 
 ---
 
@@ -2345,18 +2334,18 @@ Une tâche n'est terminée que lorsque **tous** ces points sont vrais :
 
 Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici ; leur version intégrale vit dans `docs/adr/` au format du §16.3. Un ADR ne se modifie pas : il se remplace.
 
-| N° | Décision | Statut | Phase |
-| :--- | :--- | :--- | :--- |
-| ADR-001 | Monolithe modulaire NestJS 11 + Prisma | Accepté | 0 |
-| ADR-002 | Flutter offline-first : Riverpod + Drift | Accepté | 0 / 5 |
-| ADR-003 | WhatsApp Cloud API officielle | Accepté | 0 / 3 |
-| ADR-004 | Agrégateur Mobile Money derrière une interface | Accepté | 4 |
-| ADR-005 | Montants en BIGINT XAF, sans décimale | Accepté | 0 |
-| ADR-006 | UUID v7 en clé primaire | Accepté | 0 |
-| ADR-007 | Multi-tenant par Row Level Security PostgreSQL | Accepté | 0 |
-| ADR-008 | Authentification par téléphone + OTP | Accepté | 0 |
-| ADR-009 | Monorepo unique pnpm + Turborepo | Accepté | 0 |
-| ADR-010 | Hébergement en région Europe (Paris) | Accepté | 0 |
+| N°      | Décision                                       | Statut  | Phase |
+| :------ | :--------------------------------------------- | :------ | :---- |
+| ADR-001 | Monolithe modulaire NestJS 11 + Prisma         | Accepté | 0     |
+| ADR-002 | Flutter offline-first : Riverpod + Drift       | Accepté | 0 / 5 |
+| ADR-003 | WhatsApp Cloud API officielle                  | Accepté | 0 / 3 |
+| ADR-004 | Agrégateur Mobile Money derrière une interface | Accepté | 4     |
+| ADR-005 | Montants en BIGINT XAF, sans décimale          | Accepté | 0     |
+| ADR-006 | UUID v7 en clé primaire                        | Accepté | 0     |
+| ADR-007 | Multi-tenant par Row Level Security PostgreSQL | Accepté | 0     |
+| ADR-008 | Authentification par téléphone + OTP           | Accepté | 0     |
+| ADR-009 | Monorepo unique pnpm + Turborepo               | Accepté | 0     |
+| ADR-010 | Hébergement en région Europe (Paris)           | Accepté | 0     |
 
 ### ADR-001 — Monolithe modulaire NestJS 11 + Prisma
 
@@ -2364,7 +2353,7 @@ Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici 
 
 **Décision.** Monolithe modulaire NestJS 11 en TypeScript strict, découpé en modules Clean Architecture (`domain` / `application` / `infrastructure` / `presentation`), ORM Prisma, files BullMQ sur Redis, déployé en trois processus (API, workers, worker PDF) contre une seule base PostgreSQL.
 
-**Conséquences.** *Positives :* une facture, ses allocations et son écriture d'audit commitent dans une seule transaction SQL ; le domaine financier est écrit une fois dans `packages/shared` et consommé sans retranscription ; l'exploitation tient sur deux VPS. *Négatives :* montée en charge horizontale limitée par la base ; recrutement local plus difficile qu'en PHP, compensé par la formation ; Prisma n'est pas un ORM de domaine riche, d'où le recours encadré à `$queryRaw` typé pour l'analytique et le rapprochement. *Réversibilité :* chaque module est extractible en service autonome puisqu'il ne communique que par façade ou événement — le déclencheur serait un module dont le profil de charge diverge nettement (le rendu PDF est déjà isolé en processus).
+**Conséquences.** _Positives :_ une facture, ses allocations et son écriture d'audit commitent dans une seule transaction SQL ; le domaine financier est écrit une fois dans `packages/shared` et consommé sans retranscription ; l'exploitation tient sur deux VPS. _Négatives :_ montée en charge horizontale limitée par la base ; recrutement local plus difficile qu'en PHP, compensé par la formation ; Prisma n'est pas un ORM de domaine riche, d'où le recours encadré à `$queryRaw` typé pour l'analytique et le rapprochement. _Réversibilité :_ chaque module est extractible en service autonome puisqu'il ne communique que par façade ou événement — le déclencheur serait un module dont le profil de charge diverge nettement (le rendu PDF est déjà isolé en processus).
 
 **Alternatives écartées.** Microservices : coût opérationnel sans contrepartie à cette taille d'équipe, et invariants financiers distribués. Laravel : duplication du contrat financier entre PHP et TypeScript, payée en incidents.
 
@@ -2374,7 +2363,7 @@ Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici 
 
 **Décision.** Flutter 3.x, **Drift** (SQLite, chiffré par SQLCipher) comme base locale et source de vérité des écritures non synchronisées, **Riverpod** pour l'état, `go_router` pour la navigation, `dio` pour le transport. Outbox transactionnel avec `client_ref` ULID, moteur de synchronisation dédié dans `core_sync` (§10.6).
 
-**Conséquences.** *Positives :* jointures et agrégats en SQL local ; l'UI se rafraîchit par streams Drift dès qu'une ligne d'outbox change ; migrations locales versionnées et testées ; chiffrement intégral au repos. *Négatives :* `build_runner` alourdit le cycle de compilation ; la logique de conflit est un composant à part entière à tester ; une base locale chiffrée complique le débogage terrain. *Réversibilité :* faible et assumée — le modèle local et le moteur de synchronisation sont structurants, en changer équivaudrait à réécrire le mobile.
+**Conséquences.** _Positives :_ jointures et agrégats en SQL local ; l'UI se rafraîchit par streams Drift dès qu'une ligne d'outbox change ; migrations locales versionnées et testées ; chiffrement intégral au repos. _Négatives :_ `build_runner` alourdit le cycle de compilation ; la logique de conflit est un composant à part entière à tester ; une base locale chiffrée complique le débogage terrain. _Réversibilité :_ faible et assumée — le modèle local et le moteur de synchronisation sont structurants, en changer équivaudrait à réécrire le mobile.
 
 **Alternatives écartées.** BLoC + Hive : Hive est un store clé-valeur, les jointures se feraient en Dart, en mémoire, et les migrations manuelles risqueraient une perte de données terrain — inacceptable pour de l'argent encaissé.
 
@@ -2384,7 +2373,7 @@ Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici 
 
 **Décision.** **Meta WhatsApp Cloud API** exclusivement, avec compte Business vérifié et bibliothèque de templates approuvés versionnée dans le dépôt. Passerelle SMS locale en repli, derrière l'interface `SmsProvider`.
 
-**Conséquences.** *Positives :* aucun risque de bannissement coupant le canal de quittance de toute la clientèle ; statuts de livraison normalisés exploitables dans `message_logs` ; pièces jointes PDF natives ; conformité aux CGU. *Négatives :* coût par conversation, refacturé dans le modèle SaaS avec un quota par plan ; contrainte de la fenêtre de service de 24 h, absorbée par les templates ; délai d'approbation à anticiper dès la Phase 0. *Réversibilité :* bonne au niveau du code (l'envoi passe par une interface de canal), nulle au niveau du risque : revenir à un pont non officiel réintroduirait le risque de bannissement.
+**Conséquences.** _Positives :_ aucun risque de bannissement coupant le canal de quittance de toute la clientèle ; statuts de livraison normalisés exploitables dans `message_logs` ; pièces jointes PDF natives ; conformité aux CGU. _Négatives :_ coût par conversation, refacturé dans le modèle SaaS avec un quota par plan ; contrainte de la fenêtre de service de 24 h, absorbée par les templates ; délai d'approbation à anticiper dès la Phase 0. _Réversibilité :_ bonne au niveau du code (l'envoi passe par une interface de canal), nulle au niveau du risque : revenir à un pont non officiel réintroduirait le risque de bannissement.
 
 **Alternatives écartées.** Evolution API et bridges WhatsApp Web : violation des CGU Meta, dépendance à un téléphone appairé, aucun SLA.
 
@@ -2394,7 +2383,7 @@ Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici 
 
 **Décision.** Démarrer par un **agrégateur** (première implémentation CinetPay), **mais systématiquement derrière l'interface `MobileMoneyProvider`**, activable par organisation via `feature_flags`. PawaPay et les connexions directes MTN/Airtel seront de nouvelles implémentations de la même interface.
 
-**Conséquences.** *Positives :* mise en marché rapide, une seule surface d'intégration, frais explicites dans la réponse donc réconciliables, couverture CEMAC immédiate pour l'expansion. *Négatives :* marge par transaction ; point de défaillance unique commercial ; dépendance à la qualité des webhooks de l'agrégateur. *Réversibilité :* élevée par construction — la bascule vers du direct devient rentable au-delà d'un seuil de volume mensuel et ne modifiera pas une ligne du domaine `payments-mobile-money`.
+**Conséquences.** _Positives :_ mise en marché rapide, une seule surface d'intégration, frais explicites dans la réponse donc réconciliables, couverture CEMAC immédiate pour l'expansion. _Négatives :_ marge par transaction ; point de défaillance unique commercial ; dépendance à la qualité des webhooks de l'agrégateur. _Réversibilité :_ élevée par construction — la bascule vers du direct devient rentable au-delà d'un seuil de volume mensuel et ne modifiera pas une ligne du domaine `payments-mobile-money`.
 
 **Règle non négociable attachée.** Un paiement n'est **jamais** confirmé sur la seule foi d'un webhook : le webhook réveille un job qui **re-interroge le statut** auprès du fournisseur. Un job de rattrapage traite en outre tous les paiements `PENDING` de plus de 15 minutes, ce qui rend le système correct même si tous les webhooks sont perdus.
 
@@ -2404,10 +2393,9 @@ Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici 
 
 **Décision.** Tout montant est un **`BIGINT` en XAF**, accompagné d'une colonne `currency CHAR(3) DEFAULT 'XAF'`. Aucun `FLOAT`, aucun `NUMERIC`, aucune décimale. Un value object `Money` (TypeScript dans `packages/shared`, Dart dans `core_domain`) encapsule les opérations ; les colonnes sont suffixées `_xaf` ; les répartitions (commissions, prorata) appliquent une règle d'arrondi documentée avec **imputation explicite du reste** à une ligne désignée, de sorte qu'aucun franc ne se perde.
 
-**Conséquences.** *Positives :* exactitude arithmétique garantie ; comparaisons et sommes SQL triviales ; invariants financiers (§15.6) vérifiables par simple égalité entière. *Négatives :* l'ouverture à une devise à sous-unité (EUR, USD) exigera d'introduire une échelle par devise — le champ `currency` est déjà présent pour préparer ce jour. *Réversibilité :* migration lourde mais mécanique (passage en montants exprimés en plus petite unité).
+**Conséquences.** _Positives :_ exactitude arithmétique garantie ; comparaisons et sommes SQL triviales ; invariants financiers (§15.6) vérifiables par simple égalité entière. _Négatives :_ l'ouverture à une devise à sous-unité (EUR, USD) exigera d'introduire une échelle par devise — le champ `currency` est déjà présent pour préparer ce jour. _Réversibilité :_ migration lourde mais mécanique (passage en montants exprimés en plus petite unité).
 
 **Contrôle.** Un test de métadonnée du schéma échoue si une colonne monétaire est déclarée dans un autre type que `BIGINT` (invariant I10).
-
 
 ---
 
@@ -2417,7 +2405,7 @@ Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici 
 
 **Décision.** **UUID v7** en clé primaire de toutes les tables : généré par l'application (préfixe temporel + aléa), avec `gen_random_uuid()` comme valeur par défaut SQL de repli. Les identifiants d'écritures créées hors ligne portent en outre un `client_ref` **ULID** distinct, qui sert de clé d'idempotence et reste lisible dans les journaux de synchronisation.
 
-**Conséquences.** *Positives :* ordonnancement temporel préservé donc index B-tree performants à l'insertion ; génération distribuée sans coordination ; aucune énumération possible ; fusion de jeux de données sans collision. *Négatives :* 16 octets contre 8, index plus volumineux ; identifiants illisibles à l'œil nu, d'où le maintien de **numéros métier séparés** (`LOY-{YYYYMM}-{seq}`, `QUI-…`, `CASH-…`) produits par la table `sequences` verrouillée en transaction. *Réversibilité :* nulle en pratique — c'est une décision de fondation.
+**Conséquences.** _Positives :_ ordonnancement temporel préservé donc index B-tree performants à l'insertion ; génération distribuée sans coordination ; aucune énumération possible ; fusion de jeux de données sans collision. _Négatives :_ 16 octets contre 8, index plus volumineux ; identifiants illisibles à l'œil nu, d'où le maintien de **numéros métier séparés** (`LOY-{YYYYMM}-{seq}`, `QUI-…`, `CASH-…`) produits par la table `sequences` verrouillée en transaction. _Réversibilité :_ nulle en pratique — c'est une décision de fondation.
 
 ### ADR-007 — Multi-tenant par Row Level Security PostgreSQL
 
@@ -2425,7 +2413,7 @@ Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici 
 
 **Décision.** Base partagée, colonne `organization_id` sur toute table métier, et **Row Level Security PostgreSQL activée sur chacune d'elles** comme dernier rempart. Le contexte est posé par `SET LOCAL app.organization_id` au début de chaque transaction, depuis un `AsyncLocalStorage` alimenté par le garde d'authentification. Le rôle applicatif de connexion n'est **ni superutilisateur ni `BYPASSRLS`**. Les policies sont versionnées dans `prisma/rls/` et appliquées par migration.
 
-**Conséquences.** *Positives :* une erreur applicative ne produit pas une fuite mais zéro ligne ; une seule base à exploiter, sauvegarder et migrer ; le filet se maintient automatiquement grâce à un test de métadonnée qui échoue si une table porte `organization_id` sans policy. *Négatives :* attention constante requise avec Prisma (extension dédiée pour poser le contexte), PgBouncer imposé en **mode transaction** pour que `SET LOCAL` reste correct, léger surcoût de planification, et le débogage d'un « 0 ligne » inattendu demande de vérifier le contexte avant le code. *Réversibilité :* extraire un gros client vers une base dédiée reste possible, le modèle est identique.
+**Conséquences.** _Positives :_ une erreur applicative ne produit pas une fuite mais zéro ligne ; une seule base à exploiter, sauvegarder et migrer ; le filet se maintient automatiquement grâce à un test de métadonnée qui échoue si une table porte `organization_id` sans policy. _Négatives :_ attention constante requise avec Prisma (extension dédiée pour poser le contexte), PgBouncer imposé en **mode transaction** pour que `SET LOCAL` reste correct, léger surcoût de planification, et le débogage d'un « 0 ligne » inattendu demande de vérifier le contexte avant le code. _Réversibilité :_ extraire un gros client vers une base dédiée reste possible, le modèle est identique.
 
 **Contrôle.** Les tests d'isolation multi-tenant (§15.5) sont bloquants en CI et énumèrent automatiquement toutes les tables du schéma.
 
@@ -2435,7 +2423,7 @@ Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici 
 
 **Décision.** **Téléphone (E.164, `+242…`) + code OTP à 6 chiffres**, envoyé par WhatsApp en priorité et par SMS en repli. Courriel optionnel, mot de passe optionnel pour les utilisateurs web qui le souhaitent. Session : JWT access de 15 minutes + refresh token rotatif de 30 jours, avec détection de réutilisation entraînant la révocation de toute la famille de jetons.
 
-**Conséquences.** *Positives :* inscription sans friction, alignée sur l'usage réel ; pas de base de mots de passe à protéger pour la majorité des comptes ; le même canal sert l'authentification et les notifications. *Négatives :* coût par OTP envoyé (atténué par la priorité WhatsApp) ; dépendance à la disponibilité de la passerelle SMS ; exposition à l'échange de SIM, traitée par un second facteur sur les actions sensibles et un délai de 24 h sur tout changement de coordonnées bancaires (§13.7) ; changement de numéro à traiter par une procédure de récupération assistée. *Réversibilité :* bonne — l'ajout de TOTP ou de passkeys se greffe sans remettre en cause le modèle de session.
+**Conséquences.** _Positives :_ inscription sans friction, alignée sur l'usage réel ; pas de base de mots de passe à protéger pour la majorité des comptes ; le même canal sert l'authentification et les notifications. _Négatives :_ coût par OTP envoyé (atténué par la priorité WhatsApp) ; dépendance à la disponibilité de la passerelle SMS ; exposition à l'échange de SIM, traitée par un second facteur sur les actions sensibles et un délai de 24 h sur tout changement de coordonnées bancaires (§13.7) ; changement de numéro à traiter par une procédure de récupération assistée. _Réversibilité :_ bonne — l'ajout de TOTP ou de passkeys se greffe sans remettre en cause le modèle de session.
 
 **Garde-fous.** Code haché en Argon2id, TTL de 5 minutes, 5 tentatives puis verrouillage progressif, limitation à 5 envois par minute et par numéro, OTP exclus des quiet hours et du plafond de fréquence.
 
@@ -2445,7 +2433,7 @@ Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici 
 
 **Décision.** **Monorepo unique** : `apps/api`, `apps/web`, `apps/mobile`, `packages/shared` (enums, schémas zod, catalogue d'erreurs, formatage XAF, matrice de permissions), `infra/`, `docs/`. Orchestration par **pnpm workspaces** et **Turborepo** (cache local et distant, graphe de tâches). Le mobile, en Dart, ne partage pas le code TypeScript mais consomme le **client Dart généré depuis `openapi.json`**, lui-même produit par l'API et versionné dans le dépôt.
 
-**Conséquences.** *Positives :* un changement de contrat traverse l'API, le web et le client mobile dans **une seule PR**, et la CI échoue si `openapi.json` régénéré diffère du fichier versionné ; une seule configuration de lint, de formatage et de commits ; atomicité des migrations et du code qui les accompagne. *Négatives :* dépôt volumineux (le mobile pèse), CI plus longue si le filtrage par périmètre n'est pas soigné — d'où l'usage systématique de `turbo run --filter` et du cache distant ; les droits d'accès sont uniformes sur tout le dépôt. *Réversibilité :* une extraction reste possible avec `git subtree`, mais elle réintroduirait le risque de dérive du contrat qui motive cette décision.
+**Conséquences.** _Positives :_ un changement de contrat traverse l'API, le web et le client mobile dans **une seule PR**, et la CI échoue si `openapi.json` régénéré diffère du fichier versionné ; une seule configuration de lint, de formatage et de commits ; atomicité des migrations et du code qui les accompagne. _Négatives :_ dépôt volumineux (le mobile pèse), CI plus longue si le filtrage par périmètre n'est pas soigné — d'où l'usage systématique de `turbo run --filter` et du cache distant ; les droits d'accès sont uniformes sur tout le dépôt. _Réversibilité :_ une extraction reste possible avec `git subtree`, mais elle réintroduirait le risque de dérive du contrat qui motive cette décision.
 
 ### ADR-010 — Hébergement en région Europe (Paris)
 
@@ -2453,6 +2441,6 @@ Les dix ADR ci-dessous figent les décisions de Phase 0. Ils sont résumés ici 
 
 **Décision.** Hébergement en **région Europe (Paris)** sur VPS Hetzner ou OVH, avec sauvegardes chiffrées déposées chez un fournisseur distinct. La souveraineté des données est traitée par la **conformité** — consentement, finalité, durée de conservation, droit d'accès et portabilité au titre de la loi congolaise n° 29-2019 (§13.6) — et par la capacité d'exporter l'intégralité des données d'une organisation à tout moment, et non par la géographie du serveur.
 
-**Conséquences.** *Positives :* disponibilité et exploitation éprouvées, coût maîtrisé, écosystème managé complet (sauvegardes, CDN, stockage objet), cadre juridique lisible (RGPD comme socle exigeant). *Négatives :* latence de 130 à 180 ms depuis Brazzaville ; transfert de données hors du territoire national, qui doit être **déclaré aux clients dans les CGU** et pourrait être contesté par une évolution réglementaire ou par un client institutionnel. *Réversibilité :* **c'est la raison d'être de cet ADR** — toute l'infrastructure est décrite en Docker Compose et en scripts d'approvisionnement versionnés, la base est standard et les objets sont compatibles S3 ; un déménagement vers un hébergeur local, ou l'ajout d'une réplique en lecture au Congo, est un exercice d'exploitation, pas une réécriture. Le déclencheur serait une obligation légale de localisation ou un marché institutionnel l'exigeant.
+**Conséquences.** _Positives :_ disponibilité et exploitation éprouvées, coût maîtrisé, écosystème managé complet (sauvegardes, CDN, stockage objet), cadre juridique lisible (RGPD comme socle exigeant). _Négatives :_ latence de 130 à 180 ms depuis Brazzaville ; transfert de données hors du territoire national, qui doit être **déclaré aux clients dans les CGU** et pourrait être contesté par une évolution réglementaire ou par un client institutionnel. _Réversibilité :_ **c'est la raison d'être de cet ADR** — toute l'infrastructure est décrite en Docker Compose et en scripts d'approvisionnement versionnés, la base est standard et les objets sont compatibles S3 ; un déménagement vers un hébergeur local, ou l'ajout d'une réplique en lecture au Congo, est un exercice d'exploitation, pas une réécriture. Le déclencheur serait une obligation légale de localisation ou un marché institutionnel l'exigeant.
 
 **Atténuation de la latence.** Elle n'est pas le facteur limitant de l'expérience : le terrain est gouverné par l'**offline-first mobile** (ADR-002), et le web est optimisé pour les connexions lentes par des budgets de bundle contrôlés en CI (§11.7). Le cache statique Cloudflare et l'absence de frais de sortie R2 réduisent en outre le coût et le temps de téléchargement des quittances et des photos.

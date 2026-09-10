@@ -34,6 +34,6 @@ Faible et assumée. Le modèle local et le moteur de synchronisation sont struct
 
 ## Alternatives écartées
 
-| Option | Pourquoi écartée |
-| --- | --- |
+| Option      | Pourquoi écartée                                                                                                                                                                             |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | BLoC + Hive | Hive est un store clé-valeur, les jointures se feraient en Dart, en mémoire, et les migrations manuelles risqueraient une perte de données terrain — inacceptable pour de l'argent encaissé. |

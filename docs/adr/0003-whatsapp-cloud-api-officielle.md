@@ -34,6 +34,6 @@ Bonne au niveau du code (l'envoi passe par une interface de canal), nulle au niv
 
 ## Alternatives écartées
 
-| Option | Pourquoi écartée |
-| --- | --- |
+| Option                                | Pourquoi écartée                                                      |
+| ------------------------------------- | --------------------------------------------------------------------- |
 | Evolution API et bridges WhatsApp Web | Violation des CGU Meta, dépendance à un téléphone appairé, aucun SLA. |

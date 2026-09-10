@@ -41,7 +41,11 @@ import { DataTable } from '@/components/business/data-table';
 import { formatE164Congo, toE164Congo } from '@/lib/phone';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useMembers, useRemoveMember, useUpdateMemberRole } from '@/lib/api/hooks/use-members';
-import { useCreateInvitation, useInvitations, useRevokeInvitation } from '@/lib/api/hooks/use-invitations';
+import {
+  useCreateInvitation,
+  useInvitations,
+  useRevokeInvitation,
+} from '@/lib/api/hooks/use-invitations';
 import type { Member, Invitation, Role } from '@/lib/api/types';
 
 const ROLES: Role[] = ['OWNER', 'MANAGER', 'COLLECTOR', 'ACCOUNTANT', 'VIEWER'];
@@ -121,7 +125,11 @@ function InviteDialog({ organizationId }: { organizationId: string }) {
                 <FormItem>
                   <FormLabel htmlFor="invite-phone">Numéro de téléphone</FormLabel>
                   <FormControl>
-                    <PhoneInput id="invite-phone" value={field.value} onValueChange={field.onChange} />
+                    <PhoneInput
+                      id="invite-phone"
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

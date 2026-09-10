@@ -253,7 +253,11 @@ export class InvitationsService {
         actorUserId: userId,
         actorRole: invitation.role,
         previousState: toJsonState({ status: 'PENDING' }),
-        newState: toJsonState({ status: 'ACCEPTED', memberId: membership.id, role: invitation.role }),
+        newState: toJsonState({
+          status: 'ACCEPTED',
+          memberId: membership.id,
+          role: invitation.role,
+        }),
       });
 
       return {

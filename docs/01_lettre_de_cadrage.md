@@ -2,19 +2,19 @@
 
 ## 1. Fiche d'identité du projet
 
-| Champ | Valeur |
-| :--- | :--- |
-| Nom du projet | **Immodesk** — Plateforme SaaS de gestion locative |
-| Marché cible | Congo-Brazzaville (Brazzaville, Pointe-Noire) en phase 1, extension zone CEMAC en phase ultérieure |
-| Version du document | v1.0 |
-| Date d'émission | 10 septembre 2026 |
-| Statut | Projet de lettre de cadrage — soumis à validation du comité de pilotage |
-| Sponsor | À désigner par le comité de pilotage |
-| Chef de projet / Product Owner | À désigner par le comité de pilotage |
-| Rédacteur | Direction de projet Immodesk |
-| Diffusion | Comité de pilotage, équipe projet (lead tech, développeurs, designer), conseil juridique, partenaires d'intégration (agrégateur Mobile Money, opérateur WhatsApp Business) |
-| Niveau de confidentialité | Diffusion restreinte — document interne et partenaires sous accord de confidentialité |
-| Documents de référence | `docs/_DECISIONS_COMMUNES.md` (référentiel technique et fonctionnel partagé) ; `output_Prompts_Developpement_SaaS_Immobilier.md` (note de cadrage technique initiale) |
+| Champ                          | Valeur                                                                                                                                                                     |
+| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nom du projet                  | **Immodesk** — Plateforme SaaS de gestion locative                                                                                                                         |
+| Marché cible                   | Congo-Brazzaville (Brazzaville, Pointe-Noire) en phase 1, extension zone CEMAC en phase ultérieure                                                                         |
+| Version du document            | v1.0                                                                                                                                                                       |
+| Date d'émission                | 10 septembre 2026                                                                                                                                                          |
+| Statut                         | Projet de lettre de cadrage — soumis à validation du comité de pilotage                                                                                                    |
+| Sponsor                        | À désigner par le comité de pilotage                                                                                                                                       |
+| Chef de projet / Product Owner | À désigner par le comité de pilotage                                                                                                                                       |
+| Rédacteur                      | Direction de projet Immodesk                                                                                                                                               |
+| Diffusion                      | Comité de pilotage, équipe projet (lead tech, développeurs, designer), conseil juridique, partenaires d'intégration (agrégateur Mobile Money, opérateur WhatsApp Business) |
+| Niveau de confidentialité      | Diffusion restreinte — document interne et partenaires sous accord de confidentialité                                                                                      |
+| Documents de référence         | `docs/_DECISIONS_COMMUNES.md` (référentiel technique et fonctionnel partagé) ; `output_Prompts_Developpement_SaaS_Immobilier.md` (note de cadrage technique initiale)      |
 
 Ce document constitue la lettre de cadrage officielle du projet Immodesk. Il fixe le contexte, la vision, les objectifs, le périmètre, la gouvernance, les contraintes, le macro-planning, les risques et le modèle économique du projet, en cohérence stricte avec le référentiel de décisions communes. Toute décision ultérieure divergente de ce document doit être validée en comité de pilotage et tracée dans l'historique des versions (section 16).
 
@@ -57,12 +57,12 @@ Les démarcheurs et gestionnaires informels décrits en section 2.1 ne sont pas 
 
 La segmentation ci-dessous est fournie à titre d'hypothèse de travail pour orienter la conception produit et la sélection des organisations pilotes (section 13). Elle ne constitue pas une donnée de marché validée.
 
-| Segment | Caractéristiques typiques | Enjeu principal pour Immodesk | Taille estimée |
-| :--- | :--- | :--- | :--- |
-| Agences immobilières structurées | Portefeuille de plusieurs dizaines à centaines de lots, équipe de démarcheurs salariés ou commissionnés | Traçabilité des encaissements, reporting aux propriétaires, gestion des mandats | À confirmer par l'étude de marché |
-| Bailleurs indépendants multi-lots | 2 à 20 lots gérés en propre, sans structure d'agence | Simplicité d'usage, facturation et relances automatisées | À confirmer par l'étude de marché |
-| Bailleurs indépendants mono-lot ou bi-lot | 1 à 2 lots, souvent gérés en parallèle d'une autre activité | Coût d'entrée faible, valeur perçue immédiate (quittance, relance) | À confirmer par l'étude de marché |
-| Propriétaires en diaspora | Bien(s) géré(s) par un tiers (agence ou proche), résidence hors du Congo | Visibilité à distance, confiance dans le reporting | À confirmer par l'étude de marché |
+| Segment                                   | Caractéristiques typiques                                                                               | Enjeu principal pour Immodesk                                                   | Taille estimée                    |
+| :---------------------------------------- | :------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------ | :-------------------------------- |
+| Agences immobilières structurées          | Portefeuille de plusieurs dizaines à centaines de lots, équipe de démarcheurs salariés ou commissionnés | Traçabilité des encaissements, reporting aux propriétaires, gestion des mandats | À confirmer par l'étude de marché |
+| Bailleurs indépendants multi-lots         | 2 à 20 lots gérés en propre, sans structure d'agence                                                    | Simplicité d'usage, facturation et relances automatisées                        | À confirmer par l'étude de marché |
+| Bailleurs indépendants mono-lot ou bi-lot | 1 à 2 lots, souvent gérés en parallèle d'une autre activité                                             | Coût d'entrée faible, valeur perçue immédiate (quittance, relance)              | À confirmer par l'étude de marché |
+| Propriétaires en diaspora                 | Bien(s) géré(s) par un tiers (agence ou proche), résidence hors du Congo                                | Visibilité à distance, confiance dans le reporting                              | À confirmer par l'étude de marché |
 
 ### 2.4 Alternatives actuelles et positionnement
 
@@ -76,14 +76,14 @@ En l'absence d'outil dédié, les organisations rencontrées recourent aujourd'h
 
 ### 3.1 Proposition de valeur par persona
 
-| Persona | Problème vécu aujourd'hui | Valeur apportée par Immodesk |
-| :--- | :--- | :--- |
-| **Agence immobilière** | Suivi manuel des mandats, des loyers et des reversements aux propriétaires sur tableurs ; risque d'erreur et de perte d'information ; difficulté à prouver la bonne gestion aux propriétaires | Vue consolidée du portefeuille géré, facturation automatisée, relevés de gérance générés automatiquement, traçabilité complète des encaissements et des commissions, image professionnelle renforcée auprès des propriétaires |
-| **Bailleur indépendant** | Gestion artisanale de quelques lots, absence de quittance formelle, difficulté à relancer les impayés, pas de visibilité consolidée | Facturation automatique, relances outillées, quittances PDF vérifiables envoyées par WhatsApp, tableau de bord simple de l'état locatif |
-| **Démarcheur / gestionnaire informel** | Carnet de reçus papier, risque d'accusation de détournement, déplacements non optimisés, crainte que la digitalisation ne le prive de son activité | Espace gestionnaire dédié (mandats, commissions, relevés de gérance comme une agence), application mobile offline-first pour encaisser, émettre un reçu numéroté signé par le locataire et déclarer sa remise de caisse, commission de 10 % calculée automatiquement sur les loyers encaissés, preuve d'honnêteté offerte au bailleur via le portail bailleur en lecture seule |
-| **Locataire** | Absence de preuve de paiement fiable, incertitude sur le solde dû, difficulté à contester un litige | Quittance vérifiable par QR code, historique de paiement consultable, notification WhatsApp à chaque règlement, portail simple pour déclarer un virement ou payer par Mobile Money |
-| **Propriétaire en diaspora** | Dépendance totale à la bonne foi et à la disponibilité de l'agence ou du proche gestionnaire, absence de visibilité en temps réel | Accès à distance à l'état de son patrimoine, aux encaissements réalisés en son nom, aux relevés de gérance et aux reversements, réduction de l'asymétrie d'information |
-| **Partenaire apporteur d'affaires** | Aucune reconnaissance ni rémunération formelle pour la mise en relation d'un bailleur ou d'un gestionnaire avec un outil ou un service utile | Code de parrainage personnel, suivi transparent des organisations apportées et de leur statut, commission calculée automatiquement sur les abonnements payés par les organisations parrainées, versement par Mobile Money |
+| Persona                                | Problème vécu aujourd'hui                                                                                                                                                                     | Valeur apportée par Immodesk                                                                                                                                                                                                                                                                                                                                                   |
+| :------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Agence immobilière**                 | Suivi manuel des mandats, des loyers et des reversements aux propriétaires sur tableurs ; risque d'erreur et de perte d'information ; difficulté à prouver la bonne gestion aux propriétaires | Vue consolidée du portefeuille géré, facturation automatisée, relevés de gérance générés automatiquement, traçabilité complète des encaissements et des commissions, image professionnelle renforcée auprès des propriétaires                                                                                                                                                  |
+| **Bailleur indépendant**               | Gestion artisanale de quelques lots, absence de quittance formelle, difficulté à relancer les impayés, pas de visibilité consolidée                                                           | Facturation automatique, relances outillées, quittances PDF vérifiables envoyées par WhatsApp, tableau de bord simple de l'état locatif                                                                                                                                                                                                                                        |
+| **Démarcheur / gestionnaire informel** | Carnet de reçus papier, risque d'accusation de détournement, déplacements non optimisés, crainte que la digitalisation ne le prive de son activité                                            | Espace gestionnaire dédié (mandats, commissions, relevés de gérance comme une agence), application mobile offline-first pour encaisser, émettre un reçu numéroté signé par le locataire et déclarer sa remise de caisse, commission de 10 % calculée automatiquement sur les loyers encaissés, preuve d'honnêteté offerte au bailleur via le portail bailleur en lecture seule |
+| **Locataire**                          | Absence de preuve de paiement fiable, incertitude sur le solde dû, difficulté à contester un litige                                                                                           | Quittance vérifiable par QR code, historique de paiement consultable, notification WhatsApp à chaque règlement, portail simple pour déclarer un virement ou payer par Mobile Money                                                                                                                                                                                             |
+| **Propriétaire en diaspora**           | Dépendance totale à la bonne foi et à la disponibilité de l'agence ou du proche gestionnaire, absence de visibilité en temps réel                                                             | Accès à distance à l'état de son patrimoine, aux encaissements réalisés en son nom, aux relevés de gérance et aux reversements, réduction de l'asymétrie d'information                                                                                                                                                                                                         |
+| **Partenaire apporteur d'affaires**    | Aucune reconnaissance ni rémunération formelle pour la mise en relation d'un bailleur ou d'un gestionnaire avec un outil ou un service utile                                                  | Code de parrainage personnel, suivi transparent des organisations apportées et de leur statut, commission calculée automatiquement sur les abonnements payés par les organisations parrainées, versement par Mobile Money                                                                                                                                                      |
 
 Chaque persona bénéficie d'un même socle de confiance : une donnée financière unique, auditable, non falsifiable a posteriori (écritures financières en append-only, cf. référentiel technique), et une preuve de paiement opposable (quittance numérotée et vérifiable publiquement par QR code).
 
@@ -108,39 +108,39 @@ Chaque persona bénéficie d'un même socle de confiance : une donnée financiè
 
 ### 4.1 Objectifs SMART du projet
 
-| # | Objectif | Horizon |
-| :--- | :--- | :--- |
-| O1 | Lancer un pilote opérationnel à Brazzaville avec **10 organisations** (agences et/ou bailleurs indépendants) et **500 lots** actifs sur la plateforme | Fin de la phase 10 (cf. macro-planning) |
-| O2 | Atteindre un taux d'émission de quittance de **95 %** sur les paiements confirmés dans les organisations pilotes, tous modes de paiement confondus | 8 semaines après le début du pilote |
-| O3 | Ramener le délai moyen de rapprochement d'un virement bancaire déclaré à **moins de 48 heures ouvrées** entre la déclaration du locataire et la confirmation par le bailleur ou l'agence | 8 semaines après le début du pilote |
-| O4 | Atteindre un taux de synchronisation réussie des actions terrain (encaissements, états des lieux) de **99 %** dans un délai de 24 heures après leur saisie hors ligne | Fin de la phase 5 |
-| O5 | Réduire de **50 %** le délai moyen entre encaissement en espèces par un démarcheur et remise de caisse effective validée, par rapport à la pratique constatée en amont du projet (mesure de référence à établir lors du diagnostic terrain) | 12 semaines après le début du pilote |
-| O6 | Obtenir un taux de satisfaction déclaré des bailleurs et agences pilotes d'au moins **7/10** sur la confiance accordée aux quittances et à la traçabilité des encaissements | Fin du pilote |
-| O7 | Atteindre un taux d'adoption effective (connexion et action au moins hebdomadaire) de **80 %** des démarcheurs formés dans les organisations pilotes | 6 semaines après la formation |
+| #   | Objectif                                                                                                                                                                                                                                    | Horizon                                 |
+| :-- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------- |
+| O1  | Lancer un pilote opérationnel à Brazzaville avec **10 organisations** (agences et/ou bailleurs indépendants) et **500 lots** actifs sur la plateforme                                                                                       | Fin de la phase 10 (cf. macro-planning) |
+| O2  | Atteindre un taux d'émission de quittance de **95 %** sur les paiements confirmés dans les organisations pilotes, tous modes de paiement confondus                                                                                          | 8 semaines après le début du pilote     |
+| O3  | Ramener le délai moyen de rapprochement d'un virement bancaire déclaré à **moins de 48 heures ouvrées** entre la déclaration du locataire et la confirmation par le bailleur ou l'agence                                                    | 8 semaines après le début du pilote     |
+| O4  | Atteindre un taux de synchronisation réussie des actions terrain (encaissements, états des lieux) de **99 %** dans un délai de 24 heures après leur saisie hors ligne                                                                       | Fin de la phase 5                       |
+| O5  | Réduire de **50 %** le délai moyen entre encaissement en espèces par un démarcheur et remise de caisse effective validée, par rapport à la pratique constatée en amont du projet (mesure de référence à établir lors du diagnostic terrain) | 12 semaines après le début du pilote    |
+| O6  | Obtenir un taux de satisfaction déclaré des bailleurs et agences pilotes d'au moins **7/10** sur la confiance accordée aux quittances et à la traçabilité des encaissements                                                                 | Fin du pilote                           |
+| O7  | Atteindre un taux d'adoption effective (connexion et action au moins hebdomadaire) de **80 %** des démarcheurs formés dans les organisations pilotes                                                                                        | 6 semaines après la formation           |
 
 ### 4.2 Indicateurs de succès
 
 **KPI produit**
 
-| Indicateur | Définition | Cible pilote |
-| :--- | :--- | :--- |
-| Taux de synchronisation offline | Part des enregistrements créés hors ligne synchronisés sans conflit sous 24 h | ≥ 99 % |
-| Disponibilité de la plateforme | Temps de disponibilité mensuel de l'API et du dashboard web | ≥ 99,5 % |
-| Temps de génération d'une quittance | Délai entre confirmation du paiement et disponibilité du PDF | ≤ 60 secondes |
-| Taux d'erreur de rapprochement automatique | Part des rapprochements automatiques erronés détectés a posteriori | ≤ 1 % |
-| Taux de livraison WhatsApp | Part des messages WhatsApp effectivement délivrés (hors échec fournisseur) | ≥ 95 % |
+| Indicateur                                 | Définition                                                                    | Cible pilote  |
+| :----------------------------------------- | :---------------------------------------------------------------------------- | :------------ |
+| Taux de synchronisation offline            | Part des enregistrements créés hors ligne synchronisés sans conflit sous 24 h | ≥ 99 %        |
+| Disponibilité de la plateforme             | Temps de disponibilité mensuel de l'API et du dashboard web                   | ≥ 99,5 %      |
+| Temps de génération d'une quittance        | Délai entre confirmation du paiement et disponibilité du PDF                  | ≤ 60 secondes |
+| Taux d'erreur de rapprochement automatique | Part des rapprochements automatiques erronés détectés a posteriori            | ≤ 1 %         |
+| Taux de livraison WhatsApp                 | Part des messages WhatsApp effectivement délivrés (hors échec fournisseur)    | ≥ 95 %        |
 
 **KPI métier**
 
-| Indicateur | Définition | Cible pilote |
-| :--- | :--- | :--- |
-| Taux de quittances émises | Part des paiements confirmés donnant lieu à une quittance | ≥ 95 % |
-| Délai moyen de rapprochement virement | Délai déclaration → confirmation | ≤ 48 h ouvrées |
-| Taux d'impayés à 30 jours | Part des factures de loyer non soldées 30 jours après échéance | À mesurer, cible de réduction à définir après diagnostic |
-| Taux de reversement des remises de caisse | Part des encaissements en espèces effectivement remis et validés sous 72 h | ≥ 90 % |
-| Taux de rétention des organisations pilotes | Organisations actives à l'issue du pilote / organisations engagées au départ | ≥ 80 % |
-| Part des organisations acquises via le programme d'apport d'affaires | Organisations dont l'abonnement est rattaché à un `referral` actif ou expiré / total des organisations abonnées | À mesurer, cible indicative à définir après le pilote |
-| Nombre de gestionnaires indépendants actifs | Organisations de type `INDEPENDENT_MANAGER` ayant réalisé au moins un encaissement dans le mois | À mesurer dès la Phase 7, cible indicative à définir après le pilote |
+| Indicateur                                                           | Définition                                                                                                      | Cible pilote                                                         |
+| :------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------- |
+| Taux de quittances émises                                            | Part des paiements confirmés donnant lieu à une quittance                                                       | ≥ 95 %                                                               |
+| Délai moyen de rapprochement virement                                | Délai déclaration → confirmation                                                                                | ≤ 48 h ouvrées                                                       |
+| Taux d'impayés à 30 jours                                            | Part des factures de loyer non soldées 30 jours après échéance                                                  | À mesurer, cible de réduction à définir après diagnostic             |
+| Taux de reversement des remises de caisse                            | Part des encaissements en espèces effectivement remis et validés sous 72 h                                      | ≥ 90 %                                                               |
+| Taux de rétention des organisations pilotes                          | Organisations actives à l'issue du pilote / organisations engagées au départ                                    | ≥ 80 %                                                               |
+| Part des organisations acquises via le programme d'apport d'affaires | Organisations dont l'abonnement est rattaché à un `referral` actif ou expiré / total des organisations abonnées | À mesurer, cible indicative à définir après le pilote                |
+| Nombre de gestionnaires indépendants actifs                          | Organisations de type `INDEPENDENT_MANAGER` ayant réalisé au moins un encaissement dans le mois                 | À mesurer dès la Phase 7, cible indicative à définir après le pilote |
 
 Les chiffres de marché plus larges (nombre total de biens loués à Brazzaville et Pointe-Noire, taux de pénétration du Mobile Money dans les transactions locatives, taille du marché adressable en zone CEMAC) ne sont pas retenus comme objectifs chiffrés à ce stade : ils sont **à confirmer par l'étude de marché** prévue en amont ou en parallèle de la phase 0.
 
@@ -163,28 +163,28 @@ Le périmètre fonctionnel est structuré en modules, alignés sur la liste cano
 
 ### 5.2 Vue d'ensemble des modules
 
-| Module | Description fonctionnelle | Entités principales concernées | MVP pilote | Phase de référence |
-| :--- | :--- | :--- | :---: | :---: |
-| Identité et organisations | Authentification par téléphone + OTP, gestion multi-tenant (organisations de type agence ou bailleur indépendant), rôles (OWNER, MANAGER, COLLECTOR, ACCOUNTANT, VIEWER), invitations, paramètres d'organisation | organizations, organization_members, users, otp_codes, refresh_tokens, invitations | Oui | Phase 0 |
-| Tiers | Fiches bailleurs, locataires, garants, et leurs canaux de contact (téléphone, WhatsApp, e-mail) | landlords, tenants, guarantors, contact_channels | Oui | Phase 1 |
-| Patrimoine | Immeubles, lots (appartements, studios, locaux commerciaux, villas), comptes bancaires associés, compteurs | properties, units, bank_accounts, meters | Oui | Phase 1 |
-| Baux et dépôts | Création et suivi des contrats de bail, dépôts de garantie et leurs mouvements, documents contractuels générés en PDF | leases, lease_parties, lease_documents, deposits, deposit_movements | Oui | Phase 2 |
-| Facturation | Génération automatique mensuelle des factures de loyer (et charges), lignes de facture, numérotation séquentielle | rent_invoices, invoice_lines, sequences | Oui | Phase 3 |
-| Encaissements — 4 modes | Enregistrement des paiements en espèces, Mobile Money, virement bancaire déclaré et chèque, avec allocation aux factures | payments, payment_allocations, cash_receipts, mobile_money_transactions, bank_transfer_declarations, bank_checks | Oui (espèces, virement déclaré, Mobile Money) — chèque en version simplifiée | Phases 3 et 4 |
-| Remises de caisse | Reversement contrôlé des espèces collectées par un démarcheur vers l'organisation, avec rapprochement des reçus | cash_remittances, cash_remittance_items | Oui | Phase 3 |
-| Rapprochement bancaire | Import de relevés bancaires (CSV/MT940), rapprochement automatique, suggéré ou manuel avec les virements déclarés | bank_statements, bank_statement_lines, reconciliation_matches | Non (V1.1) | Phase 6 |
-| Quittances et vérification QR | Génération de quittances PDF numérotées, envoi automatique par WhatsApp, vérification publique par QR code | receipts, message_logs | Oui | Phase 3 |
-| Gestion d'agence et relevés de gérance | Mandats de gestion, calcul des commissions, dépenses imputées, génération de relevés de gérance et reversements aux propriétaires | management_mandates, commissions, expenses, owner_statements, owner_statement_lines, owner_payouts | Non — MVP limité aux mandats simples (Phase 7 différée) | Phase 7 |
-| Espace gestionnaire indépendant & portail bailleur | Organisation dédiée aux démarcheurs et gestionnaires informels (`INDEPENDENT_MANAGER`), mandats et commission de 10 % calculée automatiquement, accès en lecture seule du bailleur (via `landlords.user_id`) à ses encaissements, quittances, relevés de gérance et reversements | organizations (type INDEPENDENT_MANAGER), management_mandates, commissions, owner_statements, owner_statement_lines, owner_payouts, landlords, users | Non (V1.1) | Phase 7 |
-| États des lieux | Inspections d'entrée/sortie avec grille d'état par pièce, photos horodatées | inspections, inspection_items, inspection_photos | Non (V1.1) | Phase 8 |
-| Compteurs et charges | Relevés de compteurs eau/électricité, tarifs, facturation des charges | meters, meter_readings, utility_tariffs | Non (V1.1) | Phase 8 |
-| Maintenance | Demandes d'intervention, suivi des mises à jour de statut | maintenance_requests, maintenance_updates | Non (V1.1) | Phase 8 |
-| Relances et pénalités | Règles de relance automatisée (WhatsApp/SMS), règles de pénalité de retard | dunning_rules, dunning_runs, penalty_rules | Oui (version simplifiée : relance à échéance + J+N) | Phase 9 |
-| Reporting | Tableaux de bord (impayés, encaissements, occupation) pour agence, bailleur et propriétaire diaspora | Vues agrégées sur factures et paiements | Oui (indicateurs de base) | Phase 9 |
-| Portail locataire | Application/portail permettant au locataire de consulter son solde, ses quittances, et de déclarer un paiement | Interfaces web et mobile locataire | Oui (version de base) | Phase 10 |
-| Abonnement SaaS | Plans tarifaires, souscription, facturation de l'abonnement des organisations clientes | subscription_plans, subscriptions, subscription_invoices | Oui | Phase 10 |
-| Application mobile offline démarcheur | Encaissement terrain hors connexion, signature numérique, file de synchronisation prioritaire | sync_batches, idempotency_keys | Oui | Phase 5 |
-| Programme d'apport d'affaires | Parrainage d'organisations bailleurs ou gestionnaires par un partenaire (démarcheur en priorité), attribution d'un code unique, calcul et versement de commissions sur les abonnements des organisations parrainées | referral_programs, referral_partners, referrals, referral_commissions, referral_payouts | Non (V1.1) | Phase 10 |
+| Module                                             | Description fonctionnelle                                                                                                                                                                                                                                                        | Entités principales concernées                                                                                                                       |                                  MVP pilote                                  | Phase de référence |
+| :------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------: | :----------------: |
+| Identité et organisations                          | Authentification par téléphone + OTP, gestion multi-tenant (organisations de type agence ou bailleur indépendant), rôles (OWNER, MANAGER, COLLECTOR, ACCOUNTANT, VIEWER), invitations, paramètres d'organisation                                                                 | organizations, organization_members, users, otp_codes, refresh_tokens, invitations                                                                   |                                     Oui                                      |      Phase 0       |
+| Tiers                                              | Fiches bailleurs, locataires, garants, et leurs canaux de contact (téléphone, WhatsApp, e-mail)                                                                                                                                                                                  | landlords, tenants, guarantors, contact_channels                                                                                                     |                                     Oui                                      |      Phase 1       |
+| Patrimoine                                         | Immeubles, lots (appartements, studios, locaux commerciaux, villas), comptes bancaires associés, compteurs                                                                                                                                                                       | properties, units, bank_accounts, meters                                                                                                             |                                     Oui                                      |      Phase 1       |
+| Baux et dépôts                                     | Création et suivi des contrats de bail, dépôts de garantie et leurs mouvements, documents contractuels générés en PDF                                                                                                                                                            | leases, lease_parties, lease_documents, deposits, deposit_movements                                                                                  |                                     Oui                                      |      Phase 2       |
+| Facturation                                        | Génération automatique mensuelle des factures de loyer (et charges), lignes de facture, numérotation séquentielle                                                                                                                                                                | rent_invoices, invoice_lines, sequences                                                                                                              |                                     Oui                                      |      Phase 3       |
+| Encaissements — 4 modes                            | Enregistrement des paiements en espèces, Mobile Money, virement bancaire déclaré et chèque, avec allocation aux factures                                                                                                                                                         | payments, payment_allocations, cash_receipts, mobile_money_transactions, bank_transfer_declarations, bank_checks                                     | Oui (espèces, virement déclaré, Mobile Money) — chèque en version simplifiée |   Phases 3 et 4    |
+| Remises de caisse                                  | Reversement contrôlé des espèces collectées par un démarcheur vers l'organisation, avec rapprochement des reçus                                                                                                                                                                  | cash_remittances, cash_remittance_items                                                                                                              |                                     Oui                                      |      Phase 3       |
+| Rapprochement bancaire                             | Import de relevés bancaires (CSV/MT940), rapprochement automatique, suggéré ou manuel avec les virements déclarés                                                                                                                                                                | bank_statements, bank_statement_lines, reconciliation_matches                                                                                        |                                  Non (V1.1)                                  |      Phase 6       |
+| Quittances et vérification QR                      | Génération de quittances PDF numérotées, envoi automatique par WhatsApp, vérification publique par QR code                                                                                                                                                                       | receipts, message_logs                                                                                                                               |                                     Oui                                      |      Phase 3       |
+| Gestion d'agence et relevés de gérance             | Mandats de gestion, calcul des commissions, dépenses imputées, génération de relevés de gérance et reversements aux propriétaires                                                                                                                                                | management_mandates, commissions, expenses, owner_statements, owner_statement_lines, owner_payouts                                                   |           Non — MVP limité aux mandats simples (Phase 7 différée)            |      Phase 7       |
+| Espace gestionnaire indépendant & portail bailleur | Organisation dédiée aux démarcheurs et gestionnaires informels (`INDEPENDENT_MANAGER`), mandats et commission de 10 % calculée automatiquement, accès en lecture seule du bailleur (via `landlords.user_id`) à ses encaissements, quittances, relevés de gérance et reversements | organizations (type INDEPENDENT_MANAGER), management_mandates, commissions, owner_statements, owner_statement_lines, owner_payouts, landlords, users |                                  Non (V1.1)                                  |      Phase 7       |
+| États des lieux                                    | Inspections d'entrée/sortie avec grille d'état par pièce, photos horodatées                                                                                                                                                                                                      | inspections, inspection_items, inspection_photos                                                                                                     |                                  Non (V1.1)                                  |      Phase 8       |
+| Compteurs et charges                               | Relevés de compteurs eau/électricité, tarifs, facturation des charges                                                                                                                                                                                                            | meters, meter_readings, utility_tariffs                                                                                                              |                                  Non (V1.1)                                  |      Phase 8       |
+| Maintenance                                        | Demandes d'intervention, suivi des mises à jour de statut                                                                                                                                                                                                                        | maintenance_requests, maintenance_updates                                                                                                            |                                  Non (V1.1)                                  |      Phase 8       |
+| Relances et pénalités                              | Règles de relance automatisée (WhatsApp/SMS), règles de pénalité de retard                                                                                                                                                                                                       | dunning_rules, dunning_runs, penalty_rules                                                                                                           |             Oui (version simplifiée : relance à échéance + J+N)              |      Phase 9       |
+| Reporting                                          | Tableaux de bord (impayés, encaissements, occupation) pour agence, bailleur et propriétaire diaspora                                                                                                                                                                             | Vues agrégées sur factures et paiements                                                                                                              |                          Oui (indicateurs de base)                           |      Phase 9       |
+| Portail locataire                                  | Application/portail permettant au locataire de consulter son solde, ses quittances, et de déclarer un paiement                                                                                                                                                                   | Interfaces web et mobile locataire                                                                                                                   |                            Oui (version de base)                             |      Phase 10      |
+| Abonnement SaaS                                    | Plans tarifaires, souscription, facturation de l'abonnement des organisations clientes                                                                                                                                                                                           | subscription_plans, subscriptions, subscription_invoices                                                                                             |                                     Oui                                      |      Phase 10      |
+| Application mobile offline démarcheur              | Encaissement terrain hors connexion, signature numérique, file de synchronisation prioritaire                                                                                                                                                                                    | sync_batches, idempotency_keys                                                                                                                       |                                     Oui                                      |      Phase 5       |
+| Programme d'apport d'affaires                      | Parrainage d'organisations bailleurs ou gestionnaires par un partenaire (démarcheur en priorité), attribution d'un code unique, calcul et versement de commissions sur les abonnements des organisations parrainées                                                              | referral_programs, referral_partners, referrals, referral_commissions, referral_payouts                                                              |                                  Non (V1.1)                                  |      Phase 10      |
 
 ### 5.3 Description détaillée des modules du périmètre MVP
 
@@ -236,43 +236,43 @@ Ces exclusions ne traduisent pas un jugement sur la valeur de ces fonctionnalit�
 
 ### 7.1 Rôles
 
-| Rôle | Responsabilité principale |
-| :--- | :--- |
-| Sponsor | Porte le projet au niveau stratégique, arbitre le budget, valide les jalons majeurs et les décisions de go/no-go |
-| Product Owner (chef de projet) | Porte la vision produit, priorise le backlog, arbitre les compromis fonctionnels, anime le comité de pilotage |
-| Lead tech | Responsable de l'architecture technique, garant du respect du référentiel de décisions communes, arbitre les choix d'implémentation |
-| Développeurs backend/web (x2) | Implémentent l'API NestJS, le dashboard Next.js, les intégrations tierces (agrégateur Mobile Money, WhatsApp, banques) |
-| Développeur mobile (x1) | Implémente l'application Flutter offline-first (démarcheurs, bailleurs, locataires) |
-| Designer (mi-temps) | Conçoit le système de design, les parcours utilisateurs, les maquettes web et mobile |
-| Juriste conseil | Valide le modèle de quittance, les mentions légales des baux, la conformité à la loi congolaise sur la protection des données personnelles et au cadre OHADA pour les baux commerciaux |
-| Testeurs terrain (Brazzaville) | Réalisent les tests d'acceptation en conditions réelles avec des démarcheurs, bailleurs et locataires pilotes |
+| Rôle                           | Responsabilité principale                                                                                                                                                              |
+| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sponsor                        | Porte le projet au niveau stratégique, arbitre le budget, valide les jalons majeurs et les décisions de go/no-go                                                                       |
+| Product Owner (chef de projet) | Porte la vision produit, priorise le backlog, arbitre les compromis fonctionnels, anime le comité de pilotage                                                                          |
+| Lead tech                      | Responsable de l'architecture technique, garant du respect du référentiel de décisions communes, arbitre les choix d'implémentation                                                    |
+| Développeurs backend/web (x2)  | Implémentent l'API NestJS, le dashboard Next.js, les intégrations tierces (agrégateur Mobile Money, WhatsApp, banques)                                                                 |
+| Développeur mobile (x1)        | Implémente l'application Flutter offline-first (démarcheurs, bailleurs, locataires)                                                                                                    |
+| Designer (mi-temps)            | Conçoit le système de design, les parcours utilisateurs, les maquettes web et mobile                                                                                                   |
+| Juriste conseil                | Valide le modèle de quittance, les mentions légales des baux, la conformité à la loi congolaise sur la protection des données personnelles et au cadre OHADA pour les baux commerciaux |
+| Testeurs terrain (Brazzaville) | Réalisent les tests d'acceptation en conditions réelles avec des démarcheurs, bailleurs et locataires pilotes                                                                          |
 
 ### 7.2 Instances de gouvernance
 
-| Instance | Fréquence | Participants | Objet |
-| :--- | :--- | :--- | :--- |
-| Comité de pilotage | Mensuel | Sponsor, Product Owner, Lead tech | Suivi d'avancement global, arbitrages budgétaires, décisions de go/no-go, revue des risques majeurs |
-| Revue de sprint | Bi-hebdomadaire | Product Owner, Lead tech, développeurs, designer | Démonstration des livrables du sprint, ajustement du backlog |
-| Daily | Quotidien | Équipe de développement (backend, web, mobile, designer) | Synchronisation courte sur l'avancement et les blocages |
-| Revue de risques | Mensuelle (couplée au comité de pilotage) | Product Owner, Lead tech, Sponsor | Mise à jour du registre des risques (section 11) |
-| Point juridique et conformité | Selon jalons (phases 0, 3, 4, 10) | Product Owner, Juriste conseil | Validation des points de conformité réglementaire avant mise en production de fonctionnalités sensibles |
+| Instance                      | Fréquence                                 | Participants                                             | Objet                                                                                                   |
+| :---------------------------- | :---------------------------------------- | :------------------------------------------------------- | :------------------------------------------------------------------------------------------------------ |
+| Comité de pilotage            | Mensuel                                   | Sponsor, Product Owner, Lead tech                        | Suivi d'avancement global, arbitrages budgétaires, décisions de go/no-go, revue des risques majeurs     |
+| Revue de sprint               | Bi-hebdomadaire                           | Product Owner, Lead tech, développeurs, designer         | Démonstration des livrables du sprint, ajustement du backlog                                            |
+| Daily                         | Quotidien                                 | Équipe de développement (backend, web, mobile, designer) | Synchronisation courte sur l'avancement et les blocages                                                 |
+| Revue de risques              | Mensuelle (couplée au comité de pilotage) | Product Owner, Lead tech, Sponsor                        | Mise à jour du registre des risques (section 11)                                                        |
+| Point juridique et conformité | Selon jalons (phases 0, 3, 4, 10)         | Product Owner, Juriste conseil                           | Validation des points de conformité réglementaire avant mise en production de fonctionnalités sensibles |
 
 ### 7.3 Matrice RACI des décisions majeures
 
 Légende : **R** = Responsible (réalise), **A** = Accountable (rend compte, décide en dernier ressort), **C** = Consulted (consulté), **I** = Informed (informé).
 
-| Décision | Sponsor | Product Owner | Lead tech | Développeurs | Designer | Juriste conseil | Testeurs terrain |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Choix d'architecture technique | I | C | A/R | C | I | I | I |
-| Choix de l'agrégateur Mobile Money | A | R | C | I | I | C | I |
-| Validation du modèle juridique de la quittance | A | C | I | I | I | R | I |
-| Priorisation du backlog produit | I | A/R | C | C | C | I | C |
-| Go/No-Go lancement du pilote | A | R | C | I | I | C | C |
-| Go/No-Go lancement commercial | A | R | C | I | I | C | I |
-| Validation du budget | A/R | C | C | I | I | I | I |
-| Recrutement de l'équipe projet | A | R | C | I | I | I | I |
-| Gestion de crise (incident de sécurité) | A | R | R | C | I | C | I |
-| Tarification SaaS | A | R | C | I | I | C | I |
+| Décision                                       | Sponsor | Product Owner | Lead tech | Développeurs | Designer | Juriste conseil | Testeurs terrain |
+| :--------------------------------------------- | :-----: | :-----------: | :-------: | :----------: | :------: | :-------------: | :--------------: |
+| Choix d'architecture technique                 |    I    |       C       |    A/R    |      C       |    I     |        I        |        I         |
+| Choix de l'agrégateur Mobile Money             |    A    |       R       |     C     |      I       |    I     |        C        |        I         |
+| Validation du modèle juridique de la quittance |    A    |       C       |     I     |      I       |    I     |        R        |        I         |
+| Priorisation du backlog produit                |    I    |      A/R      |     C     |      C       |    C     |        I        |        C         |
+| Go/No-Go lancement du pilote                   |    A    |       R       |     C     |      I       |    I     |        C        |        C         |
+| Go/No-Go lancement commercial                  |    A    |       R       |     C     |      I       |    I     |        C        |        I         |
+| Validation du budget                           |   A/R   |       C       |     C     |      I       |    I     |        I        |        I         |
+| Recrutement de l'équipe projet                 |    A    |       R       |     C     |      I       |    I     |        I        |        I         |
+| Gestion de crise (incident de sécurité)        |    A    |       R       |     R     |      C       |    I     |        C        |        I         |
+| Tarification SaaS                              |    A    |       R       |     C     |      I       |    I     |        C        |        I         |
 
 ### 7.4 Processus de décision et d'escalade
 
@@ -312,13 +312,13 @@ Le projet s'inscrit strictement dans le référentiel technique déjà tranché 
 
 Synthèse des exigences réglementaires et de leur statut de validation à date :
 
-| Exigence | Application dans Immodesk | Statut de validation |
-| :--- | :--- | :--- |
-| Mentions obligatoires du bail d'habitation | Modèle de contrat PDF généré à partir d'un gabarit validé | À valider par le juriste conseil avant Phase 2 |
-| Mentions obligatoires du bail commercial (OHADA) | Variante de gabarit pour les locaux commerciaux | À valider par le juriste conseil avant Phase 2 |
-| Valeur probatoire de la quittance numérique | Numérotation séquentielle, horodatage, QR de vérification publique | À valider par le juriste conseil avant Phase 3 |
-| Registre de traitement des données personnelles | Documentation des finalités, durées de conservation, destinataires | À produire en Phase 0, revu à chaque nouveau module traitant des données personnelles |
-| Non-détention de fonds par Immodesk | Flux Mobile Money exclusivement via agrégateur agréé | Principe de conception, à confirmer contractuellement avec l'agrégateur (Phase 4) |
+| Exigence                                         | Application dans Immodesk                                          | Statut de validation                                                                  |
+| :----------------------------------------------- | :----------------------------------------------------------------- | :------------------------------------------------------------------------------------ |
+| Mentions obligatoires du bail d'habitation       | Modèle de contrat PDF généré à partir d'un gabarit validé          | À valider par le juriste conseil avant Phase 2                                        |
+| Mentions obligatoires du bail commercial (OHADA) | Variante de gabarit pour les locaux commerciaux                    | À valider par le juriste conseil avant Phase 2                                        |
+| Valeur probatoire de la quittance numérique      | Numérotation séquentielle, horodatage, QR de vérification publique | À valider par le juriste conseil avant Phase 3                                        |
+| Registre de traitement des données personnelles  | Documentation des finalités, durées de conservation, destinataires | À produire en Phase 0, revu à chaque nouveau module traitant des données personnelles |
+| Non-détention de fonds par Immodesk              | Flux Mobile Money exclusivement via agrégateur agréé               | Principe de conception, à confirmer contractuellement avec l'agrégateur (Phase 4)     |
 
 ### 8.3 Contraintes opérationnelles
 
@@ -335,18 +335,18 @@ Le budget global du projet **reste à valider** par le sponsor et le comité de 
 
 ## 9. Hypothèses et dépendances
 
-| # | Hypothèse / dépendance | Impact si non vérifiée | Porteur |
-| :--- | :--- | :--- | :--- |
-| H1 | Un contrat est signé avec un agrégateur Mobile Money (CinetPay en première intention) permettant l'intégration MTN Mobile Money et Airtel Money | Report du module Mobile Money (Phase 4), report du pilote | Sponsor / Product Owner |
-| H2 | Un compte WhatsApp Business est vérifié auprès de Meta, avec des templates de message approuvés | Impossibilité d'envoyer les quittances et relances par WhatsApp, repli intégral sur SMS (coût plus élevé) | Lead tech |
-| H3 | Les formats de relevés bancaires (CSV ou MT940) des banques locales partenaires sont obtenus et documentés | Report ou dégradation du module de rapprochement bancaire (Phase 6) | Lead tech |
-| H4 | Un accès (même manuel dans un premier temps) aux relevés des banques locales pilotes (BGFI, BSCA, LCB, Ecobank, UBA, Crédit du Congo) est obtenu pour les organisations pilotes | Rapprochement des virements bancaires réalisé manuellement pendant le pilote | Product Owner |
-| H5 | Le modèle de quittance numérique (mentions légales, valeur probatoire) est validé par le conseil juridique avant la mise en production | Risque de contestation juridique des quittances émises, retard de la Phase 3 | Juriste conseil |
-| H6 | Les organisations pilotes acceptent de former leurs démarcheurs et de participer activement aux tests terrain | Retard ou échec du pilote (Phase 10) | Product Owner |
-| H7 | Le budget nécessaire au financement des phases 0 à 11 est sécurisé progressivement, au moins jalon par jalon | Interruption du développement en cours de projet | Sponsor |
-| H8 | Les numéros de téléphone des utilisateurs (locataires, bailleurs, démarcheurs) sont suffisamment stables pour servir d'identifiant d'authentification (OTP) | Complexité accrue de gestion des comptes en cas de changement fréquent de numéro | Lead tech |
-| H9 | Les organisations pilotes disposent d'un patrimoine et de baux déjà identifiables (adresses, montants de loyer connus), même de manière informelle, permettant un import initial dans Immodesk | Ralentissement de l'onboarding, saisie manuelle intégrale à réaliser en début de pilote | Product Owner |
-| H10 | Les autorités compétentes en matière de protection des données personnelles n'imposent pas, sur la durée du projet, de formalité déclarative bloquante incompatible avec le calendrier de la Phase 0 | Report du lancement du pilote dans l'attente d'une régularisation administrative | Juriste conseil |
+| #   | Hypothèse / dépendance                                                                                                                                                                               | Impact si non vérifiée                                                                                    | Porteur                 |
+| :-- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- | :---------------------- |
+| H1  | Un contrat est signé avec un agrégateur Mobile Money (CinetPay en première intention) permettant l'intégration MTN Mobile Money et Airtel Money                                                      | Report du module Mobile Money (Phase 4), report du pilote                                                 | Sponsor / Product Owner |
+| H2  | Un compte WhatsApp Business est vérifié auprès de Meta, avec des templates de message approuvés                                                                                                      | Impossibilité d'envoyer les quittances et relances par WhatsApp, repli intégral sur SMS (coût plus élevé) | Lead tech               |
+| H3  | Les formats de relevés bancaires (CSV ou MT940) des banques locales partenaires sont obtenus et documentés                                                                                           | Report ou dégradation du module de rapprochement bancaire (Phase 6)                                       | Lead tech               |
+| H4  | Un accès (même manuel dans un premier temps) aux relevés des banques locales pilotes (BGFI, BSCA, LCB, Ecobank, UBA, Crédit du Congo) est obtenu pour les organisations pilotes                      | Rapprochement des virements bancaires réalisé manuellement pendant le pilote                              | Product Owner           |
+| H5  | Le modèle de quittance numérique (mentions légales, valeur probatoire) est validé par le conseil juridique avant la mise en production                                                               | Risque de contestation juridique des quittances émises, retard de la Phase 3                              | Juriste conseil         |
+| H6  | Les organisations pilotes acceptent de former leurs démarcheurs et de participer activement aux tests terrain                                                                                        | Retard ou échec du pilote (Phase 10)                                                                      | Product Owner           |
+| H7  | Le budget nécessaire au financement des phases 0 à 11 est sécurisé progressivement, au moins jalon par jalon                                                                                         | Interruption du développement en cours de projet                                                          | Sponsor                 |
+| H8  | Les numéros de téléphone des utilisateurs (locataires, bailleurs, démarcheurs) sont suffisamment stables pour servir d'identifiant d'authentification (OTP)                                          | Complexité accrue de gestion des comptes en cas de changement fréquent de numéro                          | Lead tech               |
+| H9  | Les organisations pilotes disposent d'un patrimoine et de baux déjà identifiables (adresses, montants de loyer connus), même de manière informelle, permettant un import initial dans Immodesk       | Ralentissement de l'onboarding, saisie manuelle intégrale à réaliser en début de pilote                   | Product Owner           |
+| H10 | Les autorités compétentes en matière de protection des données personnelles n'imposent pas, sur la durée du projet, de formalité déclarative bloquante incompatible avec le calendrier de la Phase 0 | Report du lancement du pilote dans l'attente d'une régularisation administrative                          | Juriste conseil         |
 
 ---
 
@@ -356,39 +356,39 @@ Le macro-planning suit strictement la numérotation des 12 phases du référenti
 
 ### 10.1 Détail des phases
 
-| Phase | Contenu | Durée indicative | Jalon | Livrables principaux | Critères de sortie |
-| :---: | :--- | :---: | :--- | :--- | :--- |
-| 0 | Cadrage, monorepo, CI/CD, infra, auth OTP, multi-tenant, design system, OpenAPI | 4 semaines | Fondations techniques prêtes | Monorepo initialisé (`apps/api`, `apps/web`, `apps/mobile`, `packages/shared`), pipeline CI/CD fonctionnel, authentification OTP opérationnelle, design system initial | Un utilisateur peut créer une organisation et s'authentifier de bout en bout sur un environnement de démonstration |
-| 1 | Tiers & patrimoine (landlords, tenants, properties, units, bank_accounts, documents) | 3 semaines | Référentiel de données de base en place | CRUD complet tiers et patrimoine, upload de documents | Une organisation pilote peut saisir l'intégralité de son patrimoine et de ses tiers |
-| 2 | Baux & dépôts (leases, deposits, lease_documents, génération de contrat PDF) | 3 semaines | Premier bail numérique généré | Création de bail, gestion des dépôts de garantie, génération PDF du contrat | Un bail complet est créé et son PDF généré, conforme aux mentions légales validées par le juriste |
-| 3 | Facturation & espèces (rent_invoices cron, cash_receipts, cash_remittances, receipts PDF, WhatsApp) | 4 semaines | Premier cycle de facturation et de quittance | Génération automatique des factures, encaissement espèces, quittance PDF, envoi WhatsApp | Une facture générée automatiquement peut être soldée en espèces et donner lieu à une quittance envoyée par WhatsApp |
-| 4 | Mobile Money & virement déclaré (agrégateur, webhooks, déclarations, validation) | 3 semaines | Premier paiement Mobile Money confirmé de bout en bout | Intégration agrégateur, gestion des webhooks, déclaration de virement | Un paiement Mobile Money réel est initié, confirmé par re-interrogation du statut, et donne lieu à une quittance automatique |
-| 5 | Application mobile offline (Drift, sync_batches, signature, photos, mode démarcheur) | 4 semaines | Application démarcheur utilisable sans réseau | Application Flutter offline-first, moteur de synchronisation, signature numérique | Un encaissement saisi hors connexion se synchronise sans perte ni doublon dans un délai de 24 h |
-| 6 | Rapprochement bancaire & chèques (import CSV/MT940, matching, bank_checks) | 3 semaines | Premier rapprochement automatique réussi | Import de relevés, moteur de rapprochement (exact/suggéré/manuel), gestion des chèques | Un relevé bancaire importé rapproche automatiquement au moins 80 % des virements déclarés correspondants |
-| 7 | Gestion d'agence (mandats, commissions, dépenses, relevés de gérance, reversements) | 3 semaines | Premier relevé de gérance généré | Mandats de gestion, calcul de commissions, relevés de gérance, reversements propriétaires | Une agence pilote génère un relevé de gérance mensuel complet pour un propriétaire |
-| 8 | États des lieux, compteurs & charges, maintenance | 3 semaines | Premier état des lieux numérique complet | Module inspections avec photos, relevés de compteurs, demandes de maintenance | Un état des lieux d'entrée est réalisé intégralement sur mobile, avec photos horodatées |
-| 9 | Relances, pénalités, reporting & tableaux de bord | 3 semaines | Premier cycle de relance automatisée | Règles de relance et de pénalité, tableaux de bord agence/bailleur | Une relance automatique est déclenchée et un tableau de bord d'impayés est disponible |
-| 10 | Abonnement SaaS, onboarding, portail locataire, pilote Brazzaville | 4 semaines | Lancement du pilote | Plans d'abonnement, parcours d'onboarding, portail locataire, déploiement des 10 organisations pilotes | Les 10 organisations pilotes et leurs locataires utilisent activement la plateforme |
-| 11 | Durcissement (sécurité, performance, conformité, DR) | 3 semaines | Prêt pour le lancement commercial | Audit de sécurité, tests de charge, plan de reprise d'activité, conformité vérifiée | Le comité de pilotage valide le go/no-go de lancement commercial |
+| Phase | Contenu                                                                                             | Durée indicative | Jalon                                                  | Livrables principaux                                                                                                                                                   | Critères de sortie                                                                                                           |
+| :---: | :-------------------------------------------------------------------------------------------------- | :--------------: | :----------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+|   0   | Cadrage, monorepo, CI/CD, infra, auth OTP, multi-tenant, design system, OpenAPI                     |    4 semaines    | Fondations techniques prêtes                           | Monorepo initialisé (`apps/api`, `apps/web`, `apps/mobile`, `packages/shared`), pipeline CI/CD fonctionnel, authentification OTP opérationnelle, design system initial | Un utilisateur peut créer une organisation et s'authentifier de bout en bout sur un environnement de démonstration           |
+|   1   | Tiers & patrimoine (landlords, tenants, properties, units, bank_accounts, documents)                |    3 semaines    | Référentiel de données de base en place                | CRUD complet tiers et patrimoine, upload de documents                                                                                                                  | Une organisation pilote peut saisir l'intégralité de son patrimoine et de ses tiers                                          |
+|   2   | Baux & dépôts (leases, deposits, lease_documents, génération de contrat PDF)                        |    3 semaines    | Premier bail numérique généré                          | Création de bail, gestion des dépôts de garantie, génération PDF du contrat                                                                                            | Un bail complet est créé et son PDF généré, conforme aux mentions légales validées par le juriste                            |
+|   3   | Facturation & espèces (rent_invoices cron, cash_receipts, cash_remittances, receipts PDF, WhatsApp) |    4 semaines    | Premier cycle de facturation et de quittance           | Génération automatique des factures, encaissement espèces, quittance PDF, envoi WhatsApp                                                                               | Une facture générée automatiquement peut être soldée en espèces et donner lieu à une quittance envoyée par WhatsApp          |
+|   4   | Mobile Money & virement déclaré (agrégateur, webhooks, déclarations, validation)                    |    3 semaines    | Premier paiement Mobile Money confirmé de bout en bout | Intégration agrégateur, gestion des webhooks, déclaration de virement                                                                                                  | Un paiement Mobile Money réel est initié, confirmé par re-interrogation du statut, et donne lieu à une quittance automatique |
+|   5   | Application mobile offline (Drift, sync_batches, signature, photos, mode démarcheur)                |    4 semaines    | Application démarcheur utilisable sans réseau          | Application Flutter offline-first, moteur de synchronisation, signature numérique                                                                                      | Un encaissement saisi hors connexion se synchronise sans perte ni doublon dans un délai de 24 h                              |
+|   6   | Rapprochement bancaire & chèques (import CSV/MT940, matching, bank_checks)                          |    3 semaines    | Premier rapprochement automatique réussi               | Import de relevés, moteur de rapprochement (exact/suggéré/manuel), gestion des chèques                                                                                 | Un relevé bancaire importé rapproche automatiquement au moins 80 % des virements déclarés correspondants                     |
+|   7   | Gestion d'agence (mandats, commissions, dépenses, relevés de gérance, reversements)                 |    3 semaines    | Premier relevé de gérance généré                       | Mandats de gestion, calcul de commissions, relevés de gérance, reversements propriétaires                                                                              | Une agence pilote génère un relevé de gérance mensuel complet pour un propriétaire                                           |
+|   8   | États des lieux, compteurs & charges, maintenance                                                   |    3 semaines    | Premier état des lieux numérique complet               | Module inspections avec photos, relevés de compteurs, demandes de maintenance                                                                                          | Un état des lieux d'entrée est réalisé intégralement sur mobile, avec photos horodatées                                      |
+|   9   | Relances, pénalités, reporting & tableaux de bord                                                   |    3 semaines    | Premier cycle de relance automatisée                   | Règles de relance et de pénalité, tableaux de bord agence/bailleur                                                                                                     | Une relance automatique est déclenchée et un tableau de bord d'impayés est disponible                                        |
+|  10   | Abonnement SaaS, onboarding, portail locataire, pilote Brazzaville                                  |    4 semaines    | Lancement du pilote                                    | Plans d'abonnement, parcours d'onboarding, portail locataire, déploiement des 10 organisations pilotes                                                                 | Les 10 organisations pilotes et leurs locataires utilisent activement la plateforme                                          |
+|  11   | Durcissement (sécurité, performance, conformité, DR)                                                |    3 semaines    | Prêt pour le lancement commercial                      | Audit de sécurité, tests de charge, plan de reprise d'activité, conformité vérifiée                                                                                    | Le comité de pilotage valide le go/no-go de lancement commercial                                                             |
 
 Durée totale indicative : **40 semaines** (environ 9 à 10 mois), hors aléas et hors délais externes (homologation agrégateur, validations juridiques).
 
 ### 10.2bis Ressources mobilisées par phase (indicatif)
 
-| Phase | Lead tech | Backend/Web | Mobile | Designer | Product Owner | Sollicitation externe |
-| :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| 0 | Plein temps | Plein temps (x2) | Léger | Plein temps | Plein temps | — |
-| 1 | Soutien | Plein temps (x2) | — | Léger | Plein temps | — |
-| 2 | Soutien | Plein temps (x2) | — | Léger | Plein temps | Juriste conseil (mentions du bail) |
-| 3 | Plein temps | Plein temps (x2) | Léger | Léger | Plein temps | Juriste conseil (quittance) |
-| 4 | Plein temps | Plein temps (x2) | — | — | Plein temps | Agrégateur Mobile Money |
-| 5 | Soutien | Léger | Plein temps | Léger | Plein temps | — |
-| 6 | Plein temps | Plein temps (x2) | — | — | Léger | Partenaires bancaires |
-| 7 | Soutien | Plein temps (x2) | Léger | Léger | Plein temps | — |
-| 8 | Soutien | Plein temps (x2) | Plein temps | Léger | Léger | — |
-| 9 | Soutien | Plein temps (x2) | Léger | Léger | Plein temps | — |
-| 10 | Plein temps | Plein temps (x2) | Plein temps | Plein temps | Plein temps | Organisations pilotes, testeurs terrain |
-| 11 | Plein temps | Plein temps (x2) | Léger | Léger | Plein temps | Auditeur sécurité externe (recommandé) |
+| Phase |  Lead tech  |   Backend/Web    |   Mobile    |  Designer   | Product Owner | Sollicitation externe                   |
+| :---: | :---------: | :--------------: | :---------: | :---------: | :-----------: | :-------------------------------------- |
+|   0   | Plein temps | Plein temps (x2) |    Léger    | Plein temps |  Plein temps  | —                                       |
+|   1   |   Soutien   | Plein temps (x2) |      —      |    Léger    |  Plein temps  | —                                       |
+|   2   |   Soutien   | Plein temps (x2) |      —      |    Léger    |  Plein temps  | Juriste conseil (mentions du bail)      |
+|   3   | Plein temps | Plein temps (x2) |    Léger    |    Léger    |  Plein temps  | Juriste conseil (quittance)             |
+|   4   | Plein temps | Plein temps (x2) |      —      |      —      |  Plein temps  | Agrégateur Mobile Money                 |
+|   5   |   Soutien   |      Léger       | Plein temps |    Léger    |  Plein temps  | —                                       |
+|   6   | Plein temps | Plein temps (x2) |      —      |      —      |     Léger     | Partenaires bancaires                   |
+|   7   |   Soutien   | Plein temps (x2) |    Léger    |    Léger    |  Plein temps  | —                                       |
+|   8   |   Soutien   | Plein temps (x2) | Plein temps |    Léger    |     Léger     | —                                       |
+|   9   |   Soutien   | Plein temps (x2) |    Léger    |    Léger    |  Plein temps  | —                                       |
+|  10   | Plein temps | Plein temps (x2) | Plein temps | Plein temps |  Plein temps  | Organisations pilotes, testeurs terrain |
+|  11   | Plein temps | Plein temps (x2) |    Léger    |    Léger    |  Plein temps  | Auditeur sécurité externe (recommandé)  |
 
 ### 10.3 Dépendances critiques entre phases
 
@@ -437,27 +437,27 @@ gantt
 
 Le registre ci-dessous couvre les risques identifiés à ce stade sur les plans réglementaire, technique, opérationnel et financier. Il ne se substitue pas à un registre de risques projet détaillé, qui sera tenu et mis à jour par le Product Owner tout au long du projet.
 
-| # | Risque | Probabilité | Impact | Mitigation | Responsable |
-| :---: | :--- | :---: | :---: | :--- | :--- |
-| R1 | Retard d'homologation ou de mise en production de l'agrégateur Mobile Money | Moyenne | Élevé | Engager la due diligence dès la phase 0, prévoir un plan B (second agrégateur en interface `MobileMoneyProvider`) | Product Owner |
-| R2 | Suspension ou bannissement du compte WhatsApp Business (non-respect des règles Meta, volume anormal, plaintes) | Moyenne | Élevé | Respecter strictement les templates approuvés, limiter le volume de notifications, prévoir un repli SMS automatique | Lead tech |
-| R3 | Fraude sur les reçus de caisse (démarcheur encaissant sans reverser) | Moyenne | Élevé | Numérotation séquentielle infalsifiable, signature numérique du locataire, contrôle systématique des remises de caisse | Product Owner |
-| R4 | Faux justificatifs de virement bancaire téléversés par un locataire | Moyenne | Moyen | Rapprochement obligatoire avec le relevé bancaire officiel avant confirmation définitive, double validation | Lead tech |
-| R5 | Faible adoption par les démarcheurs (résistance au changement, alphabétisation numérique limitée) | Élevée | Élevé | Formation terrain approfondie, interface simplifiée, accompagnement de proximité pendant le pilote | Product Owner |
-| R6 | Coûts SMS/WhatsApp plus élevés que budgété | Moyenne | Moyen | Priorité systématique à WhatsApp, plafonnement des notifications, suivi budgétaire mensuel | Product Owner |
-| R7 | Conflits de synchronisation offline (doublons, écarts entre appareils) | Moyenne | Élevé | Idempotence stricte par `client_ref` (ULID), tests de charge de synchronisation, procédure de résolution manuelle des conflits | Lead tech |
-| R8 | Perte de données sur mobile (téléphone perdu, volé ou endommagé avant synchronisation) | Moyenne | Moyen | Synchronisation fréquente et automatique dès connexion disponible, chiffrement local, procédure de récupération de compte | Développeur mobile |
-| R9 | Faille de sécurité ou fuite de données personnelles | Faible | Critique | Chiffrement des données sensibles, Row Level Security PostgreSQL, audits de sécurité réguliers, conformité à la loi de 2019 | Lead tech |
-| R10 | Dépendance excessive à un fournisseur unique (agrégateur, hébergeur cloud) | Moyenne | Moyen | Interfaces d'abstraction (`MobileMoneyProvider`, `SmsProvider`), clauses contractuelles de portabilité des données | Lead tech |
-| R11 | Incertitude ou évolution du cadre légal des quittances numériques | Moyenne | Élevé | Validation juridique préalable du modèle de quittance, veille réglementaire continue | Juriste conseil / Sponsor |
-| R12 | Churn élevé des organisations pilotes en cours ou en fin de pilote | Moyenne | Élevé | Accompagnement rapproché, mise en avant de gains rapides et visibles (quittances, relevés), écoute active des retours | Product Owner |
-| R13 | Sous-estimation du support terrain nécessaire pendant le pilote | Élevée | Moyen | Budget de support dédié, présence physique renforcée à Brazzaville pendant les premières semaines | Product Owner |
-| R14 | Connectivité réseau irrégulière dégradant l'expérience utilisateur | Élevée | Moyen | Architecture offline-first généralisée, compression des données, mode dégradé explicite dans l'interface | Lead tech / Développeur mobile |
-| R15 | Financement insuffisant pour couvrir le développement jusqu'au lancement commercial | Moyenne | Critique | Jalons de financement alignés sur les phases, réserve de trésorerie, reporting budgétaire régulier au sponsor | Sponsor |
-| R16 | Retard ou blocage réglementaire BEAC/COBAC en cas d'évolution vers la détention de fonds | Faible | Élevé | Principe de non-détention de fonds maintenu en version 1, recours exclusif à un agrégateur agréé | Sponsor / Juriste conseil |
-| R17 | Rotation du personnel clé (lead tech, Product Owner) en cours de projet | Faible | Élevé | Documentation technique et fonctionnelle continue, partage de connaissances, redondance de compétences sur les points critiques | Sponsor |
-| R18 | Fraude au programme d'apport d'affaires (auto-parrainage, organisations fictives, collusion entre partenaire et organisation parrainée pour capter la commission) | Moyenne | Moyen | Règle d'unicité du parrain par organisation, interdiction technique de l'auto-parrainage, vérification d'identité légère avant tout versement, plafond mensuel par partenaire, commission calculée uniquement sur facture réellement encaissée | Product Owner |
-| R19 | Requalification juridique ou fiscale des commissions versées aux apporteurs d'affaires (relation de travail déguisée, régime fiscal applicable non anticipé) | Moyenne | Élevé | Qualification juridique du statut de partenaire apporteur d'affaires validée en amont par le conseil juridique, montants et seuils de versement encadrés contractuellement | Juriste conseil / Sponsor |
+|  #  | Risque                                                                                                                                                            | Probabilité |  Impact  | Mitigation                                                                                                                                                                                                                                     | Responsable                    |
+| :-: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------: | :------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------- |
+| R1  | Retard d'homologation ou de mise en production de l'agrégateur Mobile Money                                                                                       |   Moyenne   |  Élevé   | Engager la due diligence dès la phase 0, prévoir un plan B (second agrégateur en interface `MobileMoneyProvider`)                                                                                                                              | Product Owner                  |
+| R2  | Suspension ou bannissement du compte WhatsApp Business (non-respect des règles Meta, volume anormal, plaintes)                                                    |   Moyenne   |  Élevé   | Respecter strictement les templates approuvés, limiter le volume de notifications, prévoir un repli SMS automatique                                                                                                                            | Lead tech                      |
+| R3  | Fraude sur les reçus de caisse (démarcheur encaissant sans reverser)                                                                                              |   Moyenne   |  Élevé   | Numérotation séquentielle infalsifiable, signature numérique du locataire, contrôle systématique des remises de caisse                                                                                                                         | Product Owner                  |
+| R4  | Faux justificatifs de virement bancaire téléversés par un locataire                                                                                               |   Moyenne   |  Moyen   | Rapprochement obligatoire avec le relevé bancaire officiel avant confirmation définitive, double validation                                                                                                                                    | Lead tech                      |
+| R5  | Faible adoption par les démarcheurs (résistance au changement, alphabétisation numérique limitée)                                                                 |   Élevée    |  Élevé   | Formation terrain approfondie, interface simplifiée, accompagnement de proximité pendant le pilote                                                                                                                                             | Product Owner                  |
+| R6  | Coûts SMS/WhatsApp plus élevés que budgété                                                                                                                        |   Moyenne   |  Moyen   | Priorité systématique à WhatsApp, plafonnement des notifications, suivi budgétaire mensuel                                                                                                                                                     | Product Owner                  |
+| R7  | Conflits de synchronisation offline (doublons, écarts entre appareils)                                                                                            |   Moyenne   |  Élevé   | Idempotence stricte par `client_ref` (ULID), tests de charge de synchronisation, procédure de résolution manuelle des conflits                                                                                                                 | Lead tech                      |
+| R8  | Perte de données sur mobile (téléphone perdu, volé ou endommagé avant synchronisation)                                                                            |   Moyenne   |  Moyen   | Synchronisation fréquente et automatique dès connexion disponible, chiffrement local, procédure de récupération de compte                                                                                                                      | Développeur mobile             |
+| R9  | Faille de sécurité ou fuite de données personnelles                                                                                                               |   Faible    | Critique | Chiffrement des données sensibles, Row Level Security PostgreSQL, audits de sécurité réguliers, conformité à la loi de 2019                                                                                                                    | Lead tech                      |
+| R10 | Dépendance excessive à un fournisseur unique (agrégateur, hébergeur cloud)                                                                                        |   Moyenne   |  Moyen   | Interfaces d'abstraction (`MobileMoneyProvider`, `SmsProvider`), clauses contractuelles de portabilité des données                                                                                                                             | Lead tech                      |
+| R11 | Incertitude ou évolution du cadre légal des quittances numériques                                                                                                 |   Moyenne   |  Élevé   | Validation juridique préalable du modèle de quittance, veille réglementaire continue                                                                                                                                                           | Juriste conseil / Sponsor      |
+| R12 | Churn élevé des organisations pilotes en cours ou en fin de pilote                                                                                                |   Moyenne   |  Élevé   | Accompagnement rapproché, mise en avant de gains rapides et visibles (quittances, relevés), écoute active des retours                                                                                                                          | Product Owner                  |
+| R13 | Sous-estimation du support terrain nécessaire pendant le pilote                                                                                                   |   Élevée    |  Moyen   | Budget de support dédié, présence physique renforcée à Brazzaville pendant les premières semaines                                                                                                                                              | Product Owner                  |
+| R14 | Connectivité réseau irrégulière dégradant l'expérience utilisateur                                                                                                |   Élevée    |  Moyen   | Architecture offline-first généralisée, compression des données, mode dégradé explicite dans l'interface                                                                                                                                       | Lead tech / Développeur mobile |
+| R15 | Financement insuffisant pour couvrir le développement jusqu'au lancement commercial                                                                               |   Moyenne   | Critique | Jalons de financement alignés sur les phases, réserve de trésorerie, reporting budgétaire régulier au sponsor                                                                                                                                  | Sponsor                        |
+| R16 | Retard ou blocage réglementaire BEAC/COBAC en cas d'évolution vers la détention de fonds                                                                          |   Faible    |  Élevé   | Principe de non-détention de fonds maintenu en version 1, recours exclusif à un agrégateur agréé                                                                                                                                               | Sponsor / Juriste conseil      |
+| R17 | Rotation du personnel clé (lead tech, Product Owner) en cours de projet                                                                                           |   Faible    |  Élevé   | Documentation technique et fonctionnelle continue, partage de connaissances, redondance de compétences sur les points critiques                                                                                                                | Sponsor                        |
+| R18 | Fraude au programme d'apport d'affaires (auto-parrainage, organisations fictives, collusion entre partenaire et organisation parrainée pour capter la commission) |   Moyenne   |  Moyen   | Règle d'unicité du parrain par organisation, interdiction technique de l'auto-parrainage, vérification d'identité légère avant tout versement, plafond mensuel par partenaire, commission calculée uniquement sur facture réellement encaissée | Product Owner                  |
+| R19 | Requalification juridique ou fiscale des commissions versées aux apporteurs d'affaires (relation de travail déguisée, régime fiscal applicable non anticipé)      |   Moyenne   |  Élevé   | Qualification juridique du statut de partenaire apporteur d'affaires validée en amont par le conseil juridique, montants et seuils de versement encadrés contractuellement                                                                     | Juriste conseil / Sponsor      |
 
 Ce registre des risques est revu mensuellement en comité de pilotage (section 7.2) et mis à jour en fonction de l'avancement réel du projet.
 
@@ -473,27 +473,27 @@ Les risques R1, R5, R9, R11, R15, R16 et R19 combinent une probabilité au moins
 
 Les montants ci-dessous sont des **hypothèses de travail à valider** par le sponsor et ne constituent pas un budget engagé.
 
-| Poste de coût | Nature | Périodicité | Statut |
-| :--- | :--- | :--- | :--- |
-| Équipe projet (salaires/prestations : lead tech, 2 backend/web, 1 mobile, designer mi-temps, PO) | Coût principal du projet | Mensuel, sur toute la durée des phases 0 à 11 | À valider |
-| Infrastructure cloud (hébergement, PostgreSQL, Redis, Cloudflare R2, monitoring Sentry/Grafana) | Coût variable selon volumétrie | Mensuel | À valider |
-| SMS de secours | Coût à l'unité, dépendant du volume d'échec WhatsApp | Variable | À valider |
-| WhatsApp Business Cloud API | Coût à l'unité au-delà du quota gratuit de conversations | Variable | À valider |
-| Frais d'intégration et commissions de l'agrégateur Mobile Money | Frais fixes d'intégration + commission par transaction | Ponctuel + variable | À valider avec le partenaire retenu |
-| Conseil juridique | Validation du modèle de quittance, des baux types, conformité protection des données | Ponctuel (phases 0, 2, 3) puis suivi | À valider |
-| Formation et support terrain pendant le pilote | Déplacements, supports pédagogiques, hotline | Ponctuel (phase 10) | À valider |
-| Marketing et acquisition (au-delà du pilote) | Communication, démarchage commercial | À partir de la phase 11 | Hors budget de cadrage initial |
-| Contingence | Réserve pour aléas techniques, réglementaires ou de marché | Recommandée à hauteur de 10 à 15 % du budget total | À valider |
+| Poste de coût                                                                                    | Nature                                                                               | Périodicité                                        | Statut                              |
+| :----------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- | :------------------------------------------------- | :---------------------------------- |
+| Équipe projet (salaires/prestations : lead tech, 2 backend/web, 1 mobile, designer mi-temps, PO) | Coût principal du projet                                                             | Mensuel, sur toute la durée des phases 0 à 11      | À valider                           |
+| Infrastructure cloud (hébergement, PostgreSQL, Redis, Cloudflare R2, monitoring Sentry/Grafana)  | Coût variable selon volumétrie                                                       | Mensuel                                            | À valider                           |
+| SMS de secours                                                                                   | Coût à l'unité, dépendant du volume d'échec WhatsApp                                 | Variable                                           | À valider                           |
+| WhatsApp Business Cloud API                                                                      | Coût à l'unité au-delà du quota gratuit de conversations                             | Variable                                           | À valider                           |
+| Frais d'intégration et commissions de l'agrégateur Mobile Money                                  | Frais fixes d'intégration + commission par transaction                               | Ponctuel + variable                                | À valider avec le partenaire retenu |
+| Conseil juridique                                                                                | Validation du modèle de quittance, des baux types, conformité protection des données | Ponctuel (phases 0, 2, 3) puis suivi               | À valider                           |
+| Formation et support terrain pendant le pilote                                                   | Déplacements, supports pédagogiques, hotline                                         | Ponctuel (phase 10)                                | À valider                           |
+| Marketing et acquisition (au-delà du pilote)                                                     | Communication, démarchage commercial                                                 | À partir de la phase 11                            | Hors budget de cadrage initial      |
+| Contingence                                                                                      | Réserve pour aléas techniques, réglementaires ou de marché                           | Recommandée à hauteur de 10 à 15 % du budget total | À valider                           |
 
 ### 12.2 Pistes de tarification SaaS (hypothèses à valider)
 
-| Modèle | Principe | Fourchette indicative (hypothèse) | Cible |
-| :--- | :--- | :--- | :--- |
-| Tarification par lot géré / mois | Abonnement proportionnel au nombre de lots actifs dans l'organisation | De l'ordre de 1 000 à 3 000 XAF par lot et par mois (à confirmer par l'étude de marché et les tests de prix pilote) | Agences immobilières |
-| Paliers pour bailleur indépendant | Forfait mensuel par tranche de lots (ex. 1-5 lots, 6-20 lots, 20+ lots) | Fourchette à définir en cohérence avec le tarif par lot | Bailleurs indépendants |
-| Frais d'onboarding | Frais ponctuel à la mise en service (paramétrage initial, import de données) | Optionnel, à évaluer selon la taille de l'organisation | Toutes organisations |
-| Commission optionnelle sur transactions Mobile Money | Commission additionnelle prélevée sur chaque transaction Mobile Money facilitée, en complément ou substitution partielle de l'abonnement | De l'ordre de 0,5 % à 1 % (hypothèse, sous réserve de compatibilité avec le cadre réglementaire et le contrat agrégateur) | Modèle mixte abonnement + transaction |
-| Plan Gestionnaire indépendant | Abonnement dédié aux organisations de type `INDEPENDENT_MANAGER` (démarcheurs et gestionnaires informels), tarif d'entrée inférieur au plan agence, onboarding mobile-first en moins de 10 minutes | Fourchette inférieure au tarif par lot des agences (hypothèse à confirmer par l'étude de marché et les tests de prix pilote) | Démarcheurs / gestionnaires indépendants |
+| Modèle                                               | Principe                                                                                                                                                                                           | Fourchette indicative (hypothèse)                                                                                            | Cible                                    |
+| :--------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------- |
+| Tarification par lot géré / mois                     | Abonnement proportionnel au nombre de lots actifs dans l'organisation                                                                                                                              | De l'ordre de 1 000 à 3 000 XAF par lot et par mois (à confirmer par l'étude de marché et les tests de prix pilote)          | Agences immobilières                     |
+| Paliers pour bailleur indépendant                    | Forfait mensuel par tranche de lots (ex. 1-5 lots, 6-20 lots, 20+ lots)                                                                                                                            | Fourchette à définir en cohérence avec le tarif par lot                                                                      | Bailleurs indépendants                   |
+| Frais d'onboarding                                   | Frais ponctuel à la mise en service (paramétrage initial, import de données)                                                                                                                       | Optionnel, à évaluer selon la taille de l'organisation                                                                       | Toutes organisations                     |
+| Commission optionnelle sur transactions Mobile Money | Commission additionnelle prélevée sur chaque transaction Mobile Money facilitée, en complément ou substitution partielle de l'abonnement                                                           | De l'ordre de 0,5 % à 1 % (hypothèse, sous réserve de compatibilité avec le cadre réglementaire et le contrat agrégateur)    | Modèle mixte abonnement + transaction    |
+| Plan Gestionnaire indépendant                        | Abonnement dédié aux organisations de type `INDEPENDENT_MANAGER` (démarcheurs et gestionnaires informels), tarif d'entrée inférieur au plan agence, onboarding mobile-first en moins de 10 minutes | Fourchette inférieure au tarif par lot des agences (hypothèse à confirmer par l'étude de marché et les tests de prix pilote) | Démarcheurs / gestionnaires indépendants |
 
 Ces fourchettes doivent être confrontées à une étude de marché et à des tests de disposition à payer (« willingness to pay ») auprès des organisations pilotes avant toute communication commerciale ferme.
 
@@ -548,15 +548,15 @@ En cas de non-atteinte, le comité de pilotage décide soit d'une prolongation d
 
 ### 13.5 Chronologie indicative du pilote (12 premières semaines)
 
-| Semaine(s) | Activité principale |
-| :--- | :--- |
-| S1-S2 | Finalisation de la charte pilote avec les 10 organisations, collecte des données de patrimoine et des tiers |
-| S3 | Formation des référents et des démarcheurs, mise en place du canal de support dédié |
-| S4 | Démarrage effectif des encaissements sur la plateforme dans les organisations pilotes |
-| S5-S6 | Présence terrain renforcée, résolution des blocages d'usage, premiers ajustements UX |
-| S7-S8 | Mesure des indicateurs O2 et O3 (quittances émises, délai de rapprochement des virements) |
-| S9-S10 | Mesure des indicateurs O4 à O7 (synchronisation, remises de caisse, satisfaction, adoption démarcheurs) |
-| S11-S12 | Bilan intermédiaire du pilote en comité de pilotage, décision de poursuite, d'ajustement ou de préparation du lancement commercial |
+| Semaine(s) | Activité principale                                                                                                                |
+| :--------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| S1-S2      | Finalisation de la charte pilote avec les 10 organisations, collecte des données de patrimoine et des tiers                        |
+| S3         | Formation des référents et des démarcheurs, mise en place du canal de support dédié                                                |
+| S4         | Démarrage effectif des encaissements sur la plateforme dans les organisations pilotes                                              |
+| S5-S6      | Présence terrain renforcée, résolution des blocages d'usage, premiers ajustements UX                                               |
+| S7-S8      | Mesure des indicateurs O2 et O3 (quittances émises, délai de rapprochement des virements)                                          |
+| S9-S10     | Mesure des indicateurs O4 à O7 (synchronisation, remises de caisse, satisfaction, adoption démarcheurs)                            |
+| S11-S12    | Bilan intermédiaire du pilote en comité de pilotage, décision de poursuite, d'ajustement ou de préparation du lancement commercial |
 
 ---
 
@@ -584,53 +584,53 @@ Une phase du macro-planning (section 10) est considérée comme terminée lorsqu
 
 ### 14.3 Critères d'acceptation par type d'utilisateur final
 
-| Utilisateur | Critère d'acceptation minimal |
-| :--- | :--- |
-| Démarcheur | Peut encaisser, faire signer et émettre un reçu entièrement hors connexion, en moins de 2 minutes par transaction |
-| Locataire | Reçoit systématiquement une quittance vérifiable par WhatsApp dans un délai maîtrisé après tout paiement confirmé |
-| Bailleur indépendant | Dispose d'une vue à jour de ses factures en cours, réglées et en retard, sans manipulation de tableur |
-| Agence immobilière | Peut produire un relevé de gérance basique pour un propriétaire à partir des données saisies dans la plateforme |
+| Utilisateur              | Critère d'acceptation minimal                                                                                     |
+| :----------------------- | :---------------------------------------------------------------------------------------------------------------- |
+| Démarcheur               | Peut encaisser, faire signer et émettre un reçu entièrement hors connexion, en moins de 2 minutes par transaction |
+| Locataire                | Reçoit systématiquement une quittance vérifiable par WhatsApp dans un délai maîtrisé après tout paiement confirmé |
+| Bailleur indépendant     | Dispose d'une vue à jour de ses factures en cours, réglées et en retard, sans manipulation de tableur             |
+| Agence immobilière       | Peut produire un relevé de gérance basique pour un propriétaire à partir des données saisies dans la plateforme   |
 | Propriétaire en diaspora | Peut consulter à distance l'état de son patrimoine sans solliciter directement l'agence par téléphone ou courriel |
 
 ---
 
 ## 15. Glossaire
 
-| Terme | Définition |
-| :--- | :--- |
-| **Bail** | Contrat par lequel un bailleur met un logement ou local à disposition d'un locataire moyennant un loyer, pour une durée déterminée ou indéterminée. |
-| **Quittance** | Document délivré par le bailleur (ou l'agence) attestant qu'un paiement de loyer a été reçu pour une période donnée ; dans Immodesk, la quittance est numérotée et vérifiable publiquement par QR code. |
-| **Démarcheur** | Agent de terrain (aussi appelé encaisseur) chargé de collecter les loyers, notamment en espèces, auprès des locataires, pour le compte d'un bailleur ou d'une agence. |
-| **Caution / dépôt de garantie** | Somme versée par le locataire à la signature du bail, destinée à couvrir d'éventuels manquements (dégradations, impayés), restituable en fin de bail sous conditions. |
-| **Mandat de gestion** | Contrat par lequel un propriétaire confie la gestion locative de son bien à une agence immobilière, en contrepartie d'une commission. |
-| **Relevé de gérance** | Document périodique (généralement mensuel) récapitulant, pour un propriétaire, les loyers encaissés, les charges et commissions déduites, et le solde reversé. |
-| **Rapprochement (bancaire)** | Opération consistant à faire correspondre une ligne de relevé bancaire avec une transaction déclarée dans le système, afin de confirmer un paiement. |
-| **Mobile Money** | Service de paiement mobile (MTN Mobile Money, Airtel Money) permettant de transférer et recevoir de l'argent via un téléphone portable, sans compte bancaire traditionnel. |
-| **USSD** | Protocole de communication utilisé notamment par les services Mobile Money pour interagir avec l'utilisateur via un menu texte sur téléphone, sans connexion data. |
-| **MT940** | Format standard d'échange de relevés de compte bancaire, utilisé pour l'import automatisé de transactions bancaires. |
-| **RLS (Row Level Security)** | Mécanisme de sécurité de PostgreSQL permettant de restreindre l'accès aux lignes d'une table en fonction du contexte (ici, l'organisation), garantissant l'étanchéité des données entre organisations dans un système multi-tenant. |
-| **Organisation** | Dans Immodesk, le tenant SaaS : une agence immobilière ou un bailleur indépendant utilisant la plateforme. À ne pas confondre avec le locataire (« tenant » au sens immobilier). |
-| **Multi-tenant** | Architecture logicielle dans laquelle une même instance de l'application sert plusieurs organisations clientes, avec une isolation stricte des données de chacune. |
-| **Offline-first** | Approche de conception logicielle où l'application est conçue pour fonctionner pleinement sans connexion réseau, la synchronisation avec le serveur intervenant dès que la connexion est rétablie. |
-| **Idempotence** | Propriété d'une opération qui, exécutée plusieurs fois avec les mêmes paramètres, produit toujours le même résultat sans effet de bord dupliqué — essentielle pour éviter les doublons lors de la synchronisation offline ou du traitement de webhooks. |
-| **ULID / UUID** | Identifiants uniques utilisés comme clés techniques ; l'ULID généré côté mobile sert notamment de clé d'idempotence (`client_ref`) pour les actions créées hors ligne. |
-| **Webhook** | Mécanisme par lequel un service tiers (ex. agrégateur Mobile Money) notifie automatiquement Immodesk d'un événement (ex. confirmation de paiement) via une requête HTTP entrante. |
-| **XAF** | Franc CFA (BEAC), devise unique utilisée dans Immodesk en version 1, sans sous-unité ni conversion multi-devise. |
-| **OHADA** | Organisation pour l'Harmonisation en Afrique du Droit des Affaires, dont les actes uniformes encadrent notamment le droit commercial général applicable aux baux commerciaux. |
-| **BEAC / COBAC** | Banque des États de l'Afrique Centrale et Commission Bancaire de l'Afrique Centrale, autorités monétaires et de supervision bancaire de la zone CEMAC, dont le cadre s'applique notamment à la détention de fonds pour le compte de tiers. |
-| **Reçu de caisse** | Justificatif numéroté émis immédiatement lors d'un encaissement en espèces par un démarcheur, signé numériquement par le locataire, avant reversement à l'organisation. |
-| **Remise de caisse** | Opération de reversement, par un démarcheur, des espèces collectées vers l'organisation (agence ou bailleur), rapprochée avec les reçus de caisse émis. |
-| **Garant** | Personne physique ou morale qui s'engage à honorer les obligations locatives du locataire (notamment le paiement du loyer) en cas de défaillance de ce dernier ; élément optionnel d'un bail. |
-| **Pénalité de retard** | Majoration appliquée à une facture de loyer non réglée à l'échéance, selon des règles paramétrables par organisation. |
-| **Relance (dunning)** | Processus automatisé de notification progressive d'un locataire en situation d'impayé, déclenché selon des règles définies (ex. à l'échéance, puis à J+7, J+15). |
-| **Séquence (sequence)** | Mécanisme technique garantissant une numérotation continue et sans trou des documents sensibles (reçus, quittances, factures), verrouillé en transaction pour éviter tout doublon. |
-| **Client_ref** | Identifiant unique (ULID) généré sur l'appareil mobile au moment de la création d'une action hors ligne, utilisé comme clé d'idempotence lors de la synchronisation avec le serveur. |
-| **Sync_batch** | Lot d'actions créées hors ligne sur l'application mobile, transmis groupé au serveur lors du rétablissement de la connexion. |
-| **Application mobile offline-first** | Application conçue pour être pleinement utilisable sans connexion réseau, la synchronisation des données avec le serveur central intervenant de façon différée et asynchrone. |
-| **Portail locataire** | Interface (web et/ou mobile) mise à disposition du locataire pour consulter son solde, ses quittances et déclarer un paiement. |
+| Terme                                 | Définition                                                                                                                                                                                                                                                                                     |
+| :------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Bail**                              | Contrat par lequel un bailleur met un logement ou local à disposition d'un locataire moyennant un loyer, pour une durée déterminée ou indéterminée.                                                                                                                                            |
+| **Quittance**                         | Document délivré par le bailleur (ou l'agence) attestant qu'un paiement de loyer a été reçu pour une période donnée ; dans Immodesk, la quittance est numérotée et vérifiable publiquement par QR code.                                                                                        |
+| **Démarcheur**                        | Agent de terrain (aussi appelé encaisseur) chargé de collecter les loyers, notamment en espèces, auprès des locataires, pour le compte d'un bailleur ou d'une agence.                                                                                                                          |
+| **Caution / dépôt de garantie**       | Somme versée par le locataire à la signature du bail, destinée à couvrir d'éventuels manquements (dégradations, impayés), restituable en fin de bail sous conditions.                                                                                                                          |
+| **Mandat de gestion**                 | Contrat par lequel un propriétaire confie la gestion locative de son bien à une agence immobilière, en contrepartie d'une commission.                                                                                                                                                          |
+| **Relevé de gérance**                 | Document périodique (généralement mensuel) récapitulant, pour un propriétaire, les loyers encaissés, les charges et commissions déduites, et le solde reversé.                                                                                                                                 |
+| **Rapprochement (bancaire)**          | Opération consistant à faire correspondre une ligne de relevé bancaire avec une transaction déclarée dans le système, afin de confirmer un paiement.                                                                                                                                           |
+| **Mobile Money**                      | Service de paiement mobile (MTN Mobile Money, Airtel Money) permettant de transférer et recevoir de l'argent via un téléphone portable, sans compte bancaire traditionnel.                                                                                                                     |
+| **USSD**                              | Protocole de communication utilisé notamment par les services Mobile Money pour interagir avec l'utilisateur via un menu texte sur téléphone, sans connexion data.                                                                                                                             |
+| **MT940**                             | Format standard d'échange de relevés de compte bancaire, utilisé pour l'import automatisé de transactions bancaires.                                                                                                                                                                           |
+| **RLS (Row Level Security)**          | Mécanisme de sécurité de PostgreSQL permettant de restreindre l'accès aux lignes d'une table en fonction du contexte (ici, l'organisation), garantissant l'étanchéité des données entre organisations dans un système multi-tenant.                                                            |
+| **Organisation**                      | Dans Immodesk, le tenant SaaS : une agence immobilière ou un bailleur indépendant utilisant la plateforme. À ne pas confondre avec le locataire (« tenant » au sens immobilier).                                                                                                               |
+| **Multi-tenant**                      | Architecture logicielle dans laquelle une même instance de l'application sert plusieurs organisations clientes, avec une isolation stricte des données de chacune.                                                                                                                             |
+| **Offline-first**                     | Approche de conception logicielle où l'application est conçue pour fonctionner pleinement sans connexion réseau, la synchronisation avec le serveur intervenant dès que la connexion est rétablie.                                                                                             |
+| **Idempotence**                       | Propriété d'une opération qui, exécutée plusieurs fois avec les mêmes paramètres, produit toujours le même résultat sans effet de bord dupliqué — essentielle pour éviter les doublons lors de la synchronisation offline ou du traitement de webhooks.                                        |
+| **ULID / UUID**                       | Identifiants uniques utilisés comme clés techniques ; l'ULID généré côté mobile sert notamment de clé d'idempotence (`client_ref`) pour les actions créées hors ligne.                                                                                                                         |
+| **Webhook**                           | Mécanisme par lequel un service tiers (ex. agrégateur Mobile Money) notifie automatiquement Immodesk d'un événement (ex. confirmation de paiement) via une requête HTTP entrante.                                                                                                              |
+| **XAF**                               | Franc CFA (BEAC), devise unique utilisée dans Immodesk en version 1, sans sous-unité ni conversion multi-devise.                                                                                                                                                                               |
+| **OHADA**                             | Organisation pour l'Harmonisation en Afrique du Droit des Affaires, dont les actes uniformes encadrent notamment le droit commercial général applicable aux baux commerciaux.                                                                                                                  |
+| **BEAC / COBAC**                      | Banque des États de l'Afrique Centrale et Commission Bancaire de l'Afrique Centrale, autorités monétaires et de supervision bancaire de la zone CEMAC, dont le cadre s'applique notamment à la détention de fonds pour le compte de tiers.                                                     |
+| **Reçu de caisse**                    | Justificatif numéroté émis immédiatement lors d'un encaissement en espèces par un démarcheur, signé numériquement par le locataire, avant reversement à l'organisation.                                                                                                                        |
+| **Remise de caisse**                  | Opération de reversement, par un démarcheur, des espèces collectées vers l'organisation (agence ou bailleur), rapprochée avec les reçus de caisse émis.                                                                                                                                        |
+| **Garant**                            | Personne physique ou morale qui s'engage à honorer les obligations locatives du locataire (notamment le paiement du loyer) en cas de défaillance de ce dernier ; élément optionnel d'un bail.                                                                                                  |
+| **Pénalité de retard**                | Majoration appliquée à une facture de loyer non réglée à l'échéance, selon des règles paramétrables par organisation.                                                                                                                                                                          |
+| **Relance (dunning)**                 | Processus automatisé de notification progressive d'un locataire en situation d'impayé, déclenché selon des règles définies (ex. à l'échéance, puis à J+7, J+15).                                                                                                                               |
+| **Séquence (sequence)**               | Mécanisme technique garantissant une numérotation continue et sans trou des documents sensibles (reçus, quittances, factures), verrouillé en transaction pour éviter tout doublon.                                                                                                             |
+| **Client_ref**                        | Identifiant unique (ULID) généré sur l'appareil mobile au moment de la création d'une action hors ligne, utilisé comme clé d'idempotence lors de la synchronisation avec le serveur.                                                                                                           |
+| **Sync_batch**                        | Lot d'actions créées hors ligne sur l'application mobile, transmis groupé au serveur lors du rétablissement de la connexion.                                                                                                                                                                   |
+| **Application mobile offline-first**  | Application conçue pour être pleinement utilisable sans connexion réseau, la synchronisation des données avec le serveur central intervenant de façon différée et asynchrone.                                                                                                                  |
+| **Portail locataire**                 | Interface (web et/ou mobile) mise à disposition du locataire pour consulter son solde, ses quittances et déclarer un paiement.                                                                                                                                                                 |
 | **Apporteur d'affaires / parrainage** | Utilisateur (démarcheur en priorité) disposant d'un code de parrainage unique, dont la mise en relation avec une organisation bailleur ou gestionnaire donne lieu à une commission calculée sur les abonnements payés par cette organisation, pour une durée limitée définie par le programme. |
-| **Gestionnaire indépendant** | Démarcheur ou gestionnaire informel exerçant en agence unipersonnelle, disposant dans Immodesk d'un espace gestionnaire dédié (organisation de type `INDEPENDENT_MANAGER`) avec mandats, commissions et relevés de gérance, comme une agence immobilière. |
-| **Portail bailleur** | Accès en lecture seule mis à disposition d'un bailleur sous mandat pour suivre les encaissements, quittances, relevés de gérance et reversements réalisés par son gestionnaire ou démarcheur, sans possibilité de modification. |
+| **Gestionnaire indépendant**          | Démarcheur ou gestionnaire informel exerçant en agence unipersonnelle, disposant dans Immodesk d'un espace gestionnaire dédié (organisation de type `INDEPENDENT_MANAGER`) avec mandats, commissions et relevés de gérance, comme une agence immobilière.                                      |
+| **Portail bailleur**                  | Accès en lecture seule mis à disposition d'un bailleur sous mandat pour suivre les encaissements, quittances, relevés de gérance et reversements réalisés par son gestionnaire ou démarcheur, sans possibilité de modification.                                                                |
 
 ---
 
@@ -638,40 +638,40 @@ Une phase du macro-planning (section 10) est considérée comme terminée lorsqu
 
 ### 16.1 Documents de référence
 
-| Document | Rôle |
-| :--- | :--- |
-| `docs/_DECISIONS_COMMUNES.md` | Référentiel technique et fonctionnel partagé par l'ensemble des documents projet ; toute décision de la présente lettre de cadrage s'appuie sur ce référentiel et ne peut le contredire sans validation explicite du comité de pilotage |
-| `output_Prompts_Developpement_SaaS_Immobilier.md` | Note de cadrage technique initiale ayant servi de point de départ à la réflexion produit |
-| Charte pilote (à produire) | Document d'engagement réciproque avec chaque organisation pilote sélectionnée (section 13) |
-| Registre de traitement des données personnelles (à produire) | Document de conformité à la loi congolaise de 2019, à établir en Phase 0 |
+| Document                                                     | Rôle                                                                                                                                                                                                                                    |
+| :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/_DECISIONS_COMMUNES.md`                                | Référentiel technique et fonctionnel partagé par l'ensemble des documents projet ; toute décision de la présente lettre de cadrage s'appuie sur ce référentiel et ne peut le contredire sans validation explicite du comité de pilotage |
+| `output_Prompts_Developpement_SaaS_Immobilier.md`            | Note de cadrage technique initiale ayant servi de point de départ à la réflexion produit                                                                                                                                                |
+| Charte pilote (à produire)                                   | Document d'engagement réciproque avec chaque organisation pilote sélectionnée (section 13)                                                                                                                                              |
+| Registre de traitement des données personnelles (à produire) | Document de conformité à la loi congolaise de 2019, à établir en Phase 0                                                                                                                                                                |
 
 ### 16.2 Matrice de traçabilité domaines techniques / modules fonctionnels
 
 Cette matrice relie les domaines de données du référentiel technique (`docs/_DECISIONS_COMMUNES.md`, liste canonique des tables) aux modules fonctionnels décrits en section 5, afin de garantir qu'aucune table du référentiel n'est orpheline d'un module fonctionnel identifié.
 
-| Domaine (référentiel) | Tables canoniques concernées | Module(s) fonctionnel(s) correspondant(s) | Couverture MVP pilote |
-| :--- | :--- | :--- | :--- |
-| Tenancy & sécurité | organizations, organization_settings, organization_members, users, user_credentials, otp_codes, refresh_tokens, invitations, api_keys | Identité et organisations | Oui |
-| Tiers | landlords, tenants, guarantors, contact_channels | Tiers | Oui |
-| Patrimoine | properties, units, bank_accounts, meters, meter_readings, utility_tariffs | Patrimoine ; Compteurs et charges | Oui pour Patrimoine ; Non pour Compteurs et charges |
-| Contrats | management_mandates, leases, lease_parties, lease_documents, deposits, deposit_movements, inspections, inspection_items, inspection_photos | Baux et dépôts ; Gestion d'agence (mandats) ; États des lieux | Oui pour Baux et dépôts ; Non pour États des lieux et mandats avancés |
-| Facturation & encaissement | sequences, rent_invoices, invoice_lines, penalty_rules, payments, payment_allocations, tenant_credits, cash_receipts, cash_remittances, cash_remittance_items, bank_transfer_declarations, bank_checks, mobile_money_transactions, bank_statements, bank_statement_lines, reconciliation_matches, receipts | Facturation ; Encaissements 4 modes ; Remises de caisse ; Rapprochement bancaire ; Quittances et vérification QR | Oui, hors Rapprochement bancaire automatisé |
-| Gestion d'agence | expenses, commissions, owner_statements, owner_statement_lines, owner_payouts | Gestion d'agence et relevés de gérance | Non (MVP limité aux mandats simples) |
-| Exploitation | maintenance_requests, maintenance_updates | Maintenance | Non |
-| Communication | notification_templates, notifications, message_logs, dunning_rules, dunning_runs | Quittances (envoi et traçabilité des messages) ; Relances et pénalités | Oui (version simplifiée des relances) |
-| Technique | documents, webhook_events, idempotency_keys, sync_batches, audit_logs, feature_flags | Transverse à l'ensemble des modules ; spécifiquement Application mobile offline démarcheur (idempotency_keys, sync_batches) | Oui |
-| SaaS | subscription_plans, subscriptions, subscription_invoices | Abonnement SaaS | Oui |
+| Domaine (référentiel)      | Tables canoniques concernées                                                                                                                                                                                                                                                                               | Module(s) fonctionnel(s) correspondant(s)                                                                                   | Couverture MVP pilote                                                 |
+| :------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------- |
+| Tenancy & sécurité         | organizations, organization_settings, organization_members, users, user_credentials, otp_codes, refresh_tokens, invitations, api_keys                                                                                                                                                                      | Identité et organisations                                                                                                   | Oui                                                                   |
+| Tiers                      | landlords, tenants, guarantors, contact_channels                                                                                                                                                                                                                                                           | Tiers                                                                                                                       | Oui                                                                   |
+| Patrimoine                 | properties, units, bank_accounts, meters, meter_readings, utility_tariffs                                                                                                                                                                                                                                  | Patrimoine ; Compteurs et charges                                                                                           | Oui pour Patrimoine ; Non pour Compteurs et charges                   |
+| Contrats                   | management_mandates, leases, lease_parties, lease_documents, deposits, deposit_movements, inspections, inspection_items, inspection_photos                                                                                                                                                                 | Baux et dépôts ; Gestion d'agence (mandats) ; États des lieux                                                               | Oui pour Baux et dépôts ; Non pour États des lieux et mandats avancés |
+| Facturation & encaissement | sequences, rent_invoices, invoice_lines, penalty_rules, payments, payment_allocations, tenant_credits, cash_receipts, cash_remittances, cash_remittance_items, bank_transfer_declarations, bank_checks, mobile_money_transactions, bank_statements, bank_statement_lines, reconciliation_matches, receipts | Facturation ; Encaissements 4 modes ; Remises de caisse ; Rapprochement bancaire ; Quittances et vérification QR            | Oui, hors Rapprochement bancaire automatisé                           |
+| Gestion d'agence           | expenses, commissions, owner_statements, owner_statement_lines, owner_payouts                                                                                                                                                                                                                              | Gestion d'agence et relevés de gérance                                                                                      | Non (MVP limité aux mandats simples)                                  |
+| Exploitation               | maintenance_requests, maintenance_updates                                                                                                                                                                                                                                                                  | Maintenance                                                                                                                 | Non                                                                   |
+| Communication              | notification_templates, notifications, message_logs, dunning_rules, dunning_runs                                                                                                                                                                                                                           | Quittances (envoi et traçabilité des messages) ; Relances et pénalités                                                      | Oui (version simplifiée des relances)                                 |
+| Technique                  | documents, webhook_events, idempotency_keys, sync_batches, audit_logs, feature_flags                                                                                                                                                                                                                       | Transverse à l'ensemble des modules ; spécifiquement Application mobile offline démarcheur (idempotency_keys, sync_batches) | Oui                                                                   |
+| SaaS                       | subscription_plans, subscriptions, subscription_invoices                                                                                                                                                                                                                                                   | Abonnement SaaS                                                                                                             | Oui                                                                   |
 
 ### 16.3 Registre des questions ouvertes
 
-| # | Question ouverte | Porteur | Échéance souhaitée |
-| :--- | :--- | :--- | :--- |
-| Q1 | Choix définitif de l'agrégateur Mobile Money (CinetPay ou alternative) | Product Owner | Avant fin de Phase 0 |
-| Q2 | Validation juridique définitive du modèle de quittance numérique | Juriste conseil | Avant fin de Phase 2 |
-| Q3 | Confirmation des formats de relevés bancaires disponibles auprès des banques locales partenaires | Lead tech | Avant fin de Phase 5 |
-| Q4 | Montant et modalités de financement des phases 0 à 11 | Sponsor | Avant démarrage de la Phase 0 |
-| Q5 | Liste définitive des 10 organisations pilotes | Product Owner | Avant fin de Phase 9 |
-| Q6 | Niveau de tarification SaaS testé auprès des organisations pilotes | Product Owner | Pendant la Phase 10 |
+| #   | Question ouverte                                                                                 | Porteur         | Échéance souhaitée            |
+| :-- | :----------------------------------------------------------------------------------------------- | :-------------- | :---------------------------- |
+| Q1  | Choix définitif de l'agrégateur Mobile Money (CinetPay ou alternative)                           | Product Owner   | Avant fin de Phase 0          |
+| Q2  | Validation juridique définitive du modèle de quittance numérique                                 | Juriste conseil | Avant fin de Phase 2          |
+| Q3  | Confirmation des formats de relevés bancaires disponibles auprès des banques locales partenaires | Lead tech       | Avant fin de Phase 5          |
+| Q4  | Montant et modalités de financement des phases 0 à 11                                            | Sponsor         | Avant démarrage de la Phase 0 |
+| Q5  | Liste définitive des 10 organisations pilotes                                                    | Product Owner   | Avant fin de Phase 9          |
+| Q6  | Niveau de tarification SaaS testé auprès des organisations pilotes                               | Product Owner   | Pendant la Phase 10           |
 
 ---
 
@@ -679,19 +679,19 @@ Cette matrice relie les domaines de données du référentiel technique (`docs/_
 
 ### 17.1 Historique des versions
 
-| Version | Date | Auteur | Nature des modifications |
-| :---: | :--- | :--- | :--- |
-| v1.0 | 10 septembre 2026 | Direction de projet Immodesk | Version initiale de la lettre de cadrage, soumise à validation du comité de pilotage |
-| | | | |
-| | | | |
+| Version | Date              | Auteur                       | Nature des modifications                                                             |
+| :-----: | :---------------- | :--------------------------- | :----------------------------------------------------------------------------------- |
+|  v1.0   | 10 septembre 2026 | Direction de projet Immodesk | Version initiale de la lettre de cadrage, soumise à validation du comité de pilotage |
+|         |                   |                              |                                                                                      |
+|         |                   |                              |                                                                                      |
 
 ### 17.2 Signatures
 
-| Fonction | Nom | Date | Signature |
-| :--- | :--- | :--- | :--- |
-| Sponsor | | | |
-| Product Owner / Chef de projet | | | |
-| Lead tech | | | |
-| Conseil juridique | | | |
+| Fonction                       | Nom | Date | Signature |
+| :----------------------------- | :-- | :--- | :-------- |
+| Sponsor                        |     |      |           |
+| Product Owner / Chef de projet |     |      |           |
+| Lead tech                      |     |      |           |
+| Conseil juridique              |     |      |           |
 
-*Document à faire signer par l'ensemble des parties prenantes listées ci-dessus avant lancement effectif de la phase 0.*
+_Document à faire signer par l'ensemble des parties prenantes listées ci-dessus avant lancement effectif de la phase 0._

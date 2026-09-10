@@ -19,8 +19,7 @@ export interface ForeignKeyInfo {
 
 /** Valeurs prêtes pour un INSERT minimal, ou la raison d'un saut. */
 export type RowPlan =
-  | { kind: 'ready'; values: Record<string, unknown> }
-  | { kind: 'skipped'; reason: string };
+  { kind: 'ready'; values: Record<string, unknown> } | { kind: 'skipped'; reason: string };
 
 /** Contexte d'ancrage : identifiants déjà créés, réutilisables comme cibles de FK. */
 export interface Anchors {
@@ -72,10 +71,7 @@ export async function listTenantTables(admin: PrismaClient): Promise<string[]> {
   return rows.map((r) => r.table_name);
 }
 
-export async function describeColumns(
-  admin: PrismaClient,
-  table: string,
-): Promise<ColumnInfo[]> {
+export async function describeColumns(admin: PrismaClient, table: string): Promise<ColumnInfo[]> {
   const rows = await admin.$queryRawUnsafe<
     Array<{
       column_name: string;

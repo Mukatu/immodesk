@@ -13,7 +13,10 @@ export const E164_PATTERN = /^\+[1-9][0-9]{7,14}$/;
  * `066000001`, `06 600 00 01`, `06-600-00-01`.
  * Un numéro national congolais compte 9 chiffres (0X XX XX XX X).
  */
-export function normalizePhoneE164(raw: string, defaultCallingCode = DEFAULT_COUNTRY_CALLING_CODE): string {
+export function normalizePhoneE164(
+  raw: string,
+  defaultCallingCode = DEFAULT_COUNTRY_CALLING_CODE,
+): string {
   if (typeof raw !== 'string') {
     throw new DomainError('IAM.PHONE_INVALID', { phone: String(raw) });
   }

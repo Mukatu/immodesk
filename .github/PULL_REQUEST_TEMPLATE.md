@@ -30,6 +30,7 @@ Description :
 3.
 
 **Commandes / tests automatisés associés :**
+
 ```bash
 
 ```
@@ -39,7 +40,7 @@ Description :
 > Obligatoire pour tout changement d'interface utilisateur (UI). Marquer "N/A" si cette PR ne modifie aucune UI.
 
 | Avant | Après |
-|-------|-------|
+| ----- | ----- |
 |       |       |
 
 ## 5. Procédure de retour arrière (rollback)
@@ -48,9 +49,7 @@ Description :
 > Marquer "N/A" si cette PR ne contient aucune migration.
 
 - **Type de changement** : (down-migration / feature flag / backfill de données / autre)
-- **Étapes de rollback** :
-  1.
-  2.
+- **Étapes de rollback** : 1. 2.
 - **Impact sur les données existantes en cas de retour arrière** :
 - **Feature flag associé (le cas échéant)** :
 

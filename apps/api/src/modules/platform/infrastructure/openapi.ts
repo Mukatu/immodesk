@@ -14,22 +14,27 @@ export function buildOpenApiDocument(app: INestApplication, globalPrefix: string
     .setTitle(OPENAPI_TITLE)
     .setDescription(
       [
-        "API de la plateforme Immodesk (gestion immobilière, Congo-Brazzaville).",
+        'API de la plateforme Immodesk (gestion immobilière, Congo-Brazzaville).',
         '',
         '**Conventions**',
         `- Préfixe : \`/${globalPrefix}\`. Dates ISO 8601 UTC, montants entiers XAF (BigInt sérialisé en chaîne).`,
-        "- Authentification : `Authorization: Bearer <accessToken>` (JWT, 15 minutes).",
+        '- Authentification : `Authorization: Bearer <accessToken>` (JWT, 15 minutes).',
         "- Contexte d'organisation : en-tête `X-Organization-Id` obligatoire sur toute route d'organisation.",
-        "- Erreurs : `{ code, message, details }`, codes stables `DOMAINE.RAISON`, messages en français (fr-CG).",
+        '- Erreurs : `{ code, message, details }`, codes stables `DOMAINE.RAISON`, messages en français (fr-CG).',
         '- Toute ressource appartenant à une autre organisation répond **404**, jamais 403.',
-        "- Pagination par curseur : `?limit=50&cursor=...` → `{ items, pageInfo }`.",
-        "- Idempotence : en-tête facultatif `Idempotency-Key` sur les POST.",
+        '- Pagination par curseur : `?limit=50&cursor=...` → `{ items, pageInfo }`.',
+        '- Idempotence : en-tête facultatif `Idempotency-Key` sur les POST.',
       ].join('\n'),
     )
     .setVersion(OPENAPI_VERSION)
     .setOpenAPIVersion('3.1.0')
     .addBearerAuth(
-      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', description: "Jeton d'accès (15 min)." },
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: "Jeton d'accès (15 min).",
+      },
       'bearer',
     )
     .addGlobalParameters({
@@ -43,7 +48,7 @@ export function buildOpenApiDocument(app: INestApplication, globalPrefix: string
     .addTag('Authentification', 'Connexion par téléphone et code OTP, sessions.')
     .addTag('Profil', "Profil de l'utilisateur connecté et ses organisations.")
     .addTag('Organisations', 'Tenant SaaS : paramétrage, membres, drapeaux.')
-    .addTag('Invitations', "Invitation de collaborateurs et acceptation.")
+    .addTag('Invitations', 'Invitation de collaborateurs et acceptation.')
     .addTag('Plateforme', 'Santé, contrat OpenAPI.')
     .addServer(`http://localhost:3000/${globalPrefix}`, 'Développement local')
     .build();

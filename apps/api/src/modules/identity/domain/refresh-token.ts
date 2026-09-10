@@ -39,10 +39,7 @@ export type RotationVerdict =
   | { outcome: 'EXPIRED'; familyId: string }
   | { outcome: 'REUSE_DETECTED'; familyId: string };
 
-export function decideRotation(
-  record: RefreshTokenSnapshot | null,
-  now: Date,
-): RotationVerdict {
+export function decideRotation(record: RefreshTokenSnapshot | null, now: Date): RotationVerdict {
   if (!record) return { outcome: 'NOT_FOUND' };
   if (record.revokedAt !== null) {
     return { outcome: 'REUSE_DETECTED', familyId: record.familyId };

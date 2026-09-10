@@ -2,7 +2,9 @@ import { z } from 'zod';
 
 const booleanish = z
   .union([z.boolean(), z.string()])
-  .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())));
+  .transform((v) =>
+    typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase()),
+  );
 
 const port = z.coerce.number().int().min(1).max(65535);
 
@@ -15,7 +17,9 @@ export const configSchema = z
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: port.default(3000),
     API_GLOBAL_PREFIX: z.string().default('v1'),
-    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
 
     // --- Base de données -------------------------------------------------
     DATABASE_URL: z.string().url(),
@@ -80,7 +84,10 @@ export const configSchema = z
         message: 'JWT_ACCESS_SECRET est obligatoire lorsque JWT_ALGORITHM vaut HS256.',
       });
     }
-    if (cfg.JWT_ALGORITHM === 'RS256' && (!cfg.JWT_ACCESS_PRIVATE_KEY || !cfg.JWT_ACCESS_PUBLIC_KEY)) {
+    if (
+      cfg.JWT_ALGORITHM === 'RS256' &&
+      (!cfg.JWT_ACCESS_PRIVATE_KEY || !cfg.JWT_ACCESS_PUBLIC_KEY)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['JWT_ACCESS_PRIVATE_KEY'],
@@ -92,7 +99,7 @@ export const configSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['OTP_DEV_CODE'],
-        message: "OTP_DEV_CODE ne doit jamais être défini en production.",
+        message: 'OTP_DEV_CODE ne doit jamais être défini en production.',
       });
     }
   });

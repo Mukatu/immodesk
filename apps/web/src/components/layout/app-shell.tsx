@@ -75,10 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : null}
           </div>
         </div>
-        <nav
-          aria-label="Navigation principale"
-          className="mx-auto flex max-w-6xl gap-1 px-4 pb-2"
-        >
+        <nav aria-label="Navigation principale" className="mx-auto flex max-w-6xl gap-1 px-4 pb-2">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (

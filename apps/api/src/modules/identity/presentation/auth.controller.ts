@@ -1,26 +1,8 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBody,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { Body, Controller, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
-import {
-  CurrentUser,
-  Public,
-  type AuthenticatedUser,
-} from '../../../shared/auth/auth.contracts';
+import { CurrentUser, Public, type AuthenticatedUser } from '../../../shared/auth/auth.contracts';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { OtpAuthService } from '../application/otp-auth.service';
 import { ProfileService } from '../application/profile.service';
@@ -87,7 +69,11 @@ export class AuthController {
       "À la 5e erreur, le code est verrouillé, une entrée `OTP_LOCKED` est écrite dans `audit_logs` et l'API répond 429.",
   })
   @ApiResponse({ status: 200, type: OtpVerifyResponseDto })
-  @ApiResponse({ status: 401, type: ErrorResponseDto, description: 'IAM.OTP_INVALID / IAM.OTP_EXPIRED' })
+  @ApiResponse({
+    status: 401,
+    type: ErrorResponseDto,
+    description: 'IAM.OTP_INVALID / IAM.OTP_EXPIRED',
+  })
   @ApiResponse({ status: 429, type: ErrorResponseDto, description: 'IAM.OTP_LOCKED' })
   async verifyOtp(
     @Body() dto: OtpVerifyDto,
@@ -112,7 +98,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Faire tourner le refresh token',
     description:
-      "Rotation systématique : le jeton présenté est révoqué et un nouveau est émis dans la même famille. " +
+      'Rotation systématique : le jeton présenté est révoqué et un nouveau est émis dans la même famille. ' +
       "Le rejeu d'un jeton déjà révoqué révoque TOUTE la famille et répond 401 `IAM.REFRESH_REVOKED`.",
   })
   @ApiResponse({ status: 200, type: RefreshResponseDto })

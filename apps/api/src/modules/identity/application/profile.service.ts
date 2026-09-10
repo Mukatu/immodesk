@@ -89,26 +89,23 @@ export class ProfileService {
       // Chaque organisation est relue SOUS SON PROPRE contexte RLS : même
       // l'annuaire ne court-circuite pas l'isolation pour les données
       // métier, il ne fait que fournir la liste des identifiants.
-      const organization = await this.prisma.withTenant(
-        membership.organizationId,
-        userId,
-        (tx) =>
-          tx.organizations.findUnique({
-            where: { id: membership.organizationId },
-            select: {
-              id: true,
-              type: true,
-              status: true,
-              legal_name: true,
-              trade_name: true,
-              slug: true,
-              city: true,
-              district: true,
-              contact_phone: true,
-              contact_email: true,
-              created_at: true,
-            },
-          }),
+      const organization = await this.prisma.withTenant(membership.organizationId, userId, (tx) =>
+        tx.organizations.findUnique({
+          where: { id: membership.organizationId },
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            legal_name: true,
+            trade_name: true,
+            slug: true,
+            city: true,
+            district: true,
+            contact_phone: true,
+            contact_email: true,
+            created_at: true,
+          },
+        }),
       );
       if (!organization) continue;
       views.push({

@@ -43,7 +43,7 @@ async function main(): Promise<void> {
   console.info(`  Organisation : Agence Mpila Immo (${organizationId})`);
   console.info(`  OWNER        : ${OWNER_PHONE}`);
   console.info(`  COLLECTOR    : ${COLLECTOR_PHONE}`);
-  console.info("  Connexion    : POST /v1/auth/otp/request puis /v1/auth/otp/verify");
+  console.info('  Connexion    : POST /v1/auth/otp/request puis /v1/auth/otp/verify');
   console.info('                 avec OTP_DEV_CODE (000000 par défaut) en développement.');
 }
 
@@ -95,11 +95,7 @@ async function upsertSettings(organizationId: string): Promise<void> {
   });
 }
 
-async function upsertUser(
-  phone: string,
-  fullName: string,
-  email: string | null,
-): Promise<string> {
+async function upsertUser(phone: string, fullName: string, email: string | null): Promise<string> {
   const [firstName, ...rest] = fullName.split(' ');
   const existing = await prisma.users.findUnique({
     where: { phone_e164: phone },

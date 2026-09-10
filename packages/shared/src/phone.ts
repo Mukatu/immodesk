@@ -28,24 +28,24 @@ const CONGO_MOBILE_E164_PATTERN = /^\+242(06|05)\d{7}$/;
  * opérateur inconnu).
  */
 export function normalizePhoneCongo(input: string): string {
-  if (typeof input !== "string" || input.trim().length === 0) {
+  if (typeof input !== 'string' || input.trim().length === 0) {
     throw new Error(`Numéro de téléphone invalide : entrée vide ou non-chaîne ("${input}").`);
   }
 
   // Retire espaces (classiques et insécables), tirets et points.
-  const cleaned = input.replace(/[\s.-]/g, "").trim();
+  const cleaned = input.replace(/[\s.-]/g, '').trim();
 
   let candidate: string;
 
-  if (cleaned.startsWith("+242")) {
+  if (cleaned.startsWith('+242')) {
     candidate = cleaned;
-  } else if (cleaned.startsWith("00242")) {
+  } else if (cleaned.startsWith('00242')) {
     candidate = `+242${cleaned.slice(5)}`;
-  } else if (cleaned.startsWith("0242")) {
+  } else if (cleaned.startsWith('0242')) {
     // "0" d'accès national suivi de l'indicatif "242" : on retire le 0 de tête
     // puis on préfixe "+".
     candidate = `+${cleaned.slice(1)}`;
-  } else if (cleaned.startsWith("242")) {
+  } else if (cleaned.startsWith('242')) {
     candidate = `+${cleaned}`;
   } else if (/^0\d{7,8}$/.test(cleaned)) {
     // Numéro local complet (ex: "066000001", 9 chiffres dont le "0" fait
@@ -77,7 +77,7 @@ export function normalizePhoneCongo(input: string): string {
  * congolais valide (préfixe 06 ou 05). Ne lève jamais d'erreur.
  */
 export function isValidCongoMobile(phone: string): boolean {
-  if (typeof phone !== "string") {
+  if (typeof phone !== 'string') {
     return false;
   }
   return CONGO_MOBILE_E164_PATTERN.test(phone);
@@ -88,16 +88,16 @@ export function isValidCongoMobile(phone: string): boolean {
  * Retourne `null` (sans lever d'erreur) si le numéro n'est pas un mobile
  * congolais valide.
  */
-export function getCongoOperator(phone: string): "MTN" | "AIRTEL" | null {
+export function getCongoOperator(phone: string): 'MTN' | 'AIRTEL' | null {
   if (!isValidCongoMobile(phone)) {
     return null;
   }
   const prefix = phone.slice(4, 6);
-  if (prefix === "06") {
-    return "MTN";
+  if (prefix === '06') {
+    return 'MTN';
   }
-  if (prefix === "05") {
-    return "AIRTEL";
+  if (prefix === '05') {
+    return 'AIRTEL';
   }
   return null;
 }

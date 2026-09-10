@@ -33,7 +33,7 @@ Chaque module est extractible en service autonome puisqu'il ne communique que pa
 
 ## Alternatives écartées
 
-| Option | Pourquoi écartée |
-| --- | --- |
+| Option        | Pourquoi écartée                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------- |
 | Microservices | Coût opérationnel sans contrepartie à cette taille d'équipe, et invariants financiers distribués. |
-| Laravel | Duplication du contrat financier entre PHP et TypeScript, payée en incidents. |
+| Laravel       | Duplication du contrat financier entre PHP et TypeScript, payée en incidents.                     |

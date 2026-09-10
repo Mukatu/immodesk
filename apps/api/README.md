@@ -30,12 +30,12 @@ pnpm --filter @immodesk/api seed
 pnpm --filter @immodesk/api dev
 ```
 
-| Adresse | Contenu |
-| :--- | :--- |
-| `http://localhost:3000/v1` | Racine de l'API |
-| `http://localhost:3000/v1/health` | Sonde base / Redis / stockage |
-| `http://localhost:3000/v1/docs` | Documentation interactive |
-| `http://localhost:3000/v1/openapi.json` | Contrat OpenAPI 3.1 |
+| Adresse                                 | Contenu                       |
+| :-------------------------------------- | :---------------------------- |
+| `http://localhost:3000/v1`              | Racine de l'API               |
+| `http://localhost:3000/v1/health`       | Sonde base / Redis / stockage |
+| `http://localhost:3000/v1/docs`         | Documentation interactive     |
+| `http://localhost:3000/v1/openapi.json` | Contrat OpenAPI 3.1           |
 
 ### Se connecter en développement
 
@@ -64,15 +64,15 @@ Toutes les variables sont validées au démarrage par **zod**
 empêche le processus de démarrer, plutôt que de produire une panne différée.
 `.env.example` documente chaque entrée ; les points saillants :
 
-| Variable | Rôle |
-| :--- | :--- |
-| `DATABASE_URL` | Rôle applicatif `immodesk_app`, **soumis à la RLS**. Utilisé par tout le code métier. |
-| `DATABASE_ADMIN_URL` | Rôle `immodesk` (BYPASSRLS). Migrations, seed, et uniquement les trois lectures transverses de `TenantDirectoryService`. |
-| `REDIS_URL` | Compteurs de limitation de débit (partagés entre instances). |
-| `JWT_ALGORITHM` | `HS256` en local, `RS256` en déploiement (renseigner alors la paire de clés). |
-| `OTP_PEPPER` | Poivre du hachage SHA-256 des codes OTP. Vit hors base : à régénérer par environnement. |
-| `OTP_DEV_CODE` | Code fixe accepté hors production. Le démarrage **échoue** si `NODE_ENV=production` et que la variable est définie. Une valeur vide vaut « non défini ». |
-| `CURSOR_SECRET` | Signature HMAC des curseurs de pagination (empêche de forger une position). |
+| Variable             | Rôle                                                                                                                                                     |
+| :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`       | Rôle applicatif `immodesk_app`, **soumis à la RLS**. Utilisé par tout le code métier.                                                                    |
+| `DATABASE_ADMIN_URL` | Rôle `immodesk` (BYPASSRLS). Migrations, seed, et uniquement les trois lectures transverses de `TenantDirectoryService`.                                 |
+| `REDIS_URL`          | Compteurs de limitation de débit (partagés entre instances).                                                                                             |
+| `JWT_ALGORITHM`      | `HS256` en local, `RS256` en déploiement (renseigner alors la paire de clés).                                                                            |
+| `OTP_PEPPER`         | Poivre du hachage SHA-256 des codes OTP. Vit hors base : à régénérer par environnement.                                                                  |
+| `OTP_DEV_CODE`       | Code fixe accepté hors production. Le démarrage **échoue** si `NODE_ENV=production` et que la variable est définie. Une valeur vide vaut « non défini ». |
+| `CURSOR_SECRET`      | Signature HMAC des curseurs de pagination (empêche de forger une position).                                                                              |
 
 ---
 
@@ -122,11 +122,11 @@ ne doit pas l'avoir. `DATABASE_ADMIN_URL` est donc requis pour toute commande
 
 ### Rôles PostgreSQL
 
-| Rôle | Droits | Usage |
-| :--- | :--- | :--- |
-| `immodesk_app` | LOGIN, ni SUPERUSER ni BYPASSRLS | Runtime. **Toutes** les policies s'appliquent. |
-| `immodesk_admin` | NOLOGIN, BYPASSRLS | Back-office plateforme (programme d'apport d'affaires). |
-| `immodesk` | Propriétaire, BYPASSRLS | Migrations, seed, administration. |
+| Rôle             | Droits                           | Usage                                                   |
+| :--------------- | :------------------------------- | :------------------------------------------------------ |
+| `immodesk_app`   | LOGIN, ni SUPERUSER ni BYPASSRLS | Runtime. **Toutes** les policies s'appliquent.          |
+| `immodesk_admin` | NOLOGIN, BYPASSRLS               | Back-office plateforme (programme d'apport d'affaires). |
+| `immodesk`       | Propriétaire, BYPASSRLS          | Migrations, seed, administration.                       |
 
 Le DDL crée `immodesk_app` en `NOLOGIN` et pose tous les GRANT nécessaires.
 Le script `infra/docker/init/01-schema.sh` lui attribue ensuite un mot de
@@ -191,7 +191,7 @@ d'une ressource inexistante** : la RLS la rend invisible, et l'API répond
 
 - **Tables globales** — `users`, `user_credentials`, `otp_codes`,
   `refresh_tokens` ne portent pas `organization_id` : un utilisateur
-  appartient à plusieurs organisations et se connecte *avant* d'en choisir
+  appartient à plusieurs organisations et se connecte _avant_ d'en choisir
   une. L'autorisation y est purement applicative.
 - **`TenantDirectoryService`** — seul composant du runtime connecté avec
   `DATABASE_ADMIN_URL`. Il répond aux trois questions qui, par nature,
@@ -204,14 +204,14 @@ d'une ressource inexistante** : la RLS la rend invisible, et l'API répond
 
 ## 5. Authentification
 
-| Étape | Règle |
-| :--- | :--- |
-| Demande | Code à 6 chiffres, haché **SHA-256 avec poivre**, expiration **5 min**, `max_attempts = 5`. Renvoi possible après **60 s**. |
-| Débit | **3 demandes / 10 min par numéro**, **20 / h par IP** (`@nestjs/throttler` sur Redis) → `429 IAM.RATE_LIMITED`. |
-| Vérification | Création du compte au premier succès. Consommation **atomique** du code. |
-| Jetons | JWT d'accès **15 min** + refresh token opaque **30 j**, stocké haché, avec `family_id`. |
-| Verrouillage | 5e erreur → code invalidé, entrée `OTP_LOCKED` dans `audit_logs`, `429 IAM.OTP_LOCKED`. |
-| Rotation | Systématique. Rejeu d'un jeton révoqué → **révocation de toute la famille** + `401 IAM.REFRESH_REVOKED`. |
+| Étape        | Règle                                                                                                                       |
+| :----------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| Demande      | Code à 6 chiffres, haché **SHA-256 avec poivre**, expiration **5 min**, `max_attempts = 5`. Renvoi possible après **60 s**. |
+| Débit        | **3 demandes / 10 min par numéro**, **20 / h par IP** (`@nestjs/throttler` sur Redis) → `429 IAM.RATE_LIMITED`.             |
+| Vérification | Création du compte au premier succès. Consommation **atomique** du code.                                                    |
+| Jetons       | JWT d'accès **15 min** + refresh token opaque **30 j**, stocké haché, avec `family_id`.                                     |
+| Verrouillage | 5e erreur → code invalidé, entrée `OTP_LOCKED` dans `audit_logs`, `429 IAM.OTP_LOCKED`.                                     |
+| Rotation     | Systématique. Rejeu d'un jeton révoqué → **révocation de toute la famille** + `401 IAM.REFRESH_REVOKED`.                    |
 
 La réponse de `/v1/auth/otp/request` est identique que le numéro existe ou
 non : l'API ne permet pas d'énumérer les comptes.
@@ -358,12 +358,12 @@ l'intérieur** :
 presentation ──▶ application ──▶ domain ◀── infrastructure
 ```
 
-| Couche | Contient | Ne contient jamais |
-| :--- | :--- | :--- |
-| `domain/` | Entités, règles, machines à états, ports | `@nestjs/*`, `@prisma/client` — testable sans base |
-| `application/` | Cas d'usage, orchestration transactionnelle | SQL, HTTP, décorateurs Swagger |
-| `infrastructure/` | Implémentations Prisma, clients HTTP, mappers | Règle métier |
-| `presentation/` | Contrôleurs, DTO, décorateurs OpenAPI | Accès direct à Prisma |
+| Couche            | Contient                                      | Ne contient jamais                                 |
+| :---------------- | :-------------------------------------------- | :------------------------------------------------- |
+| `domain/`         | Entités, règles, machines à états, ports      | `@nestjs/*`, `@prisma/client` — testable sans base |
+| `application/`    | Cas d'usage, orchestration transactionnelle   | SQL, HTTP, décorateurs Swagger                     |
+| `infrastructure/` | Implémentations Prisma, clients HTTP, mappers | Règle métier                                       |
+| `presentation/`   | Contrôleurs, DTO, décorateurs OpenAPI         | Accès direct à Prisma                              |
 
 ### Ajouter un module
 

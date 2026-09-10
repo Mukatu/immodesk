@@ -110,7 +110,9 @@ export default function ParametresPage() {
       <Card>
         <CardHeader>
           <CardTitle>Identité</CardTitle>
-          <CardDescription>Informations affichées sur les documents et communications.</CardDescription>
+          <CardDescription>
+            Informations affichées sur les documents et communications.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {loadingOrg ? (

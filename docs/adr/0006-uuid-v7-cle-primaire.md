@@ -33,7 +33,7 @@ Nulle en pratique. C'est une décision de fondation.
 
 ## Alternatives écartées
 
-| Option | Pourquoi écartée |
-| --- | --- |
+| Option    | Pourquoi écartée                                                         |
+| --------- | ------------------------------------------------------------------------ |
 | BIGSERIAL | Devinable/énumérable, ne peut pas être généré hors ligne sans collision. |
-| UUID v4 | Dégrade les index B-tree à l'insertion massive. |
+| UUID v4   | Dégrade les index B-tree à l'insertion massive.                          |

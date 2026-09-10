@@ -60,9 +60,7 @@
           }
         },
         "summary": "Demander un code de connexion",
-        "tags": [
-          "Authentification"
-        ]
+        "tags": ["Authentification"]
       }
     },
     "/v1/auth/otp/verify": {
@@ -124,9 +122,7 @@
           }
         },
         "summary": "Vérifier le code et ouvrir une session",
-        "tags": [
-          "Authentification"
-        ]
+        "tags": ["Authentification"]
       }
     },
     "/v1/auth/refresh": {
@@ -178,9 +174,7 @@
           }
         },
         "summary": "Faire tourner le refresh token",
-        "tags": [
-          "Authentification"
-        ]
+        "tags": ["Authentification"]
       }
     },
     "/v1/auth/logout": {
@@ -220,9 +214,7 @@
           }
         ],
         "summary": "Se déconnecter",
-        "tags": [
-          "Authentification"
-        ]
+        "tags": ["Authentification"]
       }
     },
     "/v1/me": {
@@ -269,9 +261,7 @@
           }
         ],
         "summary": "Profil et organisations de l’utilisateur connecté",
-        "tags": [
-          "Profil"
-        ]
+        "tags": ["Profil"]
       },
       "patch": {
         "description": "`fullName`, `email` et `locale` sont persistés. `timezone` est lu depuis les paramètres de l'organisation principale et n'est pas modifiable ici en phase 0.",
@@ -326,9 +316,7 @@
           }
         ],
         "summary": "Mettre à jour son profil",
-        "tags": [
-          "Profil"
-        ]
+        "tags": ["Profil"]
       }
     },
     "/v1/organizations": {
@@ -385,9 +373,7 @@
           }
         ],
         "summary": "Créer une organisation",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       }
     },
     "/v1/organizations/{id}": {
@@ -440,9 +426,7 @@
           }
         ],
         "summary": "Détail d'une organisation",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       },
       "patch": {
         "operationId": "OrganizationsController_update",
@@ -493,9 +477,7 @@
           }
         ],
         "summary": "Mettre à jour une organisation",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       }
     },
     "/v1/organizations/{id}/settings": {
@@ -538,9 +520,7 @@
           }
         ],
         "summary": "Paramètres de l'organisation",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       },
       "patch": {
         "description": "La devise est verrouillée à XAF par contrainte SQL et ne peut pas être modifiée.",
@@ -592,9 +572,7 @@
           }
         ],
         "summary": "Mettre à jour les paramètres",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       }
     },
     "/v1/organizations/{id}/members": {
@@ -637,9 +615,7 @@
           }
         ],
         "summary": "Lister les membres",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       }
     },
     "/v1/organizations/{id}/members/{memberId}": {
@@ -711,9 +687,7 @@
           }
         ],
         "summary": "Changer le rôle d'un membre",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       },
       "delete": {
         "description": "Le dernier OWNER actif ne peut pas être retiré : 409 `ORG.LAST_OWNER`.",
@@ -766,9 +740,7 @@
           }
         ],
         "summary": "Retirer un membre",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       }
     },
     "/v1/organizations/{id}/invitations": {
@@ -811,9 +783,7 @@
           }
         ],
         "summary": "Lister les invitations",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       },
       "post": {
         "description": "Un jeton de 32 octets est envoyé par SMS ; seul son condensat SHA-256 est stocké. L'invitation est nominative : seul le titulaire du numéro peut l'accepter.",
@@ -865,9 +835,7 @@
           }
         ],
         "summary": "Inviter un collaborateur",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       }
     },
     "/v1/organizations/{id}/invitations/{invitationId}": {
@@ -911,9 +879,7 @@
           }
         ],
         "summary": "Annuler une invitation",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       }
     },
     "/v1/invitations/{token}": {
@@ -973,9 +939,7 @@
           }
         },
         "summary": "Consulter une invitation avant de l'accepter",
-        "tags": [
-          "Invitations"
-        ]
+        "tags": ["Invitations"]
       }
     },
     "/v1/invitations/{token}/accept": {
@@ -1040,9 +1004,7 @@
           }
         ],
         "summary": "Accepter une invitation",
-        "tags": [
-          "Invitations"
-        ]
+        "tags": ["Invitations"]
       }
     },
     "/v1/feature-flags": {
@@ -1078,9 +1040,7 @@
           }
         ],
         "summary": "Drapeaux actifs pour l'organisation courante",
-        "tags": [
-          "Organisations"
-        ]
+        "tags": ["Organisations"]
       }
     },
     "/v1/health": {
@@ -1112,9 +1072,7 @@
           }
         },
         "summary": "Sonde de disponibilité",
-        "tags": [
-          "Plateforme"
-        ]
+        "tags": ["Plateforme"]
       }
     }
   },
@@ -1172,16 +1130,11 @@
           },
           "channel": {
             "type": "string",
-            "enum": [
-              "SMS",
-              "WHATSAPP"
-            ],
+            "enum": ["SMS", "WHATSAPP"],
             "default": "SMS"
           }
         },
-        "required": [
-          "phone"
-        ]
+        "required": ["phone"]
       },
       "OtpRequestResponseDto": {
         "type": "object",
@@ -1192,10 +1145,7 @@
           },
           "channel": {
             "type": "string",
-            "enum": [
-              "SMS",
-              "WHATSAPP"
-            ]
+            "enum": ["SMS", "WHATSAPP"]
           },
           "expiresInSeconds": {
             "type": "number",
@@ -1206,12 +1156,7 @@
             "example": 60
           }
         },
-        "required": [
-          "requestId",
-          "channel",
-          "expiresInSeconds",
-          "resendAfterSeconds"
-        ]
+        "required": ["requestId", "channel", "expiresInSeconds", "resendAfterSeconds"]
       },
       "ErrorResponseDto": {
         "type": "object",
@@ -1233,11 +1178,7 @@
             }
           }
         },
-        "required": [
-          "code",
-          "message",
-          "details"
-        ]
+        "required": ["code", "message", "details"]
       },
       "OtpVerifyDto": {
         "type": "object",
@@ -1256,10 +1197,7 @@
             "example": "Samsung A14 — Brazzaville"
           }
         },
-        "required": [
-          "phone",
-          "code"
-        ]
+        "required": ["phone", "code"]
       },
       "UserDto": {
         "type": "object",
@@ -1293,15 +1231,7 @@
             "format": "date-time"
           }
         },
-        "required": [
-          "id",
-          "phone",
-          "fullName",
-          "email",
-          "locale",
-          "timezone",
-          "createdAt"
-        ]
+        "required": ["id", "phone", "fullName", "email", "locale", "timezone", "createdAt"]
       },
       "OrganizationDto": {
         "type": "object",
@@ -1312,11 +1242,7 @@
           },
           "type": {
             "type": "string",
-            "enum": [
-              "AGENCY",
-              "INDEPENDENT_LANDLORD",
-              "INDEPENDENT_MANAGER"
-            ]
+            "enum": ["AGENCY", "INDEPENDENT_LANDLORD", "INDEPENDENT_MANAGER"]
           },
           "legalName": {
             "type": "string"
@@ -1349,10 +1275,7 @@
           },
           "status": {
             "type": "string",
-            "enum": [
-              "ACTIVE",
-              "SUSPENDED"
-            ]
+            "enum": ["ACTIVE", "SUSPENDED"]
           },
           "createdAt": {
             "type": "string",
@@ -1382,24 +1305,14 @@
           },
           "role": {
             "type": "string",
-            "enum": [
-              "OWNER",
-              "MANAGER",
-              "COLLECTOR",
-              "ACCOUNTANT",
-              "VIEWER"
-            ]
+            "enum": ["OWNER", "MANAGER", "COLLECTOR", "ACCOUNTANT", "VIEWER"]
           },
           "joinedAt": {
             "type": "string",
             "format": "date-time"
           }
         },
-        "required": [
-          "organization",
-          "role",
-          "joinedAt"
-        ]
+        "required": ["organization", "role", "joinedAt"]
       },
       "OtpVerifyResponseDto": {
         "type": "object",
@@ -1420,12 +1333,7 @@
             }
           }
         },
-        "required": [
-          "accessToken",
-          "refreshToken",
-          "user",
-          "organizations"
-        ]
+        "required": ["accessToken", "refreshToken", "user", "organizations"]
       },
       "RefreshDto": {
         "type": "object",
@@ -1435,9 +1343,7 @@
             "description": "Refresh token opaque émis par /v1/auth/otp/verify."
           }
         },
-        "required": [
-          "refreshToken"
-        ]
+        "required": ["refreshToken"]
       },
       "RefreshResponseDto": {
         "type": "object",
@@ -1449,10 +1355,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "accessToken",
-          "refreshToken"
-        ]
+        "required": ["accessToken", "refreshToken"]
       },
       "LogoutDto": {
         "type": "object",
@@ -1462,9 +1365,7 @@
             "description": "Refresh token de l'appareil à déconnecter."
           }
         },
-        "required": [
-          "refreshToken"
-        ]
+        "required": ["refreshToken"]
       },
       "MeResponseDto": {
         "type": "object",
@@ -1479,10 +1380,7 @@
             }
           }
         },
-        "required": [
-          "user",
-          "organizations"
-        ]
+        "required": ["user", "organizations"]
       },
       "UpdateMeDto": {
         "type": "object",
@@ -1511,11 +1409,7 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": [
-              "AGENCY",
-              "INDEPENDENT_LANDLORD",
-              "INDEPENDENT_MANAGER"
-            ]
+            "enum": ["AGENCY", "INDEPENDENT_LANDLORD", "INDEPENDENT_MANAGER"]
           },
           "legalName": {
             "type": "string",
@@ -1542,12 +1436,7 @@
             "example": "contact@mpila-immo.cg"
           }
         },
-        "required": [
-          "type",
-          "legalName",
-          "city",
-          "contactPhone"
-        ]
+        "required": ["type", "legalName", "city", "contactPhone"]
       },
       "UpdateOrganizationDto": {
         "type": "object",
@@ -1591,9 +1480,7 @@
           },
           "currency": {
             "type": "string",
-            "enum": [
-              "XAF"
-            ],
+            "enum": ["XAF"],
             "example": "XAF"
           },
           "defaultGraceDays": {
@@ -1664,11 +1551,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "phone",
-          "fullName"
-        ]
+        "required": ["id", "phone", "fullName"]
       },
       "MemberDto": {
         "type": "object",
@@ -1682,33 +1565,18 @@
           },
           "role": {
             "type": "string",
-            "enum": [
-              "OWNER",
-              "MANAGER",
-              "ACCOUNTANT",
-              "COLLECTOR",
-              "VIEWER"
-            ]
+            "enum": ["OWNER", "MANAGER", "ACCOUNTANT", "COLLECTOR", "VIEWER"]
           },
           "status": {
             "type": "string",
-            "enum": [
-              "ACTIVE",
-              "SUSPENDED"
-            ]
+            "enum": ["ACTIVE", "SUSPENDED"]
           },
           "joinedAt": {
             "type": "string",
             "format": "date-time"
           }
         },
-        "required": [
-          "id",
-          "user",
-          "role",
-          "status",
-          "joinedAt"
-        ]
+        "required": ["id", "user", "role", "status", "joinedAt"]
       },
       "MemberListDto": {
         "type": "object",
@@ -1720,27 +1588,17 @@
             }
           }
         },
-        "required": [
-          "items"
-        ]
+        "required": ["items"]
       },
       "UpdateMemberRoleDto": {
         "type": "object",
         "properties": {
           "role": {
             "type": "string",
-            "enum": [
-              "OWNER",
-              "MANAGER",
-              "ACCOUNTANT",
-              "COLLECTOR",
-              "VIEWER"
-            ]
+            "enum": ["OWNER", "MANAGER", "ACCOUNTANT", "COLLECTOR", "VIEWER"]
           }
         },
-        "required": [
-          "role"
-        ]
+        "required": ["role"]
       },
       "InvitationDto": {
         "type": "object",
@@ -1754,22 +1612,11 @@
           },
           "role": {
             "type": "string",
-            "enum": [
-              "OWNER",
-              "MANAGER",
-              "ACCOUNTANT",
-              "COLLECTOR",
-              "VIEWER"
-            ]
+            "enum": ["OWNER", "MANAGER", "ACCOUNTANT", "COLLECTOR", "VIEWER"]
           },
           "status": {
             "type": "string",
-            "enum": [
-              "PENDING",
-              "ACCEPTED",
-              "EXPIRED",
-              "REVOKED"
-            ]
+            "enum": ["PENDING", "ACCEPTED", "EXPIRED", "REVOKED"]
           },
           "expiresAt": {
             "type": "string",
@@ -1780,14 +1627,7 @@
             "format": "date-time"
           }
         },
-        "required": [
-          "id",
-          "phone",
-          "role",
-          "status",
-          "expiresAt",
-          "createdAt"
-        ]
+        "required": ["id", "phone", "role", "status", "expiresAt", "createdAt"]
       },
       "InvitationListDto": {
         "type": "object",
@@ -1799,9 +1639,7 @@
             }
           }
         },
-        "required": [
-          "items"
-        ]
+        "required": ["items"]
       },
       "CreateInvitationDto": {
         "type": "object",
@@ -1812,23 +1650,14 @@
           },
           "role": {
             "type": "string",
-            "enum": [
-              "OWNER",
-              "MANAGER",
-              "ACCOUNTANT",
-              "COLLECTOR",
-              "VIEWER"
-            ]
+            "enum": ["OWNER", "MANAGER", "ACCOUNTANT", "COLLECTOR", "VIEWER"]
           },
           "fullName": {
             "type": "string",
             "example": "Alphonse Ngoma"
           }
         },
-        "required": [
-          "phone",
-          "role"
-        ]
+        "required": ["phone", "role"]
       },
       "PublicInvitationDto": {
         "type": "object",
@@ -1839,24 +1668,14 @@
           },
           "role": {
             "type": "string",
-            "enum": [
-              "OWNER",
-              "MANAGER",
-              "ACCOUNTANT",
-              "COLLECTOR",
-              "VIEWER"
-            ]
+            "enum": ["OWNER", "MANAGER", "ACCOUNTANT", "COLLECTOR", "VIEWER"]
           },
           "expiresAt": {
             "type": "string",
             "format": "date-time"
           }
         },
-        "required": [
-          "organizationName",
-          "role",
-          "expiresAt"
-        ]
+        "required": ["organizationName", "role", "expiresAt"]
       },
       "AcceptedMembershipDto": {
         "type": "object",
@@ -1866,24 +1685,14 @@
           },
           "role": {
             "type": "string",
-            "enum": [
-              "OWNER",
-              "MANAGER",
-              "ACCOUNTANT",
-              "COLLECTOR",
-              "VIEWER"
-            ]
+            "enum": ["OWNER", "MANAGER", "ACCOUNTANT", "COLLECTOR", "VIEWER"]
           },
           "joinedAt": {
             "type": "string",
             "format": "date-time"
           }
         },
-        "required": [
-          "organization",
-          "role",
-          "joinedAt"
-        ]
+        "required": ["organization", "role", "joinedAt"]
       },
       "FeatureFlagsDto": {
         "type": "object",
@@ -1898,20 +1707,14 @@
             }
           }
         },
-        "required": [
-          "flags"
-        ]
+        "required": ["flags"]
       },
       "HealthCheckDto": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "up",
-              "down",
-              "skipped"
-            ]
+            "enum": ["up", "down", "skipped"]
           },
           "latencyMs": {
             "type": "number"
@@ -1920,9 +1723,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status"
-        ]
+        "required": ["status"]
       },
       "HealthChecksDto": {
         "type": "object",
@@ -1937,30 +1738,20 @@
             "$ref": "#/components/schemas/HealthCheckDto"
           }
         },
-        "required": [
-          "database",
-          "redis",
-          "storage"
-        ]
+        "required": ["database", "redis", "storage"]
       },
       "HealthResponseDto": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "ok",
-              "degraded"
-            ]
+            "enum": ["ok", "degraded"]
           },
           "checks": {
             "$ref": "#/components/schemas/HealthChecksDto"
           }
         },
-        "required": [
-          "status",
-          "checks"
-        ]
+        "required": ["status", "checks"]
       }
     }
   }

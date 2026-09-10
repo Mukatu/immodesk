@@ -1,9 +1,4 @@
-import {
-  CallHandler,
-  ExecutionContext,
-  Injectable,
-  NestInterceptor,
-} from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import type { Request } from 'express';
 import { Observable, from, of, switchMap, tap } from 'rxjs';
 import type { AuthenticatedUser } from '../../../shared/auth/auth.contracts';

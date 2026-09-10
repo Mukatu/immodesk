@@ -173,7 +173,11 @@ export default function LoginPage() {
                   )}
                 />
                 {serverError ? (
-                  <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
+                  <p
+                    role="alert"
+                    aria-live="polite"
+                    className="text-sm font-medium text-destructive"
+                  >
                     {serverError}
                   </p>
                 ) : null}
@@ -184,11 +188,7 @@ export default function LoginPage() {
             </Form>
           ) : (
             <Form {...codeForm}>
-              <form
-                onSubmit={codeForm.handleSubmit(onSubmitCode)}
-                className="space-y-4"
-                noValidate
-              >
+              <form onSubmit={codeForm.handleSubmit(onSubmitCode)} className="space-y-4" noValidate>
                 <FormField
                   control={codeForm.control}
                   name="code"
@@ -214,7 +214,11 @@ export default function LoginPage() {
                   )}
                 />
                 {serverError ? (
-                  <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
+                  <p
+                    role="alert"
+                    aria-live="polite"
+                    className="text-sm font-medium text-destructive"
+                  >
                     {serverError}
                   </p>
                 ) : null}

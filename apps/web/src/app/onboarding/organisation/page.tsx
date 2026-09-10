@@ -136,15 +136,16 @@ export default function OnboardingOrganisationPage() {
         title="Créer votre organisation"
         description="Trois étapes rapides pour démarrer sur Immodesk."
       />
-      <ol className="my-6 flex items-center gap-2 text-xs text-muted-foreground" aria-label="Étapes">
+      <ol
+        className="my-6 flex items-center gap-2 text-xs text-muted-foreground"
+        aria-label="Étapes"
+      >
         {STEP_LABELS.map((label, index) => (
           <li
             key={label}
             className={cn(
               'flex items-center gap-2 rounded-full border px-3 py-1',
-              index === stepIndex
-                ? 'border-primary text-primary font-medium'
-                : 'border-border',
+              index === stepIndex ? 'border-primary text-primary font-medium' : 'border-border',
             )}
             aria-current={index === stepIndex ? 'step' : undefined}
           >
@@ -170,7 +171,11 @@ export default function OnboardingOrganisationPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Type d’organisation</FormLabel>
-                  <div className="grid gap-3 sm:grid-cols-1" role="radiogroup" aria-label="Type d’organisation">
+                  <div
+                    className="grid gap-3 sm:grid-cols-1"
+                    role="radiogroup"
+                    aria-label="Type d’organisation"
+                  >
                     {ORG_TYPES.map(({ value, icon: Icon, title, description }) => {
                       const selected = field.value === value;
                       return (
@@ -192,7 +197,10 @@ export default function OnboardingOrganisationPage() {
                           )}
                         >
                           <CardHeader className="flex-row items-start gap-3 space-y-0">
-                            <Icon className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
+                            <Icon
+                              className="mt-1 size-5 shrink-0 text-primary"
+                              aria-hidden="true"
+                            />
                             <div>
                               <CardTitle className="text-base">{title}</CardTitle>
                               <CardDescription>{description}</CardDescription>

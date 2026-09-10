@@ -37,7 +37,11 @@ import type { AppConfig } from '../config/config.schema';
             config.NODE_ENV === 'development'
               ? {
                   target: 'pino-pretty',
-                  options: { singleLine: true, translateTime: 'SYS:HH:MM:ss.l', ignore: 'pid,hostname' },
+                  options: {
+                    singleLine: true,
+                    translateTime: 'SYS:HH:MM:ss.l',
+                    ignore: 'pid,hostname',
+                  },
                 }
               : undefined,
         },

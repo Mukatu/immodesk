@@ -1,15 +1,9 @@
 import { Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import {
-  CurrentUser,
-  Public,
-  type AuthenticatedUser,
-} from '../../../shared/auth/auth.contracts';
+import { CurrentUser, Public, type AuthenticatedUser } from '../../../shared/auth/auth.contracts';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
-import {
-  toOrganizationView,
-} from '../../identity/application/profile.service';
+import { toOrganizationView } from '../../identity/application/profile.service';
 import { ErrorResponseDto } from '../../identity/presentation/dto/auth.dto';
 import { InvitationsService } from '../application/invitations.service';
 import { AcceptedMembershipDto, PublicInvitationDto } from './dto/organizations.dto';

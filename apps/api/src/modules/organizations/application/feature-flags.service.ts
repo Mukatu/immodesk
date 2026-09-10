@@ -32,8 +32,8 @@ export class FeatureFlagsService {
 
     const flags: Record<string, boolean> = {};
     // Les drapeaux globaux d'abord, pour que ceux du tenant les écrasent.
-    for (const row of [...rows].sort((a, b) =>
-      Number(a.organization_id !== null) - Number(b.organization_id !== null),
+    for (const row of [...rows].sort(
+      (a, b) => Number(a.organization_id !== null) - Number(b.organization_id !== null),
     )) {
       if (row.starts_at && row.starts_at > now) continue;
       if (row.ends_at && row.ends_at <= now) continue;

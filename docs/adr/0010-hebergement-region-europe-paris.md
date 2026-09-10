@@ -37,7 +37,7 @@ Elle n'est pas le facteur limitant de l'expérience : le terrain est gouverné p
 
 ## Alternatives écartées
 
-| Option | Pourquoi écartée |
-| --- | --- |
+| Option                     | Pourquoi écartée                                                                           |
+| -------------------------- | ------------------------------------------------------------------------------------------ |
 | Datacenter local congolais | Alimentation et connectivité irrégulières, écosystème managé quasi inexistant, coût élevé. |
-| Afrique australe/de l'Est | Latence 180-260 ms, souvent routée via l'Europe de toute façon. |
+| Afrique australe/de l'Est  | Latence 180-260 ms, souvent routée via l'Europe de toute façon.                            |

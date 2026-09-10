@@ -12,20 +12,20 @@ Document de delivery. Il décline le référentiel `_DECISIONS_COMMUNES.md` en d
 
 **Vue d'ensemble du séquencement**
 
-| Phase | Intitulé court | Durée indicative | Jalon de sortie |
-| :--- | :--- | :--- | :--- |
-| 0 | Socle technique, auth OTP, multi-tenant | 6 semaines | Squelette déployé sur staging, connexion OTP fonctionnelle |
-| 1 | Tiers & patrimoine | 4 semaines | Une agence peut saisir son portefeuille complet |
-| 2 | Baux & dépôts | 4 semaines | Contrat de bail PDF généré et archivé |
-| 3 | Facturation & espèces | 7 semaines | Quittance envoyée par WhatsApp après encaissement espèces |
-| 4 | Mobile Money & virement déclaré | 5 semaines | Loyer payé de bout en bout par Mobile Money |
-| 5 | Application mobile offline | 8 semaines | Démarcheur encaisse hors réseau et synchronise |
-| 6 | Rapprochement bancaire & chèques | 4 semaines | Relevé bancaire importé et rapproché à 80 % |
-| 7 | Gestion d'agence | 5 semaines | Relevé de gérance mensuel et reversement bailleur |
-| 8 | États des lieux, compteurs & charges, maintenance | 5 semaines | Charges d'eau et d'électricité refacturées |
-| 9 | Relances, pénalités, reporting | 4 semaines | Relances automatiques et tableau de bord impayés |
-| 10 | Abonnement SaaS, onboarding, portail locataire, pilote | 6 semaines | Pilote Brazzaville en production |
-| 11 | Durcissement et lancement commercial | 5 semaines | Go-live commercial |
+| Phase | Intitulé court                                         | Durée indicative | Jalon de sortie                                            |
+| :---- | :----------------------------------------------------- | :--------------- | :--------------------------------------------------------- |
+| 0     | Socle technique, auth OTP, multi-tenant                | 6 semaines       | Squelette déployé sur staging, connexion OTP fonctionnelle |
+| 1     | Tiers & patrimoine                                     | 4 semaines       | Une agence peut saisir son portefeuille complet            |
+| 2     | Baux & dépôts                                          | 4 semaines       | Contrat de bail PDF généré et archivé                      |
+| 3     | Facturation & espèces                                  | 7 semaines       | Quittance envoyée par WhatsApp après encaissement espèces  |
+| 4     | Mobile Money & virement déclaré                        | 5 semaines       | Loyer payé de bout en bout par Mobile Money                |
+| 5     | Application mobile offline                             | 8 semaines       | Démarcheur encaisse hors réseau et synchronise             |
+| 6     | Rapprochement bancaire & chèques                       | 4 semaines       | Relevé bancaire importé et rapproché à 80 %                |
+| 7     | Gestion d'agence                                       | 5 semaines       | Relevé de gérance mensuel et reversement bailleur          |
+| 8     | États des lieux, compteurs & charges, maintenance      | 5 semaines       | Charges d'eau et d'électricité refacturées                 |
+| 9     | Relances, pénalités, reporting                         | 4 semaines       | Relances automatiques et tableau de bord impayés           |
+| 10    | Abonnement SaaS, onboarding, portail locataire, pilote | 6 semaines       | Pilote Brazzaville en production                           |
+| 11    | Durcissement et lancement commercial                   | 5 semaines       | Go-live commercial                                         |
 
 **Décision transverse à valider avant le démarrage d'une phase** : le taux et la durée du programme d'apport d'affaires (commission en bps sur `subscription_invoices`, durée d'éligibilité en mois, montant minimum de versement, plafond mensuel par partenaire) doivent être tranchés avant le démarrage de la phase 10 — voir la liste des décisions à prendre en section 10.2.
 
@@ -133,39 +133,40 @@ Scénario: Rotation du refresh token
 
 **Modules NestJS (Clean Architecture)** :
 
-| Module | Responsabilité |
-| :--- | :--- |
-| `iam` | Authentification OTP, JWT, refresh tokens, `api_keys`, gardes de rôles |
-| `tenancy` | `organizations`, `organization_settings`, `organization_members`, `invitations`, contexte de tenant et RLS |
+| Module      | Responsabilité                                                                                                                      |
+| :---------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| `iam`       | Authentification OTP, JWT, refresh tokens, `api_keys`, gardes de rôles                                                              |
+| `tenancy`   | `organizations`, `organization_settings`, `organization_members`, `invitations`, contexte de tenant et RLS                          |
 | `messaging` | Interfaces `SmsProvider` et `WhatsAppProvider`, `notification_templates`, `message_logs` (implémentation SMS uniquement en phase 0) |
-| `audit` | Écriture de `audit_logs`, décorateur `@Audited` |
-| `platform` | Santé, configuration, `feature_flags`, `idempotency_keys`, génération OpenAPI |
+| `audit`     | Écriture de `audit_logs`, décorateur `@Audited`                                                                                     |
+| `platform`  | Santé, configuration, `feature_flags`, `idempotency_keys`, génération OpenAPI                                                       |
 
 ## 0.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-| :--- | :--- | :--- | :--- |
-| POST | `/auth/otp/request` | PUBLIC | Demande un code OTP pour un numéro de téléphone |
-| POST | `/auth/otp/verify` | PUBLIC | Vérifie l'OTP et émet les jetons |
-| POST | `/auth/refresh` | PUBLIC | Rotation du refresh token |
-| POST | `/auth/logout` | Authentifié | Révoque le refresh token de l'appareil |
-| GET | `/me` | Authentifié | Profil de l'utilisateur et liste de ses organisations |
-| POST | `/organizations` | Authentifié | Crée une organisation `AGENCY` ou `INDEPENDENT_LANDLORD` |
-| GET | `/organizations/{id}` | VIEWER | Détail d'une organisation |
-| GET | `/organizations/{id}/settings` | MANAGER | Lit `organization_settings` |
-| PATCH | `/organizations/{id}/settings` | OWNER | Met à jour les paramètres (jour d'échéance, fuseau, devise) |
-| GET | `/organizations/{id}/members` | MANAGER | Liste les membres et leurs rôles |
-| PATCH | `/organizations/{id}/members/{memberId}` | OWNER | Change le rôle d'un membre |
-| DELETE | `/organizations/{id}/members/{memberId}` | OWNER | Retire un membre |
-| POST | `/organizations/{id}/invitations` | OWNER | Invite un collaborateur avec un rôle |
-| POST | `/invitations/{token}/accept` | Authentifié | Accepte une invitation |
-| GET | `/feature-flags` | Authentifié | Flags actifs pour l'organisation courante |
-| GET | `/health` | PUBLIC | Sonde de disponibilité (base, Redis, stockage) |
-| GET | `/openapi.json` | PUBLIC | Contrat OpenAPI 3.1 |
+| Méthode | Route                                    | Rôle requis | Description courte                                          |
+| :------ | :--------------------------------------- | :---------- | :---------------------------------------------------------- |
+| POST    | `/auth/otp/request`                      | PUBLIC      | Demande un code OTP pour un numéro de téléphone             |
+| POST    | `/auth/otp/verify`                       | PUBLIC      | Vérifie l'OTP et émet les jetons                            |
+| POST    | `/auth/refresh`                          | PUBLIC      | Rotation du refresh token                                   |
+| POST    | `/auth/logout`                           | Authentifié | Révoque le refresh token de l'appareil                      |
+| GET     | `/me`                                    | Authentifié | Profil de l'utilisateur et liste de ses organisations       |
+| POST    | `/organizations`                         | Authentifié | Crée une organisation `AGENCY` ou `INDEPENDENT_LANDLORD`    |
+| GET     | `/organizations/{id}`                    | VIEWER      | Détail d'une organisation                                   |
+| GET     | `/organizations/{id}/settings`           | MANAGER     | Lit `organization_settings`                                 |
+| PATCH   | `/organizations/{id}/settings`           | OWNER       | Met à jour les paramètres (jour d'échéance, fuseau, devise) |
+| GET     | `/organizations/{id}/members`            | MANAGER     | Liste les membres et leurs rôles                            |
+| PATCH   | `/organizations/{id}/members/{memberId}` | OWNER       | Change le rôle d'un membre                                  |
+| DELETE  | `/organizations/{id}/members/{memberId}` | OWNER       | Retire un membre                                            |
+| POST    | `/organizations/{id}/invitations`        | OWNER       | Invite un collaborateur avec un rôle                        |
+| POST    | `/invitations/{token}/accept`            | Authentifié | Accepte une invitation                                      |
+| GET     | `/feature-flags`                         | Authentifié | Flags actifs pour l'organisation courante                   |
+| GET     | `/health`                                | PUBLIC      | Sonde de disponibilité (base, Redis, stockage)              |
+| GET     | `/openapi.json`                          | PUBLIC      | Contrat OpenAPI 3.1                                         |
 
 ## 0.6 Écrans concernés
 
 **Web — dashboard agence/bailleur (Next.js)**
+
 - Écran de connexion (saisie du numéro, saisie du code à 6 chiffres, renvoi de code avec compte à rebours).
 - Assistant de création d'organisation (type d'organisation, raison sociale, ville, téléphone, logo).
 - Paramètres de l'organisation (identité, jour d'échéance par défaut, fuseau `Africa/Brazzaville`).
@@ -174,6 +175,7 @@ Scénario: Rotation du refresh token
 - Page d'erreur et page « accès refusé » cohérentes avec le design system.
 
 **Mobile (Flutter)**
+
 - Écran de connexion OTP, stockage sécurisé du refresh token (`flutter_secure_storage`).
 - Écran de sélection d'organisation.
 - Écran « à propos / diagnostic » (version, état réseau, dernière synchronisation) — coquille qui sera enrichie en phase 5.
@@ -209,25 +211,25 @@ Scénario: Rotation du refresh token
 
 Durée indicative : **6 semaines**.
 
-| Profil | Semaines-personnes |
-| :--- | :--- |
-| Backend NestJS | 8 sp |
-| Frontend web Next.js | 5 sp |
-| Mobile Flutter | 3 sp |
-| DevOps / infra | 5 sp |
-| QA | 3 sp |
-| Product / QA terrain | 2 sp |
-| **Total** | **26 sp** |
+| Profil               | Semaines-personnes |
+| :------------------- | :----------------- |
+| Backend NestJS       | 8 sp               |
+| Frontend web Next.js | 5 sp               |
+| Mobile Flutter       | 3 sp               |
+| DevOps / infra       | 5 sp               |
+| QA                   | 3 sp               |
+| Product / QA terrain | 2 sp               |
+| **Total**            | **26 sp**          |
 
 ## 0.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-| :--- | :--- | :--- | :--- |
-| Délai d'obtention du compte agrégateur Mobile Money supérieur à 3 mois | Fort — bloque la phase 4 | Élevée | Lancer le dossier au jour 1, ouvrir en parallèle un dossier chez un second agrégateur, développer la phase 4 contre un simulateur conforme à l'interface `MobileMoneyProvider` |
-| Vérification Meta Business refusée ou lente | Fort — bloque l'envoi des quittances en phase 3 | Élevée | Basculer les envois sur la passerelle SMS locale via l'interface `SmsProvider`, avec lien court vers la quittance |
-| Passerelle SMS locale peu fiable pour les OTP | Fort — bloque toute connexion | Moyenne | Contractualiser deux passerelles et implémenter un basculement automatique dès la phase 0 ; OTP par WhatsApp en secours une fois Meta obtenu |
-| Complexité RLS sous-estimée, requêtes lentes | Moyen | Moyenne | Index systématique sur `organization_id`, revue de plan d'exécution sur les requêtes critiques, gabarit de politique RLS unique réutilisé partout |
-| Équipe non complète au démarrage | Moyen | Moyenne | Prioriser backend et DevOps, décaler le mobile en phase 1, recruter en parallèle |
+| Risque                                                                 | Impact                                          | Probabilité | Plan B                                                                                                                                                                         |
+| :--------------------------------------------------------------------- | :---------------------------------------------- | :---------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Délai d'obtention du compte agrégateur Mobile Money supérieur à 3 mois | Fort — bloque la phase 4                        | Élevée      | Lancer le dossier au jour 1, ouvrir en parallèle un dossier chez un second agrégateur, développer la phase 4 contre un simulateur conforme à l'interface `MobileMoneyProvider` |
+| Vérification Meta Business refusée ou lente                            | Fort — bloque l'envoi des quittances en phase 3 | Élevée      | Basculer les envois sur la passerelle SMS locale via l'interface `SmsProvider`, avec lien court vers la quittance                                                              |
+| Passerelle SMS locale peu fiable pour les OTP                          | Fort — bloque toute connexion                   | Moyenne     | Contractualiser deux passerelles et implémenter un basculement automatique dès la phase 0 ; OTP par WhatsApp en secours une fois Meta obtenu                                   |
+| Complexité RLS sous-estimée, requêtes lentes                           | Moyen                                           | Moyenne     | Index systématique sur `organization_id`, revue de plan d'exécution sur les requêtes critiques, gabarit de politique RLS unique réutilisé partout                              |
+| Équipe non complète au démarrage                                       | Moyen                                           | Moyenne     | Prioriser backend et DevOps, décaler le mobile en phase 1, recruter en parallèle                                                                                               |
 
 ---
 
@@ -317,45 +319,46 @@ Scénario: Suppression logique d'un lot occupé
 
 **Modules NestJS** :
 
-| Module | Responsabilité |
-| :--- | :--- |
-| `parties` | `landlords`, `tenants`, `guarantors`, `contact_channels` |
-| `portfolio` | `properties`, `units`, indicateurs d'occupation |
-| `banking` | `bank_accounts` (partagé ensuite avec `reconciliation` et `payouts`) |
+| Module      | Responsabilité                                                         |
+| :---------- | :--------------------------------------------------------------------- |
+| `parties`   | `landlords`, `tenants`, `guarantors`, `contact_channels`               |
+| `portfolio` | `properties`, `units`, indicateurs d'occupation                        |
+| `banking`   | `bank_accounts` (partagé ensuite avec `reconciliation` et `payouts`)   |
 | `documents` | Téléversement R2, URL signées, classification, rattachement polymorphe |
 
 ## 1.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-| :--- | :--- | :--- | :--- |
-| POST | `/landlords` | MANAGER | Crée un bailleur |
-| GET | `/landlords` | VIEWER | Liste paginée et recherche des bailleurs |
-| GET | `/landlords/{id}` | VIEWER | Détail d'un bailleur et de ses biens |
-| PATCH | `/landlords/{id}` | MANAGER | Met à jour un bailleur |
-| DELETE | `/landlords/{id}` | OWNER | Suppression logique (`deleted_at`) |
-| POST | `/tenants` | MANAGER | Crée un locataire |
-| GET | `/tenants` | VIEWER | Liste et recherche par nom ou téléphone |
-| PATCH | `/tenants/{id}` | MANAGER | Met à jour un locataire |
-| POST | `/tenants/{id}/guarantors` | MANAGER | Ajoute un garant |
-| POST | `/parties/{type}/{id}/contact-channels` | MANAGER | Ajoute un canal de contact |
-| PATCH | `/contact-channels/{id}` | MANAGER | Modifie ou marque un canal comme préféré |
-| POST | `/properties` | MANAGER | Crée un immeuble |
-| GET | `/properties` | VIEWER | Liste des immeubles avec taux d'occupation |
-| GET | `/properties/{id}` | VIEWER | Détail d'un immeuble et de ses lots |
-| POST | `/properties/{id}/units` | MANAGER | Crée un lot |
-| POST | `/properties/{id}/units/bulk` | MANAGER | Crée des lots en série |
-| PATCH | `/units/{id}` | MANAGER | Met à jour un lot (loyer de référence, superficie, type) |
-| GET | `/units` | VIEWER | Liste des lots filtrable par statut d'occupation |
-| POST | `/bank-accounts` | ACCOUNTANT | Enregistre un compte bancaire |
-| GET | `/bank-accounts` | ACCOUNTANT | Liste des comptes de l'organisation et des bailleurs |
-| POST | `/documents/upload-url` | MANAGER | Demande une URL signée de téléversement |
-| POST | `/documents` | MANAGER | Enregistre le document après téléversement |
-| GET | `/documents/{id}/download-url` | VIEWER | URL signée de téléchargement |
-| DELETE | `/documents/{id}` | MANAGER | Supprime un document |
+| Méthode | Route                                   | Rôle requis | Description courte                                       |
+| :------ | :-------------------------------------- | :---------- | :------------------------------------------------------- |
+| POST    | `/landlords`                            | MANAGER     | Crée un bailleur                                         |
+| GET     | `/landlords`                            | VIEWER      | Liste paginée et recherche des bailleurs                 |
+| GET     | `/landlords/{id}`                       | VIEWER      | Détail d'un bailleur et de ses biens                     |
+| PATCH   | `/landlords/{id}`                       | MANAGER     | Met à jour un bailleur                                   |
+| DELETE  | `/landlords/{id}`                       | OWNER       | Suppression logique (`deleted_at`)                       |
+| POST    | `/tenants`                              | MANAGER     | Crée un locataire                                        |
+| GET     | `/tenants`                              | VIEWER      | Liste et recherche par nom ou téléphone                  |
+| PATCH   | `/tenants/{id}`                         | MANAGER     | Met à jour un locataire                                  |
+| POST    | `/tenants/{id}/guarantors`              | MANAGER     | Ajoute un garant                                         |
+| POST    | `/parties/{type}/{id}/contact-channels` | MANAGER     | Ajoute un canal de contact                               |
+| PATCH   | `/contact-channels/{id}`                | MANAGER     | Modifie ou marque un canal comme préféré                 |
+| POST    | `/properties`                           | MANAGER     | Crée un immeuble                                         |
+| GET     | `/properties`                           | VIEWER      | Liste des immeubles avec taux d'occupation               |
+| GET     | `/properties/{id}`                      | VIEWER      | Détail d'un immeuble et de ses lots                      |
+| POST    | `/properties/{id}/units`                | MANAGER     | Crée un lot                                              |
+| POST    | `/properties/{id}/units/bulk`           | MANAGER     | Crée des lots en série                                   |
+| PATCH   | `/units/{id}`                           | MANAGER     | Met à jour un lot (loyer de référence, superficie, type) |
+| GET     | `/units`                                | VIEWER      | Liste des lots filtrable par statut d'occupation         |
+| POST    | `/bank-accounts`                        | ACCOUNTANT  | Enregistre un compte bancaire                            |
+| GET     | `/bank-accounts`                        | ACCOUNTANT  | Liste des comptes de l'organisation et des bailleurs     |
+| POST    | `/documents/upload-url`                 | MANAGER     | Demande une URL signée de téléversement                  |
+| POST    | `/documents`                            | MANAGER     | Enregistre le document après téléversement               |
+| GET     | `/documents/{id}/download-url`          | VIEWER      | URL signée de téléchargement                             |
+| DELETE  | `/documents/{id}`                       | MANAGER     | Supprime un document                                     |
 
 ## 1.6 Écrans concernés
 
 **Web — dashboard**
+
 - Liste des bailleurs avec recherche, filtre par ville et création rapide.
 - Fiche bailleur : identité, coordonnées, comptes bancaires, biens rattachés, documents.
 - Liste des locataires avec recherche par nom, téléphone ou lot.
@@ -366,6 +369,7 @@ Scénario: Suppression logique d'un lot occupé
 - Composant transverse de téléversement de documents (glisser-déposer, barre de progression, prévisualisation image et PDF).
 
 **Mobile (Flutter)**
+
 - Consultation en lecture seule du portefeuille (immeubles, lots, locataires) avec recherche locale.
 - Fiche locataire consultable en tournée (nom, numéro, lot, appel direct et ouverture WhatsApp).
 - Prise de photo d'un bien rattachée à un lot.
@@ -395,24 +399,24 @@ Scénario: Suppression logique d'un lot occupé
 
 Durée indicative : **4 semaines**.
 
-| Profil | Semaines-personnes |
-| :--- | :--- |
-| Backend NestJS | 5 sp |
-| Frontend web Next.js | 5 sp |
-| Mobile Flutter | 2 sp |
-| DevOps / infra | 1 sp |
-| QA | 2 sp |
-| Product / QA terrain | 2 sp |
-| **Total** | **17 sp** |
+| Profil               | Semaines-personnes |
+| :------------------- | :----------------- |
+| Backend NestJS       | 5 sp               |
+| Frontend web Next.js | 5 sp               |
+| Mobile Flutter       | 2 sp               |
+| DevOps / infra       | 1 sp               |
+| QA                   | 2 sp               |
+| Product / QA terrain | 2 sp               |
+| **Total**            | **17 sp**          |
 
 ## 1.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-| :--- | :--- | :--- | :--- |
-| Modèle d'adressage inadapté aux quartiers de Brazzaville | Moyen | Moyenne | Champ « repère » libre obligatoire et géolocalisation optionnelle du lot dès la phase 1 |
-| Données existantes des agences sur papier ou Excel hétérogène | Fort — freine l'adoption | Élevée | Fournir un gabarit d'import CSV et une prestation de reprise assistée dès la phase 1 |
-| Numéros de téléphone partagés entre plusieurs locataires (foyers) | Moyen | Moyenne | Unicité en avertissement plutôt qu'en blocage, avec confirmation explicite du gestionnaire |
-| Volume de photos supérieur au budget de stockage | Faible | Moyenne | Compression côté client, limite de taille et politique de cycle de vie R2 |
+| Risque                                                            | Impact                   | Probabilité | Plan B                                                                                     |
+| :---------------------------------------------------------------- | :----------------------- | :---------- | :----------------------------------------------------------------------------------------- |
+| Modèle d'adressage inadapté aux quartiers de Brazzaville          | Moyen                    | Moyenne     | Champ « repère » libre obligatoire et géolocalisation optionnelle du lot dès la phase 1    |
+| Données existantes des agences sur papier ou Excel hétérogène     | Fort — freine l'adoption | Élevée      | Fournir un gabarit d'import CSV et une prestation de reprise assistée dès la phase 1       |
+| Numéros de téléphone partagés entre plusieurs locataires (foyers) | Moyen                    | Moyenne     | Unicité en avertissement plutôt qu'en blocage, avec confirmation explicite du gestionnaire |
+| Volume de photos supérieur au budget de stockage                  | Faible                   | Moyenne     | Compression côté client, limite de taille et politique de cycle de vie R2                  |
 
 ---
 
@@ -506,36 +510,37 @@ Scénario: Génération immuable du contrat de bail
 
 **Modules NestJS** :
 
-| Module | Responsabilité |
-| :--- | :--- |
-| `leases` | Cycle de vie du bail, `lease_parties`, révisions, résiliation, contrôle de chevauchement |
-| `deposits` | `deposits`, `deposit_movements`, calcul du solde restituable |
-| `pdf` | Worker BullMQ Puppeteer, gabarits HTML, empreinte et archivage R2 |
-| `numbering` | Table `sequences` verrouillée en transaction, formats de numéros |
+| Module      | Responsabilité                                                                           |
+| :---------- | :--------------------------------------------------------------------------------------- |
+| `leases`    | Cycle de vie du bail, `lease_parties`, révisions, résiliation, contrôle de chevauchement |
+| `deposits`  | `deposits`, `deposit_movements`, calcul du solde restituable                             |
+| `pdf`       | Worker BullMQ Puppeteer, gabarits HTML, empreinte et archivage R2                        |
+| `numbering` | Table `sequences` verrouillée en transaction, formats de numéros                         |
 
 ## 2.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-| :--- | :--- | :--- | :--- |
-| POST | `/leases` | MANAGER | Crée un bail à l'état brouillon |
-| GET | `/leases` | VIEWER | Liste des baux filtrable par statut, immeuble, locataire |
-| GET | `/leases/{id}` | VIEWER | Détail d'un bail, parties, dépôt, documents |
-| PATCH | `/leases/{id}` | MANAGER | Modifie un bail en brouillon |
-| POST | `/leases/{id}/activate` | MANAGER | Active le bail et occupe le lot |
-| POST | `/leases/{id}/terminate` | MANAGER | Résilie le bail avec motif et date d'effet |
-| POST | `/leases/{id}/rent-revisions` | MANAGER | Enregistre une révision de loyer datée |
-| POST | `/leases/{id}/parties` | MANAGER | Ajoute une partie au bail |
-| DELETE | `/leases/{id}/parties/{partyId}` | MANAGER | Retire une partie du bail |
-| POST | `/leases/{id}/contract` | MANAGER | Déclenche la génération du contrat PDF |
-| GET | `/leases/{id}/documents` | VIEWER | Liste des versions de documents du bail |
-| POST | `/leases/{id}/documents` | MANAGER | Téléverse un contrat signé scanné |
-| GET | `/leases/{id}/deposit` | ACCOUNTANT | Détail du dépôt et de ses mouvements |
-| POST | `/leases/{id}/deposit/movements` | ACCOUNTANT | Enregistre encaissement, retenue ou restitution |
-| GET | `/deposits/summary` | ACCOUNTANT | Total des dépôts détenus par l'organisation |
+| Méthode | Route                            | Rôle requis | Description courte                                       |
+| :------ | :------------------------------- | :---------- | :------------------------------------------------------- |
+| POST    | `/leases`                        | MANAGER     | Crée un bail à l'état brouillon                          |
+| GET     | `/leases`                        | VIEWER      | Liste des baux filtrable par statut, immeuble, locataire |
+| GET     | `/leases/{id}`                   | VIEWER      | Détail d'un bail, parties, dépôt, documents              |
+| PATCH   | `/leases/{id}`                   | MANAGER     | Modifie un bail en brouillon                             |
+| POST    | `/leases/{id}/activate`          | MANAGER     | Active le bail et occupe le lot                          |
+| POST    | `/leases/{id}/terminate`         | MANAGER     | Résilie le bail avec motif et date d'effet               |
+| POST    | `/leases/{id}/rent-revisions`    | MANAGER     | Enregistre une révision de loyer datée                   |
+| POST    | `/leases/{id}/parties`           | MANAGER     | Ajoute une partie au bail                                |
+| DELETE  | `/leases/{id}/parties/{partyId}` | MANAGER     | Retire une partie du bail                                |
+| POST    | `/leases/{id}/contract`          | MANAGER     | Déclenche la génération du contrat PDF                   |
+| GET     | `/leases/{id}/documents`         | VIEWER      | Liste des versions de documents du bail                  |
+| POST    | `/leases/{id}/documents`         | MANAGER     | Téléverse un contrat signé scanné                        |
+| GET     | `/leases/{id}/deposit`           | ACCOUNTANT  | Détail du dépôt et de ses mouvements                     |
+| POST    | `/leases/{id}/deposit/movements` | ACCOUNTANT  | Enregistre encaissement, retenue ou restitution          |
+| GET     | `/deposits/summary`              | ACCOUNTANT  | Total des dépôts détenus par l'organisation              |
 
 ## 2.6 Écrans concernés
 
 **Web — dashboard**
+
 - Assistant de création de bail en trois étapes : lot et locataire, conditions financières, dépôt et parties.
 - Liste des baux avec badges de statut et filtres (actifs, en fin de bail à 90 jours, résiliés).
 - Fiche bail : conditions, parties, historique des révisions, dépôt, documents, actions (activer, réviser, résilier, générer le contrat).
@@ -545,6 +550,7 @@ Scénario: Génération immuable du contrat de bail
 - Paramétrage du gabarit de contrat au niveau de l'organisation (en-tête, mentions, clauses optionnelles).
 
 **Mobile (Flutter)**
+
 - Consultation d'un bail depuis la fiche du lot ou du locataire.
 - Téléchargement et partage du contrat PDF.
 
@@ -572,24 +578,24 @@ Scénario: Génération immuable du contrat de bail
 
 Durée indicative : **4 semaines**.
 
-| Profil | Semaines-personnes |
-| :--- | :--- |
-| Backend NestJS | 6 sp |
-| Frontend web Next.js | 4 sp |
-| Mobile Flutter | 1 sp |
-| DevOps / infra | 1 sp |
-| QA | 2 sp |
-| Product / QA terrain | 2 sp |
-| **Total** | **16 sp** |
+| Profil               | Semaines-personnes |
+| :------------------- | :----------------- |
+| Backend NestJS       | 6 sp               |
+| Frontend web Next.js | 4 sp               |
+| Mobile Flutter       | 1 sp               |
+| DevOps / infra       | 1 sp               |
+| QA                   | 2 sp               |
+| Product / QA terrain | 2 sp               |
+| **Total**            | **16 sp**          |
 
 ## 2.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-| :--- | :--- | :--- | :--- |
-| Modèle de contrat non conforme aux usages locaux | Fort — rejet par les agences | Moyenne | Gabarit paramétrable par organisation et possibilité de téléverser son propre contrat en attendant la validation juridique |
-| Worker Puppeteer coûteux en mémoire et instable | Moyen | Moyenne | Worker dédié isolé, limite de concurrence, redémarrage périodique, file de reprise sur échec |
-| Pratiques locales d'avance de loyers non modélisées | Moyen | Élevée | Modéliser l'avance comme un crédit locataire (`tenant_credits`) dès la phase 3, et non comme un dépôt |
-| Révisions de loyer rétroactives demandées par les agences | Moyen | Moyenne | Interdire la rétroactivité sur période déjà facturée ; passer par un avoir en phase 3 |
+| Risque                                                    | Impact                       | Probabilité | Plan B                                                                                                                     |
+| :-------------------------------------------------------- | :--------------------------- | :---------- | :------------------------------------------------------------------------------------------------------------------------- |
+| Modèle de contrat non conforme aux usages locaux          | Fort — rejet par les agences | Moyenne     | Gabarit paramétrable par organisation et possibilité de téléverser son propre contrat en attendant la validation juridique |
+| Worker Puppeteer coûteux en mémoire et instable           | Moyen                        | Moyenne     | Worker dédié isolé, limite de concurrence, redémarrage périodique, file de reprise sur échec                               |
+| Pratiques locales d'avance de loyers non modélisées       | Moyen                        | Élevée      | Modéliser l'avance comme un crédit locataire (`tenant_credits`) dès la phase 3, et non comme un dépôt                      |
+| Révisions de loyer rétroactives demandées par les agences | Moyen                        | Moyenne     | Interdire la rétroactivité sur période déjà facturée ; passer par un avoir en phase 3                                      |
 
 ---
 
@@ -725,49 +731,50 @@ Scénario: Vérification publique d'une quittance par QR code
 
 **Modules NestJS** :
 
-| Module | Responsabilité |
-| :--- | :--- |
-| `billing` | `rent_invoices`, `invoice_lines`, cron de génération, machine à états des factures |
-| `payments` | `payments`, `payment_allocations`, `tenant_credits`, contre-passation, moteur d'imputation |
-| `cash` | `cash_receipts`, `cash_remittances`, `cash_remittance_items`, signature, contrôle de caisse |
-| `receipts` | `receipts`, token de vérification, route publique |
+| Module      | Responsabilité                                                                                                |
+| :---------- | :------------------------------------------------------------------------------------------------------------ |
+| `billing`   | `rent_invoices`, `invoice_lines`, cron de génération, machine à états des factures                            |
+| `payments`  | `payments`, `payment_allocations`, `tenant_credits`, contre-passation, moteur d'imputation                    |
+| `cash`      | `cash_receipts`, `cash_remittances`, `cash_remittance_items`, signature, contrôle de caisse                   |
+| `receipts`  | `receipts`, token de vérification, route publique                                                             |
 | `messaging` | Implémentation `WhatsAppProvider` (Meta Cloud API), `notification_templates`, `notifications`, `message_logs` |
-| `pdf` | Gabarits de reçu de caisse et de quittance |
-| `numbering` | `sequences` par type de document et par démarcheur |
+| `pdf`       | Gabarits de reçu de caisse et de quittance                                                                    |
+| `numbering` | `sequences` par type de document et par démarcheur                                                            |
 
 ## 3.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-| :--- | :--- | :--- | :--- |
-| GET | `/invoices` | ACCOUNTANT | Liste des factures, filtres statut, période, immeuble |
-| GET | `/invoices/{id}` | ACCOUNTANT | Détail d'une facture et de ses lignes |
-| POST | `/invoices` | MANAGER | Crée une facture manuelle (hors cron) |
-| POST | `/invoices/{id}/issue` | MANAGER | Passe la facture de DRAFT à ISSUED |
-| POST | `/invoices/{id}/cancel` | MANAGER | Annule une facture avec motif (CANCELLED) |
-| POST | `/invoices/{id}/lines` | MANAGER | Ajoute une ligne à une facture DRAFT |
-| POST | `/billing/runs` | OWNER | Déclenche manuellement une campagne de facturation |
-| GET | `/billing/runs/{id}` | MANAGER | Résultat d'une campagne (créées, ignorées, erreurs) |
-| POST | `/payments` | COLLECTOR | Enregistre un paiement (avec `client_ref` d'idempotence) |
-| GET | `/payments` | ACCOUNTANT | Liste des paiements, filtres méthode et statut |
-| POST | `/payments/{id}/allocations` | ACCOUNTANT | Affecte un paiement à des factures |
-| POST | `/payments/{id}/reverse` | ACCOUNTANT | Contre-passe un paiement |
-| GET | `/tenants/{id}/credits` | ACCOUNTANT | Solde et mouvements de crédit du locataire |
-| POST | `/cash-receipts` | COLLECTOR | Encaissement espèces avec signature et `client_ref` |
-| GET | `/cash-receipts` | ACCOUNTANT | Liste des reçus de caisse |
-| GET | `/cash-receipts/{id}/pdf` | COLLECTOR | PDF du reçu de caisse |
-| GET | `/cash/collectors/{id}/balance` | MANAGER | Espèces détenues et non remises par un démarcheur |
-| POST | `/cash-remittances` | COLLECTOR | Déclare une remise d'espèces |
-| GET | `/cash-remittances` | MANAGER | Liste des remises et de leurs statuts |
-| POST | `/cash-remittances/{id}/verify` | MANAGER | Contrôle la remise et enregistre l'écart éventuel |
-| GET | `/receipts/{id}` | VIEWER | Détail d'une quittance |
-| GET | `/receipts/{id}/pdf` | VIEWER | PDF de la quittance |
-| POST | `/receipts/{id}/send` | MANAGER | (Re)envoie la quittance par WhatsApp ou SMS |
-| GET | `/public/receipts/verify/{token}` | PUBLIC | Vérification publique d'authenticité |
-| GET | `/message-logs` | MANAGER | Journal des envois et de leurs statuts de remise |
+| Méthode | Route                             | Rôle requis | Description courte                                       |
+| :------ | :-------------------------------- | :---------- | :------------------------------------------------------- |
+| GET     | `/invoices`                       | ACCOUNTANT  | Liste des factures, filtres statut, période, immeuble    |
+| GET     | `/invoices/{id}`                  | ACCOUNTANT  | Détail d'une facture et de ses lignes                    |
+| POST    | `/invoices`                       | MANAGER     | Crée une facture manuelle (hors cron)                    |
+| POST    | `/invoices/{id}/issue`            | MANAGER     | Passe la facture de DRAFT à ISSUED                       |
+| POST    | `/invoices/{id}/cancel`           | MANAGER     | Annule une facture avec motif (CANCELLED)                |
+| POST    | `/invoices/{id}/lines`            | MANAGER     | Ajoute une ligne à une facture DRAFT                     |
+| POST    | `/billing/runs`                   | OWNER       | Déclenche manuellement une campagne de facturation       |
+| GET     | `/billing/runs/{id}`              | MANAGER     | Résultat d'une campagne (créées, ignorées, erreurs)      |
+| POST    | `/payments`                       | COLLECTOR   | Enregistre un paiement (avec `client_ref` d'idempotence) |
+| GET     | `/payments`                       | ACCOUNTANT  | Liste des paiements, filtres méthode et statut           |
+| POST    | `/payments/{id}/allocations`      | ACCOUNTANT  | Affecte un paiement à des factures                       |
+| POST    | `/payments/{id}/reverse`          | ACCOUNTANT  | Contre-passe un paiement                                 |
+| GET     | `/tenants/{id}/credits`           | ACCOUNTANT  | Solde et mouvements de crédit du locataire               |
+| POST    | `/cash-receipts`                  | COLLECTOR   | Encaissement espèces avec signature et `client_ref`      |
+| GET     | `/cash-receipts`                  | ACCOUNTANT  | Liste des reçus de caisse                                |
+| GET     | `/cash-receipts/{id}/pdf`         | COLLECTOR   | PDF du reçu de caisse                                    |
+| GET     | `/cash/collectors/{id}/balance`   | MANAGER     | Espèces détenues et non remises par un démarcheur        |
+| POST    | `/cash-remittances`               | COLLECTOR   | Déclare une remise d'espèces                             |
+| GET     | `/cash-remittances`               | MANAGER     | Liste des remises et de leurs statuts                    |
+| POST    | `/cash-remittances/{id}/verify`   | MANAGER     | Contrôle la remise et enregistre l'écart éventuel        |
+| GET     | `/receipts/{id}`                  | VIEWER      | Détail d'une quittance                                   |
+| GET     | `/receipts/{id}/pdf`              | VIEWER      | PDF de la quittance                                      |
+| POST    | `/receipts/{id}/send`             | MANAGER     | (Re)envoie la quittance par WhatsApp ou SMS              |
+| GET     | `/public/receipts/verify/{token}` | PUBLIC      | Vérification publique d'authenticité                     |
+| GET     | `/message-logs`                   | MANAGER     | Journal des envois et de leurs statuts de remise         |
 
 ## 3.6 Écrans concernés
 
 **Web — dashboard**
+
 - Tableau de bord d'encaissement du mois : attendu, encaissé, reste à encaisser, par immeuble.
 - Liste des factures avec badges DRAFT / ISSUED / PARTIALLY_PAID / PAID / OVERDUE / CANCELLED et actions groupées.
 - Fiche facture : lignes, paiements affectés, historique, actions (émettre, annuler, relancer).
@@ -778,6 +785,7 @@ Scénario: Vérification publique d'une quittance par QR code
 - Paramétrage des gabarits de quittance et de reçu.
 
 **Mobile (Flutter)** — première version en ligne, l'offline arrivant en phase 5
+
 - Écran « ma tournée » : liste des factures dues des lots affectés au démarcheur.
 - Écran d'encaissement : montant, sélection de la ou des factures, pad de signature du locataire, validation.
 - Aperçu et partage du reçu de caisse.
@@ -816,26 +824,26 @@ Scénario: Vérification publique d'une quittance par QR code
 
 Durée indicative : **7 semaines**.
 
-| Profil | Semaines-personnes |
-| :--- | :--- |
-| Backend NestJS | 14 sp |
-| Frontend web Next.js | 8 sp |
-| Mobile Flutter | 6 sp |
-| DevOps / infra | 2 sp |
-| QA | 5 sp |
-| Product / QA terrain | 4 sp |
-| **Total** | **39 sp** |
+| Profil               | Semaines-personnes |
+| :------------------- | :----------------- |
+| Backend NestJS       | 14 sp              |
+| Frontend web Next.js | 8 sp               |
+| Mobile Flutter       | 6 sp               |
+| DevOps / infra       | 2 sp               |
+| QA                   | 5 sp               |
+| Product / QA terrain | 4 sp               |
+| **Total**            | **39 sp**          |
 
 ## 3.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-| :--- | :--- | :--- | :--- |
-| Templates WhatsApp non approuvés à temps | Fort — pas de quittance envoyée | Élevée | Repli SMS avec lien court signé vers la quittance ; envoi manuel du PDF par le gestionnaire depuis son propre WhatsApp |
-| Doubles encaissements dus à la latence réseau | Fort — litige financier | Élevée | `client_ref` obligatoire, `idempotency_keys` côté API, bouton verrouillé côté mobile, écran de confirmation affichant le numéro de reçu |
-| Résistance des démarcheurs à la traçabilité des espèces | Fort — contournement de l'outil | Élevée | Accompagnement terrain, intéressement lié au taux de reçus émis, reçu papier conservé en double, arbitrage direction d'agence |
-| Signature tactile inexploitable sur téléphones bas de gamme | Moyen | Moyenne | Alternative : photo du reçu papier signé rattachée au `cash_receipts` |
-| Erreur d'imputation des paiements sur les anciennes dettes | Fort | Moyenne | Règle d'imputation figée, écran d'affectation manuelle avec aperçu avant validation, contre-passation possible |
-| Volume de génération PDF au pic mensuel | Moyen | Moyenne | File dédiée, montée en charge du worker, génération à la demande plutôt qu'en masse |
+| Risque                                                      | Impact                          | Probabilité | Plan B                                                                                                                                  |
+| :---------------------------------------------------------- | :------------------------------ | :---------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| Templates WhatsApp non approuvés à temps                    | Fort — pas de quittance envoyée | Élevée      | Repli SMS avec lien court signé vers la quittance ; envoi manuel du PDF par le gestionnaire depuis son propre WhatsApp                  |
+| Doubles encaissements dus à la latence réseau               | Fort — litige financier         | Élevée      | `client_ref` obligatoire, `idempotency_keys` côté API, bouton verrouillé côté mobile, écran de confirmation affichant le numéro de reçu |
+| Résistance des démarcheurs à la traçabilité des espèces     | Fort — contournement de l'outil | Élevée      | Accompagnement terrain, intéressement lié au taux de reçus émis, reçu papier conservé en double, arbitrage direction d'agence           |
+| Signature tactile inexploitable sur téléphones bas de gamme | Moyen                           | Moyenne     | Alternative : photo du reçu papier signé rattachée au `cash_receipts`                                                                   |
+| Erreur d'imputation des paiements sur les anciennes dettes  | Fort                            | Moyenne     | Règle d'imputation figée, écran d'affectation manuelle avec aperçu avant validation, contre-passation possible                          |
+| Volume de génération PDF au pic mensuel                     | Moyen                           | Moyenne     | File dédiée, montée en charge du worker, génération à la demande plutôt qu'en masse                                                     |
 
 ---
 
@@ -952,35 +960,36 @@ Scénario: Déclaration de virement validée par le gestionnaire
 
 **Modules NestJS** :
 
-| Module | Responsabilité |
-| :--- | :--- |
-| `mobile-money` | Interface `MobileMoneyProvider`, adaptateur CinetPay, initiation, re-interrogation, `mobile_money_transactions` |
-| `webhooks` | Réception, vérification de signature, persistance brute dans `webhook_events`, mise en file de traitement |
-| `bank-transfers` | `bank_transfer_declarations`, génération de la référence de virement, validation et rejet |
-| `payments` | Extension aux méthodes MOBILE_MONEY et BANK_TRANSFER, statut PENDING_VERIFICATION |
-| `platform` | Activation par `feature_flags` (par pays et par organisation) |
+| Module           | Responsabilité                                                                                                  |
+| :--------------- | :-------------------------------------------------------------------------------------------------------------- |
+| `mobile-money`   | Interface `MobileMoneyProvider`, adaptateur CinetPay, initiation, re-interrogation, `mobile_money_transactions` |
+| `webhooks`       | Réception, vérification de signature, persistance brute dans `webhook_events`, mise en file de traitement       |
+| `bank-transfers` | `bank_transfer_declarations`, génération de la référence de virement, validation et rejet                       |
+| `payments`       | Extension aux méthodes MOBILE_MONEY et BANK_TRANSFER, statut PENDING_VERIFICATION                               |
+| `platform`       | Activation par `feature_flags` (par pays et par organisation)                                                   |
 
 ## 4.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-| :--- | :--- | :--- | :--- |
-| POST | `/payments/mobile-money/initiate` | COLLECTOR / TENANT | Initie une demande de paiement Mobile Money |
-| GET | `/payments/mobile-money/{id}` | VIEWER / TENANT | Statut d'une transaction Mobile Money |
-| POST | `/payments/mobile-money/{id}/refresh` | MANAGER | Force la re-interrogation du statut auprès de l'agrégateur |
-| POST | `/webhooks/mobile-money/{provider}` | PUBLIC (signé) | Point de réception des webhooks de l'agrégateur |
-| GET | `/webhook-events` | OWNER | Journal des événements reçus et de leur traitement |
-| POST | `/webhook-events/{id}/replay` | OWNER | Rejoue un événement après correction |
-| GET | `/leases/{id}/transfer-reference` | TENANT / MANAGER | Référence à porter dans le libellé du virement |
-| POST | `/bank-transfer-declarations` | TENANT / MANAGER | Déclare un virement avec preuve |
-| GET | `/bank-transfer-declarations` | ACCOUNTANT | File des déclarations à traiter |
-| POST | `/bank-transfer-declarations/{id}/approve` | ACCOUNTANT | Valide la déclaration et crée le paiement |
-| POST | `/bank-transfer-declarations/{id}/reject` | ACCOUNTANT | Rejette la déclaration avec motif |
-| GET | `/organizations/{id}/payment-methods` | MANAGER | Méthodes de paiement actives selon les `feature_flags` |
-| PATCH | `/organizations/{id}/payment-methods` | OWNER | Active ou désactive une méthode pour l'organisation |
+| Méthode | Route                                      | Rôle requis        | Description courte                                         |
+| :------ | :----------------------------------------- | :----------------- | :--------------------------------------------------------- |
+| POST    | `/payments/mobile-money/initiate`          | COLLECTOR / TENANT | Initie une demande de paiement Mobile Money                |
+| GET     | `/payments/mobile-money/{id}`              | VIEWER / TENANT    | Statut d'une transaction Mobile Money                      |
+| POST    | `/payments/mobile-money/{id}/refresh`      | MANAGER            | Force la re-interrogation du statut auprès de l'agrégateur |
+| POST    | `/webhooks/mobile-money/{provider}`        | PUBLIC (signé)     | Point de réception des webhooks de l'agrégateur            |
+| GET     | `/webhook-events`                          | OWNER              | Journal des événements reçus et de leur traitement         |
+| POST    | `/webhook-events/{id}/replay`              | OWNER              | Rejoue un événement après correction                       |
+| GET     | `/leases/{id}/transfer-reference`          | TENANT / MANAGER   | Référence à porter dans le libellé du virement             |
+| POST    | `/bank-transfer-declarations`              | TENANT / MANAGER   | Déclare un virement avec preuve                            |
+| GET     | `/bank-transfer-declarations`              | ACCOUNTANT         | File des déclarations à traiter                            |
+| POST    | `/bank-transfer-declarations/{id}/approve` | ACCOUNTANT         | Valide la déclaration et crée le paiement                  |
+| POST    | `/bank-transfer-declarations/{id}/reject`  | ACCOUNTANT         | Rejette la déclaration avec motif                          |
+| GET     | `/organizations/{id}/payment-methods`      | MANAGER            | Méthodes de paiement actives selon les `feature_flags`     |
+| PATCH   | `/organizations/{id}/payment-methods`      | OWNER              | Active ou désactive une méthode pour l'organisation        |
 
 ## 4.6 Écrans concernés
 
 **Web — dashboard**
+
 - File des déclarations de virement à valider, avec prévisualisation de la preuve côte à côte avec la facture.
 - Journal des transactions Mobile Money : statut, référence opérateur, frais, montant net, action de re-interrogation.
 - Journal technique des webhooks (réservé à `OWNER`) avec possibilité de rejeu.
@@ -988,6 +997,7 @@ Scénario: Déclaration de virement validée par le gestionnaire
 - Bandeau d'information sur la facture : « paiement déclaré, en attente de confirmation bancaire ».
 
 **Mobile (Flutter)**
+
 - Écran de paiement Mobile Money : sélection de la facture, saisie du numéro, affichage du montant, des frais et du total, écran d'attente avec compte à rebours et re-interrogation périodique.
 - Écran de résultat : succès avec quittance, échec avec motif lisible, expiration avec proposition de nouvelle tentative.
 - Écran de déclaration de virement : montant, banque, référence, capture ou sélection de l'avis d'opération.
@@ -1020,29 +1030,28 @@ Scénario: Déclaration de virement validée par le gestionnaire
 
 Durée indicative : **5 semaines**.
 
-| Profil | Semaines-personnes |
-| :--- | :--- |
-| Backend NestJS | 10 sp |
-| Frontend web Next.js | 4 sp |
-| Mobile Flutter | 4 sp |
-| DevOps / infra | 2 sp |
-| QA | 4 sp |
-| Product / QA terrain | 3 sp |
-| **Total** | **27 sp** |
+| Profil               | Semaines-personnes |
+| :------------------- | :----------------- |
+| Backend NestJS       | 10 sp              |
+| Frontend web Next.js | 4 sp               |
+| Mobile Flutter       | 4 sp               |
+| DevOps / infra       | 2 sp               |
+| QA                   | 4 sp               |
+| Product / QA terrain | 3 sp               |
+| **Total**            | **27 sp**          |
 
 ## 4.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-| :--- | :--- | :--- | :--- |
-| Compte agrégateur toujours non obtenu au démarrage de la phase | Fort — phase bloquée | Élevée | Développer et recetter intégralement contre le simulateur, livrer derrière un `feature_flags` désactivé, activer dès obtention du compte |
-| Agrégateur indisponible ou webhooks non délivrés | Fort | Moyenne | Réconciliation périodique par interrogation active ; écran de rapprochement manuel ; second agrégateur derrière la même interface |
-| Frais de transaction jugés excessifs par les locataires | Moyen — faible adoption | Élevée | Paramètre de prise en charge par le bailleur, communication claire, seuil de montant en dessous duquel le Mobile Money est déconseillé |
-| Divergence de montant entre webhook et statut réel | Fort | Faible | Le montant retourné par la re-interrogation fait foi ; écart consigné dans `audit_logs` et alerte |
-| Reversement de l'agrégateur non rapproché du compte bancaire | Moyen | Moyenne | Rattacher les `mobile_money_transactions` aux règlements de l'agrégateur lors du rapprochement de la phase 6 |
-| Numéro Mobile Money du payeur différent de celui du locataire | Faible | Élevée | Autoriser explicitement le paiement par un tiers, tracer le numéro payeur dans la transaction |
+| Risque                                                         | Impact                  | Probabilité | Plan B                                                                                                                                   |
+| :------------------------------------------------------------- | :---------------------- | :---------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
+| Compte agrégateur toujours non obtenu au démarrage de la phase | Fort — phase bloquée    | Élevée      | Développer et recetter intégralement contre le simulateur, livrer derrière un `feature_flags` désactivé, activer dès obtention du compte |
+| Agrégateur indisponible ou webhooks non délivrés               | Fort                    | Moyenne     | Réconciliation périodique par interrogation active ; écran de rapprochement manuel ; second agrégateur derrière la même interface        |
+| Frais de transaction jugés excessifs par les locataires        | Moyen — faible adoption | Élevée      | Paramètre de prise en charge par le bailleur, communication claire, seuil de montant en dessous duquel le Mobile Money est déconseillé   |
+| Divergence de montant entre webhook et statut réel             | Fort                    | Faible      | Le montant retourné par la re-interrogation fait foi ; écart consigné dans `audit_logs` et alerte                                        |
+| Reversement de l'agrégateur non rapproché du compte bancaire   | Moyen                   | Moyenne     | Rattacher les `mobile_money_transactions` aux règlements de l'agrégateur lors du rapprochement de la phase 6                             |
+| Numéro Mobile Money du payeur différent de celui du locataire  | Faible                  | Élevée      | Autoriser explicitement le paiement par un tiers, tracer le numéro payeur dans la transaction                                            |
 
 ---
-
 
 ---
 
@@ -1093,7 +1102,6 @@ Jusqu'ici, l'application mobile des démarcheurs (`COLLECTOR`) fonctionne en lig
 
 - En tant que `MANAGER`, je veux être notifié lorsqu'un conflit de synchronisation survient (par exemple une facture modifiée côté serveur pendant qu'un démarcheur était hors ligne), afin de trancher manuellement quand la règle automatique ne suffit pas.
 - En tant qu'`OWNER`, je veux que les données stockées localement sur l'appareil soient chiffrées au repos, afin qu'un vol de téléphone n'expose pas les données des locataires et des paiements.
-
 
 ---
 
@@ -1169,40 +1177,40 @@ Scénario: Chiffrement local et périmètre restreint du mode démarcheur
 
 **Modules NestJS** :
 
-| Module | Responsabilité |
-| :--- | :--- |
+| Module        | Responsabilité                                                                            |
+| :------------ | :---------------------------------------------------------------------------------------- |
 | `mobile-sync` | `sync_batches`, endpoint de synchronisation par lots, détection et arbitrage des conflits |
-| `capture` | Réception des photos compressées et des signatures, association aux entités métier |
-| `inspections` | `inspections`, `inspection_items`, `inspection_photos` créés en contexte offline |
+| `capture`     | Réception des photos compressées et des signatures, association aux entités métier        |
+| `inspections` | `inspections`, `inspection_items`, `inspection_photos` créés en contexte offline          |
 
 **Modules Flutter (mobile)** :
 
-| Module | Responsabilité |
-| :--- | :--- |
-| `offline_store` | Schéma Drift, DAOs, chiffrement de la base locale |
-| `sync_engine` | Outbox, génération des `client_ref` ULID, envoi par lots, reprise automatique |
-| `capture_ui` | Pad de signature tactile, prise et compression de photo |
-| `collector_mode` | Navigation et permissions restreintes du mode démarcheur |
+| Module           | Responsabilité                                                                |
+| :--------------- | :---------------------------------------------------------------------------- |
+| `offline_store`  | Schéma Drift, DAOs, chiffrement de la base locale                             |
+| `sync_engine`    | Outbox, génération des `client_ref` ULID, envoi par lots, reprise automatique |
+| `capture_ui`     | Pad de signature tactile, prise et compression de photo                       |
+| `collector_mode` | Navigation et permissions restreintes du mode démarcheur                      |
 
 ## 5.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-| :--- | :--- | :--- | :--- |
-| POST | `/sync/batches` | COLLECTOR | Envoie un lot d'écritures offline, idempotent via `client_ref` |
-| GET | `/sync/batches/{id}` | COLLECTOR | Statut de traitement d'un lot de synchronisation |
-| GET | `/sync/pull` | COLLECTOR | Télécharge le delta des données de référence depuis la dernière synchronisation |
-| GET | `/sync/conflicts` | MANAGER | Liste des conflits de synchronisation à résoudre |
-| POST | `/sync/conflicts/{id}/resolve` | MANAGER | Résout manuellement un conflit de synchronisation |
-| POST | `/inspections/{id}/photos` | COLLECTOR | Upload d'une photo compressée liée à un état des lieux, avec `client_ref` |
-| POST | `/inspections/{id}/signature` | COLLECTOR | Upload d'une signature tactile liée à un état des lieux |
-| GET | `/mobile/config` | COLLECTOR | Paramètres mobiles (taille max photo, fenêtre de rétention offline) |
-
+| Méthode | Route                          | Rôle requis | Description courte                                                              |
+| :------ | :----------------------------- | :---------- | :------------------------------------------------------------------------------ |
+| POST    | `/sync/batches`                | COLLECTOR   | Envoie un lot d'écritures offline, idempotent via `client_ref`                  |
+| GET     | `/sync/batches/{id}`           | COLLECTOR   | Statut de traitement d'un lot de synchronisation                                |
+| GET     | `/sync/pull`                   | COLLECTOR   | Télécharge le delta des données de référence depuis la dernière synchronisation |
+| GET     | `/sync/conflicts`              | MANAGER     | Liste des conflits de synchronisation à résoudre                                |
+| POST    | `/sync/conflicts/{id}/resolve` | MANAGER     | Résout manuellement un conflit de synchronisation                               |
+| POST    | `/inspections/{id}/photos`     | COLLECTOR   | Upload d'une photo compressée liée à un état des lieux, avec `client_ref`       |
+| POST    | `/inspections/{id}/signature`  | COLLECTOR   | Upload d'une signature tactile liée à un état des lieux                         |
+| GET     | `/mobile/config`               | COLLECTOR   | Paramètres mobiles (taille max photo, fenêtre de rétention offline)             |
 
 ---
 
 ## 5.6 Écrans concernés
 
 **Mobile (Flutter) — mode démarcheur**
+
 - Écran de préchargement de tournée : sélection et confirmation des données mises en cache local avant départ.
 - Indicateur global de synchronisation (badge en attente / synchronisé / en erreur) visible en permanence.
 - Écran « outbox » : liste des éléments créés hors ligne avec détail par élément, statut et action de nouvelle tentative.
@@ -1212,6 +1220,7 @@ Scénario: Chiffrement local et périmètre restreint du mode démarcheur
 - Écran de conflit côté mobile : informe l'utilisateur qu'un élément nécessite l'arbitrage d'un gestionnaire, sans bloquer le reste de son travail.
 
 **Web — dashboard**
+
 - File des lots de synchronisation (`sync_batches`) avec statut, nombre d'éléments, erreurs.
 - Écran de résolution manuelle des conflits de synchronisation.
 - Vue de supervision des appareils/démarcheurs : dernière synchronisation réussie, taille de l'outbox en attente par démarcheur.
@@ -1245,27 +1254,26 @@ Scénario: Chiffrement local et périmètre restreint du mode démarcheur
 
 Durée indicative : **6 semaines**.
 
-| Profil | Semaines-personnes |
-| :--- | :--- |
-| Backend NestJS | 6 sp |
-| Mobile Flutter | 16 sp |
-| Frontend web Next.js | 3 sp |
-| DevOps / infra | 2 sp |
-| QA | 5 sp |
-| Product / QA terrain | 3 sp |
-| **Total** | **35 sp** |
+| Profil               | Semaines-personnes |
+| :------------------- | :----------------- |
+| Backend NestJS       | 6 sp               |
+| Mobile Flutter       | 16 sp              |
+| Frontend web Next.js | 3 sp               |
+| DevOps / infra       | 2 sp               |
+| QA                   | 5 sp               |
+| Product / QA terrain | 3 sp               |
+| **Total**            | **35 sp**          |
 
 ## 5.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-| :--- | :--- | :--- | :--- |
-| Perte de données locales avant synchronisation (téléphone cassé ou volé) | Fort | Moyenne | Synchronisation automatique dès que le réseau est disponible, fenêtre de rétention locale limitée, incitation à synchroniser en fin de tournée |
-| Conflits de synchronisation fréquents sur les factures modifiées en double contexte (dashboard et mobile) | Fort — litige financier | Moyenne | Règle déterministe par entité, horodatage serveur qui fait foi pour les factures, résolution manuelle obligatoire pour les paiements en conflit |
-| Compression excessive dégradant la lisibilité des photos (compteurs, états des lieux) | Moyen | Moyenne | Qualité de compression ajustable par paramètre, aperçu avant envoi, re-upload en haute qualité possible une fois en Wi-Fi |
-| Signature tactile inexploitable sur téléphones bas de gamme | Moyen | Moyenne | Alternative déjà prévue en phase 3 : photo du document papier signé rattachée à l'entité |
-| Résistance des démarcheurs au périmètre restreint du mode démarcheur | Moyen | Moyenne | Accompagnement terrain, explication du motif de sécurité, canal de remontée pour les besoins non couverts |
-| Chiffrement local compliquant le support technique en cas de mot de passe oublié | Moyen | Faible | Procédure de réinitialisation par ré-authentification OTP suivie d'un nouveau préchargement complet des données |
-
+| Risque                                                                                                    | Impact                  | Probabilité | Plan B                                                                                                                                          |
+| :-------------------------------------------------------------------------------------------------------- | :---------------------- | :---------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Perte de données locales avant synchronisation (téléphone cassé ou volé)                                  | Fort                    | Moyenne     | Synchronisation automatique dès que le réseau est disponible, fenêtre de rétention locale limitée, incitation à synchroniser en fin de tournée  |
+| Conflits de synchronisation fréquents sur les factures modifiées en double contexte (dashboard et mobile) | Fort — litige financier | Moyenne     | Règle déterministe par entité, horodatage serveur qui fait foi pour les factures, résolution manuelle obligatoire pour les paiements en conflit |
+| Compression excessive dégradant la lisibilité des photos (compteurs, états des lieux)                     | Moyen                   | Moyenne     | Qualité de compression ajustable par paramètre, aperçu avant envoi, re-upload en haute qualité possible une fois en Wi-Fi                       |
+| Signature tactile inexploitable sur téléphones bas de gamme                                               | Moyen                   | Moyenne     | Alternative déjà prévue en phase 3 : photo du document papier signé rattachée à l'entité                                                        |
+| Résistance des démarcheurs au périmètre restreint du mode démarcheur                                      | Moyen                   | Moyenne     | Accompagnement terrain, explication du motif de sécurité, canal de remontée pour les besoins non couverts                                       |
+| Chiffrement local compliquant le support technique en cas de mot de passe oublié                          | Moyen                   | Faible      | Procédure de réinitialisation par ré-authentification OTP suivie d'un nouveau préchargement complet des données                                 |
 
 ---
 
@@ -1354,7 +1362,6 @@ Scénario: Validation d'une suggestion de rapprochement
   Et la facture liée à la déclaration de virement est mise à jour en conséquence
 ```
 
-
 ---
 
 ```gherkin
@@ -1393,39 +1400,39 @@ Scénario: Rejet d'un chèque impayé et réouverture de la facture
 
 **Modules NestJS** :
 
-| Module | Responsabilité |
-| :--- | :--- |
+| Module            | Responsabilité                                                                                                                                                                                      |
+| :---------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `bank-statements` | `bank_statements`, `bank_statement_lines`, adaptateurs d'import (`BgfiAdapter`, `LcbAdapter`, `EcobankAdapter`, `UbaAdapter`, `Mt940Adapter`) derrière une interface commune `BankStatementAdapter` |
-| `reconciliation` | `reconciliation_matches`, moteur de correspondance exacte, calcul de score de similarité, file de suggestions |
-| `bank-checks` | `bank_checks`, machine à états du cycle de vie du chèque, alerte de relance |
+| `reconciliation`  | `reconciliation_matches`, moteur de correspondance exacte, calcul de score de similarité, file de suggestions                                                                                       |
+| `bank-checks`     | `bank_checks`, machine à états du cycle de vie du chèque, alerte de relance                                                                                                                         |
 
 ## 6.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-| :--- | :--- | :--- | :--- |
-| POST | `/bank-accounts/{id}/statements/import` | ACCOUNTANT | Importe un fichier de relevé (CSV banque ou MT940), détection ou choix du format |
-| GET | `/bank-accounts/{id}/statements` | ACCOUNTANT | Liste des relevés importés pour un compte |
-| GET | `/bank-statements/{id}` | ACCOUNTANT | Détail d'un relevé et rapport d'import |
-| GET | `/bank-statements/{id}/lines` | ACCOUNTANT | Lignes d'un relevé, filtrables par statut |
-| GET | `/bank-statement-lines` | ACCOUNTANT | Lignes non rapprochées tous relevés confondus, filtres compte et ancienneté |
-| GET | `/bank-statement-lines/{id}/suggestions` | ACCOUNTANT | Suggestions de rapprochement calculées pour une ligne, avec score |
-| POST | `/reconciliation-matches` | ACCOUNTANT | Crée un rapprochement manuel entre une ligne bancaire et une transaction interne |
-| POST | `/reconciliation-matches/{id}/confirm` | ACCOUNTANT | Valide une suggestion (passe SUGGESTED → CONFIRMED) |
-| POST | `/reconciliation-matches/{id}/reject` | ACCOUNTANT | Rejette une suggestion, la ligne redevient UNMATCHED |
-| DELETE | `/reconciliation-matches/{id}` | ACCOUNTANT | Annule un rapprochement manuel |
-| POST | `/bank-checks` | ACCOUNTANT | Saisit un chèque reçu (statut REGISTERED) |
-| GET | `/bank-checks` | ACCOUNTANT | Liste des chèques, filtres statut et échéance |
-| GET | `/bank-checks/{id}` | ACCOUNTANT | Détail d'un chèque et historique de ses transitions |
-| POST | `/bank-checks/{id}/deposit` | ACCOUNTANT | Déclare le dépôt en banque (statut DEPOSITED) |
-| POST | `/bank-checks/{id}/clear` | ACCOUNTANT | Enregistre la compensation (statut CLEARED) |
-| POST | `/bank-checks/{id}/reject` | ACCOUNTANT | Enregistre le rejet avec motif (statut REJECTED) |
-
+| Méthode | Route                                    | Rôle requis | Description courte                                                               |
+| :------ | :--------------------------------------- | :---------- | :------------------------------------------------------------------------------- |
+| POST    | `/bank-accounts/{id}/statements/import`  | ACCOUNTANT  | Importe un fichier de relevé (CSV banque ou MT940), détection ou choix du format |
+| GET     | `/bank-accounts/{id}/statements`         | ACCOUNTANT  | Liste des relevés importés pour un compte                                        |
+| GET     | `/bank-statements/{id}`                  | ACCOUNTANT  | Détail d'un relevé et rapport d'import                                           |
+| GET     | `/bank-statements/{id}/lines`            | ACCOUNTANT  | Lignes d'un relevé, filtrables par statut                                        |
+| GET     | `/bank-statement-lines`                  | ACCOUNTANT  | Lignes non rapprochées tous relevés confondus, filtres compte et ancienneté      |
+| GET     | `/bank-statement-lines/{id}/suggestions` | ACCOUNTANT  | Suggestions de rapprochement calculées pour une ligne, avec score                |
+| POST    | `/reconciliation-matches`                | ACCOUNTANT  | Crée un rapprochement manuel entre une ligne bancaire et une transaction interne |
+| POST    | `/reconciliation-matches/{id}/confirm`   | ACCOUNTANT  | Valide une suggestion (passe SUGGESTED → CONFIRMED)                              |
+| POST    | `/reconciliation-matches/{id}/reject`    | ACCOUNTANT  | Rejette une suggestion, la ligne redevient UNMATCHED                             |
+| DELETE  | `/reconciliation-matches/{id}`           | ACCOUNTANT  | Annule un rapprochement manuel                                                   |
+| POST    | `/bank-checks`                           | ACCOUNTANT  | Saisit un chèque reçu (statut REGISTERED)                                        |
+| GET     | `/bank-checks`                           | ACCOUNTANT  | Liste des chèques, filtres statut et échéance                                    |
+| GET     | `/bank-checks/{id}`                      | ACCOUNTANT  | Détail d'un chèque et historique de ses transitions                              |
+| POST    | `/bank-checks/{id}/deposit`              | ACCOUNTANT  | Déclare le dépôt en banque (statut DEPOSITED)                                    |
+| POST    | `/bank-checks/{id}/clear`                | ACCOUNTANT  | Enregistre la compensation (statut CLEARED)                                      |
+| POST    | `/bank-checks/{id}/reject`               | ACCOUNTANT  | Enregistre le rejet avec motif (statut REJECTED)                                 |
 
 ---
 
 ## 6.6 Écrans concernés
 
 **Web — dashboard**
+
 - Écran d'import de relevé : sélection du compte bancaire, dépôt du fichier, détection ou choix explicite du format (BGFI, LCB, Ecobank, UBA, MT940), aperçu avant validation, rapport d'import (acceptées / doublons / erreurs).
 - Liste des relevés importés par compte, avec taux de rapprochement de chacun.
 - Écran de rapprochement : file des lignes non rapprochées et suggérées, panneau de suggestions avec score, recherche manuelle d'un paiement ou d'une déclaration de virement, validation ou rejet en un clic.
@@ -1466,26 +1473,25 @@ Scénario: Rejet d'un chèque impayé et réouverture de la facture
 
 Durée indicative : **5 semaines**.
 
-| Profil | Semaines-personnes |
-| :--- | :--- |
-| Backend NestJS | 10 sp |
-| Frontend web Next.js | 5 sp |
-| DevOps / infra | 1 sp |
-| QA | 3 sp |
-| Product / QA terrain | 2 sp |
-| **Total** | **21 sp** |
+| Profil               | Semaines-personnes |
+| :------------------- | :----------------- |
+| Backend NestJS       | 10 sp              |
+| Frontend web Next.js | 5 sp               |
+| DevOps / infra       | 1 sp               |
+| QA                   | 3 sp               |
+| Product / QA terrain | 2 sp               |
+| **Total**            | **21 sp**          |
 
 ## 6.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-| :--- | :--- | :--- | :--- |
-| Format CSV d'une banque modifié sans préavis | Fort — import cassé | Moyenne | Détection d'échec de parsing avec alerte immédiate, bascule temporaire en saisie manuelle des lignes, contact bancaire dédié |
-| Faux positifs du rapprochement automatique exact | Fort — mauvaise transaction soldée | Faible | Contrainte stricte montant + référence exacte pour le niveau EXACT, tout le reste en SUGGESTED à validation humaine |
-| Chèques sans référence exploitable sur le relevé | Moyen | Élevée | Rapprochement par montant et date de dépôt déclarée, validation manuelle systématique pour les chèques |
-| Volume de rapprochement manuel trop élevé au démarrage | Moyen | Moyenne | Ajustement progressif du seuil de score de suggestion, apprentissage sur les validations passées |
-| Délai de compensation variable selon les banques | Faible | Élevée | Délai de relance paramétrable par banque dans `bank_accounts`, alerte plutôt que blocage |
-| Rejet de chèque découvert tardivement | Fort — créance non couverte | Moyenne | Alerte immédiate au `MANAGER`, pénalité de rejet paramétrable, procédure de relance du locataire documentée |
-
+| Risque                                                 | Impact                             | Probabilité | Plan B                                                                                                                       |
+| :----------------------------------------------------- | :--------------------------------- | :---------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| Format CSV d'une banque modifié sans préavis           | Fort — import cassé                | Moyenne     | Détection d'échec de parsing avec alerte immédiate, bascule temporaire en saisie manuelle des lignes, contact bancaire dédié |
+| Faux positifs du rapprochement automatique exact       | Fort — mauvaise transaction soldée | Faible      | Contrainte stricte montant + référence exacte pour le niveau EXACT, tout le reste en SUGGESTED à validation humaine          |
+| Chèques sans référence exploitable sur le relevé       | Moyen                              | Élevée      | Rapprochement par montant et date de dépôt déclarée, validation manuelle systématique pour les chèques                       |
+| Volume de rapprochement manuel trop élevé au démarrage | Moyen                              | Moyenne     | Ajustement progressif du seuil de score de suggestion, apprentissage sur les validations passées                             |
+| Délai de compensation variable selon les banques       | Faible                             | Élevée      | Délai de relance paramétrable par banque dans `bank_accounts`, alerte plutôt que blocage                                     |
+| Rejet de chèque découvert tardivement                  | Fort — créance non couverte        | Moyenne     | Alerte immédiate au `MANAGER`, pénalité de rejet paramétrable, procédure de relance du locataire documentée                  |
 
 ---
 
@@ -1552,7 +1558,6 @@ Cette phase transforme Immodesk en véritable outil de gérance pour compte de t
 - En tant que bailleur invité, je veux activer mon accès au portail par OTP sur mon numéro de téléphone, afin de consulter mes données sans créer de mot de passe.
 - En tant que bailleur, je veux consulter en lecture seule mes encaissements, mes quittances, mes relevés de gérance et mes reversements depuis le portail, afin de vérifier moi-même que mon bien est correctement géré, y compris depuis l'étranger.
 - En tant que responsable sécurité, je veux que le compte du portail bailleur ne porte aucun rôle `organization_members` et ne puisse exécuter aucune action d'écriture, afin de garantir l'étanchéité entre consultation et gestion.
-
 
 ---
 
@@ -1645,53 +1650,53 @@ Scénario: Invitation du bailleur et accès au portail en lecture seule
 
 **Modules NestJS** :
 
-| Module | Responsabilité |
-| :--- | :--- |
-| `mandates` | `management_mandates`, cycle de vie (actif, suspendu, résilié), rattachement des biens |
-| `expenses` | `expenses`, saisie terrain, validation, justificatifs |
-| `commissions` | Calcul de `commissions` au taux du mandat sur les loyers confirmés du mois |
-| `owner-statements` | Campagne mensuelle, `owner_statements`, `owner_statement_lines`, machine à états du relevé |
-| `owner-payouts` | `owner_payouts`, validation, exécution via `MobileMoneyProvider` ou virement, traçabilité |
-| `pdf` | Gabarit du relevé de gérance |
-| `messaging` | Notification de mise à disposition du relevé, repli email pour la diaspora |
-| `tenancy` (étendu) | Type d'organisation `INDEPENDENT_MANAGER`, plan tarifaire dédié, onboarding mobile |
-| `landlord-portal` | Session du compte bailleur scopée à `landlords.user_id`, sans rôle `organization_members`, endpoints de consultation en lecture seule |
+| Module             | Responsabilité                                                                                                                        |
+| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------ |
+| `mandates`         | `management_mandates`, cycle de vie (actif, suspendu, résilié), rattachement des biens                                                |
+| `expenses`         | `expenses`, saisie terrain, validation, justificatifs                                                                                 |
+| `commissions`      | Calcul de `commissions` au taux du mandat sur les loyers confirmés du mois                                                            |
+| `owner-statements` | Campagne mensuelle, `owner_statements`, `owner_statement_lines`, machine à états du relevé                                            |
+| `owner-payouts`    | `owner_payouts`, validation, exécution via `MobileMoneyProvider` ou virement, traçabilité                                             |
+| `pdf`              | Gabarit du relevé de gérance                                                                                                          |
+| `messaging`        | Notification de mise à disposition du relevé, repli email pour la diaspora                                                            |
+| `tenancy` (étendu) | Type d'organisation `INDEPENDENT_MANAGER`, plan tarifaire dédié, onboarding mobile                                                    |
+| `landlord-portal`  | Session du compte bailleur scopée à `landlords.user_id`, sans rôle `organization_members`, endpoints de consultation en lecture seule |
 
 ## 7.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-| :--- | :--- | :--- | :--- |
-| GET | `/management-mandates` | MANAGER | Liste des mandats, filtres statut et bailleur |
-| POST | `/management-mandates` | OWNER | Crée un mandat (durée, périmètre, taux de commission) |
-| GET | `/management-mandates/{id}` | MANAGER | Détail d'un mandat et des biens rattachés |
-| PATCH | `/management-mandates/{id}` | OWNER | Modifie le périmètre ou le taux de commission |
-| POST | `/management-mandates/{id}/terminate` | OWNER | Résilie un mandat avec date d'effet et motif |
-| POST | `/expenses` | MANAGER | Enregistre une dépense imputée à un bien sous mandat |
-| POST | `/expenses/{id}/validate` | ACCOUNTANT | Valide une dépense avant intégration au relevé |
-| GET | `/expenses` | ACCOUNTANT | Liste des dépenses, filtres bien et statut |
-| GET | `/commissions` | OWNER | Cumul des commissions par mandat et période |
-| POST | `/owner-statements/runs` | ACCOUNTANT | Déclenche la campagne mensuelle de génération des relevés |
-| GET | `/owner-statements` | ACCOUNTANT | Liste des relevés, filtres mandat, période, statut |
-| GET | `/owner-statements/{id}` | ACCOUNTANT | Détail d'un relevé et de ses lignes |
-| POST | `/owner-statements/{id}/validate` | OWNER | Valide un relevé et déclenche l'envoi au bailleur |
-| GET | `/owner-statements/{id}/pdf` | MANAGER | PDF du relevé de gérance |
-| POST | `/owner-payouts` | ACCOUNTANT | Initie un reversement pour un relevé validé |
-| POST | `/owner-payouts/{id}/approve` | OWNER | Valide le reversement avant exécution |
-| POST | `/owner-payouts/{id}/execute` | ACCOUNTANT | Exécute le reversement et enregistre la référence |
-| GET | `/owner-payouts` | ACCOUNTANT | Liste des reversements, filtres statut et bailleur |
-| GET | `/landlords/{id}/statements` | VIEWER | Consultation des relevés par le bailleur (portail/mobile) |
-| GET | `/landlords/{id}/payouts` | VIEWER | Historique des reversements perçus par le bailleur |
-| POST | `/organizations/independent-manager/onboarding` | Authentifié | Crée une organisation `INDEPENDENT_MANAGER`, son premier mandat et applique la commission par défaut de 10 % en un parcours mobile unique |
-| POST | `/management-mandates/{id}/landlord-invitation` | MANAGER | Invite le bailleur du mandat par WhatsApp à activer son portail en lecture seule |
-| GET | `/landlords/{id}/collections` | VIEWER | Encaissements confirmés du bailleur, consultables depuis son portail |
-| GET | `/landlords/{id}/receipts` | VIEWER | Quittances liées aux baux de ses biens, consultables depuis son portail |
-
+| Méthode | Route                                           | Rôle requis | Description courte                                                                                                                        |
+| :------ | :---------------------------------------------- | :---------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
+| GET     | `/management-mandates`                          | MANAGER     | Liste des mandats, filtres statut et bailleur                                                                                             |
+| POST    | `/management-mandates`                          | OWNER       | Crée un mandat (durée, périmètre, taux de commission)                                                                                     |
+| GET     | `/management-mandates/{id}`                     | MANAGER     | Détail d'un mandat et des biens rattachés                                                                                                 |
+| PATCH   | `/management-mandates/{id}`                     | OWNER       | Modifie le périmètre ou le taux de commission                                                                                             |
+| POST    | `/management-mandates/{id}/terminate`           | OWNER       | Résilie un mandat avec date d'effet et motif                                                                                              |
+| POST    | `/expenses`                                     | MANAGER     | Enregistre une dépense imputée à un bien sous mandat                                                                                      |
+| POST    | `/expenses/{id}/validate`                       | ACCOUNTANT  | Valide une dépense avant intégration au relevé                                                                                            |
+| GET     | `/expenses`                                     | ACCOUNTANT  | Liste des dépenses, filtres bien et statut                                                                                                |
+| GET     | `/commissions`                                  | OWNER       | Cumul des commissions par mandat et période                                                                                               |
+| POST    | `/owner-statements/runs`                        | ACCOUNTANT  | Déclenche la campagne mensuelle de génération des relevés                                                                                 |
+| GET     | `/owner-statements`                             | ACCOUNTANT  | Liste des relevés, filtres mandat, période, statut                                                                                        |
+| GET     | `/owner-statements/{id}`                        | ACCOUNTANT  | Détail d'un relevé et de ses lignes                                                                                                       |
+| POST    | `/owner-statements/{id}/validate`               | OWNER       | Valide un relevé et déclenche l'envoi au bailleur                                                                                         |
+| GET     | `/owner-statements/{id}/pdf`                    | MANAGER     | PDF du relevé de gérance                                                                                                                  |
+| POST    | `/owner-payouts`                                | ACCOUNTANT  | Initie un reversement pour un relevé validé                                                                                               |
+| POST    | `/owner-payouts/{id}/approve`                   | OWNER       | Valide le reversement avant exécution                                                                                                     |
+| POST    | `/owner-payouts/{id}/execute`                   | ACCOUNTANT  | Exécute le reversement et enregistre la référence                                                                                         |
+| GET     | `/owner-payouts`                                | ACCOUNTANT  | Liste des reversements, filtres statut et bailleur                                                                                        |
+| GET     | `/landlords/{id}/statements`                    | VIEWER      | Consultation des relevés par le bailleur (portail/mobile)                                                                                 |
+| GET     | `/landlords/{id}/payouts`                       | VIEWER      | Historique des reversements perçus par le bailleur                                                                                        |
+| POST    | `/organizations/independent-manager/onboarding` | Authentifié | Crée une organisation `INDEPENDENT_MANAGER`, son premier mandat et applique la commission par défaut de 10 % en un parcours mobile unique |
+| POST    | `/management-mandates/{id}/landlord-invitation` | MANAGER     | Invite le bailleur du mandat par WhatsApp à activer son portail en lecture seule                                                          |
+| GET     | `/landlords/{id}/collections`                   | VIEWER      | Encaissements confirmés du bailleur, consultables depuis son portail                                                                      |
+| GET     | `/landlords/{id}/receipts`                      | VIEWER      | Quittances liées aux baux de ses biens, consultables depuis son portail                                                                   |
 
 ---
 
 ## 7.6 Écrans concernés
 
 **Web — dashboard agence**
+
 - Liste des mandats de gestion : bailleur, biens rattachés, taux de commission, statut (actif, suspendu, résilié).
 - Fiche mandat : historique, biens, relevés associés, action de résiliation.
 - Écran de saisie et de validation des dépenses par bien, avec pièce jointe.
@@ -1701,6 +1706,7 @@ Scénario: Invitation du bailleur et accès au portail en lecture seule
 - Vue consolidée des commissions perçues par mandat et par période.
 
 **Tableau de bord bailleur (web et mobile) — portail en lecture seule**
+
 - Accueil bailleur : solde à percevoir, dernier relevé, dernier reversement.
 - Liste des encaissements confirmés sur ses biens, avec date, locataire et méthode de paiement (lecture seule).
 - Liste des quittances, avec téléchargement du PDF et QR de vérification (lecture seule).
@@ -1710,11 +1716,13 @@ Scénario: Invitation du bailleur et accès au portail en lecture seule
 - Écran d'activation du portail par OTP, atteint depuis le lien d'invitation WhatsApp envoyé par le gestionnaire.
 
 **Espace gestionnaire indépendant (mobile, priorité) et web**
+
 - Parcours d'onboarding mobile en une suite d'écrans courts : création de l'organisation `INDEPENDENT_MANAGER`, premier bailleur, premier immeuble, premier mandat avec commission par défaut de 10 % pré-remplie.
 - Fiche mandat : bouton « inviter le bailleur par WhatsApp » avec statut de l'invitation (envoyée, activée).
 - Bandeau de suivi du temps d'onboarding pour l'équipe produit (mesure du parcours à moins de 10 minutes).
 
 **Mobile (Flutter)**
+
 - Écran « mes biens en gérance » côté bailleur, reprenant encaissements, quittances, relevés et reversements en consultation.
 - Notification push/WhatsApp à la mise à disposition d'un nouveau relevé.
 
@@ -1751,27 +1759,26 @@ Scénario: Invitation du bailleur et accès au portail en lecture seule
 
 Durée indicative : **6 semaines**.
 
-| Profil | Semaines-personnes |
-| :--- | :--- |
-| Backend NestJS | 11 sp |
-| Frontend web Next.js | 6 sp |
-| Mobile Flutter | 3 sp |
-| DevOps / infra | 1 sp |
-| QA | 4 sp |
-| Product / QA terrain | 3 sp |
-| **Total** | **28 sp** |
+| Profil               | Semaines-personnes |
+| :------------------- | :----------------- |
+| Backend NestJS       | 11 sp              |
+| Frontend web Next.js | 6 sp               |
+| Mobile Flutter       | 3 sp               |
+| DevOps / infra       | 1 sp               |
+| QA                   | 4 sp               |
+| Product / QA terrain | 3 sp               |
+| **Total**            | **28 sp**          |
 
 ## 7.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-| :--- | :--- | :--- | :--- |
-| Erreur de calcul de commission ou de solde du relevé | Fort — litige avec le bailleur | Moyenne | Relevé toujours au statut brouillon avant validation humaine ; capacité de recalcul avant envoi, jamais après |
-| Délai ou échec de virement international vers un bailleur en diaspora | Fort — perte de confiance | Élevée | Suivi manuel du virement, communication proactive du délai estimé, repli mobile money international si disponible |
-| Coordonnées de reversement incomplètes pour un bailleur en diaspora | Moyen | Moyenne | Alerte au `MANAGER`, blocage de l'exécution tant que les coordonnées ne sont pas complètes |
-| Dépenses supérieures aux loyers encaissés (solde négatif) | Moyen | Moyenne | Règle de report figée en amont, affichage explicite du report sur le relevé suivant |
-| Contestation d'une ligne du relevé par le bailleur | Moyen | Moyenne | Relevé append-only, toute correction passe par une ligne complémentaire tracée, jamais par une modification |
-| Mandat résilié en cours de mois mal proratisé | Moyen | Faible | Relevé de clôture dédié généré à la date de résiliation, hors campagne mensuelle standard |
-
+| Risque                                                                | Impact                         | Probabilité | Plan B                                                                                                            |
+| :-------------------------------------------------------------------- | :----------------------------- | :---------- | :---------------------------------------------------------------------------------------------------------------- |
+| Erreur de calcul de commission ou de solde du relevé                  | Fort — litige avec le bailleur | Moyenne     | Relevé toujours au statut brouillon avant validation humaine ; capacité de recalcul avant envoi, jamais après     |
+| Délai ou échec de virement international vers un bailleur en diaspora | Fort — perte de confiance      | Élevée      | Suivi manuel du virement, communication proactive du délai estimé, repli mobile money international si disponible |
+| Coordonnées de reversement incomplètes pour un bailleur en diaspora   | Moyen                          | Moyenne     | Alerte au `MANAGER`, blocage de l'exécution tant que les coordonnées ne sont pas complètes                        |
+| Dépenses supérieures aux loyers encaissés (solde négatif)             | Moyen                          | Moyenne     | Règle de report figée en amont, affichage explicite du report sur le relevé suivant                               |
+| Contestation d'une ligne du relevé par le bailleur                    | Moyen                          | Moyenne     | Relevé append-only, toute correction passe par une ligne complémentaire tracée, jamais par une modification       |
+| Mandat résilié en cours de mois mal proratisé                         | Moyen                          | Faible      | Relevé de clôture dédié généré à la date de résiliation, hors campagne mensuelle standard                         |
 
 ---
 
@@ -1847,7 +1854,6 @@ Scénario: Comparaison entrée/sortie et retenue proposée sur le dépôt
   Alors une ligne est créée dans "deposit_movements" au débit du dépôt de garantie du bail
 ```
 
-
 ---
 
 ```gherkin
@@ -1901,45 +1907,45 @@ Scénario: Génération d'une demande de maintenance depuis un état des lieux
 
 **Modules NestJS** :
 
-| Module | Responsabilité |
-| :--- | :--- |
+| Module        | Responsabilité                                                                                                 |
+| :------------ | :------------------------------------------------------------------------------------------------------------- |
 | `inspections` | `inspections`, `inspection_items`, `inspection_photos`, comparaison entrée/sortie, verrouillage à la signature |
-| `meters` | `meters`, `meter_readings`, contrôle d'index, historique de consommation |
-| `utilities` | `utility_tariffs`, moteur de valorisation de la consommation, campagne de refacturation vers `invoice_lines` |
-| `maintenance` | `maintenance_requests`, `maintenance_updates`, machine à états, conversion depuis une inspection |
-| `deposits` | (phase 2, étendu) application des retenues issues des états des lieux sur `deposit_movements` |
-| `storage` | Upload et URLs signées R2 pour `inspection_photos` et les photos de `maintenance_updates` |
+| `meters`      | `meters`, `meter_readings`, contrôle d'index, historique de consommation                                       |
+| `utilities`   | `utility_tariffs`, moteur de valorisation de la consommation, campagne de refacturation vers `invoice_lines`   |
+| `maintenance` | `maintenance_requests`, `maintenance_updates`, machine à états, conversion depuis une inspection               |
+| `deposits`    | (phase 2, étendu) application des retenues issues des états des lieux sur `deposit_movements`                  |
+| `storage`     | Upload et URLs signées R2 pour `inspection_photos` et les photos de `maintenance_updates`                      |
 
 ## 8.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-| :--- | :--- | :--- | :--- |
-| POST | `/inspections` | COLLECTOR | Crée un état des lieux (ENTRY ou EXIT) pour un lot |
-| POST | `/inspections/{id}/items` | COLLECTOR | Ajoute un poste constaté à un état des lieux DRAFT |
-| POST | `/inspections/{id}/items/{itemId}/photos` | COLLECTOR | Attache une photo à un poste |
-| POST | `/inspections/{id}/sign` | COLLECTOR | Enregistre les signatures et verrouille l'état des lieux |
-| GET | `/inspections/{id}` | MANAGER | Détail d'un état des lieux et de ses postes |
-| GET | `/units/{id}/inspections/compare` | MANAGER | Comparaison entrée/sortie poste par poste avec écarts |
-| POST | `/inspections/{id}/items/{itemId}/deposit-deduction` | MANAGER | Propose ou valide une retenue sur dépôt |
-| POST | `/meters` | MANAGER | Crée un compteur rattaché à un bien ou un lot |
-| POST | `/meters/{id}/readings` | COLLECTOR | Enregistre un relevé d'index avec `client_ref` |
-| GET | `/meters/{id}/readings` | ACCOUNTANT | Historique des relevés d'un compteur |
-| GET | `/utility-tariffs` | ACCOUNTANT | Liste des grilles tarifaires actives et historiques |
-| POST | `/utility-tariffs` | OWNER | Crée ou met à jour une grille tarifaire |
-| POST | `/billing/utility-runs` | MANAGER | Déclenche la campagne de refacturation des charges |
-| GET | `/billing/utility-runs/{id}` | MANAGER | Résultat de la campagne (lignes créées, ignorées, erreurs) |
-| POST | `/maintenance-requests` | MANAGER | Crée une demande de maintenance |
-| POST | `/inspections/{id}/items/{itemId}/maintenance-request` | MANAGER | Convertit un poste dégradé en demande de maintenance |
-| GET | `/maintenance-requests` | MANAGER | Liste des demandes, filtres statut, gravité, immeuble |
-| GET | `/maintenance-requests/{id}` | MANAGER | Détail d'une demande et de ses mises à jour |
-| POST | `/maintenance-requests/{id}/updates` | COLLECTOR | Ajoute une mise à jour (statut, commentaire, photo) |
-
+| Méthode | Route                                                  | Rôle requis | Description courte                                         |
+| :------ | :----------------------------------------------------- | :---------- | :--------------------------------------------------------- |
+| POST    | `/inspections`                                         | COLLECTOR   | Crée un état des lieux (ENTRY ou EXIT) pour un lot         |
+| POST    | `/inspections/{id}/items`                              | COLLECTOR   | Ajoute un poste constaté à un état des lieux DRAFT         |
+| POST    | `/inspections/{id}/items/{itemId}/photos`              | COLLECTOR   | Attache une photo à un poste                               |
+| POST    | `/inspections/{id}/sign`                               | COLLECTOR   | Enregistre les signatures et verrouille l'état des lieux   |
+| GET     | `/inspections/{id}`                                    | MANAGER     | Détail d'un état des lieux et de ses postes                |
+| GET     | `/units/{id}/inspections/compare`                      | MANAGER     | Comparaison entrée/sortie poste par poste avec écarts      |
+| POST    | `/inspections/{id}/items/{itemId}/deposit-deduction`   | MANAGER     | Propose ou valide une retenue sur dépôt                    |
+| POST    | `/meters`                                              | MANAGER     | Crée un compteur rattaché à un bien ou un lot              |
+| POST    | `/meters/{id}/readings`                                | COLLECTOR   | Enregistre un relevé d'index avec `client_ref`             |
+| GET     | `/meters/{id}/readings`                                | ACCOUNTANT  | Historique des relevés d'un compteur                       |
+| GET     | `/utility-tariffs`                                     | ACCOUNTANT  | Liste des grilles tarifaires actives et historiques        |
+| POST    | `/utility-tariffs`                                     | OWNER       | Crée ou met à jour une grille tarifaire                    |
+| POST    | `/billing/utility-runs`                                | MANAGER     | Déclenche la campagne de refacturation des charges         |
+| GET     | `/billing/utility-runs/{id}`                           | MANAGER     | Résultat de la campagne (lignes créées, ignorées, erreurs) |
+| POST    | `/maintenance-requests`                                | MANAGER     | Crée une demande de maintenance                            |
+| POST    | `/inspections/{id}/items/{itemId}/maintenance-request` | MANAGER     | Convertit un poste dégradé en demande de maintenance       |
+| GET     | `/maintenance-requests`                                | MANAGER     | Liste des demandes, filtres statut, gravité, immeuble      |
+| GET     | `/maintenance-requests/{id}`                           | MANAGER     | Détail d'une demande et de ses mises à jour                |
+| POST    | `/maintenance-requests/{id}/updates`                   | COLLECTOR   | Ajoute une mise à jour (statut, commentaire, photo)        |
 
 ---
 
 ## 8.6 Écrans concernés
 
 **Web — dashboard**
+
 - Fiche lot : onglet « états des lieux » listant les inspections ENTRY/EXIT avec accès à la comparaison poste par poste.
 - Écran de comparaison entrée/sortie : deux colonnes synchronisées par poste, photos côte à côte, retenues proposées et validation.
 - Fiche lot : onglet « compteurs » avec liste des compteurs, courbe de consommation, dernier index et historique des relevés.
@@ -1949,6 +1955,7 @@ Scénario: Génération d'une demande de maintenance depuis un état des lieux
 - Fiche demande de maintenance : description, historique des mises à jour, photos, changement de statut, assignation.
 
 **Mobile (Flutter)** — première version en ligne, l'offline arrivant en phase 5
+
 - Écran « réaliser un état des lieux » : navigation pièce par pièce, sélection de l'état par poste, prise de photo directe, récapitulatif avant signature.
 - Écran de signature contradictoire (locataire + agence) en fin d'état des lieux.
 - Écran « relever un compteur » : sélection du compteur, saisie de l'index, photo du cadran, alerte si index régressif.
@@ -1985,27 +1992,26 @@ Scénario: Génération d'une demande de maintenance depuis un état des lieux
 
 Durée indicative : **6 semaines**.
 
-| Profil | Semaines-personnes |
-| :--- | :--- |
-| Backend NestJS | 11 sp |
-| Frontend web Next.js | 6 sp |
-| Mobile Flutter | 7 sp |
-| DevOps / infra | 1 sp |
-| QA | 4 sp |
-| Product / QA terrain | 3 sp |
-| **Total** | **32 sp** |
+| Profil               | Semaines-personnes |
+| :------------------- | :----------------- |
+| Backend NestJS       | 11 sp              |
+| Frontend web Next.js | 6 sp               |
+| Mobile Flutter       | 7 sp               |
+| DevOps / infra       | 1 sp               |
+| QA                   | 4 sp               |
+| Product / QA terrain | 3 sp               |
+| **Total**            | **32 sp**          |
 
 ## 8.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-| :--- | :--- | :--- | :--- |
-| Relevés de compteurs non saisis à temps par les démarcheurs | Fort — pas de charge refacturée, litige avec le bailleur | Élevée | Refacturation au forfait par défaut si aucun relevé sur la période, rattrapage au relevé suivant |
-| Grilles tarifaires des fournisseurs changeantes ou mal connues | Moyen | Moyenne | Grille versionnée avec date d'effet, saisie manuelle validée par un `OWNER`, écart signalé si tarif ancien |
-| Photos d'état des lieux volumineuses ou manquantes en zone de réseau dégradé | Moyen | Élevée | Compression et upload différé en file, poste marqué incomplet tant que la photo n'est pas confirmée |
-| Contestation d'une retenue sur dépôt par le locataire | Fort — litige juridique | Moyenne | État des lieux signé par les deux parties, photos horodatées obligatoires, validation d'un `MANAGER` avant toute retenue |
-| Demandes de maintenance orales non tracées faute de portail locataire | Moyen | Élevée | Consigne de saisie systématique par le gestionnaire ou le démarcheur dès réception de l'appel, avant ouverture du portail en phase 10 |
-| Confusion entre compteur du bien et compteur privatif du lot | Moyen | Moyenne | Rattachement explicite du compteur à un bien ou un lot dès la création, contrôle à la saisie du relevé |
-
+| Risque                                                                       | Impact                                                   | Probabilité | Plan B                                                                                                                                |
+| :--------------------------------------------------------------------------- | :------------------------------------------------------- | :---------- | :------------------------------------------------------------------------------------------------------------------------------------ |
+| Relevés de compteurs non saisis à temps par les démarcheurs                  | Fort — pas de charge refacturée, litige avec le bailleur | Élevée      | Refacturation au forfait par défaut si aucun relevé sur la période, rattrapage au relevé suivant                                      |
+| Grilles tarifaires des fournisseurs changeantes ou mal connues               | Moyen                                                    | Moyenne     | Grille versionnée avec date d'effet, saisie manuelle validée par un `OWNER`, écart signalé si tarif ancien                            |
+| Photos d'état des lieux volumineuses ou manquantes en zone de réseau dégradé | Moyen                                                    | Élevée      | Compression et upload différé en file, poste marqué incomplet tant que la photo n'est pas confirmée                                   |
+| Contestation d'une retenue sur dépôt par le locataire                        | Fort — litige juridique                                  | Moyenne     | État des lieux signé par les deux parties, photos horodatées obligatoires, validation d'un `MANAGER` avant toute retenue              |
+| Demandes de maintenance orales non tracées faute de portail locataire        | Moyen                                                    | Élevée      | Consigne de saisie systématique par le gestionnaire ou le démarcheur dès réception de l'appel, avant ouverture du portail en phase 10 |
+| Confusion entre compteur du bien et compteur privatif du lot                 | Moyen                                                    | Moyenne     | Rattachement explicite du compteur à un bien ou un lot dès la création, contrôle à la saisie du relevé                                |
 
 ---
 
@@ -2103,17 +2109,16 @@ Alors un fichier est généré et rattaché à la table documents
 Et un lien de téléchargement signé est renvoyé à l'utilisateur
 ```
 
-
 ---
 
 ## 9.4 Tables et modules concernés
 
-| Module | Responsabilité | Tables |
-|---|---|---|
-| `dunning` (nouveau) | Gestion des règles de relance et exécution quotidienne | dunning_rules, dunning_runs ; écrit dans message_logs ; lit notification_templates |
-| `billing` (extension phase 3) | Lecture des penalty_rules et injection de la ligne de pénalité dans le cron mensuel existant, sans réécriture du cron | penalty_rules ; écrit dans invoice_lines ; lit rent_invoices |
-| `reporting` (nouveau) | Calcul et exposition des tableaux de bord agrégés | lecture seule de rent_invoices, invoice_lines, payments, payment_allocations, units, leases, landlords, properties — aucune nouvelle table de stockage |
-| `exports` (nouveau) | Génération à la demande de fichiers CSV/Excel | écrit dans documents (persistance du fichier généré si le volume le justifie) ; lit rent_invoices, payments et les agrégats du module reporting |
+| Module                        | Responsabilité                                                                                                        | Tables                                                                                                                                                 |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `dunning` (nouveau)           | Gestion des règles de relance et exécution quotidienne                                                                | dunning_rules, dunning_runs ; écrit dans message_logs ; lit notification_templates                                                                     |
+| `billing` (extension phase 3) | Lecture des penalty_rules et injection de la ligne de pénalité dans le cron mensuel existant, sans réécriture du cron | penalty_rules ; écrit dans invoice_lines ; lit rent_invoices                                                                                           |
+| `reporting` (nouveau)         | Calcul et exposition des tableaux de bord agrégés                                                                     | lecture seule de rent_invoices, invoice_lines, payments, payment_allocations, units, leases, landlords, properties — aucune nouvelle table de stockage |
+| `exports` (nouveau)           | Génération à la demande de fichiers CSV/Excel                                                                         | écrit dans documents (persistance du fichier généré si le volume le justifie) ; lit rent_invoices, payments et les agrégats du module reporting        |
 
 Statuts et colonnes clés introduits :
 
@@ -2123,42 +2128,45 @@ Statuts et colonnes clés introduits :
 
 ## 9.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-|---|---|---|---|
-| POST | /organizations/:id/dunning-rules | OWNER, MANAGER | Créer une règle de relance |
-| GET | /organizations/:id/dunning-rules | OWNER, MANAGER, ACCOUNTANT, VIEWER | Lister les règles de relance |
-| PATCH | /dunning-rules/:id | OWNER, MANAGER | Modifier une règle (palier, canal, template, escalade) |
-| PATCH | /dunning-rules/:id/activate | OWNER, MANAGER | Activer ou désactiver une règle |
-| DELETE | /dunning-rules/:id | OWNER | Suppression logique d'une règle |
-| GET | /organizations/:id/dunning-runs | MANAGER, ACCOUNTANT, VIEWER | Lister l'historique des exécutions |
-| GET | /dunning-runs/:id | MANAGER, ACCOUNTANT | Détail d'une exécution et de ses compteurs |
-| POST | /organizations/:id/dunning-runs/trigger | OWNER, MANAGER | Déclenchement manuel exceptionnel du scan quotidien |
-| POST | /organizations/:id/penalty-rules | OWNER | Créer une règle de pénalité |
-| GET | /organizations/:id/penalty-rules | OWNER, MANAGER, ACCOUNTANT, VIEWER | Lister les règles de pénalité |
-| PATCH | /penalty-rules/:id | OWNER | Modifier une règle de pénalité |
-| PATCH | /penalty-rules/:id/activate | OWNER, MANAGER | Activer ou désactiver une règle de pénalité |
-| GET | /organizations/:id/dashboards/collection-rate | OWNER, MANAGER, ACCOUNTANT, VIEWER | Taux de recouvrement, filtrable |
-| GET | /organizations/:id/dashboards/arrears | OWNER, MANAGER, ACCOUNTANT, VIEWER | Impayés par tranche d'ancienneté |
-| GET | /organizations/:id/dashboards/vacancy | OWNER, MANAGER, VIEWER | Vacance locative |
-| GET | /organizations/:id/dashboards/payment-methods | OWNER, MANAGER, ACCOUNTANT, VIEWER | Répartition des encaissements par mode de paiement |
-| POST | /organizations/:id/exports/invoices | OWNER, MANAGER, ACCOUNTANT | Export CSV/Excel des factures filtrées |
-| POST | /organizations/:id/exports/payments | OWNER, MANAGER, ACCOUNTANT | Export CSV/Excel des paiements filtrés |
-| POST | /organizations/:id/exports/arrears | OWNER, MANAGER, ACCOUNTANT | Export CSV/Excel des impayés |
-| POST | /organizations/:id/exports/dashboard/:type | OWNER, MANAGER, ACCOUNTANT | Export d'un tableau de bord affiché |
-| GET | /exports/:documentId | OWNER, MANAGER, ACCOUNTANT | Récupérer le lien signé du fichier généré |
+| Méthode | Route                                         | Rôle requis                        | Description courte                                     |
+| ------- | --------------------------------------------- | ---------------------------------- | ------------------------------------------------------ |
+| POST    | /organizations/:id/dunning-rules              | OWNER, MANAGER                     | Créer une règle de relance                             |
+| GET     | /organizations/:id/dunning-rules              | OWNER, MANAGER, ACCOUNTANT, VIEWER | Lister les règles de relance                           |
+| PATCH   | /dunning-rules/:id                            | OWNER, MANAGER                     | Modifier une règle (palier, canal, template, escalade) |
+| PATCH   | /dunning-rules/:id/activate                   | OWNER, MANAGER                     | Activer ou désactiver une règle                        |
+| DELETE  | /dunning-rules/:id                            | OWNER                              | Suppression logique d'une règle                        |
+| GET     | /organizations/:id/dunning-runs               | MANAGER, ACCOUNTANT, VIEWER        | Lister l'historique des exécutions                     |
+| GET     | /dunning-runs/:id                             | MANAGER, ACCOUNTANT                | Détail d'une exécution et de ses compteurs             |
+| POST    | /organizations/:id/dunning-runs/trigger       | OWNER, MANAGER                     | Déclenchement manuel exceptionnel du scan quotidien    |
+| POST    | /organizations/:id/penalty-rules              | OWNER                              | Créer une règle de pénalité                            |
+| GET     | /organizations/:id/penalty-rules              | OWNER, MANAGER, ACCOUNTANT, VIEWER | Lister les règles de pénalité                          |
+| PATCH   | /penalty-rules/:id                            | OWNER                              | Modifier une règle de pénalité                         |
+| PATCH   | /penalty-rules/:id/activate                   | OWNER, MANAGER                     | Activer ou désactiver une règle de pénalité            |
+| GET     | /organizations/:id/dashboards/collection-rate | OWNER, MANAGER, ACCOUNTANT, VIEWER | Taux de recouvrement, filtrable                        |
+| GET     | /organizations/:id/dashboards/arrears         | OWNER, MANAGER, ACCOUNTANT, VIEWER | Impayés par tranche d'ancienneté                       |
+| GET     | /organizations/:id/dashboards/vacancy         | OWNER, MANAGER, VIEWER             | Vacance locative                                       |
+| GET     | /organizations/:id/dashboards/payment-methods | OWNER, MANAGER, ACCOUNTANT, VIEWER | Répartition des encaissements par mode de paiement     |
+| POST    | /organizations/:id/exports/invoices           | OWNER, MANAGER, ACCOUNTANT         | Export CSV/Excel des factures filtrées                 |
+| POST    | /organizations/:id/exports/payments           | OWNER, MANAGER, ACCOUNTANT         | Export CSV/Excel des paiements filtrés                 |
+| POST    | /organizations/:id/exports/arrears            | OWNER, MANAGER, ACCOUNTANT         | Export CSV/Excel des impayés                           |
+| POST    | /organizations/:id/exports/dashboard/:type    | OWNER, MANAGER, ACCOUNTANT         | Export d'un tableau de bord affiché                    |
+| GET     | /exports/:documentId                          | OWNER, MANAGER, ACCOUNTANT         | Récupérer le lien signé du fichier généré              |
 
 ## 9.6 Écrans concernés
 
 Web — dashboard :
+
 - Page « Relances » : liste des dunning_rules, formulaire de création/modification par palier, historique des dunning_runs avec détail d'une exécution.
 - Page « Pénalités » : liste et formulaire des penalty_rules avec simulateur de calcul.
 - Page « Tableaux de bord » : quatre widgets filtrables par immeuble, période et bailleur — taux de recouvrement, impayés par ancienneté, vacance locative, répartition par mode de paiement.
 - Bouton d'export présent sur chaque liste principale et sur chaque widget de tableau de bord.
 
 Mobile (Flutter) :
+
 - Écran de consultation en lecture seule des relances déjà envoyées pour un locataire, utile au démarcheur en visite terrain ; aucune configuration de règle côté mobile, réservée au web.
 
 Portail locataire :
+
 - Bandeau affichant le nombre de relances envoyées et le solde dû, sans exposer le détail des règles de pénalité, uniquement le montant déjà inclus dans la facture.
 
 ## 9.7 Tests exigés
@@ -2186,24 +2194,23 @@ Portail locataire :
 
 Durée indicative : 5 semaines.
 
-| Profil | Semaines-personnes |
-|---|---|
-| Backend (NestJS) | 2,5 |
-| Frontend web | 1,5 |
-| QA / tests terrain | 0,5 |
-| Product / design fonctionnel | 0,5 |
-| **Total** | **5** |
+| Profil                       | Semaines-personnes |
+| ---------------------------- | ------------------ |
+| Backend (NestJS)             | 2,5                |
+| Frontend web                 | 1,5                |
+| QA / tests terrain           | 0,5                |
+| Product / design fonctionnel | 0,5                |
+| **Total**                    | **5**              |
 
 ## 9.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-|---|---|---|---|
-| Volume élevé de messages WhatsApp dépassant les quotas Meta | Relances retardées ou bloquées | Moyenne | Bascule automatique vers le SMS de secours au-delà d'un seuil configurable |
-| Double envoi de relance en cas de reprise du cron après incident | Locataire harcelé, image dégradée | Faible | Contrainte d'unicité (organisation, facture, règle, jour) et réconciliation manuelle a posteriori |
-| Calcul de pénalité contesté par un locataire ou un bailleur | Litige, perte de confiance | Moyenne | Traçabilité complète en invoice_lines et audit_logs, contre-passation possible |
-| Tableaux de bord lents sur de gros volumes de données historiques | Mauvaise expérience gestionnaire | Moyenne | Agrégations pré-calculées par job planifié plutôt que requêtes à la volée, pagination stricte |
-| Confusion entre règles de relance et règles de pénalité par les utilisateurs | Mauvais paramétrage, relances ou pénalités incohérentes | Faible | Écrans séparés avec exemples chiffrés et valeurs par défaut pré-remplies |
-
+| Risque                                                                       | Impact                                                  | Probabilité | Plan B                                                                                            |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------- |
+| Volume élevé de messages WhatsApp dépassant les quotas Meta                  | Relances retardées ou bloquées                          | Moyenne     | Bascule automatique vers le SMS de secours au-delà d'un seuil configurable                        |
+| Double envoi de relance en cas de reprise du cron après incident             | Locataire harcelé, image dégradée                       | Faible      | Contrainte d'unicité (organisation, facture, règle, jour) et réconciliation manuelle a posteriori |
+| Calcul de pénalité contesté par un locataire ou un bailleur                  | Litige, perte de confiance                              | Moyenne     | Traçabilité complète en invoice_lines et audit_logs, contre-passation possible                    |
+| Tableaux de bord lents sur de gros volumes de données historiques            | Mauvaise expérience gestionnaire                        | Moyenne     | Agrégations pré-calculées par job planifié plutôt que requêtes à la volée, pagination stricte     |
+| Confusion entre règles de relance et règles de pénalité par les utilisateurs | Mauvais paramétrage, relances ou pénalités incohérentes | Faible      | Écrans séparés avec exemples chiffrés et valeurs par défaut pré-remplies                          |
 
 ---
 
@@ -2380,15 +2387,14 @@ Scénario: Contre-passation d'une commission après remboursement de la facture 
 - Durée du pilote : 8 semaines pleines après la bascule effective (import de portefeuille et onboarding), précédées d'une semaine de préparation.
 - Indicateurs suivis chaque semaine : taux d'adoption du portail locataire (locataires ayant consulté ou payé au moins une facture rapporté au total des locataires importés), taux de recouvrement (montant encaissé rapporté au montant facturé sur la période), nombre de tickets support ouverts et délai moyen de résolution, disponibilité technique de la plateforme mesurée sur l'API.
 
-| Indicateur | Seuil go | Seuil no-go / action corrective |
-|---|---|---|
-| Taux d'adoption du portail locataire | ≥ 30 % des locataires actifs à S8 | < 15 % : revoir l'ergonomie et relancer une campagne d'activation |
-| Taux de recouvrement | ≥ 85 % du montant facturé sur la période pilote | < 70 % : analyser les causes techniques et comportementales avant extension |
-| Tickets support critiques (bloquants) | ≤ 5 sur la durée du pilote | > 15 : geler le déploiement commercial, plan de stabilisation |
-| Disponibilité technique (API) | ≥ 99,0 % sur la fenêtre du pilote | < 97 % : revue infrastructure obligatoire avant extension |
+| Indicateur                            | Seuil go                                        | Seuil no-go / action corrective                                             |
+| ------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
+| Taux d'adoption du portail locataire  | ≥ 30 % des locataires actifs à S8               | < 15 % : revoir l'ergonomie et relancer une campagne d'activation           |
+| Taux de recouvrement                  | ≥ 85 % du montant facturé sur la période pilote | < 70 % : analyser les causes techniques et comportementales avant extension |
+| Tickets support critiques (bloquants) | ≤ 5 sur la durée du pilote                      | > 15 : geler le déploiement commercial, plan de stabilisation               |
+| Disponibilité technique (API)         | ≥ 99,0 % sur la fenêtre du pilote               | < 97 % : revue infrastructure obligatoire avant extension                   |
 
 Si tous les seuils go sont atteints, le déploiement commercial est autorisé en parallèle du durcissement de la phase 11. Si un seul seuil tombe en zone no-go, le go commercial est reporté et un plan correctif ciblé est exécuté avant une nouvelle évaluation à 4 semaines.
-
 
 ---
 
@@ -2396,59 +2402,60 @@ Si tous les seuils go sont atteints, le déploiement commercial est autorisé en
 
 Tables mobilisées, toutes issues du référentiel canonique : `subscription_plans`, `subscriptions`, `subscription_invoices`, `feature_flags`, `documents`, `webhook_events`, `mobile_money_transactions`, `otp_codes`, `refresh_tokens`, `invitations`, `organization_members`, `organizations`, `organization_settings`, `landlords`, `properties`, `units`, `tenants`, `leases`, `lease_parties`, `rent_invoices`, `payments`, `payment_allocations`, `receipts`, `bank_transfer_declarations`, `notifications`, `notification_templates`, `message_logs`, `audit_logs`, `sequences`, `referral_programs`, `referral_partners`, `referrals`, `referral_commissions`, `referral_payouts`.
 
-| Module | Responsabilité |
-|---|---|
-| SubscriptionModule | Catalogue des plans (`subscription_plans`), cycle de vie de l'abonnement (`subscriptions`), cron de suspension et de relance |
-| SubscriptionBillingModule | Génération et paiement des `subscription_invoices`, intégration `MobileMoneyProvider` dédiée à l'abonnement |
-| OnboardingModule | Orchestration de l'assistant de configuration, réutilise les modules Properties, Leases et Invitations livrés en phases 0 à 2 |
-| PortfolioImportModule | Parsing et validation ligne à ligne des CSV, écriture transactionnelle dans landlords/properties/units/tenants/leases, génération du rapport d'erreurs |
-| TenantPortalAuthModule | Authentification OTP du locataire, émission de sessions scopées tenant_id/baux, sans passer par `organization_members` |
-| TenantPortalModule | Endpoints de consultation des factures, paiement, quittances et déclaration de virement pour le locataire authentifié |
-| FeatureFlagsModule (existant, étendu) | Activation des fonctionnalités par plan d'abonnement, par pays et par organisation |
-| ReferralModule | `referral_partners`, génération et vérification du code de parrainage, saisie du code à l'inscription, enregistrement d'immeuble avec confirmation OTP du bailleur, qualification `referrals` (PENDING/QUALIFIED/ACTIVE/EXPIRED/CANCELLED), règles anti-abus (auto-parrainage, unicité du parrain) |
-| ReferralCommissionModule | Calcul des `referral_commissions` au taux du `referral_program` sur chaque `subscription_invoice` payée, cycle ACCRUED/APPROVED/PAID/REVERSED, campagne mensuelle d'approbation, versement groupé via `referral_payouts` et `MobileMoneyProvider`, contre-passation sur remboursement |
+| Module                                | Responsabilité                                                                                                                                                                                                                                                                                     |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SubscriptionModule                    | Catalogue des plans (`subscription_plans`), cycle de vie de l'abonnement (`subscriptions`), cron de suspension et de relance                                                                                                                                                                       |
+| SubscriptionBillingModule             | Génération et paiement des `subscription_invoices`, intégration `MobileMoneyProvider` dédiée à l'abonnement                                                                                                                                                                                        |
+| OnboardingModule                      | Orchestration de l'assistant de configuration, réutilise les modules Properties, Leases et Invitations livrés en phases 0 à 2                                                                                                                                                                      |
+| PortfolioImportModule                 | Parsing et validation ligne à ligne des CSV, écriture transactionnelle dans landlords/properties/units/tenants/leases, génération du rapport d'erreurs                                                                                                                                             |
+| TenantPortalAuthModule                | Authentification OTP du locataire, émission de sessions scopées tenant_id/baux, sans passer par `organization_members`                                                                                                                                                                             |
+| TenantPortalModule                    | Endpoints de consultation des factures, paiement, quittances et déclaration de virement pour le locataire authentifié                                                                                                                                                                              |
+| FeatureFlagsModule (existant, étendu) | Activation des fonctionnalités par plan d'abonnement, par pays et par organisation                                                                                                                                                                                                                 |
+| ReferralModule                        | `referral_partners`, génération et vérification du code de parrainage, saisie du code à l'inscription, enregistrement d'immeuble avec confirmation OTP du bailleur, qualification `referrals` (PENDING/QUALIFIED/ACTIVE/EXPIRED/CANCELLED), règles anti-abus (auto-parrainage, unicité du parrain) |
+| ReferralCommissionModule              | Calcul des `referral_commissions` au taux du `referral_program` sur chaque `subscription_invoice` payée, cycle ACCRUED/APPROVED/PAID/REVERSED, campagne mensuelle d'approbation, versement groupé via `referral_payouts` et `MobileMoneyProvider`, contre-passation sur remboursement              |
 
 ## 10.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-|---|---|---|---|
-| GET | /subscription-plans | Authentifié | Liste des plans d'abonnement disponibles |
-| GET | /organizations/{id}/subscription | OWNER, MANAGER | Détail de l'abonnement courant |
-| POST | /organizations/{id}/subscription | OWNER | Souscrire ou changer de plan |
-| POST | /organizations/{id}/subscription/cancel | OWNER | Résilier l'abonnement à échéance |
-| GET | /organizations/{id}/subscription-invoices | OWNER, ACCOUNTANT | Historique des factures d'abonnement |
-| POST | /subscription-invoices/{id}/pay | OWNER | Initier un paiement Mobile Money de l'abonnement |
-| POST | /webhooks/mobile-money/subscription | Public (signé) | Réception du webhook agrégateur, écrit dans `webhook_events` |
-| POST | /onboarding/organizations | OWNER | Créer l'organisation et lancer l'assistant |
-| POST | /onboarding/{orgId}/first-property | OWNER | Étape guidée : premier bien |
-| POST | /onboarding/{orgId}/first-lease | OWNER | Étape guidée : premier bail |
-| POST | /onboarding/{orgId}/invite | OWNER | Étape guidée : inviter un collaborateur |
-| POST | /portfolio-imports | OWNER, MANAGER | Téléverser un fichier CSV de portefeuille |
-| GET | /portfolio-imports/{id} | OWNER, MANAGER | Statut et rapport d'erreurs de l'import |
-| POST | /tenant-auth/otp/request | Public | Demander un code OTP locataire |
-| POST | /tenant-auth/otp/verify | Public | Vérifier l'OTP et ouvrir une session locataire scopée |
-| GET | /tenant/invoices | Locataire authentifié | Liste des factures du ou des baux du locataire |
-| GET | /tenant/invoices/{id} | Locataire authentifié | Détail d'une facture |
-| POST | /tenant/invoices/{id}/pay | Locataire authentifié | Payer une facture par Mobile Money |
-| GET | /tenant/receipts/{id} | Locataire authentifié | Télécharger une quittance PDF |
-| POST | /tenant/bank-transfer-declarations | Locataire authentifié | Déclarer un virement avec preuve |
-| GET | /tenant/bank-transfer-declarations | Locataire authentifié | Historique de ses déclarations |
-| POST | /bank-transfer-declarations/{id}/validate | MANAGER, ACCOUNTANT | Valider une déclaration reçue du portail |
-| GET | /admin/subscriptions/at-risk | OWNER interne Immodesk | Vue support des abonnements en impayé |
-| POST | /referral-partners | Authentifié | Devient partenaire apporteur d'affaires et génère un code de parrainage unique |
-| GET | /referral-partners/me | Partenaire authentifié | Profil du partenaire, code de parrainage, statut de vérification |
-| POST | /organizations/{id}/referral-code | OWNER | Saisit un code de parrainage à l'inscription de l'organisation |
-| POST | /referral-partners/me/properties | Partenaire authentifié | Enregistre un immeuble pour le compte d'un bailleur démarché |
-| POST | /referral-partners/me/properties/{id}/confirm-otp | Public (bailleur) | Confirme par OTP l'enregistrement de l'immeuble déclaré par le partenaire |
-| GET | /referral-partners/me/referrals | Partenaire authentifié | Liste des filleuls et de leur statut de parrainage |
-| GET | /referral-partners/me/commissions | Partenaire authentifié | Détail des commissions ACCRUED, APPROVED, PAID, REVERSED |
-| POST | /admin/referral-commissions/approve | OWNER interne Immodesk | Approuve mensuellement les commissions ACCRUED du mois écoulé |
-| POST | /admin/referral-payouts | OWNER interne Immodesk | Déclenche un versement groupé Mobile Money des commissions approuvées |
-| GET | /admin/referral-payouts/{id} | OWNER interne Immodesk | Détail et statut d'un versement groupé |
+| Méthode | Route                                             | Rôle requis            | Description courte                                                             |
+| ------- | ------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------ |
+| GET     | /subscription-plans                               | Authentifié            | Liste des plans d'abonnement disponibles                                       |
+| GET     | /organizations/{id}/subscription                  | OWNER, MANAGER         | Détail de l'abonnement courant                                                 |
+| POST    | /organizations/{id}/subscription                  | OWNER                  | Souscrire ou changer de plan                                                   |
+| POST    | /organizations/{id}/subscription/cancel           | OWNER                  | Résilier l'abonnement à échéance                                               |
+| GET     | /organizations/{id}/subscription-invoices         | OWNER, ACCOUNTANT      | Historique des factures d'abonnement                                           |
+| POST    | /subscription-invoices/{id}/pay                   | OWNER                  | Initier un paiement Mobile Money de l'abonnement                               |
+| POST    | /webhooks/mobile-money/subscription               | Public (signé)         | Réception du webhook agrégateur, écrit dans `webhook_events`                   |
+| POST    | /onboarding/organizations                         | OWNER                  | Créer l'organisation et lancer l'assistant                                     |
+| POST    | /onboarding/{orgId}/first-property                | OWNER                  | Étape guidée : premier bien                                                    |
+| POST    | /onboarding/{orgId}/first-lease                   | OWNER                  | Étape guidée : premier bail                                                    |
+| POST    | /onboarding/{orgId}/invite                        | OWNER                  | Étape guidée : inviter un collaborateur                                        |
+| POST    | /portfolio-imports                                | OWNER, MANAGER         | Téléverser un fichier CSV de portefeuille                                      |
+| GET     | /portfolio-imports/{id}                           | OWNER, MANAGER         | Statut et rapport d'erreurs de l'import                                        |
+| POST    | /tenant-auth/otp/request                          | Public                 | Demander un code OTP locataire                                                 |
+| POST    | /tenant-auth/otp/verify                           | Public                 | Vérifier l'OTP et ouvrir une session locataire scopée                          |
+| GET     | /tenant/invoices                                  | Locataire authentifié  | Liste des factures du ou des baux du locataire                                 |
+| GET     | /tenant/invoices/{id}                             | Locataire authentifié  | Détail d'une facture                                                           |
+| POST    | /tenant/invoices/{id}/pay                         | Locataire authentifié  | Payer une facture par Mobile Money                                             |
+| GET     | /tenant/receipts/{id}                             | Locataire authentifié  | Télécharger une quittance PDF                                                  |
+| POST    | /tenant/bank-transfer-declarations                | Locataire authentifié  | Déclarer un virement avec preuve                                               |
+| GET     | /tenant/bank-transfer-declarations                | Locataire authentifié  | Historique de ses déclarations                                                 |
+| POST    | /bank-transfer-declarations/{id}/validate         | MANAGER, ACCOUNTANT    | Valider une déclaration reçue du portail                                       |
+| GET     | /admin/subscriptions/at-risk                      | OWNER interne Immodesk | Vue support des abonnements en impayé                                          |
+| POST    | /referral-partners                                | Authentifié            | Devient partenaire apporteur d'affaires et génère un code de parrainage unique |
+| GET     | /referral-partners/me                             | Partenaire authentifié | Profil du partenaire, code de parrainage, statut de vérification               |
+| POST    | /organizations/{id}/referral-code                 | OWNER                  | Saisit un code de parrainage à l'inscription de l'organisation                 |
+| POST    | /referral-partners/me/properties                  | Partenaire authentifié | Enregistre un immeuble pour le compte d'un bailleur démarché                   |
+| POST    | /referral-partners/me/properties/{id}/confirm-otp | Public (bailleur)      | Confirme par OTP l'enregistrement de l'immeuble déclaré par le partenaire      |
+| GET     | /referral-partners/me/referrals                   | Partenaire authentifié | Liste des filleuls et de leur statut de parrainage                             |
+| GET     | /referral-partners/me/commissions                 | Partenaire authentifié | Détail des commissions ACCRUED, APPROVED, PAID, REVERSED                       |
+| POST    | /admin/referral-commissions/approve               | OWNER interne Immodesk | Approuve mensuellement les commissions ACCRUED du mois écoulé                  |
+| POST    | /admin/referral-payouts                           | OWNER interne Immodesk | Déclenche un versement groupé Mobile Money des commissions approuvées          |
+| GET     | /admin/referral-payouts/{id}                      | OWNER interne Immodesk | Détail et statut d'un versement groupé                                         |
 
 ## 10.6 Écrans concernés
 
 **Web (dashboard agences/bailleurs, Next.js) :**
+
 - Page "Abonnement" : plan courant, historique des factures, changement de plan, paiement Mobile Money.
 - Assistant d'onboarding en trois étapes : premier bien, premier bail, première invitation — complété d'un champ optionnel « code de parrainage » à la création de l'organisation.
 - Écran d'import de portefeuille : téléversement du CSV, suivi de progression, rapport d'erreurs téléchargeable.
@@ -2457,6 +2464,7 @@ Tables mobilisées, toutes issues du référentiel canonique : `subscription_pla
 - Back-office plateforme (équipe Immodesk) : file d'approbation mensuelle des commissions `ACCRUED`, écran de lancement et de suivi d'un versement groupé Mobile Money, vue des contre-passations.
 
 **Mobile (Flutter) :**
+
 - Le pilote s'appuie sur l'application mobile déjà livrée en phase 5 pour les locataires : activation du paiement en ligne Mobile Money et de la déclaration de virement dans les écrans existants de consultation de factures, derrière un `feature_flag` par organisation.
 - Écran partenaire (prioritairement destiné aux démarcheurs en tournée) : enregistrement d'un immeuble pour un bailleur démarché et déclenchement de l'OTP de confirmation du bailleur.
 - Aucun autre nouvel écran mobile agence ou bailleur n'est requis en phase 10 ; l'onboarding et l'import de portefeuille restent des parcours web.
@@ -2502,30 +2510,29 @@ Tables mobilisées, toutes issues du référentiel canonique : `subscription_pla
 
 Durée indicative : 8 semaines de développement, suivies (avec un léger chevauchement pendant la stabilisation) de 8 semaines de pilote, soit environ 10 semaines calendaires jusqu'à la décision go/no-go.
 
-| Profil | Semaines-personnes |
-|---|---|
-| Backend NestJS | 7 |
-| Frontend Web (Next.js) | 5 |
-| Mobile (Flutter, activation feature-flag) | 1 |
-| QA / Tests terrain | 3 |
-| Product / Lead delivery | 2 |
-| DevOps / Infra | 1 |
-| **Total** | **19** |
+| Profil                                    | Semaines-personnes |
+| ----------------------------------------- | ------------------ |
+| Backend NestJS                            | 7                  |
+| Frontend Web (Next.js)                    | 5                  |
+| Mobile (Flutter, activation feature-flag) | 1                  |
+| QA / Tests terrain                        | 3                  |
+| Product / Lead delivery                   | 2                  |
+| DevOps / Infra                            | 1                  |
+| **Total**                                 | **19**             |
 
 ## 10.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-|---|---|---|---|
-| Webhook Mobile Money non fiable pour l'abonnement comme pour les loyers | Facture d'abonnement non soldée à tort, suspension abusive | Moyenne | Re-interrogation systématique déjà en place depuis la phase 4 ; ajouter une réconciliation quotidienne des `subscription_invoices` en attente |
-| Suspension automatique perçue comme trop agressive | Perte de confiance client, désabonnement | Moyenne | Délai de grâce généreux au lancement, restriction progressive lecture seule puis blocage, alerte préalable multicanal |
-| Qualité hétérogène des fichiers CSV des agences en migration | Import bloqué ou données incohérentes | Élevée | Gabarit CSV strict fourni, validation ligne à ligne avec rapport détaillé, import possible par lots partiels |
-| Faible adoption du portail locataire (accès internet limité, aisance numérique variable) | Objectif d'adoption du pilote non atteint | Moyenne | Accompagnement terrain par les collecteurs, campagne SMS/WhatsApp d'activation, canal espèces et virement maintenu en parallèle |
-| Connectivité dégradée à Brazzaville pendant le pilote | Paiements en échec, mauvaise expérience terrain | Moyenne | Tests terrain sur réseau dégradé avant le pilote, retry côté client, file d'attente offline réutilisée depuis la phase 5 |
-| Fraude au parrainage (auto-parrainage déguisé, immeubles ou bailleurs fictifs, comptes multiples) | Fort — commissions versées sans apport réel | Moyenne | Vérification d'identité légère (CNI + numéro Mobile Money) avant tout versement, confirmation OTP systématique du bailleur, plafond mensuel par partenaire, revue manuelle des filleuls atypiques avant approbation |
-| Requalification fiscale ou sociale des commissions versées aux partenaires (démarcheurs informels) | Moyen — exposition juridique de la plateforme | Moyenne | Cadrage juridique local du statut du partenaire (prestation occasionnelle vs relation salariale), seuils de versement documentés, conservation des pièces justificatives dans `documents` |
-| Contestation d'une contre-passation par un partenaire | Moyen | Faible | Commission et contre-passation toutes deux append-only et tracées, lien explicite vers la `subscription_invoice` remboursée à l'origine |
-| Parrainage concurrent ou ambigu (plusieurs démarcheurs revendiquant le même bailleur) | Moyen | Moyenne | Règle d'unicité du parrain actif imposée en base, priorité au premier parrainage confirmé par OTP ou code saisi |
-
+| Risque                                                                                             | Impact                                                     | Probabilité | Plan B                                                                                                                                                                                                              |
+| -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Webhook Mobile Money non fiable pour l'abonnement comme pour les loyers                            | Facture d'abonnement non soldée à tort, suspension abusive | Moyenne     | Re-interrogation systématique déjà en place depuis la phase 4 ; ajouter une réconciliation quotidienne des `subscription_invoices` en attente                                                                       |
+| Suspension automatique perçue comme trop agressive                                                 | Perte de confiance client, désabonnement                   | Moyenne     | Délai de grâce généreux au lancement, restriction progressive lecture seule puis blocage, alerte préalable multicanal                                                                                               |
+| Qualité hétérogène des fichiers CSV des agences en migration                                       | Import bloqué ou données incohérentes                      | Élevée      | Gabarit CSV strict fourni, validation ligne à ligne avec rapport détaillé, import possible par lots partiels                                                                                                        |
+| Faible adoption du portail locataire (accès internet limité, aisance numérique variable)           | Objectif d'adoption du pilote non atteint                  | Moyenne     | Accompagnement terrain par les collecteurs, campagne SMS/WhatsApp d'activation, canal espèces et virement maintenu en parallèle                                                                                     |
+| Connectivité dégradée à Brazzaville pendant le pilote                                              | Paiements en échec, mauvaise expérience terrain            | Moyenne     | Tests terrain sur réseau dégradé avant le pilote, retry côté client, file d'attente offline réutilisée depuis la phase 5                                                                                            |
+| Fraude au parrainage (auto-parrainage déguisé, immeubles ou bailleurs fictifs, comptes multiples)  | Fort — commissions versées sans apport réel                | Moyenne     | Vérification d'identité légère (CNI + numéro Mobile Money) avant tout versement, confirmation OTP systématique du bailleur, plafond mensuel par partenaire, revue manuelle des filleuls atypiques avant approbation |
+| Requalification fiscale ou sociale des commissions versées aux partenaires (démarcheurs informels) | Moyen — exposition juridique de la plateforme              | Moyenne     | Cadrage juridique local du statut du partenaire (prestation occasionnelle vs relation salariale), seuils de versement documentés, conservation des pièces justificatives dans `documents`                           |
+| Contestation d'une contre-passation par un partenaire                                              | Moyen                                                      | Faible      | Commission et contre-passation toutes deux append-only et tracées, lien explicite vers la `subscription_invoice` remboursée à l'origine                                                                             |
+| Parrainage concurrent ou ambigu (plusieurs démarcheurs revendiquant le même bailleur)              | Moyen                                                      | Moyenne     | Règle d'unicité du parrain actif imposée en base, priorité au premier parrainage confirmé par OTP ou code saisi                                                                                                     |
 
 ---
 
@@ -2633,7 +2640,6 @@ Scénario: Pic de fin de mois sur la génération de masse des factures
   Et aucune facture n'est créée en double lorsque le job est relancé sur le même mois
 ```
 
-
 ---
 
 ```gherkin
@@ -2672,51 +2678,55 @@ Scénario: Bascule commerciale progressive et retour arrière
 
 **Aucune nouvelle table métier.** La phase s'appuie sur les tables transverses existantes : `audit_logs` (traçabilité des accès refusés, des anonymisations, des activations de flags), `feature_flags` (bascule commerciale, mode lecture seule, secours SMS et Mobile Money), `organization_settings` (durées de conservation, coordonnées du référent, version des mentions légales acceptées), `documents` (suppression physique des pièces d'identité sur R2), `api_keys`, `refresh_tokens`, `user_credentials` (revocation et centre de sécurité), `notifications` et `message_logs` (purge des journaux de messagerie selon la rétention), `tenants`, `landlords`, `guarantors`, `contact_channels` (anonymisation des données d'identification).
 
-| Module | Responsabilité |
-| :--- | :--- |
-| `security` | Centre de sécurité par organization : sessions actives, révocation globale, rotation et révocation des `api_keys`, journal des accès refusés |
-| `audit` | (phase 0, étendu) exposition consultable de `audit_logs`, rétention et archivage froid des entrées anciennes |
-| `privacy` | Registre des traitements, anonymisation des tiers, export de réversibilité, purge planifiée selon les durées de rétention |
-| `platform-admin` | Pilotage de `feature_flags` par organization, mode lecture seule global, vagues de bascule |
-| `observability` | (phase 0, étendu) endpoints de santé, métriques Prometheus des files BullMQ et du pool PostgreSQL, page de statut publique |
-| `infra/backup` | Scripts de sauvegarde chiffrée, restauration point-in-time, exercice de restauration outillé et rapport d'intégrité |
-| `portal` | (phase 10, étendu) mentions légales, politique de confidentialité et recueil du consentement locataire |
+| Module           | Responsabilité                                                                                                                               |
+| :--------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| `security`       | Centre de sécurité par organization : sessions actives, révocation globale, rotation et révocation des `api_keys`, journal des accès refusés |
+| `audit`          | (phase 0, étendu) exposition consultable de `audit_logs`, rétention et archivage froid des entrées anciennes                                 |
+| `privacy`        | Registre des traitements, anonymisation des tiers, export de réversibilité, purge planifiée selon les durées de rétention                    |
+| `platform-admin` | Pilotage de `feature_flags` par organization, mode lecture seule global, vagues de bascule                                                   |
+| `observability`  | (phase 0, étendu) endpoints de santé, métriques Prometheus des files BullMQ et du pool PostgreSQL, page de statut publique                   |
+| `infra/backup`   | Scripts de sauvegarde chiffrée, restauration point-in-time, exercice de restauration outillé et rapport d'intégrité                          |
+| `portal`         | (phase 10, étendu) mentions légales, politique de confidentialité et recueil du consentement locataire                                       |
 
 ## 11.5 Endpoints API principaux
 
-| Méthode | Route | Rôle requis | Description courte |
-| :--- | :--- | :--- | :--- |
-| GET | `/health` | Aucun | Vivacité du service (sonde infra) |
-| GET | `/health/ready` | Aucun | Disponibilité base, Redis, R2 et agrégateur Mobile Money |
-| GET | `/status` | Aucun | Page de statut publique et incidents en cours |
-| POST | `/me/security/sessions/revoke` | Tout rôle | Liste et révoque les appareils et `refresh_tokens` de l'utilisateur |
-| GET | `/organizations/{id}/security` | OWNER | Centre de sécurité : membres, `api_keys`, accès refusés récents |
-| POST | `/organizations/{id}/security/revoke-all` | OWNER | Révoque toutes les sessions et clés de l'organization (compromission) |
-| GET | `/organizations/{id}/audit-logs` | OWNER | Consultation filtrée de `audit_logs` (acteur, entité, période) |
-| GET | `/organizations/{id}/data-export` | OWNER | Génère l'export de réversibilité complet (asynchrone, BullMQ) |
-| POST | `/privacy/erasure-requests` | OWNER | Enregistre et exécute une demande d'effacement d'un tiers |
-| GET | `/privacy/processing-register` | OWNER | Registre des traitements en vigueur et coordonnées du référent |
-| GET | `/portal/legal` | Locataire | Mentions légales et politique de confidentialité en vigueur |
-| POST | `/portal/consents` | Locataire | Enregistre l'acceptation d'une version des mentions légales |
-| POST | `/admin/feature-flags/{key}` | OWNER plateforme | Consulte, active ou désactive un flag pour une ou plusieurs organizations |
-| POST | `/admin/read-only-mode` | OWNER plateforme | Bascule la plateforme en lecture seule pendant un incident |
+| Méthode | Route                                     | Rôle requis      | Description courte                                                        |
+| :------ | :---------------------------------------- | :--------------- | :------------------------------------------------------------------------ |
+| GET     | `/health`                                 | Aucun            | Vivacité du service (sonde infra)                                         |
+| GET     | `/health/ready`                           | Aucun            | Disponibilité base, Redis, R2 et agrégateur Mobile Money                  |
+| GET     | `/status`                                 | Aucun            | Page de statut publique et incidents en cours                             |
+| POST    | `/me/security/sessions/revoke`            | Tout rôle        | Liste et révoque les appareils et `refresh_tokens` de l'utilisateur       |
+| GET     | `/organizations/{id}/security`            | OWNER            | Centre de sécurité : membres, `api_keys`, accès refusés récents           |
+| POST    | `/organizations/{id}/security/revoke-all` | OWNER            | Révoque toutes les sessions et clés de l'organization (compromission)     |
+| GET     | `/organizations/{id}/audit-logs`          | OWNER            | Consultation filtrée de `audit_logs` (acteur, entité, période)            |
+| GET     | `/organizations/{id}/data-export`         | OWNER            | Génère l'export de réversibilité complet (asynchrone, BullMQ)             |
+| POST    | `/privacy/erasure-requests`               | OWNER            | Enregistre et exécute une demande d'effacement d'un tiers                 |
+| GET     | `/privacy/processing-register`            | OWNER            | Registre des traitements en vigueur et coordonnées du référent            |
+| GET     | `/portal/legal`                           | Locataire        | Mentions légales et politique de confidentialité en vigueur               |
+| POST    | `/portal/consents`                        | Locataire        | Enregistre l'acceptation d'une version des mentions légales               |
+| POST    | `/admin/feature-flags/{key}`              | OWNER plateforme | Consulte, active ou désactive un flag pour une ou plusieurs organizations |
+| POST    | `/admin/read-only-mode`                   | OWNER plateforme | Bascule la plateforme en lecture seule pendant un incident                |
 
 ## 11.6 Écrans concernés
 
 **Web — dashboard**
+
 - Centre de sécurité de l'organization : membres et rôles, sessions actives, `api_keys` avec date de dernière utilisation, bouton de révocation globale.
 - Journal d'audit consultable par un `OWNER` : filtres acteur, entité, période, affichage de l'état avant/après en JSONB lisible.
 - Écran de confidentialité : durées de conservation appliquées, référent protection des données, lancement d'une demande d'effacement, export de réversibilité.
 - Bandeau permanent en mode lecture seule, et page de statut publique (hors authentification) avec historique des incidents et des maintenances planifiées.
 
 **Web — console plateforme (interne)**
+
 - Pilotage des `feature_flags` par organization et par vague de bascule, avec journalisation de chaque activation.
 - Tableau de suivi du go-live : organizations migrées, en attente, en anomalie.
 
 **Mobile (Flutter)**
+
 - Écran « sécurité de mon compte » : appareils connectés, déconnexion à distance, date de dernière synchronisation ; en mode lecture seule, message explicite indiquant que la saisie hors ligne reste possible et que la synchronisation est simplement différée, sans perte de donnée.
 
 **Portail locataire**
+
 - Mentions légales et politique de confidentialité accessibles depuis toutes les pages, écran de consentement à la première connexion et réaffichage lors d'un changement de version.
 - Écran « mes données » : données détenues, canal de contact du référent, demande d'effacement.
 
@@ -2757,33 +2767,32 @@ Scénario: Bascule commerciale progressive et retour arrière
 
 Durée indicative : **8 semaines**, dont une fenêtre d'audit externe de 2 semaines et une fenêtre de remédiation et contre-test de 2 semaines. La préparation contractuelle des prestataires démarre pendant la phase 10.
 
-| Profil | Semaines-personnes |
-| :--- | :--- |
-| Backend NestJS | 8 sp |
-| Frontend web Next.js | 4 sp |
-| Mobile Flutter | 2 sp |
-| DevOps / infra | 9 sp |
-| QA | 5 sp |
-| Product / rédaction et formation | 6 sp |
-| Juridique et conformité (externe) | 3 sp |
-| Audit de sécurité (prestataire externe) | 4 sp |
-| Test de charge (prestataire externe) | 2 sp |
-| **Total** | **43 sp** |
+| Profil                                  | Semaines-personnes |
+| :-------------------------------------- | :----------------- |
+| Backend NestJS                          | 8 sp               |
+| Frontend web Next.js                    | 4 sp               |
+| Mobile Flutter                          | 2 sp               |
+| DevOps / infra                          | 9 sp               |
+| QA                                      | 5 sp               |
+| Product / rédaction et formation        | 6 sp               |
+| Juridique et conformité (externe)       | 3 sp               |
+| Audit de sécurité (prestataire externe) | 4 sp               |
+| Test de charge (prestataire externe)    | 2 sp               |
+| **Total**                               | **43 sp**          |
 
 ## 11.10 Risques et plan B
 
-| Risque | Impact | Probabilité | Plan B |
-| :--- | :--- | :--- | :--- |
-| Findings critiques nombreux repoussant le lancement commercial | Fort — calendrier commercial décalé | Moyenne | Fenêtre de remédiation de 2 semaines déjà budgétée ; lancement maintenu sur les seules organizations pilotes derrière `commercial_launch` tant que la remédiation n'est pas close |
-| Faille d'isolation multi-tenant découverte en profondeur (RLS contournée) | Critique — fuite de données entre agences concurrentes | Faible | Blocage immédiat du go-live, mode lecture seule, correction en priorité absolue, notification des organizations concernées selon la procédure du PRA |
-| Worker PDF Puppeteer saturé et pool PostgreSQL épuisé au pic de fin de mois | Fort — reçus et relevés non produits, API dégradée pendant la facturation | Élevée | File PDF dédiée à priorité et montée en workers, pré-génération nocturne des relevés de gérance, pooler dédié avec séparation des pools API et workers, plafonnement de la concurrence BullMQ et lots plus petits |
-| Exercice de restauration révélant un RTO très supérieur à la cible | Fort — engagement de service intenable | Moyenne | Réplique chaude préprovisionnée, procédure raccourcie et répétée, engagement révisé à la baisse et annoncé honnêtement plutôt que promis |
-| Compromission d'un compte `OWNER` d'agence (téléphone perdu, OTP intercepté) | Fort — accès à toutes les données financières d'une agence | Moyenne | Révocation globale en une action, réinitialisation OTP avec vérification d'identité hors bande, alerte sur connexion depuis un nouvel appareil, journal d'audit consultable par le client |
-| Cadre juridique local incertain sur la conservation et l'hébergement hors du Congo | Moyen — exposition réglementaire | Moyenne | Position écrite du conseil juridique local, durées de conservation prudentes (les plus longues des cadres applicables), clause de réversibilité et capacité technique à relocaliser l'hébergement |
-| Conflit entre demande d'effacement et append-only des tables financières | Moyen — impossibilité de satisfaire une demande | Moyenne | Doctrine écrite : l'effacement porte sur les données d'identification, jamais sur l'écriture financière ; réponse type au demandeur expliquant l'obligation de conservation |
-| Panne prolongée de l'agrégateur Mobile Money ou de l'API WhatsApp au lancement | Fort — encaissements et relances bloqués | Moyenne | Bascule sur `SmsProvider` de secours pour les relances, encaissement espèces avec reçus numérotés, re-interrogation systématique de l'agrégateur à la reprise, aucune transaction perdue grâce à `webhook_events` |
-| Agences non pilotes en difficulté malgré la documentation | Moyen — support saturé, image dégradée | Élevée | Bascule par vagues limitées en nombre, accompagnement renforcé sur la première semaine de chaque vague, critère d'arrêt si le volume de tickets dépasse le seuil défini |
-
+| Risque                                                                             | Impact                                                                    | Probabilité | Plan B                                                                                                                                                                                                            |
+| :--------------------------------------------------------------------------------- | :------------------------------------------------------------------------ | :---------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Findings critiques nombreux repoussant le lancement commercial                     | Fort — calendrier commercial décalé                                       | Moyenne     | Fenêtre de remédiation de 2 semaines déjà budgétée ; lancement maintenu sur les seules organizations pilotes derrière `commercial_launch` tant que la remédiation n'est pas close                                 |
+| Faille d'isolation multi-tenant découverte en profondeur (RLS contournée)          | Critique — fuite de données entre agences concurrentes                    | Faible      | Blocage immédiat du go-live, mode lecture seule, correction en priorité absolue, notification des organizations concernées selon la procédure du PRA                                                              |
+| Worker PDF Puppeteer saturé et pool PostgreSQL épuisé au pic de fin de mois        | Fort — reçus et relevés non produits, API dégradée pendant la facturation | Élevée      | File PDF dédiée à priorité et montée en workers, pré-génération nocturne des relevés de gérance, pooler dédié avec séparation des pools API et workers, plafonnement de la concurrence BullMQ et lots plus petits |
+| Exercice de restauration révélant un RTO très supérieur à la cible                 | Fort — engagement de service intenable                                    | Moyenne     | Réplique chaude préprovisionnée, procédure raccourcie et répétée, engagement révisé à la baisse et annoncé honnêtement plutôt que promis                                                                          |
+| Compromission d'un compte `OWNER` d'agence (téléphone perdu, OTP intercepté)       | Fort — accès à toutes les données financières d'une agence                | Moyenne     | Révocation globale en une action, réinitialisation OTP avec vérification d'identité hors bande, alerte sur connexion depuis un nouvel appareil, journal d'audit consultable par le client                         |
+| Cadre juridique local incertain sur la conservation et l'hébergement hors du Congo | Moyen — exposition réglementaire                                          | Moyenne     | Position écrite du conseil juridique local, durées de conservation prudentes (les plus longues des cadres applicables), clause de réversibilité et capacité technique à relocaliser l'hébergement                 |
+| Conflit entre demande d'effacement et append-only des tables financières           | Moyen — impossibilité de satisfaire une demande                           | Moyenne     | Doctrine écrite : l'effacement porte sur les données d'identification, jamais sur l'écriture financière ; réponse type au demandeur expliquant l'obligation de conservation                                       |
+| Panne prolongée de l'agrégateur Mobile Money ou de l'API WhatsApp au lancement     | Fort — encaissements et relances bloqués                                  | Moyenne     | Bascule sur `SmsProvider` de secours pour les relances, encaissement espèces avec reçus numérotés, re-interrogation systématique de l'agrégateur à la reprise, aucune transaction perdue grâce à `webhook_events` |
+| Agences non pilotes en difficulté malgré la documentation                          | Moyen — support saturé, image dégradée                                    | Élevée      | Bascule par vagues limitées en nombre, accompagnement renforcé sur la première semaine de chaque vague, critère d'arrêt si le volume de tickets dépasse le seuil défini                                           |
 
 ---
 
@@ -2837,19 +2846,19 @@ Le chemin critique du produit est **0 → 1 → 2 → 3 → 4 → 9 → 10 → 1
 
 ## Dépendances bloquantes (ordre strict imposé)
 
-| Phase | Dépend de | Nature du blocage |
-|---|---|---|
-| 1 | 0 | `organization_id`, RLS, auth OTP, design system, socle OpenAPI |
-| 2 | 1 | Un bail exige `landlords`, `tenants`, `properties`, `units` existants |
-| 3 | 2 | `rent_invoices` est généré depuis `leases` ; la numérotation passe par `sequences` |
-| 4 | 3 | Un paiement Mobile Money s'impute sur une `rent_invoices` ; idempotence via `idempotency_keys` |
-| 5 | 3, 4 | Le mode démarcheur hors ligne encaisse (`cash_receipts`) et consulte les statuts de paiement |
-| 6 | 3, 4 | Le rapprochement met en regard `bank_statements` et les encaissements existants |
-| 7 | 2, 3 | Les commissions se calculent sur des loyers facturés et des baux mandatés |
-| 8 | 1, 2 | `meters` et `inspections` s'attachent à `units` et à `leases` |
-| 9 | 3, 4, 7 | Extension du cron de facturation (pénalités) + ventilation par mode de paiement + charges d'agence dans le reporting |
-| 10 | 3, 4, 9 | L'abonnement réutilise l'intégration Mobile Money ; le portail locataire expose factures et quittances ; le go/no-go s'appuie sur le taux de recouvrement |
-| 11 | 0 à 10 | Pentest, charge, RPO/RTO et go-live portent sur le périmètre complet |
+| Phase | Dépend de | Nature du blocage                                                                                                                                         |
+| ----- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | 0         | `organization_id`, RLS, auth OTP, design system, socle OpenAPI                                                                                            |
+| 2     | 1         | Un bail exige `landlords`, `tenants`, `properties`, `units` existants                                                                                     |
+| 3     | 2         | `rent_invoices` est généré depuis `leases` ; la numérotation passe par `sequences`                                                                        |
+| 4     | 3         | Un paiement Mobile Money s'impute sur une `rent_invoices` ; idempotence via `idempotency_keys`                                                            |
+| 5     | 3, 4      | Le mode démarcheur hors ligne encaisse (`cash_receipts`) et consulte les statuts de paiement                                                              |
+| 6     | 3, 4      | Le rapprochement met en regard `bank_statements` et les encaissements existants                                                                           |
+| 7     | 2, 3      | Les commissions se calculent sur des loyers facturés et des baux mandatés                                                                                 |
+| 8     | 1, 2      | `meters` et `inspections` s'attachent à `units` et à `leases`                                                                                             |
+| 9     | 3, 4, 7   | Extension du cron de facturation (pénalités) + ventilation par mode de paiement + charges d'agence dans le reporting                                      |
+| 10    | 3, 4, 9   | L'abonnement réutilise l'intégration Mobile Money ; le portail locataire expose factures et quittances ; le go/no-go s'appuie sur le taux de recouvrement |
+| 11    | 0 à 10    | Pentest, charge, RPO/RTO et go-live portent sur le périmètre complet                                                                                      |
 
 ## Dépendances non évidentes à anticiper
 
@@ -2864,25 +2873,24 @@ Le chemin critique du produit est **0 → 1 → 2 → 3 → 4 → 9 → 10 → 1
 
 ## Versionnement
 
-| Composant | Schéma | Règle |
-|---|---|---|
-| API (`apps/api`) | SemVer + version majeure dans l'URL (`/v1`) | Une rupture de contrat impose `/v2` ; `v1` reste servi pendant toute la fenêtre de compatibilité |
-| Contrat OpenAPI 3.1 | SemVer aligné sur l'API | Publié en artefact de CI à chaque tag ; toute PR modifiant un schéma exige la régénération |
-| Web (`apps/web`) | SemVer applicatif | Déploiement continu ; toujours ≥ la version d'API minimale requise |
-| Mobile (`apps/mobile`) | SemVer + `build_number` incrémental | Publication par magasin, cycle plus lent, versions anciennes en circulation durablement |
-| `packages/shared` | SemVer strict | Types et constantes partagés ; une rupture ici est une rupture d'API |
+| Composant              | Schéma                                      | Règle                                                                                            |
+| ---------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| API (`apps/api`)       | SemVer + version majeure dans l'URL (`/v1`) | Une rupture de contrat impose `/v2` ; `v1` reste servi pendant toute la fenêtre de compatibilité |
+| Contrat OpenAPI 3.1    | SemVer aligné sur l'API                     | Publié en artefact de CI à chaque tag ; toute PR modifiant un schéma exige la régénération       |
+| Web (`apps/web`)       | SemVer applicatif                           | Déploiement continu ; toujours ≥ la version d'API minimale requise                               |
+| Mobile (`apps/mobile`) | SemVer + `build_number` incrémental         | Publication par magasin, cycle plus lent, versions anciennes en circulation durablement          |
+| `packages/shared`      | SemVer strict                               | Types et constantes partagés ; une rupture ici est une rupture d'API                             |
 
 ## Compatibilité ascendante de l'API
 
 Le mobile ne peut pas être forcé à se mettre à jour au rythme du web : un terminal de démarcheur peut rester plusieurs semaines sur une version ancienne, hors réseau. La politique est donc **additive par défaut**.
 
 - **Fenêtre de compatibilité : 6 mois minimum** pour toute version majeure d'API, à compter de la publication du successeur.
-- **Autorisé sans nouvelle version majeure** : ajout d'un endpoint, ajout d'un champ optionnel en réponse, ajout d'un paramètre optionnel en requête, ajout d'une valeur d'énumération *si* les clients traitent l'inconnu comme neutre.
+- **Autorisé sans nouvelle version majeure** : ajout d'un endpoint, ajout d'un champ optionnel en réponse, ajout d'un paramètre optionnel en requête, ajout d'une valeur d'énumération _si_ les clients traitent l'inconnu comme neutre.
 - **Interdit sans nouvelle version majeure** : retrait ou renommage d'un champ, resserrement d'une validation, changement de type, changement de sémantique d'un statut, passage d'un champ d'optionnel à obligatoire.
 - **Version minimale supportée** : l'API expose une version cliente minimale ; en deçà, le mobile affiche un blocage explicite invitant à la mise à jour, sans jamais perdre les données locales non synchronisées.
 - **En-tête de version cliente** obligatoire sur toute requête mobile, journalisé pour mesurer le parc réel avant toute dépréciation.
 - **Dépréciation** : marquage `deprecated` dans OpenAPI, en-tête de dépréciation en réponse, communication aux organisations, retrait seulement après vérification par télémétrie que l'usage résiduel est nul.
-
 
 ---
 
@@ -2890,11 +2898,11 @@ Le mobile ne peut pas être forcé à se mettre à jour au rythme du web : un te
 
 La table `feature_flags` introduite en phase 0 est le mécanisme central de mise en production : le code part en production continûment, l'exposition est décidée séparément.
 
-| Portée | Usage | Exemple |
-|---|---|---|
-| Globale | Coupe-circuit produit | `read_only_mode` en incident |
-| Par pays | Déploiement CEMAC progressif | Mobile Money activé hors Congo-Brazzaville |
-| Par organisation | Pilote, bêta, onboarding | Portail locataire ouvert au pilote Brazzaville seul |
+| Portée           | Usage                        | Exemple                                             |
+| ---------------- | ---------------------------- | --------------------------------------------------- |
+| Globale          | Coupe-circuit produit        | `read_only_mode` en incident                        |
+| Par pays         | Déploiement CEMAC progressif | Mobile Money activé hors Congo-Brazzaville          |
+| Par organisation | Pilote, bêta, onboarding     | Portail locataire ouvert au pilote Brazzaville seul |
 
 - Tout développement d'une phase ≥ 4 naît **derrière un flag désactivé par défaut**.
 - Le flag est un point de bascule, pas une branche permanente : il est retiré du code au plus tard une version majeure après généralisation.
@@ -2905,24 +2913,24 @@ La table `feature_flags` introduite en phase 0 est le mécanisme central de mise
 
 Règle unique : **ajouter avant de retirer**, jamais de migration destructive en une seule étape.
 
-| Étape | Contenu | Déployé avec |
-|---|---|---|
-| 1 — Expansion | Ajout de la colonne/table, nullable ou avec défaut, double écriture applicative | Version N |
-| 2 — Backfill | Remplissage par tâche BullMQ idempotente, par lots, mesurable et reprenable | Version N |
-| 3 — Bascule | Lecture sur le nouveau champ, ancien champ encore écrit | Version N+1 |
-| 4 — Contraction | Retrait de l'ancien champ après vérification d'usage nul | Version N+2 |
+| Étape           | Contenu                                                                         | Déployé avec |
+| --------------- | ------------------------------------------------------------------------------- | ------------ |
+| 1 — Expansion   | Ajout de la colonne/table, nullable ou avec défaut, double écriture applicative | Version N    |
+| 2 — Backfill    | Remplissage par tâche BullMQ idempotente, par lots, mesurable et reprenable     | Version N    |
+| 3 — Bascule     | Lecture sur le nouveau champ, ancien champ encore écrit                         | Version N+1  |
+| 4 — Contraction | Retrait de l'ancien champ après vérification d'usage nul                        | Version N+2  |
 
 - Aucune migration ne tourne sans avoir été exécutée au préalable sur une **copie récente de production** restaurée depuis la sauvegarde chiffrée.
 - Les migrations longues (index, backfill) sont exécutées hors du démarrage applicatif, en tâche dédiée, avec `read_only_mode` si nécessaire. Toute migration touchant `payments`, `receipts`, `audit_logs`, `rent_invoices` fait l'objet d'une revue à deux personnes obligatoire.
 
 ## Plan de rollback
 
-| Niveau | Procédure | Contrainte |
-|---|---|---|
-| Applicatif (API, web) | Redéploiement de l'image de la version précédente | Rapide, réversible ; cible < 15 min |
-| Mobile | Pas de rollback de magasin : correctif en avant + blocage de version minimale | Le terrain reste sur l'ancienne version, d'où la compatibilité ascendante |
-| Fonctionnel | Désactivation du `feature_flag` concerné | Voie de repli privilégiée, sans redéploiement |
-| Base de données | Rollback de migration **non garanti** | Voir ci-dessous |
+| Niveau                | Procédure                                                                     | Contrainte                                                                |
+| --------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Applicatif (API, web) | Redéploiement de l'image de la version précédente                             | Rapide, réversible ; cible < 15 min                                       |
+| Mobile                | Pas de rollback de magasin : correctif en avant + blocage de version minimale | Le terrain reste sur l'ancienne version, d'où la compatibilité ascendante |
+| Fonctionnel           | Désactivation du `feature_flag` concerné                                      | Voie de repli privilégiée, sans redéploiement                             |
+| Base de données       | Rollback de migration **non garanti**                                         | Voir ci-dessous                                                           |
 
 - Les tables à écritures immuables (`payments`, `receipts`, `cash_receipts`, `payment_allocations`, `audit_logs`) rendent certaines migrations **irréversibles par nature** : une écriture financière produite sous le nouveau schéma ne peut pas être défaite, seulement contre-passée.
 - Conséquence opérationnelle : le rollback de référence est **applicatif + flag**, jamais base. Une migration est conçue pour que la version N-1 continue de fonctionner sur le schéma N (compatibilité descendante du schéma).
@@ -2930,11 +2938,11 @@ Règle unique : **ajouter avant de retirer**, jamais de migration destructive en
 
 ## Environnements et promotion
 
-| Environnement | Données | Déclencheur | Accès |
-|---|---|---|---|
-| Développement | Jeux de fixtures anonymisés | Push sur branche | Équipe complète |
-| Recette / staging | Copie anonymisée de production, agrégateur et WhatsApp en bac à sable | Merge sur `main` | Équipe + testeurs métier |
-| Production | Données réelles, région Europe (Paris) | Tag `vX.Y.Z` validé | Accès nominatif restreint, journalisé |
+| Environnement     | Données                                                               | Déclencheur         | Accès                                 |
+| ----------------- | --------------------------------------------------------------------- | ------------------- | ------------------------------------- |
+| Développement     | Jeux de fixtures anonymisés                                           | Push sur branche    | Équipe complète                       |
+| Recette / staging | Copie anonymisée de production, agrégateur et WhatsApp en bac à sable | Merge sur `main`    | Équipe + testeurs métier              |
+| Production        | Données réelles, région Europe (Paris)                                | Tag `vX.Y.Z` validé | Accès nominatif restreint, journalisé |
 
 Règle de promotion : aucun artefact n'est reconstruit entre environnements — **la même image Docker** promue de recette vers production, seule la configuration change. Une promotion exige : CI verte (tests, lint, migrations à blanc), recette métier signée, migrations rejouées sur copie de production, flags de la version positionnés à l'avance.
 
@@ -2950,40 +2958,39 @@ Les tests terrain des phases 3, 4 et 5 ne sont pas trois exercices séparés : i
 
 ## Progression par étape
 
-| Étape | Phase | Durée | Lots suivis | Démarcheurs | Ce qui est testé en réel |
-|---|---|---|---|---|---|
-| P1 — Espèces | 3 | 3 semaines | 20 à 30 | 2 | Encaissement chez le locataire, signature tactile, quittance PDF + QR, remise d'espèces avec comptage physique, écart de caisse simulé, réception WhatsApp sur MTN et Airtel |
-| P2 — Paiement digital | 4 | 4 semaines | 50 à 80 | 3 | Transactions MTN Mobile Money et Airtel Money réelles, virements déclarés validés par le gestionnaire, webhook en retard et webhook dupliqué provoqués volontairement |
-| P3 — Offline | 5 | 5 semaines | 100 à 150 | 4 à 5 | Tournées de plusieurs jours sans réseau, synchronisation différée, photos et signatures, mesure et résolution des conflits |
+| Étape                 | Phase | Durée      | Lots suivis | Démarcheurs | Ce qui est testé en réel                                                                                                                                                     |
+| --------------------- | ----- | ---------- | ----------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1 — Espèces          | 3     | 3 semaines | 20 à 30     | 2           | Encaissement chez le locataire, signature tactile, quittance PDF + QR, remise d'espèces avec comptage physique, écart de caisse simulé, réception WhatsApp sur MTN et Airtel |
+| P2 — Paiement digital | 4     | 4 semaines | 50 à 80     | 3           | Transactions MTN Mobile Money et Airtel Money réelles, virements déclarés validés par le gestionnaire, webhook en retard et webhook dupliqué provoqués volontairement        |
+| P3 — Offline          | 5     | 5 semaines | 100 à 150   | 4 à 5       | Tournées de plusieurs jours sans réseau, synchronisation différée, photos et signatures, mesure et résolution des conflits                                                   |
 
 - Le périmètre s'élargit sans jamais changer d'agence : les lots de l'étape P1 restent dans P2 puis P3, ce qui permet de mesurer des séries longues (récurrence des encaissements sur trois cycles mensuels). Chaque étape ne s'ouvre qu'après clôture formelle de la précédente (revue de fin d'étape, anomalies bloquantes corrigées).
 
 ## Rôles côté produit
 
-| Rôle | Présence terrain | Responsabilité |
-|---|---|---|
-| Lead delivery | 1 journée par semaine, plus les fins d'étape | Arbitrages de périmètre, décision d'ouverture d'étape |
-| Product owner | 2 journées par semaine en P1 et P2, 1 en P3 | Observation directe des tournées, tenue du journal de terrain, qualification des anomalies |
-| Développeur mobile | 1 journée par semaine à partir de P2, 2 en P3 | Instrumentation, reproduction des conflits de synchronisation, correctifs à chaud |
-| Développeur back-end | À la demande, astreinte pendant les fenêtres d'encaissement | Webhooks, re-interrogation de statut, incidents d'idempotence |
-| Référent agence | Continue | Relais auprès des locataires, remontée des irritants |
+| Rôle                 | Présence terrain                                            | Responsabilité                                                                             |
+| -------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Lead delivery        | 1 journée par semaine, plus les fins d'étape                | Arbitrages de périmètre, décision d'ouverture d'étape                                      |
+| Product owner        | 2 journées par semaine en P1 et P2, 1 en P3                 | Observation directe des tournées, tenue du journal de terrain, qualification des anomalies |
+| Développeur mobile   | 1 journée par semaine à partir de P2, 2 en P3               | Instrumentation, reproduction des conflits de synchronisation, correctifs à chaud          |
+| Développeur back-end | À la demande, astreinte pendant les fenêtres d'encaissement | Webhooks, re-interrogation de statut, incidents d'idempotence                              |
+| Référent agence      | Continue                                                    | Relais auprès des locataires, remontée des irritants                                       |
 
 Rituels : point quotidien de 15 minutes pendant les semaines d'encaissement, revue hebdomadaire des anomalies, **revue de fin d'étape** avec décision explicite de poursuite.
 
 ## Indicateurs collectés et transmission au pilote Phase 10
 
-| Indicateur du pilote resserré | Critère go/no-go de phase 10 qu'il alimente |
-|---|---|
-| Taux de quittances émises sans reprise manuelle | Seuil de fiabilité documentaire du portail locataire |
-| Taux de messages WhatsApp effectivement reçus par opérateur | Cible de délivrabilité des relances (`dunning_runs`) |
-| Nombre de doubles paiements détectés en réseau dégradé | Exigence : zéro double encaissement, condition d'entrée en pilote élargi |
-| Délai médian de confirmation Mobile Money après re-interrogation | Cible de délai d'imputation à afficher au locataire |
-| Taux de conflits de synchronisation et part résolue automatiquement | Dimensionnement du support pendant le pilote élargi |
-| Écarts de caisse constatés sur les remises réelles | Seuil de tolérance et procédure d'écart à figer avant l'élargissement |
-| Temps moyen de formation d'un démarcheur | Charge d'onboarding à provisionner pour 150 à 300 lots |
+| Indicateur du pilote resserré                                       | Critère go/no-go de phase 10 qu'il alimente                              |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Taux de quittances émises sans reprise manuelle                     | Seuil de fiabilité documentaire du portail locataire                     |
+| Taux de messages WhatsApp effectivement reçus par opérateur         | Cible de délivrabilité des relances (`dunning_runs`)                     |
+| Nombre de doubles paiements détectés en réseau dégradé              | Exigence : zéro double encaissement, condition d'entrée en pilote élargi |
+| Délai médian de confirmation Mobile Money après re-interrogation    | Cible de délai d'imputation à afficher au locataire                      |
+| Taux de conflits de synchronisation et part résolue automatiquement | Dimensionnement du support pendant le pilote élargi                      |
+| Écarts de caisse constatés sur les remises réelles                  | Seuil de tolérance et procédure d'écart à figer avant l'élargissement    |
+| Temps moyen de formation d'un démarcheur                            | Charge d'onboarding à provisionner pour 150 à 300 lots                   |
 
 Chaque indicateur est chiffré en fin d'étape et **repris tel quel** comme valeur de référence dans la grille go/no-go de la phase 10 : le pilote Brazzaville ne rediscute pas ces seuils, il vérifie qu'ils tiennent à plus grande échelle.
-
 
 ---
 
@@ -2993,12 +3000,12 @@ Chaque indicateur est chiffré en fin d'étape et **repris tel quel** comme vale
 
 Ces quatre chantiers conditionnent des phases très tardives (3 et 4) mais leurs délais externes se comptent en semaines. Ils démarrent le premier jour, avant même que le socle technique n'existe.
 
-| # | Action | Responsable | Délai externe estimé | Phase débloquée |
-|---|---|---|---|---|
-| 1 | Création du compte Meta Business, dépôt du dossier de vérification d'entreprise (statuts, registre de commerce, justificatif d'adresse) | Lead delivery | 2 à 6 semaines | 3 |
-| 2 | Demande d'accès WhatsApp Business Cloud API, enregistrement du numéro d'expédition, soumission des premiers gabarits de messages (quittance, rappel d'échéance, confirmation de paiement) | Product owner | 1 à 3 semaines après vérification | 3, 9 |
-| 3 | Prise de contact avec l'agrégateur Mobile Money, ouverture du dossier contractuel et KYC entreprise (identité des dirigeants, RCCM, NIU, relevé bancaire, compte de règlement) | Direction | 4 à 10 semaines, rythmé par les délais bancaires locaux | 4, 10 |
-| 4 | Ouverture d'une consultation juridique locale : valeur probante d'une quittance électronique avec QR code en droit congolais, mentions obligatoires, conservation, articulation avec l'OHADA | Lead delivery | 2 à 4 semaines | 3 |
+| #   | Action                                                                                                                                                                                       | Responsable   | Délai externe estimé                                    | Phase débloquée |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------- | --------------- |
+| 1   | Création du compte Meta Business, dépôt du dossier de vérification d'entreprise (statuts, registre de commerce, justificatif d'adresse)                                                      | Lead delivery | 2 à 6 semaines                                          | 3               |
+| 2   | Demande d'accès WhatsApp Business Cloud API, enregistrement du numéro d'expédition, soumission des premiers gabarits de messages (quittance, rappel d'échéance, confirmation de paiement)    | Product owner | 1 à 3 semaines après vérification                       | 3, 9            |
+| 3   | Prise de contact avec l'agrégateur Mobile Money, ouverture du dossier contractuel et KYC entreprise (identité des dirigeants, RCCM, NIU, relevé bancaire, compte de règlement)               | Direction     | 4 à 10 semaines, rythmé par les délais bancaires locaux | 4, 10           |
+| 4   | Ouverture d'une consultation juridique locale : valeur probante d'une quittance électronique avec QR code en droit congolais, mentions obligatoires, conservation, articulation avec l'OHADA | Lead delivery | 2 à 4 semaines                                          | 3               |
 
 - Un **suivi hebdomadaire écrit** de ces quatre dossiers est tenu dès J1 et présenté à chaque revue de phase, avec date de relance et interlocuteur nommé.
 - Le résultat de la consultation juridique est une **entrée de conception** de la phase 3 : le gabarit de quittance n'est pas figé avant sa réception.

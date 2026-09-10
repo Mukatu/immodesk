@@ -24,15 +24,15 @@ API_INTERNAL_URL=http://localhost:3001/v1      # base de l'API, utilisée par le
 
 Depuis `apps/web/` (ou via `pnpm --filter @immodesk/web <script>` depuis la racine) :
 
-| Script | Rôle |
-| :--- | :--- |
-| `pnpm dev` | Lance le serveur de développement Next |
-| `pnpm build` | Build de production |
-| `pnpm start` | Sert le build de production |
-| `pnpm lint` | ESLint (next + typescript + jsx-a11y) |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test` | Tests unitaires Vitest + Testing Library |
-| `pnpm test:e2e` | Scénario Playwright contre un mock MSW de l'API (aucun backend requis) |
+| Script           | Rôle                                                                   |
+| :--------------- | :--------------------------------------------------------------------- |
+| `pnpm dev`       | Lance le serveur de développement Next                                 |
+| `pnpm build`     | Build de production                                                    |
+| `pnpm start`     | Sert le build de production                                            |
+| `pnpm lint`      | ESLint (next + typescript + jsx-a11y)                                  |
+| `pnpm typecheck` | `tsc --noEmit`                                                         |
+| `pnpm test`      | Tests unitaires Vitest + Testing Library                               |
+| `pnpm test:e2e`  | Scénario Playwright contre un mock MSW de l'API (aucun backend requis) |
 
 ## Architecture
 

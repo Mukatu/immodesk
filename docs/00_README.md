@@ -4,15 +4,15 @@ SaaS de gestion locative multi-canale (espèces, Mobile Money, virement, chèque
 
 ## Comment lire ce dossier
 
-| Ordre | Document | Public | Contenu |
-| :--- | :--- | :--- | :--- |
-| 0 | [_DECISIONS_COMMUNES.md](_DECISIONS_COMMUNES.md) | Tous | Référentiel des décisions tranchées : acteurs, stack, règles financières, liste canonique des tables, numérotation des phases. Toute divergence entre un document et ce référentiel se règle en faveur du référentiel. |
-| 1 | [01_lettre_de_cadrage.md](01_lettre_de_cadrage.md) | Sponsor, comité de pilotage, PO | Contexte, vision, objectifs, périmètre et hors-périmètre, gouvernance, risques, budget, macro-planning, plan de pilote. |
-| 2 | [02_architecture_technique.md](02_architecture_technique.md) | Lead tech, développeurs | Composants, monorepo, modules NestJS, multi-tenant, auth, moteur de facturation, encaissements par mode, offline mobile, sécurité, infra, tests, ADR. |
-| 3 | [03_modele_de_donnees.md](03_modele_de_donnees.md) | Développeurs, DBA | Toutes les tables, énumérations, contraintes, index, machines à états, flux financiers chiffrés, RLS, volumétrie, conventions Prisma. |
-| 3b | [schema/schema.sql](schema/schema.sql) | Développeurs, DBA | DDL PostgreSQL 16 exécutable : types, tables, triggers, séquences, RLS, vues. |
-| 4 | [04_plan_de_phases.md](04_plan_de_phases.md) | PO, lead tech, équipe | Phases 0 à 11 : epics, user stories, critères d'acceptation, endpoints, écrans, tests, Definition of Done, checklist de démarrage. |
-| 5 | [05_prompts_de_developpement.md](05_prompts_de_developpement.md) | Développeurs | Bibliothèque de prompts pour assistant de code en IDE, un par module ou tranche testable, alignés sur le référentiel. |
+| Ordre | Document                                                         | Public                          | Contenu                                                                                                                                                                                                                |
+| :---- | :--------------------------------------------------------------- | :------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | [_DECISIONS_COMMUNES.md](_DECISIONS_COMMUNES.md)                 | Tous                            | Référentiel des décisions tranchées : acteurs, stack, règles financières, liste canonique des tables, numérotation des phases. Toute divergence entre un document et ce référentiel se règle en faveur du référentiel. |
+| 1     | [01_lettre_de_cadrage.md](01_lettre_de_cadrage.md)               | Sponsor, comité de pilotage, PO | Contexte, vision, objectifs, périmètre et hors-périmètre, gouvernance, risques, budget, macro-planning, plan de pilote.                                                                                                |
+| 2     | [02_architecture_technique.md](02_architecture_technique.md)     | Lead tech, développeurs         | Composants, monorepo, modules NestJS, multi-tenant, auth, moteur de facturation, encaissements par mode, offline mobile, sécurité, infra, tests, ADR.                                                                  |
+| 3     | [03_modele_de_donnees.md](03_modele_de_donnees.md)               | Développeurs, DBA               | Toutes les tables, énumérations, contraintes, index, machines à états, flux financiers chiffrés, RLS, volumétrie, conventions Prisma.                                                                                  |
+| 3b    | [schema/schema.sql](schema/schema.sql)                           | Développeurs, DBA               | DDL PostgreSQL 16 exécutable : types, tables, triggers, séquences, RLS, vues.                                                                                                                                          |
+| 4     | [04_plan_de_phases.md](04_plan_de_phases.md)                     | PO, lead tech, équipe           | Phases 0 à 11 : epics, user stories, critères d'acceptation, endpoints, écrans, tests, Definition of Done, checklist de démarrage.                                                                                     |
+| 5     | [05_prompts_de_developpement.md](05_prompts_de_developpement.md) | Développeurs                    | Bibliothèque de prompts pour assistant de code en IDE, un par module ou tranche testable, alignés sur le référentiel.                                                                                                  |
 
 ## Règles de maintenance du dossier
 

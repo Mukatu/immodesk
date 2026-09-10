@@ -45,10 +45,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
     response.status(status).json(body);
   }
 
-  private render(
-    exception: unknown,
-    requestId?: string,
-  ): { status: number; body: ErrorEnvelope } {
+  private render(exception: unknown, requestId?: string): { status: number; body: ErrorEnvelope } {
     const withRequestId = (details: ErrorDetails): ErrorDetails =>
       requestId ? { ...details, requestId } : details;
 

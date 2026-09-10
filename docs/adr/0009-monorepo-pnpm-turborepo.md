@@ -33,6 +33,6 @@ Une extraction reste possible avec git subtree, mais elle réintroduirait le ris
 
 ## Alternatives écartées
 
-| Option | Pourquoi écartée |
-| --- | --- |
+| Option                         | Pourquoi écartée                                                                |
+| ------------------------------ | ------------------------------------------------------------------------------- |
 | Dépôts séparés par application | Dérive du contrat entre API, web et mobile, coordination manuelle des versions. |

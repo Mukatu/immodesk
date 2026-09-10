@@ -1,12 +1,12 @@
-import { z } from "zod";
-import { phoneSchema } from "./phone-schema.js";
+import { z } from 'zod';
+import { phoneSchema } from './phone-schema.js';
 
 /**
  * Schéma de la requête d'envoi d'un code OTP.
  */
 export const otpRequestSchema = z.object({
   phone: phoneSchema,
-  channel: z.enum(["SMS", "WHATSAPP"]).optional(),
+  channel: z.enum(['SMS', 'WHATSAPP']).optional(),
 });
 export type OtpRequestInput = z.infer<typeof otpRequestSchema>;
 
@@ -16,7 +16,7 @@ export type OtpRequestInput = z.infer<typeof otpRequestSchema>;
  */
 export const otpVerifySchema = z.object({
   phone: phoneSchema,
-  code: z.string().regex(/^\d{6}$/, "Le code doit contenir exactement 6 chiffres"),
+  code: z.string().regex(/^\d{6}$/, 'Le code doit contenir exactement 6 chiffres'),
   deviceName: z.string().optional(),
 });
 export type OtpVerifyInput = z.infer<typeof otpVerifySchema>;

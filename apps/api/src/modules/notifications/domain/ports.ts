@@ -38,7 +38,9 @@ export interface SmsProvider {
 /** Passerelle WhatsApp (Meta Cloud API). Non implémentée en phase 0. */
 export interface WhatsAppProvider {
   readonly name: string;
-  send(message: OutboundMessage & { templateName?: string; templateLang?: string }): Promise<SendResult>;
+  send(
+    message: OutboundMessage & { templateName?: string; templateLang?: string },
+  ): Promise<SendResult>;
 }
 
 export const SMS_PROVIDER = Symbol('SMS_PROVIDER');

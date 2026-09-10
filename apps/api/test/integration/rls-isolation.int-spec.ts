@@ -1,12 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { v7 as uuidv7 } from 'uuid';
 import { withAuditTriggersDisabled } from './helpers';
-import {
-  buildInsert,
-  listTenantTables,
-  planMinimalRow,
-  type Anchors,
-} from './rls-matrix';
+import { buildInsert, listTenantTables, planMinimalRow, type Anchors } from './rls-matrix';
 
 /**
  * Tables de la phase 0 dont l'isolation DOIT être démontrée.
@@ -31,12 +26,7 @@ const PHASE0_TENANT_TABLES = [
   'message_logs',
 ] as const;
 
-const PHASE0_GLOBAL_TABLES = [
-  'users',
-  'user_credentials',
-  'otp_codes',
-  'refresh_tokens',
-] as const;
+const PHASE0_GLOBAL_TABLES = ['users', 'user_credentials', 'otp_codes', 'refresh_tokens'] as const;
 
 interface Fixture {
   organizationId: string;
@@ -178,7 +168,7 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
     }
   });
 
-  it("balaie toutes les tables à organization_id : lecture croisée impossible, écriture croisée rejetée", async () => {
+  it('balaie toutes les tables à organization_id : lecture croisée impossible, écriture croisée rejetée', async () => {
     const tables = (await listTenantTables(admin)).filter((t) => t !== 'organizations');
     const enumCache = new Map<string, string[]>();
 
@@ -262,10 +252,7 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
 
       // --- 4. Mise à jour croisée : sans effet --------------------------
       const updated = await asOrganization(app, orgA, (tx) =>
-        tx.$executeRawUnsafe(
-          `UPDATE "${table}" SET updated_at = now() WHERE id = $1::uuid`,
-          idB,
-        ),
+        tx.$executeRawUnsafe(`UPDATE "${table}" SET updated_at = now() WHERE id = $1::uuid`, idB),
       ).catch(() => 0);
       expect({ table, updated }).toEqual({ table, updated: 0 });
 

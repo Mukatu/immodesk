@@ -34,7 +34,10 @@ export class OrganizationGuard implements CanActivate {
     if (context.getType() !== 'http') return true;
 
     const targets = [context.getHandler(), context.getClass()];
-    const requiredRoles = this.reflector.getAllAndOverride<MemberRole[]>(REQUIRED_ROLES_KEY, targets);
+    const requiredRoles = this.reflector.getAllAndOverride<MemberRole[]>(
+      REQUIRED_ROLES_KEY,
+      targets,
+    );
     const requiresOrganization =
       this.reflector.getAllAndOverride<boolean>(REQUIRES_ORGANIZATION_KEY, targets) ||
       Array.isArray(requiredRoles);

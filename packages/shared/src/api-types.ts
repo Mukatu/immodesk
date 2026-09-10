@@ -5,9 +5,9 @@
  * (utilisateurs, organisations, adhésions, invitations, paramètres).
  */
 
-import type { OrganizationType } from "./enums/index.js";
+import type { OrganizationType } from './enums/index.js';
 
-export type Role = "OWNER" | "MANAGER" | "COLLECTOR" | "ACCOUNTANT" | "VIEWER";
+export type Role = 'OWNER' | 'MANAGER' | 'COLLECTOR' | 'ACCOUNTANT' | 'VIEWER';
 
 // `OrganizationType` est défini une seule fois, dans les enums générés depuis
 // le schéma SQL (`src/enums/generated.ts`), et déjà réexporté depuis là via
@@ -21,8 +21,8 @@ export interface User {
   phone: string;
   fullName: string;
   email: string | null;
-  locale: "fr-CG";
-  timezone: "Africa/Brazzaville";
+  locale: 'fr-CG';
+  timezone: 'Africa/Brazzaville';
   createdAt: string;
 }
 
@@ -37,7 +37,7 @@ export interface Organization {
   contactPhone: string;
   contactEmail: string | null;
   logoUrl: string | null;
-  status: "ACTIVE" | "SUSPENDED";
+  status: 'ACTIVE' | 'SUSPENDED';
   createdAt: string;
 }
 
@@ -50,7 +50,7 @@ export interface OrganizationMembership {
 export interface OrganizationSettings {
   defaultPaymentDueDay: number;
   timezone: string;
-  currency: "XAF";
+  currency: 'XAF';
   defaultGraceDays: number;
   receiptFooterText: string | null;
   whatsappEnabled: boolean;
@@ -59,9 +59,9 @@ export interface OrganizationSettings {
 
 export interface Member {
   id: string;
-  user: Pick<User, "id" | "phone" | "fullName">;
+  user: Pick<User, 'id' | 'phone' | 'fullName'>;
   role: Role;
-  status: "ACTIVE" | "SUSPENDED";
+  status: 'ACTIVE' | 'SUSPENDED';
   joinedAt: string;
 }
 
@@ -69,7 +69,7 @@ export interface Invitation {
   id: string;
   phone: string;
   role: Role;
-  status: "PENDING" | "ACCEPTED" | "EXPIRED" | "REVOKED";
+  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
   expiresAt: string;
   createdAt: string;
 }

@@ -21,10 +21,7 @@
     "editor.wordBasedSuggestions": "off"
   },
   "dart.lineLength": 100,
-  "eslint.workingDirectories": [
-    { "pattern": "apps/*" },
-    { "pattern": "packages/*" }
-  ],
+  "eslint.workingDirectories": [{ "pattern": "apps/*" }, { "pattern": "packages/*" }],
   "typescript.tsdk": "node_modules/typescript/lib",
   "files.eol": "\n",
   "search.exclude": {

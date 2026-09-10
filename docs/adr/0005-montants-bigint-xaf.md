@@ -35,7 +35,7 @@ Un test de métadonnée du schéma échoue si une colonne monétaire est déclar
 
 ## Alternatives écartées
 
-| Option | Pourquoi écartée |
-| --- | --- |
+| Option          | Pourquoi écartée                                                                                   |
+| --------------- | -------------------------------------------------------------------------------------------------- |
 | NUMERIC/DECIMAL | Arrondi correct mais coût de conversion et de comparaison inutile pour une devise sans sous-unité. |
-| FLOAT/DOUBLE | Erreurs d'arrondi inacceptables sur des montants financiers. |
+| FLOAT/DOUBLE    | Erreurs d'arrondi inacceptables sur des montants financiers.                                       |

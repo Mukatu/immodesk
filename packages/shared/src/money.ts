@@ -10,7 +10,7 @@
 const THOUSANDS_SEPARATOR = String.fromCharCode(0x0020);
 
 /** Suffixe de devise ajouté par `formatXaf`. */
-const CURRENCY_SUFFIX = "XAF";
+const CURRENCY_SUFFIX = 'XAF';
 
 /**
  * Toutes les variantes d'espace tolérées en entrée par `parseXaf` comme
@@ -20,8 +20,8 @@ const CURRENCY_SUFFIX = "XAF";
  */
 const TOLERATED_SEPARATOR_CODEPOINTS = [0x0020, 0x00a0, 0x202f];
 const SEPARATOR_CHARS_PATTERN = new RegExp(
-  `[${TOLERATED_SEPARATOR_CODEPOINTS.map((code) => String.fromCharCode(code)).join("")}]`,
-  "g",
+  `[${TOLERATED_SEPARATOR_CODEPOINTS.map((code) => String.fromCharCode(code)).join('')}]`,
+  'g',
 );
 
 /**
@@ -30,14 +30,12 @@ const SEPARATOR_CHARS_PATTERN = new RegExp(
  */
 function assertNoDecimal(amount: number): void {
   if (!Number.isFinite(amount)) {
-    throw new Error(
-      `Montant XAF invalide : "${amount}" n'est pas un nombre fini.`,
-    );
+    throw new Error(`Montant XAF invalide : "${amount}" n'est pas un nombre fini.`);
   }
   if (!Number.isInteger(amount)) {
     throw new Error(
       `Montant XAF invalide : "${amount}" comporte une décimale. ` +
-        "Le XAF ne possède aucune sous-unité, seuls les montants entiers sont autorisés.",
+        'Le XAF ne possède aucune sous-unité, seuls les montants entiers sont autorisés.',
     );
   }
 }
@@ -48,7 +46,7 @@ function assertNoDecimal(amount: number): void {
  */
 export type Money = {
   readonly amount: bigint;
-  readonly currency: "XAF";
+  readonly currency: 'XAF';
 };
 
 /**
@@ -60,7 +58,7 @@ export type Money = {
 export function formatXaf(amount: number | bigint): string {
   let integerAmount: bigint;
 
-  if (typeof amount === "bigint") {
+  if (typeof amount === 'bigint') {
     integerAmount = amount;
   } else {
     assertNoDecimal(amount);
@@ -70,7 +68,7 @@ export function formatXaf(amount: number | bigint): string {
   const negative = integerAmount < 0n;
   const digits = (negative ? -integerAmount : integerAmount).toString();
 
-  let grouped = "";
+  let grouped = '';
   for (let i = 0; i < digits.length; i += 1) {
     const positionFromEnd = digits.length - i;
     grouped += digits[i];
@@ -80,7 +78,7 @@ export function formatXaf(amount: number | bigint): string {
     }
   }
 
-  return `${negative ? "-" : ""}${grouped} ${CURRENCY_SUFFIX}`;
+  return `${negative ? '-' : ''}${grouped} ${CURRENCY_SUFFIX}`;
 }
 
 /**
@@ -93,10 +91,10 @@ export function formatXaf(amount: number | bigint): string {
 export function parseXaf(formatted: string): number {
   const withoutCurrency = formatted
     .trim()
-    .replace(/\s*XAF\s*$/i, "")
+    .replace(/\s*XAF\s*$/i, '')
     .trim();
 
-  const withoutSeparators = withoutCurrency.replace(SEPARATOR_CHARS_PATTERN, "");
+  const withoutSeparators = withoutCurrency.replace(SEPARATOR_CHARS_PATTERN, '');
 
   if (withoutSeparators.length === 0) {
     throw new Error(`Montant XAF invalide : "${formatted}" est vide ou non parseable.`);
@@ -105,7 +103,7 @@ export function parseXaf(formatted: string): number {
   if (/[.,]/.test(withoutSeparators)) {
     throw new Error(
       `Montant XAF invalide : "${formatted}" comporte une décimale. ` +
-        "Le XAF ne possède aucune sous-unité, seuls les montants entiers sont autorisés.",
+        'Le XAF ne possède aucune sous-unité, seuls les montants entiers sont autorisés.',
     );
   }
 

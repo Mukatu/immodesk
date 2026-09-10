@@ -84,7 +84,9 @@ describe('apiFetch', () => {
   it('lève une ApiError avec le code stable sur une erreur métier', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(jsonResponse(401, { code: 'IAM.OTP_INVALID', message: 'Code incorrect.' }));
+      .mockResolvedValue(
+        jsonResponse(401, { code: 'IAM.OTP_INVALID', message: 'Code incorrect.' }),
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(apiFetch('/auth/otp/verify', { skipAuth: true })).rejects.toMatchObject({
@@ -96,7 +98,9 @@ describe('apiFetch', () => {
   it('ApiError est bien une instance exploitable', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(jsonResponse(429, { code: 'IAM.RATE_LIMITED', message: 'Trop de demandes.' }));
+      .mockResolvedValue(
+        jsonResponse(429, { code: 'IAM.RATE_LIMITED', message: 'Trop de demandes.' }),
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     try {

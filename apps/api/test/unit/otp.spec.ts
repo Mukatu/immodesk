@@ -131,12 +131,20 @@ describe('Comptage des tentatives', () => {
 
 describe('Délai de renvoi', () => {
   it('interdit un renvoi avant 60 secondes', () => {
-    const remaining = resendCooldownRemaining(NOW, new Date(NOW.getTime() + 10_000), DEFAULT_OTP_POLICY);
+    const remaining = resendCooldownRemaining(
+      NOW,
+      new Date(NOW.getTime() + 10_000),
+      DEFAULT_OTP_POLICY,
+    );
     expect(remaining).toBe(50);
   });
 
   it('autorise le renvoi après 60 secondes', () => {
-    const remaining = resendCooldownRemaining(NOW, new Date(NOW.getTime() + 60_000), DEFAULT_OTP_POLICY);
+    const remaining = resendCooldownRemaining(
+      NOW,
+      new Date(NOW.getTime() + 60_000),
+      DEFAULT_OTP_POLICY,
+    );
     expect(remaining).toBe(0);
   });
 });

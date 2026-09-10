@@ -28,8 +28,14 @@
     "turbo": "^2.5.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx,mjs,cjs}": ["prettier --write"],
-    "*.{json,md,mdx,yml,yaml,css,scss}": ["prettier --write"],
-    "*.dart": ["dart format"]
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "prettier --write"
+    ],
+    "*.{json,md,mdx,yml,yaml,css,scss}": [
+      "prettier --write"
+    ],
+    "*.dart": [
+      "dart format"
+    ]
   }
 }

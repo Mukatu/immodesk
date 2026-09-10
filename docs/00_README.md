@@ -13,9 +13,8 @@ SaaS de gestion locative multi-canale (espèces, Mobile Money, virement, chèque
 | 3b    | [schema/schema.sql](schema/schema.sql)                           | Développeurs, DBA               | DDL PostgreSQL 16 exécutable : types, tables, triggers, séquences, RLS, vues.                                                                                                                                          |
 | 4     | [04_plan_de_phases.md](04_plan_de_phases.md)                     | PO, lead tech, équipe           | Phases 0 à 11 : epics, user stories, critères d'acceptation, endpoints, écrans, tests, Definition of Done, checklist de démarrage.                                                                                     |
 | 5     | [05_prompts_de_developpement.md](05_prompts_de_developpement.md) | Développeurs                    | Bibliothèque de prompts pour assistant de code en IDE, un par module ou tranche testable, alignés sur le référentiel.                                                                                                  |
-
-| 6 | [06_besoins_externes.md](06_besoins_externes.md) | Sponsor, PO | Comptes à ouvrir, équipements, prestations et décisions attendues, avec ce que chacun débloque. À tenir à jour. |
-| API | [api/](api/) | Développeurs | Contrats d'API par phase (avant génération OpenAPI) et `openapi.json` exporté par l'API. |
+| 6     | [06_besoins_externes.md](06_besoins_externes.md)                 | Sponsor, PO                     | Comptes à ouvrir, équipements, prestations et décisions attendues, avec ce que chacun débloque. À tenir à jour.                                                                                                        |
+| API   | [api/](api/)                                                     | Développeurs                    | Contrats d'API par phase (avant génération OpenAPI) et `openapi.json` exporté par l'API.                                                                                                                               |
 
 ## Règles de maintenance du dossier
 

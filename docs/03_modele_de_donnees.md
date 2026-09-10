@@ -20,7 +20,7 @@ Toutes les colonnes, types, contraintes et index cités sont vérifiés ligne à
 
 ### 1.1 Identifiants, devise et montants
 
-- **Clés primaires** : `UUID`, générées côté application (UUID v7, ordonnées dans le temps) avec `DEFAULT gen_random_uuid()` en filet de sécurité côté SQL (extension `pgcrypto`, partie `01_extensions_enums.sql`).
+- **Clés primaires** : `UUID`, générées côté application (UUID v7, ordonnées dans le temps) avec `DEFAULT gen_random_uuid()` en filet de sécurité côté SQL (extension `pgcrypto`, partie `01_extensions_enums.sql`). L'extension `btree_gist` permet la contrainte d'exclusion GiST sur les baux (voir 6.2) pour éviter les chevauchements.
 - **Montants** : toujours en `BIGINT`, exprimés dans l'unité entière de la devise — le XAF (Franc CFA BEAC) n'a pas de sous-unité. Aucune colonne monétaire n'est un `FLOAT`, un `DOUBLE PRECISION` ou un `NUMERIC` à décimales.
 - **Devise** : chaque table portant un montant porte aussi une colonne `currency CHAR(3) NOT NULL DEFAULT 'XAF'`. Sur `organizations`, une contrainte `CHECK (currency = 'XAF')` verrouille le mono-devise dès la V1 ; les autres tables gardent la colonne pour préparer une extension CEMAC multi-devises sans migration de schéma.
 - **Quantités non monétaires nécessitant une décimale** (surfaces, index de compteurs, coordonnées GPS, taux de commission) utilisent `NUMERIC(p,s)` ou des entiers en points de base (`*_bps`, base 10 000 = 100 %) — jamais de flottant IEEE 754, y compris hors du domaine financier strict.
@@ -76,7 +76,7 @@ L'application mobile (Flutter/Drift, offline-first) génère localement un `clie
 
 ### 1.7 Numérotation séquentielle atomique
 
-La table `sequences` (`organization_id, kind, period, last_value, prefix, padding`, contrainte `UNIQUE (organization_id, kind, period)`) porte un compteur par organisation, nature de document (`sequence_kind` : `CASH_RECEIPT`, `RENT_INVOICE`, `RECEIPT`, `OWNER_STATEMENT`, `REMITTANCE`, `EXPENSE`, `PAYOUT`, `SUBSCRIPTION_INVOICE`) et période (`YYYYMM`, ou chaîne vide pour une séquence continue).
+La table `sequences` (`organization_id, kind, period, last_value, prefix, padding`, contrainte `UNIQUE (organization_id, kind, period)`) porte un compteur par organisation, nature de document (`sequence_kind` : `LEASE`, `CASH_RECEIPT`, `RENT_INVOICE`, `RECEIPT`, `OWNER_STATEMENT`, `REMITTANCE`, `EXPENSE`, `PAYOUT`, `SUBSCRIPTION_INVOICE`) et période (`YYYYMM`, ou chaîne vide pour une séquence continue).
 
 - `next_sequence(p_org, p_kind, p_period)` réserve atomiquement le numéro suivant via `INSERT ... ON CONFLICT (organization_id, kind, period) DO UPDATE SET last_value = last_value + 1 RETURNING last_value` : un seul aller-retour SQL, sans risque de doublon même sous forte concurrence (pas de `SELECT` puis `UPDATE` séparés).
 - `format_sequence_number(prefix, period, value, padding = 5)` compose le numéro lisible correspondant, par exemple `format_sequence_number('LOY', '202603', 42, 5)` → `LOY-202603-00042`.
@@ -104,7 +104,7 @@ Ce schéma se répète pour toute FK pointant vers une table définie plus loin 
 
 ### 2.1 Diagramme entité-relation global
 
-Le diagramme ci-dessous limite le modèle complet (71 tables) à ses 29 entités pivots, pour rester lisible. Les tables de détail, de journalisation et les tables purement techniques (index composites, tables de jonction secondaires, tables globales) sont omises ici et détaillées dans les sections suivantes ou dans le document complémentaire.
+Le diagramme ci-dessous limite le modèle complet (72 tables) à ses 29 entités pivots, pour rester lisible. Les tables de détail, de journalisation et les tables purement techniques (index composites, tables de jonction secondaires, tables globales) sont omises ici et détaillées dans les sections suivantes ou dans le document complémentaire.
 
 ```mermaid
 erDiagram
@@ -148,7 +148,7 @@ erDiagram
     properties ||--o{ maintenance_requests : "objet de"
 ```
 
-### 2.2 Domaines et tables (71 tables, 80 types énumérés)
+### 2.2 Domaines et tables (72 tables, 80 types énumérés)
 
 Le nom du fichier partiel du DDL est indiqué entre parenthèses. Les domaines couverts par **ce document** (sections 4 à 6) sont marqués ●, ceux couverts par le document complémentaire sont marqués ○.
 
@@ -457,6 +457,7 @@ Le schéma déclare 80 types `ENUM` (partie `01_extensions_enums.sql`), regroup�
 | `receipt_status`           | `ISSUED`               | PDF généré, prêt à l'envoi.                                                                        |
 | `receipt_status`           | `SENT`                 | Envoyée au locataire (WhatsApp/SMS/email).                                                         |
 | `receipt_status`           | `CANCELLED`            | Quittance annulée.                                                                                 |
+| `sequence_kind`            | `LEASE`                | Séquence des références de bail (`BAIL-{YYYY}-{seq}`).                                             |
 | `sequence_kind`            | `CASH_RECEIPT`         | Séquence des reçus de caisse (`CASH-{org}-{collector}-{seq}`).                                     |
 | `sequence_kind`            | `RENT_INVOICE`         | Séquence des factures de loyer (`LOY-{YYYYMM}-{seq}`).                                             |
 | `sequence_kind`            | `RECEIPT`              | Séquence des quittances (`QUI-{YYYYMM}-{seq}`).                                                    |
@@ -1396,7 +1397,7 @@ erDiagram
 | `property_id`                          | UUID               | oui  | —                              | Bien concerné ; `NULL` = mandat portant sur tout le portefeuille du bailleur.                             |
 | `reference`                            | TEXT               | non  | —                              | Référence du mandat.                                                                                      |
 | `scope`                                | `mandate_scope`    | non  | `'FULL_MANAGEMENT'`            | Étendue du mandat.                                                                                        |
-| `status`                               | `mandate_status`   | non  | `'DRAFT'`                      | Cycle de vie (voir 6.6).                                                                                  |
+| `status`                               | `mandate_status`   | non  | `'DRAFT'`                      | Cycle de vie (voir 6.11).                                                                                 |
 | `start_date` / `end_date`              | DATE               | oui* | —                              | Période (`start_date` non nul).                                                                           |
 | `notice_days`                          | SMALLINT           | non  | `90`                           | Préavis de résiliation, en jours.                                                                         |
 | `auto_renew`                           | BOOLEAN            | non  | `true`                         | Reconduction tacite.                                                                                      |
@@ -1438,7 +1439,7 @@ erDiagram
 | `primary_tenant_id`                                      | UUID             | non  | —                   | Locataire titulaire principal.                                                                                    |
 | `mandate_id`                                             | UUID             | oui  | —                   | Mandat de gestion encadrant ce bail, si applicable.                                                               |
 | `reference`                                              | TEXT             | non  | —                   | Référence du bail.                                                                                                |
-| `status`                                                 | `lease_status`   | non  | `'DRAFT'`           | Cycle de vie (voir 6.6).                                                                                          |
+| `status`                                                 | `lease_status`   | non  | `'DRAFT'`           | Cycle de vie (voir 6.11).                                                                                         |
 | `start_date` / `end_date`                                | DATE             | oui* | —                   | Période contractuelle (`start_date` non nul).                                                                     |
 | `move_in_date` / `move_out_date`                         | DATE             | oui  | —                   | Dates réelles d'entrée/sortie (peuvent différer du contrat).                                                      |
 | `rent_period`                                            | `rent_period`    | non  | `'MONTHLY'`         | Périodicité du loyer.                                                                                             |
@@ -1471,6 +1472,8 @@ erDiagram
 
 **Contraintes** : `UNIQUE (organization_id, reference)` ; `UNIQUE (organization_id, client_ref)` ; `CHECK (end_date IS NULL OR start_date < end_date)` ; `CHECK (move_out_date IS NULL OR move_in_date IS NULL OR move_in_date <= move_out_date)` ; `CHECK` positivité sur tous les montants sauf `balance_amount`.
 
+**Contrainte d'exclusion GiST (`leases_no_overlap_excl`)** : anti-chevauchement des baux actifs sur un même lot. Garantit qu'un lot (`unit_id`) ne peut porter qu'un seul bail dans les statuts `ACTIVE` ou `NOTICE_GIVEN` et non supprimé (`deleted_at IS NULL`). Utilise l'extension `btree_gist` pour exprimer une exclusion sur deux dimensions : `unit_id = unit_id` (même lot) ET `daterange(start_date, COALESCE(end_date, '9999-12-31'), '[)')` qui se chevauche (`&&` overlap). Toute tentative d'insertion ou mise à jour violant cette règle lève une erreur PostgreSQL `SQLSTATE 23P01` (restriction), traduite côté API en code erreur `LEASES.OVERLAP`.
+
 **Index** :
 
 - `leases_org_status_idx (organization_id, status) WHERE deleted_at IS NULL` — file de travail par statut (baux actifs, en préavis...).
@@ -1481,7 +1484,35 @@ erDiagram
 
 **Règles métier** : `ON DELETE RESTRICT` sur `unit_id`, `property_id`, `landlord_id`, `primary_tenant_id` empêche toute suppression physique d'une entité référencée par un bail, actif ou archivé — seule la suppression logique (`deleted_at`) est possible ; `balance_amount` est un solde dénormalisé recalculé par l'application à chaque facturation/encaissement, jamais à corriger manuellement en SQL ; `mandate_id` reste `NULL` pour un bailleur indépendant (`INDEPENDENT_LANDLORD`) qui gère lui-même son bien sans mandat d'agence.
 
-### 6.3 `lease_parties`
+### 6.3 `lease_rent_revisions`
+
+**Rôle.** Révisions de loyer et de charges d'un bail, datées pour un historique complet. Le loyer applicable à une date donnée est la dernière révision dont `effective_date` ne dépasse pas cette date, sinon le loyer initial du bail. Aucune révision ne peut antédater une période déjà facturée.
+
+| Colonne                     | Type        | Null | Défaut              | Description                                                                                   |
+| --------------------------- | ----------- | ---- | ------------------- | --------------------------------------------------------------------------------------------- |
+| `id`                        | UUID        | non  | `gen_random_uuid()` | Identifiant primaire.                                                                         |
+| `organization_id`           | UUID        | non  | —                   | Organisation gestionnaire.                                                                    |
+| `lease_id`                  | UUID        | non  | —                   | Bail révisé.                                                                                  |
+| `effective_date`            | DATE        | non  | —                   | Date de prise d'effet de la révision.                                                         |
+| `previous_rent_amount`      | BIGINT      | non  | —                   | Loyer précédent en XAF pour une période `rent_period`.                                        |
+| `new_rent_amount`           | BIGINT      | non  | —                   | Nouveau loyer en XAF.                                                                         |
+| `previous_charges_amount`   | BIGINT      | non  | `0`                 | Charges précédentes en XAF.                                                                   |
+| `new_charges_amount`        | BIGINT      | non  | `0`                 | Nouvelles charges en XAF.                                                                     |
+| `currency`                  | CHAR(3)     | non  | `'XAF'`             | Devise.                                                                                       |
+| `reason`                    | TEXT        | oui  | —                   | Motif de la révision (indexation, accord amiable, régularisation).                            |
+| `document_id`               | UUID        | oui  | —                   | Document justificatif (FK vers `documents` en DELETE SET NULL, FK différée partie technique). |
+| `created_by_user_id`        | UUID        | oui  | —                   | Membre à l'origine de la révision.                                                            |
+| `created_at` / `updated_at` | TIMESTAMPTZ | non  | `now()`             | Horodatage standard.                                                                          |
+
+**Clés étrangères** : `organization_id → organizations(id) ON DELETE CASCADE` ; `lease_id → leases(id) ON DELETE CASCADE` ; `document_id → documents(id) ON DELETE SET NULL` (FK différée, partie technique) ; `created_by_user_id → users(id) ON DELETE SET NULL`.
+
+**Contraintes** : `UNIQUE (lease_id, effective_date)` — une seule révision par date effective et par bail ; `CHECK (previous_rent_amount >= 0)`, `CHECK (new_rent_amount >= 0)`, `CHECK (previous_charges_amount >= 0)`, `CHECK (new_charges_amount >= 0)` — tous les montants positifs.
+
+**Index** : `lease_rent_revisions_lease_idx (lease_id, effective_date DESC)` — historique des révisions d'un bail trié antéchronologiquement pour accès rapide à la dernière révision applicable.
+
+**Règles métier** : le loyer (et les charges) facturés pour une période donnée est celui de la révision la plus récente ayant `effective_date ≤ période`, sinon le `rent_amount` et `charges_amount` initiaux du bail ; aucune révision ne doit être rétroactive au-delà d'une période déjà facturée (la couche applicative en assure le respect) ; cette table porte l'historique complet des révisions, permettant d'audit chaque facturation antérieure sans jamais modifier le bail initial ; RLS générique s'applique (`organization_id`).
+
+### 6.4 `lease_parties`
 
 **Rôle.** Parties signataires d'un bail : locataire principal, co-locataires, garants, occupants déclarés.
 
@@ -1509,7 +1540,7 @@ erDiagram
 
 **Règles métier** : `leases.primary_tenant_id` et la ligne `lease_parties` de rôle `PRIMARY_TENANT` doivent référencer le même locataire (cohérence assurée par l'application, non par une contrainte SQL croisée entre les deux tables) ; `share_bps` et `is_solidary` permettent de modéliser une colocation avec répartition inégale mais solidarité totale, ou une répartition stricte sans solidarité.
 
-### 6.4 `lease_documents`
+### 6.5 `lease_documents`
 
 **Rôle.** Pièces contractuelles d'un bail : contrat PDF généré, avenants, congés, attestations d'assurance.
 
@@ -1537,7 +1568,7 @@ erDiagram
 
 **Règles métier** : `version` s'incrémente à chaque nouvelle génération d'un même `kind` (ex. un avenant remplaçant le précédent) ; le PDF du contrat principal généré est également référencé directement par `leases.contract_document_id` pour un accès rapide sans jointure, `lease_documents` portant l'historique complet et les autres natures de pièces.
 
-### 6.5 `deposits`
+### 6.6 `deposits`
 
 **Rôle.** Dépôt de garantie (caution) d'un bail : appel, encaissement fractionné, retenues et restitution.
 
@@ -1547,7 +1578,7 @@ erDiagram
 | `organization_id`           | UUID             | non  | —                   | Organisation gestionnaire.                                              |
 | `lease_id`                  | UUID             | non  | —                   | Bail concerné, unique (relation 1–1).                                   |
 | `tenant_id`                 | UUID             | non  | —                   | Locataire redevable de la caution.                                      |
-| `status`                    | `deposit_status` | non  | `'PENDING'`         | Cycle de vie (voir 6.6).                                                |
+| `status`                    | `deposit_status` | non  | `'PENDING'`         | Cycle de vie (voir 6.11).                                               |
 | `required_amount`           | BIGINT           | non  | —                   | Montant de caution exigé.                                               |
 | `collected_amount`          | BIGINT           | non  | `0`                 | Montant encaissé à date.                                                |
 | `deducted_amount`           | BIGINT           | non  | `0`                 | Montant retenu (dégradations, impayés).                                 |
@@ -1572,7 +1603,7 @@ erDiagram
 
 **Règles métier** : `held_amount` est dénormalisé et doit toujours vérifier `held_amount = collected_amount - deducted_amount - refunded_amount` (recalculé par l'application à chaque mouvement) ; `held_by` détermine qui doit matérialiser la restitution en fin de bail — l'agence pour un mandat `FULL_MANAGEMENT`, potentiellement le bailleur directement dans d'autres cas.
 
-### 6.6 `deposit_movements`
+### 6.7 `deposit_movements`
 
 **Rôle.** Mouvements du dépôt de garantie (encaissement, retenue, restitution). Correction par contre-passation via `reversal_of_id`.
 
@@ -1601,7 +1632,7 @@ erDiagram
 
 **Règles métier** : cette table n'est **pas** sous append-only strict (`forbid_update_delete`) ni sous `guard_financial_row`, mais la convention de correction par contre-passation (`reversal_of_id`) s'applique par discipline applicative, cohérente avec le reste des écritures financières du modèle ; chaque `DEDUCTION` s'appuie typiquement sur un `inspections.total_damage_amount` chiffré lors de l'état des lieux de sortie.
 
-### 6.7 `inspections`
+### 6.8 `inspections`
 
 **Rôle.** État des lieux d'entrée, de sortie, périodique ou contradictoire, réalisé sur mobile hors ligne.
 
@@ -1615,7 +1646,7 @@ erDiagram
 | `tenant_id`                            | UUID                   | oui  | —                   | Locataire présent/concerné.                                                 |
 | `reference`                            | TEXT                   | non  | —                   | Référence du constat.                                                       |
 | `inspection_type`                      | `inspection_type`      | non  | —                   | `MOVE_IN`, `MOVE_OUT`, `PERIODIC`, `CONTRADICTORY`.                         |
-| `status`                               | `inspection_status`    | non  | `'DRAFT'`           | Cycle de vie (voir 6.8).                                                    |
+| `status`                               | `inspection_status`    | non  | `'DRAFT'`           | Cycle de vie (voir 6.11).                                                   |
 | `scheduled_at` / `performed_at`        | TIMESTAMPTZ            | oui  | —                   | Planification et réalisation effective.                                     |
 | `performed_by_user_id`                 | UUID                   | oui  | —                   | Agent ayant réalisé la visite.                                              |
 | `tenant_present`                       | BOOLEAN                | non  | `true`              | Locataire présent lors de la visite.                                        |
@@ -1646,7 +1677,7 @@ erDiagram
 
 **Règles métier** : `total_damage_amount` alimente les `deposit_movements` de type `DEDUCTION` lors de la clôture d'un état des lieux de sortie ; un état des lieux de type `MOVE_IN` ou `MOVE_OUT` est en principe rattaché à un `lease_id`, alors qu'une visite `PERIODIC` peut n'en porter aucun changement immédiat.
 
-### 6.8 `inspection_items`
+### 6.9 `inspection_items`
 
 **Rôle.** Ligne d'état des lieux : un élément (mur, porte, robinetterie) d'une pièce et son état constaté.
 
@@ -1676,7 +1707,7 @@ erDiagram
 
 **Règles métier** : la somme des `repair_amount` des lignes où `is_damaged = true` et `charged_to = TENANT` doit correspondre à `inspections.total_damage_amount` (agrégat maintenu par l'application, non par un trigger SQL).
 
-### 6.9 `inspection_photos`
+### 6.10 `inspection_photos`
 
 **Rôle.** Photos horodatées et géolocalisées attachées à un état des lieux ou à l'une de ses lignes.
 
@@ -1703,7 +1734,7 @@ erDiagram
 
 **Règles métier** : `checksum_sha256` permet de détecter a posteriori une substitution du fichier image (contrôle d'intégrité), dans le même esprit que `signature_hash` sur les documents signés ; une photo peut illustrer soit l'état des lieux dans son ensemble (`inspection_item_id IS NULL`), soit un élément précis.
 
-### 6.10 Machines à états
+### 6.11 Machines à états
 
 Les colonnes `status` ne portent aucune contrainte `CHECK` de transition dans le DDL (un `ENUM` PostgreSQL n'exprime que l'ensemble des valeurs possibles, pas le graphe de passage de l'une à l'autre) : les transitions ci-dessous formalisent la logique métier que la couche applicative (services NestJS) doit faire respecter, en s'appuyant sur `audit_logs` (action `STATE_TRANSITION`) pour la traçabilité de chaque changement.
 

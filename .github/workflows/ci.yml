@@ -67,17 +67,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      # Stockage objet compatible S3 pour les tests du module documents.
-      # L'image Bitnami démarre le serveur sans commande explicite (les
-      # services GitHub Actions n'acceptent pas de `command`).
-      minio:
-        image: bitnami/minio:2025
-        env:
-          MINIO_ROOT_USER: immodesk
-          MINIO_ROOT_PASSWORD: immodesk123
-          MINIO_DEFAULT_BUCKETS: immodesk
-        ports:
-          - 9000:9000
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -94,13 +83,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Wait for MinIO
+      # Stockage objet compatible S3 pour les tests du module documents.
+      # Lancé en étape (et non en service) car l'image officielle exige la
+      # commande `server /data`, que les services GitHub Actions ne permettent pas.
+      - name: Start MinIO
         run: |
+          docker run -d --name minio -p 9000:9000             -e MINIO_ROOT_USER=immodesk -e MINIO_ROOT_PASSWORD=immodesk123             minio/minio:latest server /data
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:9000/minio/health/live >/dev/null; then echo "MinIO prêt"; exit 0; fi
+            if curl -sf http://localhost:9000/minio/health/live >/dev/null; then echo "MinIO prêt"; break; fi
             sleep 2
           done
-          echo "MinIO indisponible"; exit 1
+          curl -sf http://localhost:9000/minio/health/live >/dev/null || { echo "MinIO indisponible"; docker logs minio; exit 1; }
+          docker run --rm --network host --entrypoint sh minio/mc:latest -c             "mc alias set local http://localhost:9000 immodesk immodesk123 && mc mb --ignore-existing local/immodesk"
 
       # postgresql-client (psql) is preinstalled on GitHub's ubuntu-latest
       # runners, so no apt-get install step is needed here.

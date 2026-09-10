@@ -36,8 +36,8 @@ class DocumentsRemoteDataSource {
           'mimeType': mimeType,
           'sizeBytes': sizeBytes,
           'kind': kind.apiValue,
-          if (relatedEntityType != null) 'relatedEntityType': relatedEntityType,
-          if (relatedEntityId != null) 'relatedEntityId': relatedEntityId,
+          'relatedEntityType': ?relatedEntityType,
+          'relatedEntityId': ?relatedEntityId,
         },
         options: _orgHeaders(organizationId),
       );
@@ -90,9 +90,9 @@ class DocumentsRemoteDataSource {
           'mimeType': mimeType,
           'sizeBytes': sizeBytes,
           'kind': kind.apiValue,
-          if (relatedEntityType != null) 'relatedEntityType': relatedEntityType,
-          if (relatedEntityId != null) 'relatedEntityId': relatedEntityId,
-          if (clientRef != null) 'clientRef': clientRef,
+          'relatedEntityType': ?relatedEntityType,
+          'relatedEntityId': ?relatedEntityId,
+          'clientRef': ?clientRef,
         },
         options: _orgHeaders(organizationId),
       );
@@ -112,9 +112,9 @@ class DocumentsRemoteDataSource {
       final Response<dynamic> response = await _dio.get<dynamic>(
         '/documents',
         queryParameters: <String, dynamic>{
-          if (relatedEntityType != null) 'relatedEntityType': relatedEntityType,
-          if (relatedEntityId != null) 'relatedEntityId': relatedEntityId,
-          if (kind != null) 'kind': kind.apiValue,
+          'relatedEntityType': ?relatedEntityType,
+          'relatedEntityId': ?relatedEntityId,
+          'kind': ?kind?.apiValue,
         },
         options: _orgHeaders(organizationId),
       );

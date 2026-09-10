@@ -25,7 +25,8 @@ Langue produit : français (fr-CG). Langue du code : anglais (identifiants, tabl
 - Mobile Money : **agrégateur** (interface `MobileMoneyProvider`, première implémentation CinetPay ; PawaPay et connexion directe MTN MoMo / Airtel Money prévues derrière la même interface). Confirmation d'un paiement = re-interrogation du statut côté agrégateur, jamais sur la seule foi du webhook.
 - Auth : **téléphone + OTP** (SMS ou WhatsApp), email optionnel. JWT access (15 min) + refresh token rotatif (30 j). Mot de passe optionnel pour le web.
 - Contrat d'API : **OpenAPI 3.1** généré par NestJS, client TypeScript (web) et Dart (mobile) générés.
-- Infra : Docker, déploiement sur VPS/cloud région **Europe (Paris)**, CI/CD **GitHub Actions**, monitoring Sentry + Grafana/Prometheus, sauvegardes PostgreSQL quotidiennes chiffrées.
+- Infra : Docker, déploiement sur un **VPS** loué en région **Europe (Paris)** (Hetzner ou OVH, tarif d'entrée), reverse proxy Caddy, CI/CD **GitHub Actions**, suivi des erreurs **GlitchTip auto-hébergé** (open source, compatible avec les SDK Sentry), métriques Grafana + Prometheus, sauvegardes PostgreSQL quotidiennes chiffrées (pgBackRest vers un stockage objet).
+- Principe « open source d'abord » (décision du 10 septembre 2026) : tout composant est auto-hébergé et open source quand une alternative crédible existe ; les services payants sont limités à ce qui n'a pas d'équivalent (opérateurs Mobile Money, WhatsApp officiel, envoi de SMS, location du serveur, nom de domaine). Stockage de fichiers : MinIO auto-hébergé sur le VPS en phase pilote, Cloudflare R2 seulement si le volume l'exige.
 - Monorepo : `apps/api`, `apps/web`, `apps/mobile`, `packages/shared` (types, enums, validation zod), `infra/`.
 
 ## Règles financières et techniques non négociables

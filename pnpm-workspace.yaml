@@ -6,7 +6,7 @@ allowBuilds:
   '@prisma/engines': true
   '@scarf/scarf': true
   esbuild: true
-  msgpackr-extract: set this to true or false
+  msgpackr-extract: false
   msw: true
   prisma: true
   puppeteer: false

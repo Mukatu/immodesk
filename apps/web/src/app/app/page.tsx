@@ -6,10 +6,12 @@ import {
   Building2,
   ClipboardList,
   DoorOpen,
+  FileText,
   Percent,
   Settings,
   UserPlus,
   Users2,
+  Wallet,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -20,6 +22,9 @@ import { useAuth } from '@/lib/auth/auth-context';
 import { useProperties } from '@/lib/api/hooks/use-properties';
 import { useUnits } from '@/lib/api/hooks/use-units';
 import { useTenants } from '@/lib/api/hooks/use-tenants';
+import { useLeases } from '@/lib/api/hooks/use-leases';
+import { useDepositsSummary } from '@/lib/api/hooks/use-deposits';
+import { formatXaf } from '@/lib/money';
 
 const NEXT_STEPS = [
   {
@@ -105,6 +110,8 @@ export default function DashboardPage() {
   const propertiesQuery = useProperties({ limit: DASHBOARD_PAGE_LIMIT });
   const unitsQuery = useUnits({ limit: DASHBOARD_PAGE_LIMIT });
   const tenantsQuery = useTenants({ limit: DASHBOARD_PAGE_LIMIT });
+  const activeLeasesQuery = useLeases({ status: 'ACTIVE', limit: DASHBOARD_PAGE_LIMIT });
+  const depositsSummaryQuery = useDepositsSummary();
 
   const properties = propertiesQuery.data?.items ?? [];
   const propertiesValue = formatApproxCount(
@@ -142,6 +149,15 @@ export default function DashboardPage() {
       ? `${Math.round((occupancyTotals.occupied / occupancyTotals.units) * 100)} % occupé`
       : '—';
 
+  const activeLeasesValue = formatApproxCount(
+    activeLeasesQuery.data?.items.length ?? 0,
+    activeLeasesQuery.data?.pageInfo.hasNextPage ?? false,
+    'bail actif',
+    'baux actifs',
+  );
+
+  const depositsHeldValue = formatXaf(depositsSummaryQuery.data?.heldTotal ?? 0);
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -157,7 +173,7 @@ export default function DashboardPage() {
         <h2 id="apercu-titre" className="text-lg font-semibold">
           Aperçu
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <KpiCard
             icon={Building2}
             label="Immeubles"
@@ -185,6 +201,22 @@ export default function DashboardPage() {
             isLoading={tenantsQuery.isLoading}
             href="/app/locataires"
             linkLabel="Voir tous les locataires"
+          />
+          <KpiCard
+            icon={FileText}
+            label="Baux actifs"
+            value={activeLeasesValue}
+            isLoading={activeLeasesQuery.isLoading}
+            href="/app/baux"
+            linkLabel="Voir tous les baux"
+          />
+          <KpiCard
+            icon={Wallet}
+            label="Dépôts détenus"
+            value={depositsHeldValue}
+            isLoading={depositsSummaryQuery.isLoading}
+            href="/app/depots"
+            linkLabel="Voir les dépôts"
           />
         </div>
       </section>

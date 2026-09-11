@@ -44,6 +44,20 @@ const PHASE1_TENANT_TABLES = [
   'documents',
 ] as const;
 
+/**
+ * Tables de la phase 2 (baux et dépôts de garantie). La suite est bloquante
+ * et croît à chaque phase : livrer une table métier sans preuve d'isolation
+ * reviendrait à livrer une fuite.
+ */
+const PHASE2_TENANT_TABLES = [
+  'leases',
+  'lease_parties',
+  'lease_rent_revisions',
+  'lease_documents',
+  'deposits',
+  'deposit_movements',
+] as const;
+
 interface Fixture {
   organizationId: string;
   /**
@@ -300,6 +314,11 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
     expect({ missing, phase: 1 }).toEqual({ missing: [], phase: 1 });
   });
 
+  it('couvre obligatoirement les 6 tables de la phase 2 (baux et dépôts)', () => {
+    const missing = PHASE2_TENANT_TABLES.filter((t) => !covered.includes(t));
+    expect({ missing, phase: 2 }).toEqual({ missing: [], phase: 2 });
+  });
+
   it('vérifie que les tables d’authentification sont bien GLOBALES et hors RLS', async () => {
     for (const table of PHASE0_GLOBAL_TABLES) {
       const columns = await admin.$queryRawUnsafe<Array<{ column_name: string }>>(
@@ -495,6 +514,54 @@ async function createFixture(admin: PrismaClient, label: string): Promise<Fixtur
   anchors.set('tenants', tenantId);
   anchors.set('properties', propertyId);
   anchors.set('units', unitId);
+
+  // --- Ancres de la phase 2 --------------------------------------------
+  //
+  // DEUX baux, et non un seul : `deposits_lease_uk` n'admet qu'un dépôt par
+  // bail. Si le dépôt d'ancrage était posé sur le bail d'ancrage, le
+  // balayage de `deposits` — qui insère sa propre ligne sur ce même bail —
+  // échouerait sur l'unicité, et la table serait sautée pour une raison
+  // étrangère à la RLS.
+  const leaseId = uuidv7();
+  const depositLeaseId = uuidv7();
+  const depositId = uuidv7();
+  const documentId = uuidv7();
+
+  for (const [index, id] of [leaseId, depositLeaseId].entries()) {
+    await admin.$executeRawUnsafe(
+      `INSERT INTO leases (id, organization_id, unit_id, property_id, landlord_id,
+                           primary_tenant_id, reference, start_date, rent_amount)
+       VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6::uuid, $7, current_date, 0)`,
+      id,
+      organizationId,
+      unitId,
+      propertyId,
+      landlordId,
+      tenantId,
+      `RLS-${label}-${suffix}-${index}`,
+    );
+  }
+
+  await admin.$executeRawUnsafe(
+    `INSERT INTO deposits (id, organization_id, lease_id, tenant_id, required_amount)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 0)`,
+    depositId,
+    organizationId,
+    depositLeaseId,
+    tenantId,
+  );
+
+  await admin.$executeRawUnsafe(
+    `INSERT INTO documents (id, organization_id, bucket, object_key, file_name, mime_type, size_bytes)
+     VALUES ($1::uuid, $2::uuid, 'immodesk', $3, 'ancre.pdf', 'application/pdf', 1)`,
+    documentId,
+    organizationId,
+    `org/${organizationId}/other/${documentId}.pdf`,
+  );
+
+  anchors.set('leases', leaseId);
+  anchors.set('deposits', depositId);
+  anchors.set('documents', documentId);
 
   return { organizationId, userIds, anchors, slug };
 }

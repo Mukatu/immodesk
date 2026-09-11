@@ -2,7 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, Home, LayoutDashboard, LogOut, Settings, Users, Users2 } from 'lucide-react';
+import {
+  Building2,
+  FileText,
+  Home,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Users,
+  Users2,
+  Wallet,
+} from 'lucide-react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -22,6 +32,8 @@ const NAV_ITEMS = [
   { href: '/app', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/app/bailleurs', label: 'Bailleurs', icon: Home },
   { href: '/app/locataires', label: 'Locataires', icon: Users2 },
+  { href: '/app/baux', label: 'Baux', icon: FileText },
+  { href: '/app/depots', label: 'Dépôts', icon: Wallet },
   { href: '/app/immeubles', label: 'Immeubles', icon: Building2 },
   { href: '/app/equipe', label: 'Équipe', icon: Users },
   { href: '/app/parametres', label: 'Paramètres', icon: Settings },

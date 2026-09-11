@@ -42,19 +42,25 @@ src/
                           /acces-refuse, error.tsx, not-found.tsx, /api/auth/* (BFF), phase 1 :
                           /app/bailleurs, /app/bailleurs/[id], /app/locataires,
                           /app/locataires/[id], /app/locataires/nouveau, /app/immeubles,
-                          /app/immeubles/[id], /app/immeubles/nouveau, /app/lots/[id]
+                          /app/immeubles/[id], /app/immeubles/nouveau, /app/lots/[id], phase 2 :
+                          /app/baux, /app/baux/nouveau, /app/baux/[id], /app/baux/[id]/contrat,
+                          /app/depots, /app/parametres/contrat
   components/
     ui/                   Primitives shadcn/ui (Radix + class-variance-authority)
     business/             Composants métier : MoneyXaf, MoneyInput, PhoneInput, StatusBadge,
                           EmptyState, PageHeader, DataTable (pagination par curseur), PhoneDisplay,
                           OccupancyBadge, AddressBlock, BankAccountCard, EnumSelect,
-                          DocumentUploader/DocumentList (glisser-déposer, aperçu, progression)
+                          DocumentUploader/DocumentList (glisser-déposer, aperçu, progression),
+                          LeaseStatusBadge, DepositStatusBadge, DepositBalance, RentRevisionTimeline,
+                          PartyList, ContractJobStatus
     layout/                En-tête applicatif, sélecteur d'organisation
   lib/
     api/                   client.ts (fetch typé, Authorization + X-Organization-Id,
                           rafraîchissement automatique sur 401), types.ts (phase 0 & 1),
                           hooks/ (TanStack Query par ressource : landlords, tenants, guarantors,
-                          contact-channels, properties, units, bank-accounts, documents)
+                          contact-channels, properties, units, bank-accounts, documents, leases,
+                          lease-parties, rent-revisions, lease-documents, contract-jobs, deposits,
+                          contract-template)
     auth/                  Contexte d'authentification client, cookie httpOnly du refresh token
     money.ts, phone.ts     Formatage XAF et téléphone congolais
     enum-labels.ts         Labels pour énumérations (statuts, types, genres)
@@ -101,19 +107,31 @@ aperçu image/PDF, limites : 15 Mo images JPEG/PNG/WebP/HEIC, 25 Mo PDF). Les pa
 sont isolés en tant que ressources du domaine et n'interfèrent pas avec les scénarios transactionnels
 (location, versement).
 
+### Baux, dépôts de garantie et contrats (phase 2)
+
+Cycle complet du bail : **baux** (brouillon, actif, préavis, résiliation), **parties au bail**
+(bailleur, locataire(s), tiers présents), **révisions de loyer** (ajustements périodiques avec
+historique), **dépôts de garantie** (mouvements : consignation, retenue, restitution) avec **statut
+dérivé** (bloqué, réclamé, disponible, en restitution). **Génération de contrat** asynchrone :
+job avec suivi de statut (QUEUED → RUNNING → DONE), aperçu HTML imprimable, rattachement du contrat
+signé. **Gabarit de contrat** personnalisable par organisation (clauses, dates, montants).
+
 ## Tests
 
 - **Unitaires** (`pnpm test`, Vitest + Testing Library) : formatage XAF (`MoneyXaf`), saisie
   téléphone congolaise (`PhoneInput`), affichage téléphone (`PhoneDisplay`), badge occupation
   (`OccupancyBadge`), validation taille et MIME de `DocumentUploader`, client API (`apiFetch`)
   incluant le rafraîchissement automatique de token et la déduplication des requêtes concurrentes
-  en 401.
+  en 401, badges de statut (bail, dépôt), barre de solde de dépôt, suivi de job de génération
+  avec minuteurs simulés.
 - **e2e** (`pnpm test:e2e`, Playwright) :
   - **Phase 0** (`e2e/phase0-onboarding.spec.ts`) : connexion OTP → création d'organisation
     → invitation, entièrement mocké via MSW.
   - **Phase 1** (`e2e/phase1-portfolio.spec.ts`) : création bailleur → création immeuble →
     création 12 lots en série → création locataire avec garant → téléversement pièce d'identité,
     entièrement mocké via MSW.
+  - **Phase 2** (`e2e/phase2-leases.spec.ts`) : création bail → activation → génération contrat →
+    rattachement contrat signé → résiliation → restitution dépôt, entièrement mocké via MSW.
 
 Tous les scénarios e2e utilisent MSW (`src/mocks/handlers.ts`), interceptée côté serveur
 (`msw/node`, activé dans `instrumentation.ts` quand `E2E_MOCK=1`). Les appels directs du navigateur
@@ -124,9 +142,11 @@ en mémoire — que les route handlers `/api/auth/*`. Aucune dépendance à un b
 ## Mocks MSW
 
 `src/mocks/handlers.ts` inclut des données de démonstration congolaises (quartiers de Brazzaville,
-banques locales : BGFI, LCB, Ecobank, UBA, et institutions de microfinance), isolées sous une
-organisation de démonstration dédiée (`demoOrgId`). Ces données pré-peuplent le store en mémoire
-sans interférer avec les scénarios e2e : chaque test crée son propre contexte d'organisation.
+banques locales : BGFI, LCB, Ecobank, UBA, et institutions de microfinance, immeuble « Résidence
+Mpila » avec baux, dépôts, et révisions de loyer), isolées sous une organisation de démonstration
+dédiée (`demoOrgId`). Ces données pré-peuplent le store en mémoire sans interférer avec les scénarios
+e2e : chaque test crée son propre contexte d'organisation. Le job de génération de contrat est
+simulé en trois appels successifs (QUEUED → RUNNING → DONE) sans accès à un backend asynchrone réel.
 
 ## Accessibilité et performance
 

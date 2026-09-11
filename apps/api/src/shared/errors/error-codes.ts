@@ -143,6 +143,79 @@ export const ERROR_CATALOG = {
     message: 'Stockage de fichiers indisponible. Réessayez dans un instant.',
   },
 
+  // --- Domaine LEASES (baux, parties, révisions, contrat PDF) -----------
+  'LEASES.NOT_FOUND': { status: 404, message: 'Bail introuvable.' },
+  'LEASES.INVALID_TRANSITION': {
+    status: 409,
+    message: "Cette transition d'état n'est pas permise pour ce bail.",
+  },
+  'LEASES.UNIT_NOT_AVAILABLE': {
+    status: 409,
+    message: 'Ce lot n’est pas disponible : il porte déjà un bail en cours.',
+  },
+  'LEASES.OVERLAP': {
+    status: 409,
+    message: 'Chevauchement de baux sur le lot : un seul bail en cours par lot.',
+  },
+  'LEASES.NOT_EDITABLE': {
+    status: 409,
+    message: 'Ce bail n’est plus modifiable : seules les conditions de gestion restent ouvertes.',
+  },
+  'LEASES.NOT_DELETABLE': {
+    status: 409,
+    message: 'Seul un bail en brouillon ou annulé peut être supprimé.',
+  },
+  'LEASES.REVISION_DATE_INVALID': {
+    status: 409,
+    message:
+      'Date de révision invalide : elle doit suivre la dernière révision, la date de début du bail et le 1er du mois courant.',
+  },
+  'LEASES.TERMINATION_DATE_INVALID': {
+    status: 422,
+    message: "La date d'effet ne peut pas remonter à plus de 30 jours.",
+  },
+  'LEASES.PARTY_NOT_FOUND': { status: 404, message: 'Partie au bail introuvable.' },
+  'LEASES.PARTY_DUPLICATE': {
+    status: 409,
+    message: 'Ce tiers est déjà partie à ce bail.',
+  },
+  'LEASES.PARTY_INVALID': {
+    status: 422,
+    message: 'Partie invalide : un garant exige guarantorId, toute autre partie tenantId.',
+  },
+  'LEASES.PRIMARY_TENANT_PROTECTED': {
+    status: 409,
+    message: 'Le locataire principal ne peut pas être retiré du bail.',
+  },
+  'LEASES.CONTRACT_IN_PROGRESS': {
+    status: 409,
+    message: 'Une génération de contrat est déjà en cours pour ce bail.',
+  },
+  'LEASES.CONTRACT_JOB_NOT_FOUND': { status: 404, message: 'Travail de génération introuvable.' },
+  'LEASES.CONTRACT_UNAVAILABLE': {
+    status: 503,
+    message: 'Génération de contrat indisponible : aucun navigateur de rendu configuré.',
+  },
+  'LEASES.DOCUMENT_DUPLICATE': {
+    status: 409,
+    message: 'Ce document est déjà rattaché à ce bail.',
+  },
+
+  // --- Domaine DEPOSITS (dépôts de garantie) ----------------------------
+  'DEPOSITS.NOT_FOUND': { status: 404, message: 'Dépôt de garantie introuvable.' },
+  'DEPOSITS.INSUFFICIENT_BALANCE': {
+    status: 409,
+    message: 'Montant supérieur au solde encore détenu sur ce dépôt.',
+  },
+  'DEPOSITS.LEASE_NOT_CLOSED': {
+    status: 409,
+    message: 'Restitution impossible : le bail doit être résilié ou expiré.',
+  },
+  'DEPOSITS.MOVEMENT_INVALID': {
+    status: 422,
+    message: 'Mouvement de dépôt invalide : le montant doit être strictement positif.',
+  },
+
   // --- Domaine VALIDATION / plateforme ----------------------------------
   'VALIDATION.INVALID_PAYLOAD': { status: 422, message: 'Requête invalide.' },
   'PLATFORM.IDEMPOTENCY_CONFLICT': {

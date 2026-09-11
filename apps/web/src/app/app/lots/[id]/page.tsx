@@ -13,6 +13,7 @@ import { MoneyXaf } from '@/components/business/money-xaf';
 import { DocumentList, DocumentUploader } from '@/components/business/document-uploader';
 import { EmptyState } from '@/components/business/empty-state';
 import { useUnit } from '@/lib/api/hooks/use-units';
+import { useLeases } from '@/lib/api/hooks/use-leases';
 import { UNIT_TYPE_LABELS } from '@/lib/enum-labels';
 import { ApiError } from '@/lib/api/client';
 import { UnitStatusBadge } from '../../immeubles/_components/unit-status-badge';
@@ -22,6 +23,7 @@ export default function LotDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { data: unit, isLoading, error } = useUnit(id);
+  const { data: activeLeases } = useLeases({ unitId: id, status: 'ACTIVE', limit: 1 });
 
   if (isLoading) {
     return (
@@ -155,6 +157,37 @@ export default function LotDetailPage() {
               </div>
             ) : null}
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Bail actif</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {activeLeases?.items[0] ? (
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+              <div className="contents">
+                <dt className="font-medium text-muted-foreground">Locataire</dt>
+                <dd className="text-foreground">
+                  <Link
+                    href={`/app/baux/${activeLeases.items[0].id}`}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {activeLeases.items[0].tenant.displayName}
+                  </Link>
+                </dd>
+              </div>
+              <div className="contents">
+                <dt className="font-medium text-muted-foreground">Loyer</dt>
+                <dd className="text-foreground">
+                  <MoneyXaf amount={activeLeases.items[0].rentAmount} />
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <EmptyState title="Pas de bail actif" description="Ce lot n'a pas de bail actif." />
+          )}
         </CardContent>
       </Card>
 

@@ -30,6 +30,8 @@ export const RELATED_ENTITY_TYPES = [
   'property',
   'unit',
   'organization',
+  // Phase 2 : contrat de bail engendré ou contrat signé scanné.
+  'lease',
 ] as const;
 export type RelatedEntityType = (typeof RELATED_ENTITY_TYPES)[number];
 

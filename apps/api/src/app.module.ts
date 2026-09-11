@@ -2,11 +2,15 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditModule } from './modules/audit/audit.module';
 import { BankingModule } from './modules/banking/banking.module';
+import { DepositsModule } from './modules/deposits/deposits.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { IdentityModule } from './modules/identity/identity.module';
+import { LeasesModule } from './modules/leases/leases.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { NumberingModule } from './modules/numbering/numbering.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { PartiesModule } from './modules/parties/parties.module';
+import { PdfModule } from './modules/pdf/pdf.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { IdempotencyInterceptor } from './modules/platform/presentation/idempotency.interceptor';
@@ -46,6 +50,14 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     PortfolioModule,
     BankingModule,
     DocumentsModule,
+    // Phase 2 — baux et dépôts. `numbering` publie les compteurs partagés,
+    // `leases` et `deposits` s'échangent des ports `Symbol` dans les deux
+    // sens (d'où `@Global()` là aussi), et `pdf` est la feuille du graphe :
+    // il consomme `leases` sans que personne ne le consomme.
+    NumberingModule,
+    LeasesModule,
+    DepositsModule,
+    PdfModule,
     PlatformModule,
   ],
   providers: [

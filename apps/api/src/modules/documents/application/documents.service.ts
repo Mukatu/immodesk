@@ -204,6 +204,75 @@ export class DocumentsService {
     });
   }
 
+  /**
+   * Enregistre un document ENGENDRÉ par l'API (contrat PDF, quittance) dans
+   * une transaction DÉJÀ ouverte.
+   *
+   * L'objet est déposé d'abord, la fiche ensuite, toutes deux dans la
+   * transaction de l'appelant : si l'archivage du `lease_documents` échoue,
+   * la fiche est annulée avec lui. Il ne reste alors qu'un objet orphelin
+   * dans le bucket, que la purge ramassera — un octet perdu est préférable à
+   * une fiche pointant vers un fichier qui n'existe pas.
+   */
+  async registerGenerated(
+    tx: TenantClient,
+    organizationId: string,
+    userId: string | null,
+    input: {
+      kind: DocumentKind;
+      fileName: string;
+      mimeType: string;
+      body: Buffer;
+      relatedEntityType?: string | null;
+      relatedEntityId?: string | null;
+      checksumSha256?: string | null;
+    },
+  ): Promise<DocumentView> {
+    assertUploadAllowed(input.mimeType, input.body.byteLength);
+    const documentId = newId();
+    const objectKey = buildObjectKey({
+      organizationId,
+      documentId,
+      kind: input.kind,
+      mimeType: input.mimeType,
+    });
+
+    const stored = await this.storage.putObject({
+      objectKey,
+      mimeType: input.mimeType,
+      body: input.body,
+    });
+
+    const created = (await tx.documents.create({
+      data: {
+        id: documentId,
+        organization_id: organizationId,
+        kind: input.kind,
+        storage_provider: this.storage.provider,
+        bucket: this.storage.bucket,
+        object_key: objectKey,
+        file_name: sanitizeFileName(input.fileName),
+        mime_type: input.mimeType,
+        size_bytes: BigInt(stored.sizeBytes),
+        checksum_sha256: input.checksumSha256 ?? null,
+        related_entity_type: input.relatedEntityType ?? null,
+        related_entity_id: input.relatedEntityId ?? null,
+        uploaded_by_user_id: userId,
+      },
+    })) as unknown as DocumentRow;
+
+    await audit(this.auditService, tx, {
+      organizationId,
+      actorUserId: userId,
+      action: 'CREATE',
+      operation: AUDIT_OPERATIONS.DOCUMENT_REGISTERED,
+      entityType: 'documents',
+      entityId: documentId,
+      newState: toJsonState({ ...toDocumentView(created), generated: true }),
+    });
+    return toDocumentView(created);
+  }
+
   async list(
     organizationId: string,
     userId: string,

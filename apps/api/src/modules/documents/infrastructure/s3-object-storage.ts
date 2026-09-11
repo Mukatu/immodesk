@@ -115,6 +115,29 @@ export class S3ObjectStorage implements ObjectStorage, OnModuleDestroy {
     }
   }
 
+  /** Dépôt direct d'un objet engendré par l'API (contrat PDF, quittance). */
+  async putObject(input: {
+    objectKey: string;
+    mimeType: string;
+    body: Buffer;
+  }): Promise<{ sizeBytes: number }> {
+    try {
+      await this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: input.objectKey,
+          ContentType: input.mimeType,
+          Body: input.body,
+          ContentLength: input.body.byteLength,
+        }),
+      );
+      return { sizeBytes: input.body.byteLength };
+    } catch (error) {
+      this.logger.error(`PUT ${input.objectKey} en échec : ${(error as Error).message}`);
+      throw new DomainError('DOCUMENTS.STORAGE_UNAVAILABLE', { objectKey: input.objectKey });
+    }
+  }
+
   private async sign(
     command: PutObjectCommand | GetObjectCommand,
     ttlSeconds: number,

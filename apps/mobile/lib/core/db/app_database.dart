@@ -103,6 +103,26 @@ class CachedTenants extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Baux mis en cache (résumé de liste ou détail complet — voir
+/// `LeasesCacheMapper` : `LeaseSummary.fromJson` ignore les clés en trop
+/// d'un `LeaseDetail` complet, donc un même `payload` sert aux deux vues).
+@DataClassName('CachedLeaseRow')
+class CachedLeases extends Table {
+  TextColumn get id => text()();
+  TextColumn get organizationId => text()();
+  TextColumn get unitId => text()();
+  TextColumn get tenantId => text()();
+  TextColumn get propertyId => text()();
+  TextColumn get status => text()();
+
+  /// JSON de `LeaseSummary` ou `LeaseDetail` selon le dernier appel réseau.
+  TextColumn get payload => text()();
+  DateTimeColumn get cachedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// Base locale Drift (SQLite).
 ///
 /// Chiffrement : NON activé en phase 0. `sqlcipher_flutter_libs` est prévu
@@ -110,7 +130,14 @@ class CachedTenants extends Table {
 /// aucune donnée sensible n'est répliquée localement avant l'outbox de
 /// collecte terrain.
 @DriftDatabase(
-  tables: [AppSettings, Outbox, CachedProperties, CachedUnits, CachedTenants],
+  tables: [
+    AppSettings,
+    Outbox,
+    CachedProperties,
+    CachedUnits,
+    CachedTenants,
+    CachedLeases,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -118,7 +145,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -128,6 +155,9 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(cachedProperties);
         await m.createTable(cachedUnits);
         await m.createTable(cachedTenants);
+      }
+      if (from < 3) {
+        await m.createTable(cachedLeases);
       }
     },
   );
@@ -219,6 +249,64 @@ class AppDatabase extends _$AppDatabase {
                   tbl.phone.contains(normalizedQuery)),
         ))
         .get();
+  }
+
+  Future<void> replaceCachedLeasesForOrganization(
+    String organizationId,
+    List<CachedLeaseRow> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        cachedLeases,
+      )..where((tbl) => tbl.organizationId.equals(organizationId))).go();
+      for (final CachedLeaseRow row in rows) {
+        await into(cachedLeases).insertOnConflictUpdate(row);
+      }
+    });
+  }
+
+  Future<List<CachedLeaseRow>> getCachedLeasesForOrganization(
+    String organizationId,
+  ) {
+    return (select(
+      cachedLeases,
+    )..where((tbl) => tbl.organizationId.equals(organizationId))).get();
+  }
+
+  /// Mémorise (ou remplace) un bail précis, sans toucher aux autres lignes
+  /// de l'organisation — utilisé après consultation du détail d'un bail
+  /// depuis une fiche lot/locataire, pour ne pas invalider la liste.
+  Future<void> upsertCachedLease(CachedLeaseRow row) {
+    return into(cachedLeases).insertOnConflictUpdate(row);
+  }
+
+  Future<CachedLeaseRow?> getCachedLeaseForUnit(String unitId) async {
+    final List<CachedLeaseRow> rows = await (select(
+      cachedLeases,
+    )..where((tbl) => tbl.unitId.equals(unitId))).get();
+    return _mostRecentActive(rows);
+  }
+
+  Future<CachedLeaseRow?> getCachedLeaseForTenant(String tenantId) async {
+    final List<CachedLeaseRow> rows = await (select(
+      cachedLeases,
+    )..where((tbl) => tbl.tenantId.equals(tenantId))).get();
+    return _mostRecentActive(rows);
+  }
+
+  Future<CachedLeaseRow?> getCachedLeaseById(String leaseId) {
+    return (select(
+      cachedLeases,
+    )..where((tbl) => tbl.id.equals(leaseId))).getSingleOrNull();
+  }
+
+  CachedLeaseRow? _mostRecentActive(List<CachedLeaseRow> rows) {
+    final List<CachedLeaseRow> active = rows
+        .where((r) => r.status == 'ACTIVE' || r.status == 'NOTICE_GIVEN')
+        .toList();
+    if (active.isEmpty) return null;
+    active.sort((a, b) => b.cachedAt.compareTo(a.cachedAt));
+    return active.first;
   }
 
   Future<String?> getSetting(String key) async {

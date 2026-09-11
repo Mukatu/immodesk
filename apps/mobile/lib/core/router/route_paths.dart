@@ -21,6 +21,10 @@ abstract final class RoutePaths {
   static const String tenants = '/tenants';
   static String tenantDetail(String id) => '$tenants/$id';
 
+  /// Baux : liste (filtrable par statut), puis fiche par identifiant.
+  static const String leases = '/leases';
+  static String leaseDetail(String id) => '$leases/$id';
+
   /// Onglet « Plus » (diagnostic, déconnexion).
   static const String more = '/more';
 }

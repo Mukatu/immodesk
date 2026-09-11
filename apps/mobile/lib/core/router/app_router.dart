@@ -6,6 +6,8 @@ import '../../features/auth/presentation/screens/phone_entry_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/diagnostics/presentation/screens/diagnostics_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/leases/presentation/screens/lease_detail_screen.dart';
+import '../../features/leases/presentation/screens/leases_list_screen.dart';
 import '../../features/more/presentation/screens/more_screen.dart';
 import '../../features/organizations/presentation/screens/organization_create_screen.dart';
 import '../../features/organizations/presentation/screens/organization_select_screen.dart';
@@ -107,6 +109,17 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: RoutePaths.more,
                 builder: (context, state) => const MoreScreen(),
+              ),
+              GoRoute(
+                path: RoutePaths.leases,
+                builder: (context, state) => const LeasesListScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) =>
+                        LeaseDetailScreen(leaseId: state.pathParameters['id']!),
+                  ),
+                ],
               ),
             ],
           ),

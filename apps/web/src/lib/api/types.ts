@@ -277,7 +277,7 @@ export type DocumentKind =
   | 'OTHER';
 
 export type RelatedEntityType =
-  'landlord' | 'tenant' | 'guarantor' | 'property' | 'unit' | 'organization';
+  'landlord' | 'tenant' | 'guarantor' | 'property' | 'unit' | 'organization' | 'lease';
 
 // ---- Tiers : bailleurs ----
 
@@ -619,4 +619,212 @@ export interface CreateDocumentBody {
   relatedEntityId?: string;
   checksumSha256?: string;
   clientRef?: string;
+}
+
+/**
+ * Types du contrat d'API — Phase 2 (baux et dépôts de garantie).
+ * Recopiés depuis docs/api/phase2-contract.md. Ne pas diverger du contrat
+ * sans mettre à jour ce fichier et le document source.
+ */
+
+// ---- Énumérations ----
+
+export type LeaseStatus =
+  | 'DRAFT'
+  | 'PENDING_SIGNATURE'
+  | 'ACTIVE'
+  | 'NOTICE_GIVEN'
+  | 'TERMINATED'
+  | 'EXPIRED'
+  | 'CANCELLED';
+
+export type RentPeriod = 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL' | 'ANNUAL';
+
+export type LeasePartyRole = 'PRIMARY_TENANT' | 'CO_TENANT' | 'GUARANTOR' | 'OCCUPANT';
+
+export type LeaseDocumentKind =
+  'CONTRACT' | 'AMENDMENT' | 'NOTICE' | 'TERMINATION' | 'INVENTORY' | 'INSURANCE' | 'OTHER';
+
+export type DepositStatus =
+  'PENDING' | 'PARTIALLY_PAID' | 'HELD' | 'PARTIALLY_REFUNDED' | 'REFUNDED' | 'FORFEITED';
+
+export type DepositMovementType = 'COLLECTION' | 'REFUND' | 'DEDUCTION' | 'TRANSFER' | 'ADJUSTMENT';
+
+// ---- Baux ----
+
+export interface LeaseInput {
+  unitId: string;
+  primaryTenantId: string;
+  startDate: string;
+  endDate?: string | null;
+  moveInDate?: string;
+  rentPeriod?: RentPeriod;
+  rentAmount: number;
+  chargesAmount?: number;
+  chargesAreProvisional?: boolean;
+  depositAmount?: number; // défaut : unit.depositMonths × rentAmount
+  agencyFeeAmount?: number;
+  advanceMonths?: number;
+  paymentDueDay?: number;
+  graceDays?: number;
+  preferredPaymentMethod?: PaymentMethod;
+  collectorUserId?: string;
+  noticeDays?: number;
+  autoRenew?: boolean;
+  indexationRateBps?: number;
+  nextIndexationDate?: string;
+  notes?: string;
+  clientRef?: string;
+}
+
+export interface Lease extends LeaseInput {
+  id: string;
+  reference: string | null;
+  status: LeaseStatus;
+  propertyId: string;
+  landlordId: string;
+  moveOutDate: string | null;
+  currency: 'XAF';
+  signedAt: string | null;
+  terminatedAt: string | null;
+  terminationReason: string | null;
+  balanceAmount: number;
+  contractDocumentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface LeaseSummary {
+  id: string;
+  reference: string | null;
+  status: LeaseStatus;
+  unit: { id: string; code: string; label: string | null };
+  property: { id: string; name: string };
+  tenant: { id: string; displayName: string; primaryPhone: string };
+  startDate: string;
+  endDate: string | null;
+  rentAmount: number;
+  chargesAmount: number;
+  paymentDueDay: number;
+}
+
+export interface LeaseDetail extends Lease {
+  unit: Unit;
+  property: PropertySummary;
+  landlord: LandlordSummary;
+  primaryTenant: Tenant;
+  parties: LeaseParty[];
+  rentRevisions: RentRevision[];
+  deposit: DepositDetail | null;
+  documents: LeaseDocument[];
+}
+
+export interface LeasePartyInput {
+  role: LeasePartyRole;
+  tenantId?: string;
+  guarantorId?: string;
+  shareBps?: number;
+  isSolidary?: boolean;
+}
+
+export interface LeaseParty extends LeasePartyInput {
+  id: string;
+  leaseId: string;
+  displayName: string;
+  signedAt: string | null;
+  createdAt: string;
+}
+
+export interface RentRevision {
+  id: string;
+  leaseId: string;
+  effectiveDate: string;
+  previousRentAmount: number;
+  newRentAmount: number;
+  previousChargesAmount: number;
+  newChargesAmount: number;
+  reason: string | null;
+  documentId: string | null;
+  createdByUserId: string | null;
+  createdAt: string;
+}
+
+export interface LeaseDocument {
+  id: string;
+  leaseId: string;
+  kind: LeaseDocumentKind;
+  documentId: string;
+  version: number;
+  title: string;
+  effectiveDate: string | null;
+  isSigned: boolean;
+  signedAt: string | null;
+  signatureHash: string | null;
+  generatedByJob: string | null;
+  createdAt: string;
+}
+
+// ---- Dépôts de garantie ----
+
+export interface DepositMovementInput {
+  movementType: DepositMovementType;
+  amount: number;
+  movementDate?: string;
+  reason?: string;
+  paymentId?: string;
+  inspectionId?: string;
+  reversalOfId?: string;
+}
+
+export interface DepositMovement extends DepositMovementInput {
+  id: string;
+  depositId: string;
+  leaseId: string;
+  currency: 'XAF';
+  createdByUserId: string | null;
+  createdAt: string;
+}
+
+export interface DepositDetail {
+  id: string;
+  leaseId: string;
+  tenantId: string;
+  status: DepositStatus;
+  requiredAmount: number;
+  collectedAmount: number;
+  deductedAmount: number;
+  refundedAmount: number;
+  heldAmount: number;
+  monthsEquivalent: number | null;
+  dueDate: string | null;
+  fullyCollectedAt: string | null;
+  refundDueDate: string | null;
+  refundedAt: string | null;
+  refundBankAccountId: string | null;
+  movements: DepositMovement[];
+}
+
+export interface DepositSummary {
+  id: string;
+  leaseId: string;
+  leaseReference: string | null;
+  tenant: { id: string; displayName: string };
+  unit: { id: string; code: string };
+  status: DepositStatus;
+  requiredAmount: number;
+  heldAmount: number;
+  refundDueDate: string | null;
+}
+
+// ---- Gabarit de contrat ----
+
+export interface ContractTemplate {
+  headerTitle: string; // « CONTRAT DE BAIL À USAGE D'HABITATION »
+  lessorBlock: string; // texte libre (raison sociale, RCCM, adresse)
+  optionalClauses: { key: string; title: string; body: string; enabled: boolean }[];
+  legalMentions: string; // mentions légales, à valider par le conseil juridique
+  signatureCity: string; // « Brazzaville »
+  showOhadaBlock: boolean; // bloc bail commercial (Acte uniforme OHADA)
+  footerText: string | null;
 }

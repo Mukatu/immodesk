@@ -49,4 +49,20 @@ export interface ObjectStorage {
 
   /** Suppression définitive. Idempotente : supprimer l'absent ne lève pas. */
   deleteObject(objectKey: string): Promise<void>;
+
+  /**
+   * Dépose un objet produit PAR L'API elle-même (contrat PDF, quittance).
+   *
+   * Les pièces jointes du terrain ne passent jamais par l'API — elles partent
+   * du téléphone vers le stockage par URL signée, et c'est ce qui économise
+   * la bande passante d'une agence. Un document ENGENDRÉ côté serveur n'a pas
+   * ce problème : il naît déjà dans le processus, et lui faire faire un
+   * aller-retour par une URL signée n'ajouterait qu'une latence et un risque
+   * d'échec supplémentaires.
+   */
+  putObject(input: {
+    objectKey: string;
+    mimeType: string;
+    body: Buffer;
+  }): Promise<{ sizeBytes: number }>;
 }

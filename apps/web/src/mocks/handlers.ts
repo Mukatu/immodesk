@@ -1,5 +1,14 @@
 import { http, HttpResponse } from 'msw';
 
+// Cycle d'import statique avec leases-handlers.ts : ce fichier lui exporte les
+// Maps/helpers phase 0-1 (valeurs lues seulement au moment des requêtes, jamais
+// au chargement du module), et importe ici `leaseHandlers` uniquement pour le
+// spread final du tableau `handlers`, construit tout en bas de ce fichier — donc
+// après que les deux modules aient fini de s'évaluer. Sûr en pratique (testé).
+import { leaseHandlers } from './leases-handlers';
+import { seedLeasesDemoData } from './leases-seed';
+import { API_BASE } from './api-base';
+
 /**
  * Mock MSW de l'API — Phase 0 uniquement, conforme à docs/api/phase0-contract.md.
  * Utilisé en e2e (Playwright) pour ne jamais dépendre d'un vrai backend.
@@ -8,12 +17,10 @@ import { http, HttpResponse } from 'msw';
 
 const DEV_OTP_CODE = '000000';
 
-// Base ciblée par les handlers : doit correspondre exactement à API_INTERNAL_URL, la seule
-// base que le process Next appelle réellement (route handlers /api/auth/*, et le proxy
-// /api/proxy/* pour les appels directs du navigateur — voir ce fichier). Un motif générique
-// à origine libre intercepterait par erreur les routes BFF internes de Next elles-mêmes,
-// qui partagent le même suffixe de chemin.
-const API_BASE = process.env.API_INTERNAL_URL ?? 'https://mock.immodesk.internal/v1';
+// API_BASE est importé (et réexporté) depuis son propre module sans dépendance :
+// voir le commentaire de api-base.ts sur le cycle d'import avec leases-handlers.ts
+// et le TDZ en build de production que ça évite.
+export { API_BASE };
 
 interface MockUser {
   id: string;
@@ -66,7 +73,7 @@ const accessTokens = new Map<string, string>(); // token -> userId
 const refreshTokens = new Map<string, string>(); // token -> userId
 
 let seq = 1;
-function nextId(prefix: string): string {
+export function nextId(prefix: string): string {
   seq += 1;
   return `${prefix}-${seq}`;
 }
@@ -117,7 +124,7 @@ function membershipsForUser(userId: string) {
 // Maps dédiées, isolées de la phase 0, toujours scopées par organizationId.
 // ---------------------------------------------------------------------------
 
-type PartyType = 'INDIVIDUAL' | 'COMPANY';
+export type PartyType = 'INDIVIDUAL' | 'COMPANY';
 type Gender = 'MALE' | 'FEMALE' | 'UNSPECIFIED';
 type IdDocumentType =
   | 'CNI'
@@ -128,7 +135,7 @@ type IdDocumentType =
   | 'RCCM'
   | 'NIU'
   | 'OTHER';
-type PropertyType =
+export type PropertyType =
   | 'HOUSE'
   | 'VILLA'
   | 'APARTMENT_BUILDING'
@@ -138,7 +145,7 @@ type PropertyType =
   | 'LAND'
   | 'WAREHOUSE'
   | 'OTHER';
-type UnitType =
+export type UnitType =
   | 'STUDIO'
   | 'ROOM'
   | 'APARTMENT'
@@ -149,13 +156,14 @@ type UnitType =
   | 'PARKING'
   | 'LAND_PLOT'
   | 'OTHER';
-type UnitStatus = 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'UNDER_MAINTENANCE' | 'UNAVAILABLE';
+export type UnitStatus =
+  'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'UNDER_MAINTENANCE' | 'UNAVAILABLE';
 type ContactOwnerType = 'LANDLORD' | 'TENANT' | 'GUARANTOR' | 'MEMBER' | 'SUPPLIER';
 type ContactChannelType = 'PHONE' | 'MOBILE' | 'WHATSAPP' | 'EMAIL' | 'FAX';
 type BankAccountHolderType = 'ORGANIZATION' | 'LANDLORD' | 'TENANT';
 type MomoProvider = 'MTN_MOMO' | 'AIRTEL_MONEY' | 'CINETPAY' | 'PAWAPAY' | 'OTHER';
-type PaymentMethod = 'CASH' | 'MOBILE_MONEY' | 'BANK_TRANSFER' | 'BANK_CHECK';
-type DocumentKind =
+export type PaymentMethod = 'CASH' | 'MOBILE_MONEY' | 'BANK_TRANSFER' | 'BANK_CHECK';
+export type DocumentKind =
   | 'ID_DOCUMENT'
   | 'LEASE_CONTRACT'
   | 'MANDATE'
@@ -174,7 +182,7 @@ type DocumentKind =
   | 'PROPERTY_PHOTO'
   | 'OTHER';
 
-interface MockLandlord {
+export interface MockLandlord {
   id: string;
   organizationId: string;
   partyType: PartyType;
@@ -206,7 +214,7 @@ interface MockLandlord {
   deletedAt: string | null;
 }
 
-interface MockTenant {
+export interface MockTenant {
   id: string;
   organizationId: string;
   partyType: PartyType;
@@ -289,7 +297,7 @@ interface MockContactChannel {
   createdAt: string;
 }
 
-interface MockProperty {
+export interface MockProperty {
   id: string;
   organizationId: string;
   landlordId: string;
@@ -321,7 +329,7 @@ interface MockProperty {
   deletedAt: string | null;
 }
 
-interface MockUnit {
+export interface MockUnit {
   id: string;
   organizationId: string;
   propertyId: string;
@@ -371,7 +379,7 @@ interface MockBankAccount {
   updatedAt: string;
 }
 
-interface MockDocument {
+export interface MockDocument {
   id: string;
   organizationId: string;
   objectKey: string;
@@ -390,20 +398,20 @@ interface MockDocument {
   deletedAt: string | null;
 }
 
-const landlords = new Map<string, MockLandlord>();
-const tenants = new Map<string, MockTenant>();
+export const landlords = new Map<string, MockLandlord>();
+export const tenants = new Map<string, MockTenant>();
 const guarantors = new Map<string, MockGuarantor>();
 const contactChannels = new Map<string, MockContactChannel>();
-const properties = new Map<string, MockProperty>();
-const units = new Map<string, MockUnit>();
+export const properties = new Map<string, MockProperty>();
+export const units = new Map<string, MockUnit>();
 const bankAccounts = new Map<string, MockBankAccount>();
-const documents = new Map<string, MockDocument>();
+export const documents = new Map<string, MockDocument>();
 const pendingUploadObjects = new Map<
   string,
   { organizationId: string; mimeType: string; sizeBytes: number; maxSizeBytes: number }
 >();
 
-function normalizePhone(raw: string): string | null {
+export function normalizePhone(raw: string): string | null {
   const digits = raw.replace(/[^\d+]/g, '');
   let local: string;
   if (digits.startsWith('+242')) local = digits.slice(4);
@@ -418,7 +426,10 @@ function foldSearch(value: string): string {
   return value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-function matchesQuery(q: string | null, ...fields: Array<string | null | undefined>): boolean {
+export function matchesQuery(
+  q: string | null,
+  ...fields: Array<string | null | undefined>
+): boolean {
   if (!q) return true;
   const needle = foldSearch(q);
   return fields.some((f) => !!f && foldSearch(f).includes(needle));
@@ -435,15 +446,15 @@ function displayNameFor(
   return lastName ?? firstName ?? '';
 }
 
-function orgIdFromRequest(request: Request): string | null {
+export function orgIdFromRequest(request: Request): string | null {
   return request.headers.get('X-Organization-Id');
 }
 
-function paginate<T>(items: T[]) {
+export function paginate<T>(items: T[]) {
   return { items, pageInfo: { nextCursor: null, hasNextPage: false, limit: items.length } };
 }
 
-function unauthorizedOrg() {
+export function unauthorizedOrg() {
   return HttpResponse.json(
     { code: 'IAM.ORGANIZATION_REQUIRED', message: 'En-tête X-Organization-Id manquant.' },
     { status: 401 },
@@ -459,7 +470,7 @@ function computeOccupancy(propertyId: string) {
   return { unitsCount, occupiedCount, availableCount, occupancyRateBps };
 }
 
-function landlordSummaryFor(landlord: MockLandlord) {
+export function landlordSummaryFor(landlord: MockLandlord) {
   return {
     id: landlord.id,
     displayName: displayNameFor(
@@ -490,7 +501,7 @@ function serializeLandlord(landlord: MockLandlord) {
   };
 }
 
-function serializeTenant(tenant: MockTenant) {
+export function serializeTenant(tenant: MockTenant) {
   const { organizationId: _organizationId, ...rest } = tenant;
   return {
     ...rest,
@@ -521,7 +532,7 @@ function serializeContactChannel(channel: MockContactChannel) {
   return rest;
 }
 
-function serializePropertySummary(property: MockProperty) {
+export function serializePropertySummary(property: MockProperty) {
   const landlord = landlords.get(property.landlordId);
   return {
     id: property.id,
@@ -546,7 +557,7 @@ function serializeProperty(property: MockProperty) {
   return { ...rest, unitsCount };
 }
 
-function serializeUnit(unit: MockUnit) {
+export function serializeUnit(unit: MockUnit) {
   const { organizationId: _organizationId, ...rest } = unit;
   return rest;
 }
@@ -556,7 +567,7 @@ function serializeBankAccount(account: MockBankAccount) {
   return rest;
 }
 
-function serializeDocument(document: MockDocument) {
+export function serializeDocument(document: MockDocument) {
   const { organizationId: _organizationId, objectKey: _objectKey, ...rest } = document;
   return rest;
 }
@@ -564,7 +575,7 @@ function serializeDocument(document: MockDocument) {
 // Données de démonstration congolaises — isolées sous une organisation fixe et
 // jamais atteinte par les scénarios e2e (qui créent toujours une organisation
 // fraîche), de sorte qu'un nouveau portefeuille démarre toujours vide.
-const DEMO_ORG_ID = 'org-demo-cg';
+export const DEMO_ORG_ID = 'org-demo-cg';
 
 (function seedPhase1DemoData() {
   const now = new Date().toISOString();
@@ -738,15 +749,17 @@ const DEMO_ORG_ID = 'org-demo-cg';
   );
 })();
 
-function notFound(code: string, message = 'Introuvable.') {
+seedLeasesDemoData({ properties, units, tenants, DEMO_ORG_ID, nextId, normalizePhone });
+
+export function notFound(code: string, message = 'Introuvable.') {
   return HttpResponse.json({ code, message }, { status: 404 });
 }
 
-function conflict(code: string, message: string, details?: Record<string, unknown>) {
+export function conflict(code: string, message: string, details?: Record<string, unknown>) {
   return HttpResponse.json({ code, message, ...(details ? { details } : {}) }, { status: 409 });
 }
 
-function badRequest(code: string, message: string) {
+export function badRequest(code: string, message: string) {
   return HttpResponse.json({ code, message }, { status: 400 });
 }
 
@@ -1705,7 +1718,13 @@ export const handlers = [
     });
     return HttpResponse.json(
       {
-        uploadUrl: `https://mock-storage.immodesk.internal/upload/${objectKey}`,
+        // Chemin relatif (même origine) plutôt qu'un domaine absolu de stockage
+        // simulé : ce PUT est émis directement par le navigateur (DocumentUploader,
+        // XHR), qui ne passe jamais par msw/node (actif seulement côté serveur,
+        // voir instrumentation.ts) — un domaine absolu inexistant échouerait
+        // toujours en e2e. En relatif, il retombe sur /api/proxy/*, relayé côté
+        // serveur et donc bien intercepté (voir le handler PUT plus bas).
+        uploadUrl: `/api/proxy/documents/upload-object/${objectKey}`,
         objectKey,
         expiresAt,
         maxSizeBytes,
@@ -1793,9 +1812,13 @@ export const handlers = [
   }),
 
   // Simulateur de stockage objet : le composant DocumentUploader effectue un
-  // PUT direct vers l'URL signée renvoyée par /documents/upload-url.
+  // PUT direct vers l'URL renvoyée par /documents/upload-url, désormais un
+  // chemin relatif /api/proxy/... (voir ce handler) plutôt qu'un domaine
+  // absolu inexistant, injoignable par un vrai navigateur en e2e.
   http.put(
-    'https://mock-storage.immodesk.internal/upload/*',
+    `${API_BASE}/documents/upload-object/:objectKey`,
     () => new HttpResponse(null, { status: 200 }),
   ),
+
+  ...leaseHandlers,
 ];

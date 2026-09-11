@@ -59,6 +59,25 @@ export const TABLE_HINTS: Record<string, Record<string, unknown>> = {
 };
 
 /**
+ * Valeurs supplémentaires qui dépendent des ANCRES de l'organisation, et ne
+ * peuvent donc pas être constantes.
+ *
+ * `lease_parties` en est le seul cas en phase 2 :
+ * `lease_parties_target_chk` exige `tenant_id` pour tout rôle autre que
+ * GUARANTOR, et ce locataire doit appartenir à la MÊME organisation — sans
+ * quoi la ligne serait rejetée par la RLS pour une raison qui n'a rien à voir
+ * avec ce que le test cherche à démontrer. Le rôle est forcé à `CO_TENANT`
+ * pour ne pas heurter l'index unique `lease_parties_primary_uk`, qui n'admet
+ * qu'un seul PRIMARY_TENANT par bail.
+ */
+export const DYNAMIC_TABLE_HINTS: Record<string, (anchors: Anchors) => Record<string, unknown>> = {
+  lease_parties: (anchors) => ({
+    role: { raw: `'CO_TENANT'::lease_party_role` },
+    tenant_id: typed(anchors.known.get('tenants'), 'uuid'),
+  }),
+};
+
+/**
  * Toutes les tables portant `organization_id`, hors programme d'apport
  * d'affaires (`referral%`), qui est global et cloisonné par partenaire et
  * non par tenant (voir docs/schema/schema.sql, partie 13).
@@ -216,6 +235,9 @@ export async function planMinimalRow(
   }
 
   for (const [column, value] of Object.entries(TABLE_HINTS[table] ?? {})) {
+    values[column] = value;
+  }
+  for (const [column, value] of Object.entries(DYNAMIC_TABLE_HINTS[table]?.(anchors) ?? {})) {
     values[column] = value;
   }
 

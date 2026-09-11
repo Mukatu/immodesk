@@ -1,4 +1,4 @@
-import { ApiError, toApiError } from '@/lib/api/errors';
+import { ApiError, genericErrorMessage, toApiError } from '@/lib/api/errors';
 import { getAccessToken, getCurrentOrganizationId, setAccessToken } from '@/lib/api/token-store';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/v1';
@@ -57,12 +57,12 @@ async function parseJsonSafe(response: Response): Promise<unknown> {
   }
 }
 
-export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+/** Construit la requête (URL + en-têtes + corps) commune à apiFetch et apiFetchText. */
+function buildRequest(path: string, options: ApiFetchOptions): { url: string; init: RequestInit } {
   const {
     body,
     organizationId,
     skipAuth = false,
-    skipRefreshRetry = false,
     idempotencyKey,
     headers: extraHeaders,
     ...rest
@@ -88,11 +88,17 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     headers.set('Idempotency-Key', idempotencyKey);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...rest,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  return {
+    url: `${API_BASE_URL}${path}`,
+    init: { ...rest, headers, body: body === undefined ? undefined : JSON.stringify(body) },
+  };
+}
+
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const { skipAuth = false, skipRefreshRetry = false } = options;
+  const { url, init } = buildRequest(path, options);
+
+  const response = await fetch(url, init);
 
   if (response.status === 401 && !skipAuth && !skipRefreshRetry) {
     const newToken = await refreshAccessToken();
@@ -112,6 +118,35 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
 
   return payload as T;
+}
+
+/**
+ * Variante de apiFetch qui retourne le corps brut en texte (réponse `text/html`,
+ * ex. aperçu du gabarit de contrat) au lieu de parser du JSON. Mêmes en-têtes
+ * (Authorization, X-Organization-Id) et même logique de rafraîchissement sur 401.
+ */
+export async function apiFetchText(path: string, options: ApiFetchOptions = {}): Promise<string> {
+  const { skipAuth = false, skipRefreshRetry = false } = options;
+  const { url, init } = buildRequest(path, options);
+
+  const response = await fetch(url, init);
+
+  if (response.status === 401 && !skipAuth && !skipRefreshRetry) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      return apiFetchText(path, { ...options, skipRefreshRetry: true });
+    }
+  }
+
+  if (!response.ok) {
+    const payload = await parseJsonSafe(response);
+    if (payload && typeof payload === 'object' && 'code' in payload && 'message' in payload) {
+      throw toApiError(response.status, payload);
+    }
+    throw new ApiError(response.status, { code: 'HTTP.UNKNOWN', message: genericErrorMessage });
+  }
+
+  return response.text();
 }
 
 export { ApiError };

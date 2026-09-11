@@ -2983,7 +2983,15 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["landlord", "tenant", "guarantor", "property", "unit", "organization"]
+              "enum": [
+                "landlord",
+                "tenant",
+                "guarantor",
+                "property",
+                "unit",
+                "organization",
+                "lease"
+              ]
             }
           },
           {
@@ -3142,6 +3150,1529 @@
         ],
         "summary": "Supprimer un document (suppression logique)",
         "tags": ["Documents"]
+      }
+    },
+    "/v1/leases": {
+      "post": {
+        "description": "La référence `BAIL-{AAAA}-{seq}` n’est attribuée qu’à l’activation : un brouillon ne consomme pas de numéro de la série.",
+        "operationId": "LeasesController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLeaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "LEASES.UNIT_NOT_AVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer un bail (brouillon)",
+        "tags": ["Baux"]
+      },
+      "get": {
+        "operationId": "LeasesController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "PENDING_SIGNATURE",
+                "ACTIVE",
+                "NOTICE_GIVEN",
+                "TERMINATED",
+                "EXPIRED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "unitId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "endingWithinDays",
+            "required": false,
+            "in": "query",
+            "description": "Baux dont le terme tombe dans N jours.",
+            "schema": {
+              "example": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeasePageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les baux",
+        "tags": ["Baux"]
+      }
+    },
+    "/v1/leases/{id}": {
+      "get": {
+        "operationId": "LeasesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "LEASES.NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fiche complète : parties, révisions, dépôt, documents",
+        "tags": ["Baux"]
+      },
+      "patch": {
+        "description": "Tout est ouvert en DRAFT et PENDING_SIGNATURE. Après activation, seuls `notes`, `collectorUserId`, `preferredPaymentMethod`, `noticeDays`, `autoRenew` et `endDate` restent modifiables : 409 `LEASES.NOT_EDITABLE` sinon.",
+        "operationId": "LeasesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLeaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "LEASES.NOT_EDITABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier un bail",
+        "tags": ["Baux"]
+      },
+      "delete": {
+        "operationId": "LeasesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "409": {
+            "description": "LEASES.NOT_DELETABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Supprimer un bail (logique, DRAFT ou CANCELLED seulement)",
+        "tags": ["Baux"]
+      }
+    },
+    "/v1/leases/{id}/activate": {
+      "post": {
+        "description": "Transaction unique : bail ACTIVE, lot OCCUPIED, référence attribuée, locataire principal ajouté aux parties, dépôt de garantie créé. Tout échoue ou rien n’est écrit.",
+        "operationId": "LeasesController_activate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateLeaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "LEASES.INVALID_TRANSITION, LEASES.UNIT_NOT_AVAILABLE, LEASES.OVERLAP",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Activer le bail",
+        "tags": ["Baux"]
+      }
+    },
+    "/v1/leases/{id}/cancel": {
+      "post": {
+        "operationId": "LeasesController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelLeaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Annuler un bail non encore actif",
+        "tags": ["Baux"]
+      }
+    },
+    "/v1/leases/{id}/notice": {
+      "post": {
+        "operationId": "LeasesController_notice",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeaseEffectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Déposer un préavis à effet futur",
+        "tags": ["Baux"]
+      }
+    },
+    "/v1/leases/{id}/terminate": {
+      "post": {
+        "operationId": "LeasesController_terminate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeaseEffectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Résilier le bail et ouvrir la restitution du dépôt",
+        "tags": ["Baux"]
+      }
+    },
+    "/v1/leases/{id}/rent-revisions": {
+      "get": {
+        "operationId": "LeasesController_listRevisions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RentRevisionListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Historique des révisions de loyer",
+        "tags": ["Baux"]
+      },
+      "post": {
+        "operationId": "LeasesController_createRevision",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRentRevisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RentRevisionDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "LEASES.REVISION_DATE_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enregistrer une révision de loyer datée",
+        "tags": ["Baux"]
+      }
+    },
+    "/v1/leases/{id}/rent-at": {
+      "get": {
+        "operationId": "LeasesController_rentAt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "example": "2027-03-15",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RentAtDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Loyer applicable à une date donnée",
+        "tags": ["Baux"]
+      }
+    },
+    "/v1/leases/{id}/parties": {
+      "get": {
+        "operationId": "LeasePartiesController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LeasePartyDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Parties au bail : preneur principal, co-locataires, garants",
+        "tags": ["Baux"]
+      },
+      "post": {
+        "operationId": "LeasePartiesController_add",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLeasePartyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeasePartyDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "LEASES.PARTY_DUPLICATE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ajouter une partie au bail",
+        "tags": ["Baux"]
+      }
+    },
+    "/v1/leases/{id}/parties/{partyId}": {
+      "patch": {
+        "operationId": "LeasePartiesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "partyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLeasePartyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeasePartyDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier la quote-part ou la solidarité d’une partie",
+        "tags": ["Baux"]
+      },
+      "delete": {
+        "operationId": "LeasePartiesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "partyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "409": {
+            "description": "LEASES.PRIMARY_TENANT_PROTECTED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retirer une partie (le preneur principal est protégé)",
+        "tags": ["Baux"]
+      }
+    },
+    "/v1/leases/{id}/documents": {
+      "get": {
+        "operationId": "LeasePartiesController_listDocuments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseDocumentListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Versions de documents du bail",
+        "tags": ["Baux"]
+      },
+      "post": {
+        "description": "La version s’incrémente par type : un avenant ne décale pas les contrats.",
+        "operationId": "LeasePartiesController_attachDocument",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachLeaseDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseDocumentDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rattacher un document au bail",
+        "tags": ["Baux"]
+      }
+    },
+    "/v1/leases/{id}/deposit": {
+      "get": {
+        "operationId": "DepositsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepositDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "DEPOSITS.NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Dépôt de garantie du bail et ses mouvements",
+        "tags": ["Dépôts de garantie"]
+      }
+    },
+    "/v1/leases/{id}/deposit/movements": {
+      "post": {
+        "description": "Append-only : aucune route ne modifie ni ne supprime un mouvement. Une correction se fait par un mouvement ADJUSTMENT ou par une contre-passation (`reversalOfId`). Les soldes et le statut du dépôt sont recalculés dans la même transaction.",
+        "operationId": "DepositsController_recordMovement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDepositMovementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepositDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DEPOSITS.INSUFFICIENT_BALANCE, DEPOSITS.LEASE_NOT_CLOSED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enregistrer un mouvement (encaissement, retenue, restitution)",
+        "tags": ["Dépôts de garantie"]
+      }
+    },
+    "/v1/deposits/summary": {
+      "get": {
+        "operationId": "DepositsController_summary",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepositsOverviewDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Total des dépôts détenus par l’organisation",
+        "tags": ["Dépôts de garantie"]
+      }
+    },
+    "/v1/deposits": {
+      "get": {
+        "operationId": "DepositsController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "PARTIALLY_PAID",
+                "HELD",
+                "PARTIALLY_REFUNDED",
+                "REFUNDED",
+                "FORFEITED"
+              ]
+            }
+          },
+          {
+            "name": "refundDueBefore",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepositPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les dépôts de garantie",
+        "tags": ["Dépôts de garantie"]
+      }
+    },
+    "/v1/leases/{id}/contract": {
+      "post": {
+        "description": "Le worker BullMQ « lease-contract » rend le gabarit Handlebars avec Puppeteer, dépose le PDF dans le stockage objet et archive une version immuable dans `lease_documents`.",
+        "operationId": "LeaseContractController_generate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateContractDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractJobDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "LEASES.CONTRACT_IN_PROGRESS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "LEASES.CONTRACT_UNAVAILABLE — aucun navigateur de rendu configuré",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mettre en file la génération du contrat PDF",
+        "tags": ["Contrat de bail (PDF)"]
+      }
+    },
+    "/v1/leases/{id}/contract/jobs/{jobId}": {
+      "get": {
+        "operationId": "LeaseContractController_status",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractJobDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "LEASES.CONTRACT_JOB_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "État du travail de génération",
+        "tags": ["Contrat de bail (PDF)"]
+      }
+    },
+    "/v1/leases/{id}/contract/preview": {
+      "get": {
+        "description": "Même gabarit et mêmes données que le PDF, sans Chromium : la prévisualisation reste disponible même lorsque aucun navigateur de rendu n’est installé.",
+        "operationId": "LeaseContractController_preview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document HTML."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Prévisualisation HTML du contrat",
+        "tags": ["Contrat de bail (PDF)"]
+      }
+    },
+    "/v1/organizations/{id}/contract-template": {
+      "get": {
+        "description": "Renvoie le gabarit par défaut « bail à usage d’habitation, Congo-Brazzaville » tant qu’aucune personnalisation n’a été enregistrée.",
+        "operationId": "ContractTemplateController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractTemplateDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Gabarit de contrat de l’organisation",
+        "tags": ["Contrat de bail (PDF)"]
+      },
+      "patch": {
+        "description": "Stocké dans `organization_settings.settings_json.contractTemplate`.",
+        "operationId": "ContractTemplateController_patch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchContractTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractTemplateDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Personnaliser le gabarit",
+        "tags": ["Contrat de bail (PDF)"]
       }
     },
     "/v1/health": {
@@ -6680,7 +8211,7 @@
           },
           "relatedEntityType": {
             "type": "string",
-            "enum": ["landlord", "tenant", "guarantor", "property", "unit", "organization"]
+            "enum": ["landlord", "tenant", "guarantor", "property", "unit", "organization", "lease"]
           },
           "relatedEntityId": {
             "type": "string",
@@ -6762,7 +8293,7 @@
           },
           "relatedEntityType": {
             "type": "string",
-            "enum": ["landlord", "tenant", "guarantor", "property", "unit", "organization"]
+            "enum": ["landlord", "tenant", "guarantor", "property", "unit", "organization", "lease"]
           },
           "relatedEntityId": {
             "type": "string",
@@ -6899,6 +8430,1709 @@
           }
         },
         "required": ["downloadUrl", "expiresAt"]
+      },
+      "CreateLeaseDto": {
+        "type": "object",
+        "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-06-01"
+          },
+          "moveInDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-01-05"
+          },
+          "rentPeriod": {
+            "type": "string",
+            "enum": ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL"],
+            "default": "MONTHLY"
+          },
+          "chargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 10000,
+            "description": "Charges forfaitaires en XAF."
+          },
+          "chargesAreProvisional": {
+            "type": "boolean",
+            "default": false
+          },
+          "depositAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 300000,
+            "description": "Dépôt de garantie. Défaut : `unit.depositMonths` × loyer."
+          },
+          "agencyFeeAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 150000
+          },
+          "advanceMonths": {
+            "type": "number",
+            "example": 0,
+            "description": "Mois de loyer payés d'avance à l'entrée."
+          },
+          "paymentDueDay": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 28,
+            "example": 5,
+            "description": "Borné à 28 par le DDL : aucun mois ne doit manquer l'échéance."
+          },
+          "graceDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 60,
+            "example": 5
+          },
+          "preferredPaymentMethod": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"],
+            "default": "CASH"
+          },
+          "collectorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "noticeDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 365,
+            "example": 30
+          },
+          "autoRenew": {
+            "type": "boolean",
+            "default": true
+          },
+          "indexationRateBps": {
+            "type": "number",
+            "example": 500,
+            "description": "100 % = 10 000 points de base."
+          },
+          "nextIndexationDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "clientRef": {
+            "type": "string",
+            "description": "Clé d'idempotence générée sur l'appareil (ULID)."
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "primaryTenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-01-01"
+          },
+          "rentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 150000,
+            "description": "Loyer contractuel en XAF."
+          }
+        },
+        "required": ["unitId", "primaryTenantId", "startDate", "rentAmount"]
+      },
+      "LeaseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "primaryTenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true,
+            "example": "BAIL-2026-00042"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PENDING_SIGNATURE",
+              "ACTIVE",
+              "NOTICE_GIVEN",
+              "TERMINATED",
+              "EXPIRED",
+              "CANCELLED"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "moveInDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "moveOutDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "rentPeriod": {
+            "type": "string",
+            "enum": ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL"]
+          },
+          "rentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 150000
+          },
+          "chargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10000
+          },
+          "chargesAreProvisional": {
+            "type": "boolean"
+          },
+          "depositAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 300000
+          },
+          "agencyFeeAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 0
+          },
+          "advanceMonths": {
+            "type": "number",
+            "example": 0
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["XAF"]
+          },
+          "paymentDueDay": {
+            "type": "number",
+            "example": 5
+          },
+          "graceDays": {
+            "type": "number",
+            "example": 5
+          },
+          "preferredPaymentMethod": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
+          },
+          "collectorUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "indexationRateBps": {
+            "type": "number",
+            "nullable": true
+          },
+          "nextIndexationDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "noticeDays": {
+            "type": "number",
+            "example": 30
+          },
+          "autoRenew": {
+            "type": "boolean"
+          },
+          "signedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "contractDocumentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "terminatedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "terminationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "balanceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 0
+          },
+          "clientRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "unitId",
+          "propertyId",
+          "landlordId",
+          "primaryTenantId",
+          "reference",
+          "status",
+          "startDate",
+          "endDate",
+          "moveInDate",
+          "moveOutDate",
+          "rentPeriod",
+          "rentAmount",
+          "chargesAmount",
+          "chargesAreProvisional",
+          "depositAmount",
+          "agencyFeeAmount",
+          "advanceMonths",
+          "currency",
+          "paymentDueDay",
+          "graceDays",
+          "preferredPaymentMethod",
+          "collectorUserId",
+          "indexationRateBps",
+          "nextIndexationDate",
+          "noticeDays",
+          "autoRenew",
+          "signedAt",
+          "contractDocumentId",
+          "terminatedAt",
+          "terminationReason",
+          "balanceAmount",
+          "clientRef",
+          "notes",
+          "createdAt",
+          "updatedAt",
+          "deletedAt"
+        ]
+      },
+      "LeaseUnitRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "A1"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["id", "code", "label"]
+      },
+      "LeasePropertyRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Résidence Mpila"
+          }
+        },
+        "required": ["id", "name"]
+      },
+      "LeaseTenantRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Bernadette Loemba"
+          },
+          "primaryPhone": {
+            "type": "string",
+            "example": "+242066200001"
+          }
+        },
+        "required": ["id", "displayName", "primaryPhone"]
+      },
+      "LeaseSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PENDING_SIGNATURE",
+              "ACTIVE",
+              "NOTICE_GIVEN",
+              "TERMINATED",
+              "EXPIRED",
+              "CANCELLED"
+            ]
+          },
+          "unit": {
+            "$ref": "#/components/schemas/LeaseUnitRefDto"
+          },
+          "property": {
+            "$ref": "#/components/schemas/LeasePropertyRefDto"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/LeaseTenantRefDto"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "rentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 150000
+          },
+          "chargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10000
+          },
+          "paymentDueDay": {
+            "type": "number",
+            "example": 5
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "unit",
+          "property",
+          "tenant",
+          "startDate",
+          "endDate",
+          "rentAmount",
+          "chargesAmount",
+          "paymentDueDay"
+        ]
+      },
+      "LeasePageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeaseSummaryDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "LeasePartyDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["PRIMARY_TENANT", "CO_TENANT", "GUARANTOR", "OCCUPANT"]
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true
+          },
+          "guarantorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Serge Makaya"
+          },
+          "shareBps": {
+            "type": "number",
+            "example": 10000
+          },
+          "isSolidary": {
+            "type": "boolean"
+          },
+          "signedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "leaseId",
+          "role",
+          "tenantId",
+          "guarantorId",
+          "displayName",
+          "shareBps",
+          "isSolidary",
+          "signedAt",
+          "createdAt"
+        ]
+      },
+      "RentRevisionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "previousRentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 150000
+          },
+          "newRentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 165000
+          },
+          "previousChargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10000
+          },
+          "newChargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 12000
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdByUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "leaseId",
+          "effectiveDate",
+          "previousRentAmount",
+          "newRentAmount",
+          "previousChargesAmount",
+          "newChargesAmount",
+          "reason",
+          "documentId",
+          "createdByUserId",
+          "createdAt"
+        ]
+      },
+      "DepositMovementDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "depositId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "movementType": {
+            "type": "string",
+            "enum": ["COLLECTION", "REFUND", "DEDUCTION", "TRANSFER", "ADJUSTMENT"]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 150000
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["XAF"]
+          },
+          "movementDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "paymentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "inspectionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "reversalOfId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdByUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "depositId",
+          "leaseId",
+          "movementType",
+          "amount",
+          "currency",
+          "movementDate",
+          "paymentId",
+          "inspectionId",
+          "reason",
+          "reversalOfId",
+          "createdByUserId",
+          "createdAt"
+        ]
+      },
+      "DepositDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PARTIALLY_PAID",
+              "HELD",
+              "PARTIALLY_REFUNDED",
+              "REFUNDED",
+              "FORFEITED"
+            ]
+          },
+          "requiredAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 300000
+          },
+          "collectedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 300000
+          },
+          "deductedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 45000
+          },
+          "refundedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 255000
+          },
+          "heldAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 0
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["XAF"]
+          },
+          "heldBy": {
+            "type": "string",
+            "example": "ORGANIZATION"
+          },
+          "monthsEquivalent": {
+            "type": "number",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullyCollectedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "refundDueDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "refundedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "refundBankAccountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "movements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DepositMovementDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "leaseId",
+          "tenantId",
+          "status",
+          "requiredAmount",
+          "collectedAmount",
+          "deductedAmount",
+          "refundedAmount",
+          "heldAmount",
+          "currency",
+          "heldBy",
+          "monthsEquivalent",
+          "dueDate",
+          "fullyCollectedAt",
+          "refundDueDate",
+          "refundedAt",
+          "refundBankAccountId",
+          "movements"
+        ]
+      },
+      "LeaseDocumentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "CONTRACT",
+              "AMENDMENT",
+              "NOTICE",
+              "TERMINATION",
+              "INVENTORY",
+              "INSURANCE",
+              "OTHER"
+            ]
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "number",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "example": "Contrat de bail BAIL-2026-00042 v1"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "isSigned": {
+            "type": "boolean"
+          },
+          "signedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "signatureHash": {
+            "type": "string",
+            "nullable": true,
+            "description": "SHA-256 du HTML source du contrat."
+          },
+          "generatedByJob": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "leaseId",
+          "kind",
+          "documentId",
+          "version",
+          "title",
+          "effectiveDate",
+          "isSigned",
+          "signedAt",
+          "signatureHash",
+          "generatedByJob",
+          "createdAt"
+        ]
+      },
+      "LeaseDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "primaryTenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true,
+            "example": "BAIL-2026-00042"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PENDING_SIGNATURE",
+              "ACTIVE",
+              "NOTICE_GIVEN",
+              "TERMINATED",
+              "EXPIRED",
+              "CANCELLED"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "moveInDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "moveOutDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "rentPeriod": {
+            "type": "string",
+            "enum": ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL"]
+          },
+          "rentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 150000
+          },
+          "chargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10000
+          },
+          "chargesAreProvisional": {
+            "type": "boolean"
+          },
+          "depositAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 300000
+          },
+          "agencyFeeAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 0
+          },
+          "advanceMonths": {
+            "type": "number",
+            "example": 0
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["XAF"]
+          },
+          "paymentDueDay": {
+            "type": "number",
+            "example": 5
+          },
+          "graceDays": {
+            "type": "number",
+            "example": 5
+          },
+          "preferredPaymentMethod": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
+          },
+          "collectorUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "indexationRateBps": {
+            "type": "number",
+            "nullable": true
+          },
+          "nextIndexationDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "noticeDays": {
+            "type": "number",
+            "example": 30
+          },
+          "autoRenew": {
+            "type": "boolean"
+          },
+          "signedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "contractDocumentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "terminatedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "terminationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "balanceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 0
+          },
+          "clientRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "object"
+          },
+          "property": {
+            "type": "object"
+          },
+          "landlord": {
+            "type": "object"
+          },
+          "primaryTenant": {
+            "type": "object"
+          },
+          "parties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeasePartyDto"
+            }
+          },
+          "rentRevisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RentRevisionDto"
+            }
+          },
+          "deposit": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DepositDetailDto"
+              }
+            ]
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeaseDocumentDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "unitId",
+          "propertyId",
+          "landlordId",
+          "primaryTenantId",
+          "reference",
+          "status",
+          "startDate",
+          "endDate",
+          "moveInDate",
+          "moveOutDate",
+          "rentPeriod",
+          "rentAmount",
+          "chargesAmount",
+          "chargesAreProvisional",
+          "depositAmount",
+          "agencyFeeAmount",
+          "advanceMonths",
+          "currency",
+          "paymentDueDay",
+          "graceDays",
+          "preferredPaymentMethod",
+          "collectorUserId",
+          "indexationRateBps",
+          "nextIndexationDate",
+          "noticeDays",
+          "autoRenew",
+          "signedAt",
+          "contractDocumentId",
+          "terminatedAt",
+          "terminationReason",
+          "balanceAmount",
+          "clientRef",
+          "notes",
+          "createdAt",
+          "updatedAt",
+          "deletedAt",
+          "unit",
+          "property",
+          "landlord",
+          "primaryTenant",
+          "parties",
+          "rentRevisions",
+          "deposit",
+          "documents"
+        ]
+      },
+      "UpdateLeaseDto": {
+        "type": "object",
+        "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-06-01"
+          },
+          "moveInDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-01-05"
+          },
+          "rentPeriod": {
+            "type": "string",
+            "enum": ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL"],
+            "default": "MONTHLY"
+          },
+          "chargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 10000,
+            "description": "Charges forfaitaires en XAF."
+          },
+          "chargesAreProvisional": {
+            "type": "boolean",
+            "default": false
+          },
+          "depositAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 300000,
+            "description": "Dépôt de garantie. Défaut : `unit.depositMonths` × loyer."
+          },
+          "agencyFeeAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 150000
+          },
+          "advanceMonths": {
+            "type": "number",
+            "example": 0,
+            "description": "Mois de loyer payés d'avance à l'entrée."
+          },
+          "paymentDueDay": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 28,
+            "example": 5,
+            "description": "Borné à 28 par le DDL : aucun mois ne doit manquer l'échéance."
+          },
+          "graceDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 60,
+            "example": 5
+          },
+          "preferredPaymentMethod": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"],
+            "default": "CASH"
+          },
+          "collectorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "noticeDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 365,
+            "example": 30
+          },
+          "autoRenew": {
+            "type": "boolean",
+            "default": true
+          },
+          "indexationRateBps": {
+            "type": "number",
+            "example": 500,
+            "description": "100 % = 10 000 points de base."
+          },
+          "nextIndexationDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "clientRef": {
+            "type": "string",
+            "description": "Clé d'idempotence générée sur l'appareil (ULID)."
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "primaryTenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "rentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "ActivateLeaseDto": {
+        "type": "object",
+        "properties": {
+          "moveInDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Défaut : la date d'effet du bail."
+          }
+        }
+      },
+      "CancelLeaseDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Dossier du locataire incomplet"
+          }
+        },
+        "required": ["reason"]
+      },
+      "LeaseEffectDto": {
+        "type": "object",
+        "properties": {
+          "effectiveDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-07-31"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Départ du locataire"
+          }
+        },
+        "required": ["effectiveDate", "reason"]
+      },
+      "RentRevisionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RentRevisionDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "CreateRentRevisionDto": {
+        "type": "object",
+        "properties": {
+          "effectiveDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2027-01-01"
+          },
+          "newRentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 165000
+          },
+          "newChargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 15000
+          },
+          "reason": {
+            "type": "string",
+            "example": "Révision annuelle contractuelle"
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Avenant signé justifiant la révision."
+          }
+        },
+        "required": ["effectiveDate", "newRentAmount"]
+      },
+      "RentAtDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "rentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 150000
+          },
+          "chargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10000
+          },
+          "source": {
+            "type": "string",
+            "enum": ["INITIAL", "REVISION"]
+          },
+          "revisionId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["date", "rentAmount", "chargesAmount", "source", "revisionId"]
+      },
+      "CreateLeasePartyDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["PRIMARY_TENANT", "CO_TENANT", "GUARANTOR", "OCCUPANT"]
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "guarantorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "shareBps": {
+            "type": "number",
+            "default": 10000,
+            "description": "100 % = 10 000 points de base."
+          },
+          "isSolidary": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": ["role"]
+      },
+      "UpdateLeasePartyDto": {
+        "type": "object",
+        "properties": {
+          "shareBps": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "isSolidary": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LeaseDocumentListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeaseDocumentDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "AttachLeaseDocumentDto": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Document déjà téléversé via `/documents`."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "CONTRACT",
+              "AMENDMENT",
+              "NOTICE",
+              "TERMINATION",
+              "INVENTORY",
+              "INSURANCE",
+              "OTHER"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "example": "Contrat signé scanné"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "isSigned": {
+            "type": "boolean",
+            "default": false
+          },
+          "signedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["documentId", "kind", "title"]
+      },
+      "CreateDepositMovementDto": {
+        "type": "object",
+        "properties": {
+          "movementType": {
+            "type": "string",
+            "enum": ["COLLECTION", "REFUND", "DEDUCTION", "TRANSFER", "ADJUSTMENT"]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 150000,
+            "minimum": 1
+          },
+          "movementDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Encaissement du 1er mois de caution"
+          },
+          "paymentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reversalOfId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Mouvement annulé par cette écriture."
+          }
+        },
+        "required": ["movementType", "amount"]
+      },
+      "DepositsOverviewDto": {
+        "type": "object",
+        "properties": {
+          "heldTotal": {
+            "type": "integer",
+            "format": "int64",
+            "example": 300000,
+            "description": "Total encore détenu par l’organisation."
+          },
+          "pendingTotal": {
+            "type": "integer",
+            "format": "int64",
+            "example": 150000,
+            "description": "Reste à encaisser : somme de `required − collected`, jamais négative."
+          },
+          "refundDueCount": {
+            "type": "number",
+            "example": 2,
+            "description": "Dépôts à restituer et encore détenus."
+          },
+          "byStatus": {
+            "type": "object",
+            "example": {
+              "PENDING": 1,
+              "PARTIALLY_PAID": 1,
+              "HELD": 4,
+              "PARTIALLY_REFUNDED": 0,
+              "REFUNDED": 2,
+              "FORFEITED": 0
+            }
+          }
+        },
+        "required": ["heldTotal", "pendingTotal", "refundDueCount", "byStatus"]
+      },
+      "DepositTenantRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Bernadette Loemba"
+          }
+        },
+        "required": ["id", "displayName"]
+      },
+      "DepositUnitRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "A1"
+          }
+        },
+        "required": ["id", "code"]
+      },
+      "DepositSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/DepositTenantRefDto"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/DepositUnitRefDto"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PARTIALLY_PAID",
+              "HELD",
+              "PARTIALLY_REFUNDED",
+              "REFUNDED",
+              "FORFEITED"
+            ]
+          },
+          "requiredAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 300000
+          },
+          "heldAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 150000
+          },
+          "refundDueDate": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "leaseId",
+          "leaseReference",
+          "tenant",
+          "unit",
+          "status",
+          "requiredAmount",
+          "heldAmount",
+          "refundDueDate"
+        ]
+      },
+      "DepositPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DepositSummaryDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "GenerateContractDto": {
+        "type": "object",
+        "properties": {
+          "regenerate": {
+            "type": "boolean",
+            "default": false,
+            "description": "Force une nouvelle version. Sans ce drapeau, la dernière version déjà produite est rendue telle quelle."
+          }
+        }
+      },
+      "ContractJobDto": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "example": "contract-…"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["QUEUED", "RUNNING", "DONE", "FAILED"]
+          },
+          "leaseDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "number",
+            "example": 2
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": ["jobId", "status"]
+      },
+      "ContractClauseDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "example": "destination"
+          },
+          "title": {
+            "type": "string",
+            "example": "Destination des lieux"
+          },
+          "body": {
+            "type": "string",
+            "example": "Les lieux loués sont destinés exclusivement à l’habitation…"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": ["key", "title", "body", "enabled"]
+      },
+      "ContractTemplateDto": {
+        "type": "object",
+        "properties": {
+          "headerTitle": {
+            "type": "string",
+            "example": "CONTRAT DE BAIL À USAGE D'HABITATION"
+          },
+          "lessorBlock": {
+            "type": "string"
+          },
+          "optionalClauses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContractClauseDto"
+            }
+          },
+          "legalMentions": {
+            "type": "string"
+          },
+          "signatureCity": {
+            "type": "string",
+            "example": "Brazzaville"
+          },
+          "showOhadaBlock": {
+            "type": "boolean",
+            "description": "Bloc bail commercial (Acte uniforme OHADA)."
+          },
+          "footerText": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "headerTitle",
+          "lessorBlock",
+          "optionalClauses",
+          "legalMentions",
+          "signatureCity",
+          "showOhadaBlock",
+          "footerText"
+        ]
+      },
+      "PatchContractTemplateDto": {
+        "type": "object",
+        "properties": {
+          "headerTitle": {
+            "type": "string"
+          },
+          "lessorBlock": {
+            "type": "string"
+          },
+          "optionalClauses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContractClauseDto"
+            }
+          },
+          "legalMentions": {
+            "type": "string"
+          },
+          "signatureCity": {
+            "type": "string"
+          },
+          "showOhadaBlock": {
+            "type": "boolean"
+          },
+          "footerText": {
+            "type": "string"
+          }
+        }
       },
       "HealthCheckDto": {
         "type": "object",

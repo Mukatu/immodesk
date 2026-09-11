@@ -16,6 +16,13 @@ class MoreScreen extends ConsumerWidget {
       body: ListView(
         children: [
           ListTile(
+            key: const ValueKey('more-leases-tile'),
+            leading: const Icon(Icons.description_outlined),
+            title: const Text('Baux'),
+            onTap: () => context.push(RoutePaths.leases),
+          ),
+          const Divider(height: 1),
+          ListTile(
             key: const ValueKey('more-diagnostics-tile'),
             leading: const Icon(Icons.wifi_tethering_outlined),
             title: const Text('À propos / diagnostic'),

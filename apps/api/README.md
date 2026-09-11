@@ -1,4 +1,4 @@
-# `@immodesk/api` — API Immodesk (phases 0 et 1)
+# `@immodesk/api` — API Immodesk (phases 0, 1 et 2)
 
 Backend NestJS 11 de la plateforme Immodesk (gestion immobilière,
 Congo-Brazzaville). Monolithe modulaire en Clean Architecture, multi-tenant
@@ -11,6 +11,12 @@ contrat OpenAPI 3.1 publié.
 Périmètre de la **phase 1** : tiers et patrimoine — bailleurs, locataires,
 garants, canaux de contact, immeubles, lots (création en série), comptes de
 règlement et pièces jointes sur stockage objet compatible S3.
+
+Périmètre de la **phase 2** : baux et dépôts de garantie — cycle de vie du
+bail (machine à états explicite, anti-chevauchement garanti en base),
+parties, révisions de loyer datées, dépôts de garantie à mouvements
+append-only, numérotation `BAIL-{AAAA}-{seq}`, génération du contrat en PDF
+par un worker BullMQ Puppeteer, et cron quotidien des échéances.
 
 ---
 
@@ -100,6 +106,54 @@ stockage par une URL signée, et revient de même.
 `forcePathStyle` est activé : l'adressage par sous-domaine (`bucket.host`)
 suppose un DNS générique que `localhost` n'a pas.
 
+### Files BullMQ et worker PDF (phase 2)
+
+| Variable                    | Rôle                                                                                                  |
+| :-------------------------- | :---------------------------------------------------------------------------------------------------- |
+| `QUEUE_PREFIX`              | Préfixe des clés Redis (`immodesk`). Deux environnements partageant un Redis ne se volent pas un job. |
+| `LEASES_CRON_ENABLED`       | Active le cron quotidien des baux (inactif d'office en `NODE_ENV=test`).                              |
+| `LEASES_CRON_PATTERN`       | Motif cron, `0 2 * * *` par défaut.                                                                   |
+| `LEASES_CRON_TIMEZONE`      | `Africa/Brazzaville`.                                                                                 |
+| `PDF_WORKER_ENABLED`        | Démarre le worker `lease-contract`.                                                                   |
+| `PDF_WORKER_CONCURRENCY`    | Rendus simultanés (**2**). Ce sont des onglets du même Chromium, pas des processus.                   |
+| `PDF_JOB_TIMEOUT_MS`        | Verrou d'un job de rendu (60 s).                                                                      |
+| `PDF_JOB_ATTEMPTS`          | Tentatives avant échec définitif (3), avec délai exponentiel.                                         |
+| `PUPPETEER_EXECUTABLE_PATH` | Navigateur de rendu. Voir ci-dessous.                                                                 |
+| `PUPPETEER_LAUNCH_ARGS`     | Arguments de lancement séparés par des virgules (`--no-sandbox,--disable-dev-shm-usage`).             |
+
+**Le Chromium empaqueté n'est pas toujours téléchargé.** Le script
+d'installation de Puppeteer (≈ 180 Mo) est bloqué par la politique pnpm de ce
+dépôt sur les scripts de paquets, et il l'est aussi derrière bien des réseaux
+d'entreprise. L'API le prend en compte : elle cherche un navigateur dans cet
+ordre —
+
+1. `PUPPETEER_EXECUTABLE_PATH` ;
+2. le Chromium empaqueté, s'il a bien été téléchargé ;
+3. les Chrome, Chromium puis Edge installés sur la machine.
+
+Les candidats sont **essayés l'un après l'autre** jusqu'à ce que l'un démarre :
+qu'un exécutable existe ne prouve pas qu'il se lance. Edge, présent sur tout
+poste Windows, se termine immédiatement avec certaines versions de Puppeteer ;
+il reste donc en dernier recours, derrière Chrome.
+
+Si aucun navigateur ne démarre, **l'API démarre quand même** : seule la
+génération répond `503 LEASES.CONTRACT_UNAVAILABLE`, et la prévisualisation
+HTML (`GET /v1/leases/{id}/contract/preview`) continue de fonctionner. Le test
+d'intégration `phase2-contract-pdf.int-spec.ts` se **saute proprement** dans
+ce cas, avec un avertissement explicite plutôt qu'un échec muet.
+
+En conteneur, installer `google-chrome-stable` (ou `chromium`) et pointer
+`PUPPETEER_EXECUTABLE_PATH` dessus est plus léger et plus reproductible que de
+laisser Puppeteer télécharger son propre binaire à chaque build.
+
+> Puppeteer n'est plus publié qu'en **ESM** depuis la v23, alors que l'API est
+> compilée en CommonJS. Le paquet est donc chargé par
+> `src/modules/pdf/infrastructure/puppeteer-loader.ts`, qui passe par le
+> `createRequire` **natif** obtenu via `process.getBuiltinModule('module')` :
+> c'est le seul chemin qui fonctionne à la fois sous Node et dans le runtime
+> CommonJS de Jest 29, lequel ne sait charger ni un module ESM ni un
+> `import()` dynamique sans `--experimental-vm-modules`.
+
 ---
 
 ## 3. Base de données et migrations
@@ -114,6 +168,14 @@ policies RLS) fait foi. Il est recopié tel quel dans
 Les noms de modèles Prisma restent ceux des tables (`organization_members`,
 `otp_codes`, ...). C'est assumé en phase 0 : la couche `infrastructure/` de
 chaque module isole ce détail du reste du code.
+
+### Migrations livrées
+
+| Migration            | Contenu                                                                                                                                                                |
+| :------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0_init`             | Le DDL complet, recopié de `docs/schema/schema.sql`.                                                                                                                   |
+| `1_momo_declared`    | Mobile Money « paiement déclaré » : canal, colonnes de déclaration, statuts `DECLARED` / `REJECTED`.                                                                   |
+| `2_leases_revisions` | Extension `btree_gist`, contrainte `leases_no_overlap_excl`, table `lease_rent_revisions` (policy RLS et déclencheur `updated_at` compris), `sequence_kind` + `LEASE`. |
 
 ### Faire évoluer le schéma
 
@@ -185,6 +247,20 @@ Brazzaville :
   ses canaux de contact mobile / WhatsApp / e-mail ;
 - **2 comptes de règlement** : compte courant **BGFI** de l'agence et
   portefeuille **MTN Mobile Money** de la SCI.
+
+Baux de la phase 2 (`prisma/seed-leases.ts`) :
+
+- **2 baux ACTIFS** sur les lots **A1** et **A2**, référencés
+  `BAIL-{AAAA}-{seq}` par la fonction SQL `next_sequence`, avec leur locataire
+  principal dans `lease_parties` ;
+- leurs **dépôts partiellement encaissés** — 100 000 et 75 000 FCFA sur
+  150 000 attendus, statut `PARTIALLY_PAID` : c'est le cas courant sur le
+  terrain, la caution se versant en deux ou trois fois ;
+- **1 bail en BROUILLON** sur le lot **A3**, sans référence attribuée ;
+- **1 révision de loyer future** sur le bail A1 (1er janvier suivant,
+  +5 000 FCFA), que le cron quotidien appliquera à sa date d'effet ;
+- le **gabarit de contrat par défaut** (« bail à usage d'habitation,
+  Congo-Brazzaville ») dans `organization_settings.settings_json`.
 
 ---
 
@@ -324,6 +400,21 @@ se vérifier que sur un vrai serveur.
   PUT effectif, enregistrement après vérification HEAD, refus d'une clé
   d'une autre organisation, téléchargement signé, **404 pour l'organisation
   B**, **expiration effective d'une URL signée à 1 seconde**, purge différée.
+- `phase2-leases.int-spec.ts` — activation atomique et son **rollback complet
+  quand l'insertion du dépôt échoue**, transition invalide refusée,
+  chevauchement rejeté par le service puis **par la contrainte, en SQL brut**,
+  **100 activations concurrentes : série de références contiguë, sans trou ni
+  doublon**.
+- `phase2-deposits.int-spec.ts` — le Gherkin complet (300 000 encaissés,
+  45 000 retenus, 255 000 restitués, aucun mouvement modifié), refus d'une
+  restitution sur bail ouvert et d'un montant supérieur au solde,
+  contre-passation, révisions de loyer et `rent-at`, **cron quotidien rejoué
+  sans effet**.
+- `phase2-contract-pdf.int-spec.ts` — **contre un vrai Chromium et un vrai
+  MinIO** : prévisualisation HTML, génération asynchrone, PDF téléchargeable,
+  **empreinte identique sur deux rendus du même bail**, version suivante après
+  révision, **v1 inchangée**, gabarit personnalisable. Se saute proprement si
+  aucun navigateur n'est installé.
 - `rls-isolation.int-spec.ts` — **suite d'isolation, bloquante**.
 
 ### La suite d'isolation RLS
@@ -360,6 +451,15 @@ de la phase 0. `bank_accounts` a exigé une entrée dans `TABLE_HINTS`
 (`bank_accounts_identifier_chk` réclame un numéro de compte, un IBAN ou un
 numéro Mobile Money), et `mobile_money_transactions` une autre depuis que
 `aggregator` est facultatif (migration `1_momo_declared`).
+
+Les **6 tables de la phase 2** — `leases`, `lease_parties`,
+`lease_rent_revisions`, `lease_documents`, `deposits`, `deposit_movements` —
+sont couvertes par la même assertion dédiée. Trois ancres supplémentaires ont
+été ajoutées à `createFixture` (un bail, un dépôt, un document) et une entrée
+**dynamique** à `DYNAMIC_TABLE_HINTS` : `lease_parties_target_chk` exige un
+`tenant_id` de la **même** organisation, valeur qu'une table de constantes ne
+peut pas fournir. Le bail d'ancrage et celui qui porte le dépôt d'ancrage sont
+distincts, `deposits_lease_uk` n'admettant qu'un dépôt par bail.
 
 > Une requête émise **sans** contexte de tenant ne retourne jamais de ligne.
 > Selon l'état de la connexion, elle renvoie un ensemble vide (connexion
@@ -411,9 +511,101 @@ src/
     ├── banking/             # bank_accounts (banques locales et Mobile Money)
     ├── documents/           # documents, stockage S3/MinIO, URL signées, purge différée
     ├── notifications/       # SmsProvider, WhatsAppProvider, templates, message_logs
+    ├── leases/              # leases, lease_parties, lease_rent_revisions, lease_documents, cron
+    ├── deposits/            # deposits, deposit_movements (append-only)
+    ├── numbering/           # sequences, next_sequence / format_sequence_number
+    ├── pdf/                 # worker BullMQ Puppeteer, gabarit de contrat
     ├── audit/               # audit_logs, fonction audit()
     └── platform/            # santé, idempotence, OpenAPI, configuration
 ```
+
+### Les quatre modules de la phase 2
+
+| Module      | Responsabilité                                                                                   |
+| :---------- | :----------------------------------------------------------------------------------------------- |
+| `leases`    | Cycle de vie du bail, parties, révisions, résiliation, contrôle de chevauchement, cron quotidien |
+| `deposits`  | `deposits` et `deposit_movements`, soldes recalculés, statut dérivé, solde restituable           |
+| `numbering` | `sequences` et les fonctions SQL `next_sequence` / `format_sequence_number`                      |
+| `pdf`       | Worker BullMQ Puppeteer, gabarit Handlebars A4, empreinte, archivage dans le stockage objet      |
+
+`leases` et `deposits` se lisent mutuellement — l'activation crée le dépôt, un
+mouvement vérifie l'état du bail. Le cycle est levé par des ports `Symbol`,
+comme en phase 1 :
+
+| Port                    | Déclaré dans      | Implémenté par          | Sert à                                     |
+| :---------------------- | :---------------- | :---------------------- | :----------------------------------------- |
+| `DEPOSIT_WRITER`        | `leases/domain`   | `DepositsService`       | Créer le dépôt à l'activation              |
+| `LEASE_READER`          | `deposits/domain` | `LeasesService`         | Vérifier l'état du bail avant un mouvement |
+| `LEASE_CONTRACT_SOURCE` | `pdf/domain`      | `LeaseDetailsService`   | Jeu de données du contrat                  |
+| `LEASE_DOCUMENT_WRITER` | `pdf/domain`      | `LeaseDocumentsService` | Archiver une version de contrat            |
+
+`pdf` est la **feuille** du graphe : il consomme `leases` et n'est consommé
+par personne. C'est ce qui permet de faire tourner l'API sans navigateur de
+rendu sans que le cycle de vie du bail en souffre.
+
+### Machine à états du bail
+
+La table des transitions (`leases/domain/lease-status.ts`) est **déclarative
+et exhaustive** : toute transition absente est refusée par
+`409 LEASES.INVALID_TRANSITION`, avec `details.from` et `details.to`. Un test
+unitaire éprouve les **49 couples** d'états, pas seulement ceux auxquels on
+pense.
+
+```text
+DRAFT ──▶ PENDING_SIGNATURE ──▶ ACTIVE ──▶ NOTICE_GIVEN ──▶ TERMINATED
+  │               │               │  │
+  └───ACTIVATE────┘               │  └──────EXPIRE──────▶ EXPIRED
+  └───CANCEL──▶ CANCELLED ◀───────┘         (cron)
+                                  └──────TERMINATE─────▶ TERMINATED
+```
+
+TERMINATED, EXPIRED et CANCELLED sont **terminaux** : reprendre une location
+avec le même locataire sur le même lot, c'est un NOUVEAU bail.
+
+### Anti-chevauchement garanti EN BASE
+
+La contrainte d'exclusion GiST `leases_no_overlap_excl` (migration
+`2_leases_revisions`) interdit deux baux `ACTIVE` ou `NOTICE_GIVEN` sur un
+même lot à des périodes qui se croisent. Le service vérifie AUSSI le
+chevauchement pour produire un message utile, mais c'est la contrainte qui
+ferme la fenêtre entre ce contrôle et le `COMMIT`, qu'exploiteraient deux
+activations concurrentes. L'erreur SQL `23P01` est traduite en
+`409 LEASES.OVERLAP` par `leases/infrastructure/sql-errors.ts`.
+
+### Activation : tout ou rien
+
+Cinq écritures indissociables dans une seule transaction — bail `ACTIVE`, lot
+`OCCUPIED`, référence `BAIL-{AAAA}-{seq}` réservée, locataire principal ajouté
+aux parties, ligne `deposits` créée. Un test d'intégration fait échouer
+l'insertion du dépôt par un déclencheur et vérifie que **les quatre autres
+écritures sont annulées**, compteur de numérotation compris.
+
+### Cron quotidien des baux
+
+Job répétable BullMQ (`lease-daily`, 02:00 `Africa/Brazzaville`) :
+
+- `NOTICE_GIVEN → TERMINATED` à la date d'effet, lot libéré, dépôt daté ;
+- `ACTIVE → EXPIRED` au terme si `autoRenew = false`, sinon reconduction
+  d'une durée **égale à la durée initiale** ;
+- application des révisions de loyer devenues effectives.
+
+**Idempotent par construction** : chaque requête ne sélectionne que les lignes
+qui ne sont pas déjà dans l'état voulu. Rejouer un passage n'écrit rien —
+c'est la seule garantie tenable pour une tâche de fond, un verrou distribué
+pouvant expirer. L'identifiant de planification est fixe, si bien que N
+instances de l'API n'en créent qu'une.
+
+### Contrat PDF : ce que mesure l'empreinte
+
+`lease_documents.signature_hash` est le **SHA-256 du HTML source**, date de
+génération exclue — celle-ci est imprimée par le pied de page de Chromium,
+hors du document rendu. Un PDF porte sa date de création dans ses métadonnées :
+deux rendus du même bail produisent des octets différents, et une empreinte
+calculée dessus ne prouverait rien. L'empreinte des octets reste stockée dans
+`documents.checksum_sha256`, pour l'intégrité du fichier.
+
+Une version est **immuable** : régénérer crée la version suivante et laisse la
+précédente intacte, avec son empreinte et son PDF.
 
 ### Les quatre modules de la phase 1 et leurs ports
 
@@ -549,6 +741,33 @@ transmission des signaux et expose une `HEALTHCHECK` sur `/v1/health`.
 ---
 
 ## 11. Écarts et limites connues
+
+### Phase 2
+
+- **Un brouillon porte une référence technique `BROUILLON-{uuid}`**, rendue
+  `null` par l'API. `leases.reference` est `NOT NULL` au DDL, et numéroter un
+  brouillon consommerait un numéro pour un contrat qui ne verra peut-être
+  jamais le jour — ce qui viderait de son sens le contrôle d'une série sans
+  trou.
+- **`POST /v1/leases/{id}/contract` sans `regenerate` rend la version déjà
+  produite** au lieu d'en empiler une identique. Le contrat ne le précise pas ;
+  sans cela, `regenerate` n'aurait aucun effet observable et chaque clic
+  créerait une version de plus dans le bucket.
+- **`GET /v1/leases/{id}/parties` est ajouté** au contrat : la fiche web en a
+  besoin sans recharger tout le `LeaseDetail`.
+- **Le gabarit de contrat n'a pas encore été validé juridiquement.** Les
+  clauses par défaut sont un point de départ opérationnel, pas un avis
+  juridique ; le plan de phases prévoit leur relecture par un conseil local
+  (§ 2.8). Chaque organisation peut d'ici là tout réécrire.
+- **Le bloc OHADA s'active aussi automatiquement** lorsque le lot est `SHOP`,
+  `OFFICE` ou `WAREHOUSE`, même si l'organisation ne l'a pas coché : un bail de
+  boutique y est soumis, que le gestionnaire y ait pensé ou non.
+- **`DEPOSITS.LEASE_NOT_CLOSED` ne bloque que la restitution**, pas la retenue :
+  une retenue peut être constatée avant la clôture (impayé imputé sur la
+  caution), la restitution non.
+- **La reconduction tacite prolonge d'une durée égale en JOURS**
+  (`end_date + (end_date - start_date)`), et non en mois : convertir en mois
+  ferait glisser l'échéance d'un ou deux jours à chaque reconduction.
 
 ### Phase 1
 

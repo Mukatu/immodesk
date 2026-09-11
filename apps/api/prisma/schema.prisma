@@ -575,6 +575,7 @@ model documents {
   landlords                                                                landlords[]
   lease_documents                                                          lease_documents[]
   lease_parties                                                            lease_parties[]
+  lease_rent_revisions                                                     lease_rent_revisions[]
   leases_leases_contract_document_idTodocuments                            leases[]                     @relation("leases_contract_document_idTodocuments")
   leases_leases_signature_document_idTodocuments                           leases[]                     @relation("leases_signature_document_idTodocuments")
   maintenance_updates                                                      maintenance_updates[]
@@ -1153,6 +1154,7 @@ model leases {
   inspections                                       inspections[]
   lease_documents                                   lease_documents[]
   lease_parties                                     lease_parties[]
+  lease_rent_revisions                              lease_rent_revisions[]
   users                                             users?                       @relation(fields: [collector_user_id], references: [id], onUpdate: NoAction)
   documents_leases_contract_document_idTodocuments  documents?                   @relation("leases_contract_document_idTodocuments", fields: [contract_document_id], references: [id], onUpdate: NoAction, map: "leases_contract_fk")
   landlords                                         landlords                    @relation(fields: [landlord_id], references: [id], onUpdate: NoAction)
@@ -1666,6 +1668,7 @@ model organizations {
   landlords_landlords_organization_idToorganizations     landlords[]                  @relation("landlords_organization_idToorganizations")
   lease_documents                                        lease_documents[]
   lease_parties                                          lease_parties[]
+  lease_rent_revisions                                   lease_rent_revisions[]
   leases                                                 leases[]
   maintenance_requests                                   maintenance_requests[]
   maintenance_updates                                    maintenance_updates[]
@@ -2727,6 +2730,7 @@ model users {
   invitations_invitations_invited_by_user_idTousers                                 invitations[]                @relation("invitations_invited_by_user_idTousers")
   landlords                                                                         landlords[]
   lease_documents                                                                   lease_documents[]
+  lease_rent_revisions                                                              lease_rent_revisions[]
   leases                                                                            leases[]
   maintenance_requests_maintenance_requests_assigned_to_user_idTousers              maintenance_requests[]       @relation("maintenance_requests_assigned_to_user_idTousers")
   maintenance_requests_maintenance_requests_reported_by_user_idTousers              maintenance_requests[]       @relation("maintenance_requests_reported_by_user_idTousers")
@@ -2814,6 +2818,33 @@ model webhook_events {
   @@unique([source, external_event_id], map: "webhook_events_external_uk")
   @@index([organization_id, source, received_at(sort: Desc)], map: "webhook_events_org_idx")
   @@index([raw_payload(ops: JsonbPathOps)], map: "webhook_events_payload_gin", type: Gin)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model lease_rent_revisions {
+  id                      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id         String        @db.Uuid
+  lease_id                String        @db.Uuid
+  effective_date          DateTime      @db.Date
+  previous_rent_amount    BigInt
+  new_rent_amount         BigInt
+  previous_charges_amount BigInt        @default(0)
+  new_charges_amount      BigInt        @default(0)
+  currency                String        @default("XAF") @db.Char(3)
+  reason                  String?
+  document_id             String?       @db.Uuid
+  created_by_user_id      String?       @db.Uuid
+  created_at              DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime      @default(now()) @db.Timestamptz(6)
+  users                   users?        @relation(fields: [created_by_user_id], references: [id], onUpdate: NoAction)
+  documents               documents?    @relation(fields: [document_id], references: [id], onUpdate: NoAction, map: "lease_rent_revisions_document_fk")
+  leases                  leases        @relation(fields: [lease_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations           organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([lease_id, effective_date], map: "lease_rent_revisions_uk")
+  @@index([lease_id, effective_date(sort: Desc)], map: "lease_rent_revisions_lease_idx")
 }
 
 enum api_key_status {
@@ -3377,6 +3408,7 @@ enum rent_period {
 }
 
 enum sequence_kind {
+  LEASE
   CASH_RECEIPT
   RENT_INVOICE
   RECEIPT

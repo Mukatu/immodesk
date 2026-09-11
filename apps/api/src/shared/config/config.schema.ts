@@ -45,6 +45,34 @@ export const configSchema = z
     DOCUMENTS_PURGE_GRACE_HOURS: z.coerce.number().int().nonnegative().default(24),
     DOCUMENTS_PURGE_BATCH_SIZE: z.coerce.number().int().positive().max(500).default(50),
 
+    // --- Files BullMQ (phase 2 : cron des baux, worker PDF) ---------------
+    // Préfixe des clés Redis : deux environnements partageant un Redis ne
+    // doivent jamais se voler un job.
+    QUEUE_PREFIX: z.string().default('immodesk'),
+    // Cron quotidien des baux : 02:00 Africa/Brazzaville (contrat phase 2).
+    LEASES_CRON_ENABLED: booleanish.default(true),
+    LEASES_CRON_PATTERN: z.string().default('0 2 * * *'),
+    LEASES_CRON_TIMEZONE: z.string().default('Africa/Brazzaville'),
+
+    // --- Worker PDF (Puppeteer) ------------------------------------------
+    PDF_WORKER_ENABLED: booleanish.default(true),
+    // Deux rendus simultanés : au delà, Chromium consomme plus de mémoire
+    // que le VPS n'en a (risque identifié au plan de phases, § 2.10).
+    PDF_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(8).default(2),
+    PDF_JOB_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+    PDF_JOB_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
+    /**
+     * Chemin du navigateur de rendu. Indispensable lorsque le Chromium
+     * empaqueté n'a pas été téléchargé (politique de build, réseau fermé) :
+     * on pointe alors un Chrome ou un Edge déjà installé.
+     */
+    PUPPETEER_EXECUTABLE_PATH: z
+      .string()
+      .optional()
+      .transform((value) => (value === undefined || value.trim() === '' ? undefined : value)),
+    /** Arguments supplémentaires, séparés par des virgules (conteneurs). */
+    PUPPETEER_LAUNCH_ARGS: z.string().default('--no-sandbox,--disable-dev-shm-usage'),
+
     // --- Jetons ----------------------------------------------------------
     JWT_ALGORITHM: z.enum(['HS256', 'RS256']).default('HS256'),
     JWT_ACCESS_SECRET: z.string().min(16).optional(),

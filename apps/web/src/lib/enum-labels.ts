@@ -5,13 +5,19 @@
 import type {
   BankAccountHolderType,
   ContactChannelType,
+  DepositMovementType,
+  DepositStatus,
   DocumentKind,
   Gender,
   IdDocumentType,
+  LeaseDocumentKind,
+  LeasePartyRole,
+  LeaseStatus,
   MomoProvider,
   PartyType,
   PaymentMethod,
   PropertyType,
+  RentPeriod,
   UnitStatus,
   UnitType,
 } from '@/lib/api/types';
@@ -118,6 +124,62 @@ export const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
   EXPENSE_INVOICE: 'Facture de dépense',
   PROPERTY_PHOTO: 'Photo du bien',
   OTHER: 'Autre',
+};
+
+/**
+ * Libellés fr-CG des énumérations du contrat d'API (phase 2 : baux et dépôts
+ * de garantie), pour affichage (badges, Select) sans jamais exposer les codes
+ * techniques à l'utilisateur.
+ */
+export const LEASE_STATUS_LABELS: Record<LeaseStatus, string> = {
+  DRAFT: 'Brouillon',
+  PENDING_SIGNATURE: 'En attente de signature',
+  ACTIVE: 'Actif',
+  NOTICE_GIVEN: 'Préavis déposé',
+  TERMINATED: 'Résilié',
+  EXPIRED: 'Expiré',
+  CANCELLED: 'Annulé',
+};
+
+export const RENT_PERIOD_LABELS: Record<RentPeriod, string> = {
+  MONTHLY: 'Mensuel',
+  QUARTERLY: 'Trimestriel',
+  SEMI_ANNUAL: 'Semestriel',
+  ANNUAL: 'Annuel',
+};
+
+export const LEASE_PARTY_ROLE_LABELS: Record<LeasePartyRole, string> = {
+  PRIMARY_TENANT: 'Locataire principal',
+  CO_TENANT: 'Colocataire',
+  GUARANTOR: 'Garant',
+  OCCUPANT: 'Occupant',
+};
+
+export const LEASE_DOCUMENT_KIND_LABELS: Record<LeaseDocumentKind, string> = {
+  CONTRACT: 'Contrat',
+  AMENDMENT: 'Avenant',
+  NOTICE: 'Préavis',
+  TERMINATION: 'Résiliation',
+  INVENTORY: 'État des lieux',
+  INSURANCE: 'Assurance',
+  OTHER: 'Autre',
+};
+
+export const DEPOSIT_STATUS_LABELS: Record<DepositStatus, string> = {
+  PENDING: 'En attente',
+  PARTIALLY_PAID: 'Partiellement versé',
+  HELD: 'Détenu',
+  PARTIALLY_REFUNDED: 'Partiellement restitué',
+  REFUNDED: 'Restitué',
+  FORFEITED: 'Conservé',
+};
+
+export const DEPOSIT_MOVEMENT_TYPE_LABELS: Record<DepositMovementType, string> = {
+  COLLECTION: 'Encaissement',
+  REFUND: 'Restitution',
+  DEDUCTION: 'Retenue',
+  TRANSFER: 'Transfert',
+  ADJUSTMENT: 'Ajustement',
 };
 
 /** Convertit un Record de libellés en options `{ value, label }` (ex. pour un Select). */

@@ -8,6 +8,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import { v7 as uuidv7 } from 'uuid';
+import { seedLeases } from './seed-leases';
 import { seedPortfolio } from './seed-portfolio';
 
 const prisma = new PrismaClient({
@@ -43,6 +44,9 @@ async function main(): Promise<void> {
   // --- Phase 1 : portefeuille de démonstration -------------------------
   const portfolio = await seedPortfolio(prisma, organizationId);
 
+  // --- Phase 2 : baux, dépôts et gabarit de contrat ---------------------
+  const leases = await seedLeases(prisma, organizationId);
+
   console.info('Seed Immodesk — terminé.');
   console.info(`  Organisation : Agence Mpila Immo (${organizationId})`);
   console.info(`  OWNER        : ${OWNER_PHONE}`);
@@ -51,6 +55,13 @@ async function main(): Promise<void> {
   console.info(`  Immeuble     : Résidence Mpila — ${portfolio.units} lots A1..A12`);
   console.info(`  Locataires   : ${portfolio.tenants} (garants et canaux de contact inclus)`);
   console.info(`  Comptes      : ${portfolio.bankAccounts} (BGFI + MTN Mobile Money)`);
+  console.info(
+    `  Baux         : ${leases.activeLeases} actifs (A1, A2) + ${leases.draftLeases} brouillon`,
+  );
+  console.info(
+    `  Dépôts       : ${leases.deposits} partiellement encaissés, ${leases.revisions} révision future`,
+  );
+  console.info('  Contrat      : gabarit par défaut « bail à usage d’habitation » enregistré');
   console.info('  Connexion    : POST /v1/auth/otp/request puis /v1/auth/otp/verify');
   console.info('                 avec OTP_DEV_CODE (000000 par défaut) en développement.');
 }

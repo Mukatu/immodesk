@@ -1,6 +1,412 @@
 {
   "openapi": "3.1.0",
   "paths": {
+    "/v1/notification-templates": {
+      "get": {
+        "operationId": "NotificationsController_listTemplates",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationTemplateListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modèles de messages (WhatsApp et SMS)",
+        "tags": ["Messagerie"]
+      }
+    },
+    "/v1/notification-templates/{id}": {
+      "patch": {
+        "description": "Un modèle WhatsApp modifié exige une nouvelle approbation Meta avant usage en production.",
+        "operationId": "NotificationsController_updateTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNotificationTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationTemplateDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier un modèle",
+        "tags": ["Messagerie"]
+      }
+    },
+    "/v1/notification-templates/{id}/test": {
+      "post": {
+        "operationId": "NotificationsController_testTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationAcceptedDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Envoi d’essai d’un modèle",
+        "tags": ["Messagerie"]
+      }
+    },
+    "/v1/message-logs": {
+      "get": {
+        "operationId": "NotificationsController_listLogs",
+        "parameters": [
+          {
+            "name": "channel",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["QUEUED", "SENT", "DELIVERED", "READ", "FAILED", "REJECTED", "EXPIRED"]
+            }
+          },
+          {
+            "name": "relatedEntityType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "receipt",
+              "type": "string"
+            }
+          },
+          {
+            "name": "relatedEntityId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageLogPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Journal des messages et de leurs statuts de remise",
+        "tags": ["Messagerie"]
+      }
+    },
+    "/v1/message-logs/{id}/retry": {
+      "post": {
+        "operationId": "NotificationsController_retry",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationAcceptedDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Relancer un envoi (nouvelle notification, à partir du canal du message)",
+        "tags": ["Messagerie"]
+      }
+    },
+    "/v1/webhooks/whatsapp": {
+      "get": {
+        "operationId": "WebhooksController_verify",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Renvoie `hub.challenge`."
+          },
+          "403": {
+            "description": "WEBHOOKS.VERIFY_TOKEN_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Vérification du webhook par Meta (hub.challenge)",
+        "tags": ["Webhooks"]
+      },
+      "post": {
+        "operationId": "WebhooksController_whatsapp",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookAckDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "WEBHOOKS.SIGNATURE_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Statuts WhatsApp (signés X-Hub-Signature-256)",
+        "tags": ["Webhooks"]
+      }
+    },
+    "/v1/webhooks/sms": {
+      "post": {
+        "operationId": "WebhooksController_sms",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookAckDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "WEBHOOKS.SIGNATURE_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Statuts SMS de la passerelle Android (sms:sent, sms:delivered, sms:failed)",
+        "tags": ["Webhooks"]
+      }
+    },
     "/v1/auth/otp/request": {
       "post": {
         "description": "Génère un code à 6 chiffres, le stocke haché dans `otp_codes` (expiration 5 minutes, 5 tentatives) et l'envoie par SMS. La réponse est identique que le numéro soit connu ou non. Limitation : 3 demandes / 10 min par numéro, 20 / heure par adresse IP.",
@@ -3152,6 +3558,49 @@
         "tags": ["Documents"]
       }
     },
+    "/v1/public/d/{token}": {
+      "get": {
+        "description": "Vérifie la signature et l’échéance, puis redirige (302) vers une URL signée de dix minutes.",
+        "operationId": "PublicLinksController_open",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirection vers le document."
+          },
+          "404": {
+            "description": "PUBLIC.LINK_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lien court signé vers un PDF (SMS de repli)",
+        "tags": ["Liens publics"]
+      }
+    },
     "/v1/leases": {
       "post": {
         "description": "La référence `BAIL-{AAAA}-{seq}` n’est attribuée qu’à l’activation : un brouillon ne consomme pas de numéro de la série.",
@@ -4675,6 +5124,2506 @@
         "tags": ["Contrat de bail (PDF)"]
       }
     },
+    "/v1/invoices": {
+      "get": {
+        "description": "Un COLLECTOR ne voit que les factures des baux qui lui sont affectés.",
+        "operationId": "InvoicesController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"]
+            }
+          },
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "description": "Mois de début de période.",
+            "schema": {
+              "example": "2026-09",
+              "type": "string"
+            }
+          },
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "leaseId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "overdueOnly",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les factures",
+        "tags": ["Factures de loyer"]
+      },
+      "post": {
+        "operationId": "InvoicesController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvoiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BILLING.PERIOD_ALREADY_INVOICED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer une facture manuelle (brouillon, ou émise si `issue`)",
+        "tags": ["Factures de loyer"]
+      }
+    },
+    "/v1/invoices/{id}": {
+      "get": {
+        "operationId": "InvoicesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "BILLING.INVOICE_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d’une facture : lignes, imputations, quittance",
+        "tags": ["Factures de loyer"]
+      }
+    },
+    "/v1/invoices/{id}/pdf": {
+      "get": {
+        "description": "Génération à la demande, mise en cache dans `documents` tant que la facture ne change pas.",
+        "operationId": "InvoicesController_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdfLinkDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BILLING.PDF_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "URL signée (10 min) du PDF de la facture",
+        "tags": ["Factures de loyer"]
+      }
+    },
+    "/v1/invoices/{id}/lines": {
+      "post": {
+        "operationId": "InvoicesController_addLine",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceLineInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BILLING.INVOICE_NOT_EDITABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ajouter une ligne (brouillon uniquement)",
+        "tags": ["Factures de loyer"]
+      }
+    },
+    "/v1/invoices/{id}/lines/{lineId}": {
+      "delete": {
+        "operationId": "InvoicesController_removeLine",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lineId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retirer une ligne (brouillon uniquement)",
+        "tags": ["Factures de loyer"]
+      }
+    },
+    "/v1/invoices/{id}/issue": {
+      "post": {
+        "description": "Attribue le numéro LOY-{YYYYMM}-{seq} et envoie l’avis d’échéance si activé.",
+        "operationId": "InvoicesController_issue",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Émettre une facture brouillon",
+        "tags": ["Factures de loyer"]
+      }
+    },
+    "/v1/invoices/{id}/cancel": {
+      "post": {
+        "operationId": "InvoicesController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelInvoiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BILLING.INVOICE_HAS_PAYMENTS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Annuler une facture (motif obligatoire)",
+        "tags": ["Factures de loyer"]
+      }
+    },
+    "/v1/billing/runs": {
+      "post": {
+        "description": "Même logique que le cron quotidien, pour l’organisation courante. `periodStart` cible une période précise, `dryRun` compte sans rien écrire. Rapport conservé 7 jours.",
+        "operationId": "BillingController_startRun",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartBillingRunDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingRunAcceptedDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lancer une campagne de facturation",
+        "tags": ["Facturation"]
+      }
+    },
+    "/v1/billing/runs/{runId}": {
+      "get": {
+        "operationId": "BillingController_getRun",
+        "parameters": [
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingRunDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "BILLING.RUN_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rapport d’une campagne de facturation",
+        "tags": ["Facturation"]
+      }
+    },
+    "/v1/billing/dashboard": {
+      "get": {
+        "operationId": "BillingController_getDashboard",
+        "parameters": [
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-09",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingDashboardDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tableau de bord mensuel d’encaissement",
+        "tags": ["Facturation"]
+      }
+    },
+    "/v1/penalty-rules": {
+      "get": {
+        "operationId": "BillingController_listPenaltyRules",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PenaltyRuleListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Règles de pénalité de retard",
+        "tags": ["Facturation"]
+      },
+      "post": {
+        "operationId": "BillingController_createPenaltyRule",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PenaltyRuleInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PenaltyRuleDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "BILLING.PENALTY_RULE_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer une règle de pénalité",
+        "tags": ["Facturation"]
+      }
+    },
+    "/v1/penalty-rules/{id}": {
+      "patch": {
+        "operationId": "BillingController_updatePenaltyRule",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePenaltyRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PenaltyRuleDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier une règle de pénalité",
+        "tags": ["Facturation"]
+      }
+    },
+    "/v1/payments": {
+      "post": {
+        "description": "CASH et saisie confirmée par un MANAGER / ACCOUNTANT : CONFIRMED ; sinon PENDING_VERIFICATION. Un `clientRef` ou un `Idempotency-Key` déjà vus rendent le paiement initial en 200.",
+        "operationId": "PaymentsController_create",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Rejoue la réponse initiale.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rejeu idempotent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDetailDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PAYMENTS.OVER_ALLOCATED, PAYMENTS.INVOICE_NOT_OPEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enregistrer un paiement",
+        "tags": ["Paiements"]
+      },
+      "get": {
+        "operationId": "PaymentsController_list",
+        "parameters": [
+          {
+            "name": "method",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "PENDING_VERIFICATION",
+                "CONFIRMED",
+                "REJECTED",
+                "CANCELLED",
+                "REVERSED"
+              ]
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "leaseId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les paiements",
+        "tags": ["Paiements"]
+      }
+    },
+    "/v1/payments/{id}": {
+      "get": {
+        "operationId": "PaymentsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PAYMENTS.NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d’un paiement (COLLECTOR : ses propres encaissements)",
+        "tags": ["Paiements"]
+      }
+    },
+    "/v1/payments/{id}/allocations": {
+      "post": {
+        "operationId": "PaymentsController_allocate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddAllocationsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PAYMENTS.OVER_ALLOCATED, PAYMENTS.INVOICE_NOT_OPEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Imputer un paiement confirmé sur des factures",
+        "tags": ["Paiements"]
+      }
+    },
+    "/v1/payments/{id}/confirm": {
+      "post": {
+        "operationId": "PaymentsController_confirm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirmer un paiement en attente de vérification",
+        "tags": ["Paiements"]
+      }
+    },
+    "/v1/payments/{id}/reject": {
+      "post": {
+        "operationId": "PaymentsController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rejeter un paiement en attente (motif obligatoire)",
+        "tags": ["Paiements"]
+      }
+    },
+    "/v1/payments/{id}/reverse": {
+      "post": {
+        "description": "Le paiement d’origine reste intact ; une écriture miroir REVERSED (REV-{YYYYMM}-{seq}) neutralise ses imputations, rembourse l’avoir inutilisé et annule quittances et reçus liés.",
+        "operationId": "PaymentsController_reverse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalResultDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PAYMENTS.ALREADY_REVERSED, PAYMENTS.CREDIT_ALREADY_USED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Contre-passer un paiement",
+        "tags": ["Paiements"]
+      }
+    },
+    "/v1/tenants/{id}/credits": {
+      "get": {
+        "operationId": "TenantCreditsController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantCreditListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Avoirs du locataire et solde disponible",
+        "tags": ["Avoirs et relevé locataire"]
+      }
+    },
+    "/v1/tenants/{id}/credits/{creditId}/apply": {
+      "post": {
+        "description": "Aucun nouveau paiement : deux imputations sont écrites sur le paiement source (contre-imputation de l’avoir, imputation de la facture).",
+        "operationId": "TenantCreditsController_apply",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "creditId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyCreditDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyCreditResultDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PAYMENTS.CREDIT_NOT_APPLICABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Imputer un avoir sur une facture",
+        "tags": ["Avoirs et relevé locataire"]
+      }
+    },
+    "/v1/tenants/{id}/statement": {
+      "get": {
+        "operationId": "TenantCreditsController_statement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantStatementDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Relevé de compte du locataire",
+        "tags": ["Avoirs et relevé locataire"]
+      }
+    },
+    "/v1/cash-receipts": {
+      "post": {
+        "description": "Une transaction : paiement CASH CONFIRMED, imputations, reçu CASH-{org}-{collector}-{seq} et signature (sha256). Au comptoir, le MANAGER est le collecteur. Idempotence par `clientRef`.",
+        "operationId": "CashReceiptsController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashReceiptInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rejeu idempotent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashReceiptDetailDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashReceiptDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CASH.SIGNATURE_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Encaisser des espèces",
+        "tags": ["Reçus de caisse"]
+      },
+      "get": {
+        "operationId": "CashReceiptsController_list",
+        "parameters": [
+          {
+            "name": "collectorUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["DRAFT", "ISSUED", "REMITTED", "CANCELLED"]
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashReceiptPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les reçus de caisse (COLLECTOR : les siens)",
+        "tags": ["Reçus de caisse"]
+      }
+    },
+    "/v1/cash-receipts/{id}/pdf": {
+      "get": {
+        "operationId": "CashReceiptsController_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdfLinkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "URL signée (10 min) du PDF du reçu de caisse",
+        "tags": ["Reçus de caisse"]
+      }
+    },
+    "/v1/cash-receipts/{id}/send": {
+      "post": {
+        "operationId": "CashReceiptsController_send",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationAcceptedDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Envoyer le reçu au locataire (COLLECTOR auteur, MANAGER)",
+        "tags": ["Reçus de caisse"]
+      }
+    },
+    "/v1/cash-receipts/{id}": {
+      "get": {
+        "operationId": "CashReceiptsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashReceiptDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "CASH.RECEIPT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d’un reçu de caisse",
+        "tags": ["Reçus de caisse"]
+      }
+    },
+    "/v1/cash/collectors": {
+      "get": {
+        "operationId": "CashRemittancesController_collectors",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectorBalanceListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Encours d’espèces de chaque démarcheur",
+        "tags": ["Caisse des démarcheurs"]
+      }
+    },
+    "/v1/cash/collectors/{userId}/balance": {
+      "get": {
+        "operationId": "CashRemittancesController_balance",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectorBalanceDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Encours d’un démarcheur (COLLECTOR : le sien)",
+        "tags": ["Caisse des démarcheurs"]
+      }
+    },
+    "/v1/cash-remittances": {
+      "post": {
+        "operationId": "CashRemittancesController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemittanceInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemittanceDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CASH.REMITTANCE_ALREADY_OPEN, CASH.RECEIPT_ALREADY_REMITTED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Déclarer une remise d’espèces (SUBMITTED, ou OPEN si `submit: false`)",
+        "tags": ["Caisse des démarcheurs"]
+      },
+      "get": {
+        "operationId": "CashRemittancesController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["OPEN", "SUBMITTED", "VERIFIED", "DEPOSITED", "REJECTED", "CANCELLED"]
+            }
+          },
+          {
+            "name": "collectorUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemittancePageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les remises (COLLECTOR : les siennes)",
+        "tags": ["Caisse des démarcheurs"]
+      }
+    },
+    "/v1/cash-remittances/{id}": {
+      "get": {
+        "operationId": "CashRemittancesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemittanceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d’une remise, reçu par reçu",
+        "tags": ["Caisse des démarcheurs"]
+      }
+    },
+    "/v1/cash-remittances/{id}/submit": {
+      "post": {
+        "operationId": "CashRemittancesController_submit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemittanceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Soumettre une remise en brouillon",
+        "tags": ["Caisse des démarcheurs"]
+      }
+    },
+    "/v1/cash-remittances/{id}/verify": {
+      "post": {
+        "description": "VERIFIED même avec écart : `varianceAmount = counted − expected`, audité avec contrôleur et démarcheur.",
+        "operationId": "CashRemittancesController_verify",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemittanceVerifyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemittanceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Contrôler une remise",
+        "tags": ["Caisse des démarcheurs"]
+      }
+    },
+    "/v1/cash-remittances/{id}/reject": {
+      "post": {
+        "operationId": "CashRemittancesController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemittanceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rejeter une remise : ses reçus redeviennent disponibles",
+        "tags": ["Caisse des démarcheurs"]
+      }
+    },
+    "/v1/cash-remittances/{id}/deposit": {
+      "post": {
+        "operationId": "CashRemittancesController_deposit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemittanceDepositDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemittanceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Déposer en banque une remise contrôlée",
+        "tags": ["Caisse des démarcheurs"]
+      }
+    },
+    "/v1/receipts": {
+      "get": {
+        "operationId": "ReceiptsController_list",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "leaseId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-09",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["DRAFT", "GENERATING", "ISSUED", "SENT", "CANCELLED"]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les quittances",
+        "tags": ["Quittances"]
+      }
+    },
+    "/v1/receipts/{id}": {
+      "get": {
+        "operationId": "ReceiptsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RECEIPTS.NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d’une quittance et journal de ses envois",
+        "tags": ["Quittances"]
+      }
+    },
+    "/v1/receipts/{id}/pdf": {
+      "get": {
+        "operationId": "ReceiptsController_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdfLinkDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RECEIPTS.PDF_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "URL signée (10 min) du PDF de la quittance",
+        "tags": ["Quittances"]
+      }
+    },
+    "/v1/receipts/{id}/send": {
+      "post": {
+        "operationId": "ReceiptsController_send",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationAcceptedDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "RECEIPTS.NOT_SENDABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "(Ré)envoyer la quittance par WhatsApp ou SMS",
+        "tags": ["Quittances"]
+      }
+    },
+    "/v1/public/receipts/verify/{token}": {
+      "get": {
+        "description": "Sans authentification, limité en débit. Aucun téléphone ni adresse : le nom du locataire seulement.",
+        "operationId": "PublicReceiptsController_verify",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptVerificationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Jeton inconnu ou altéré.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "IAM.RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Vérifier l’authenticité d’une quittance (QR code)",
+        "tags": ["Vérification publique"]
+      }
+    },
     "/v1/health": {
       "get": {
         "description": "Vérifie la base PostgreSQL, Redis et le stockage objet. Répond toujours 200 : le champ `status` vaut `degraded` si une dépendance est en panne, ce qui permet aux sondes de distinguer « API morte » de « dépendance morte ».",
@@ -4784,6 +7733,310 @@
       }
     },
     "schemas": {
+      "NotificationTemplateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "RECEIPT_ISSUED"
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"]
+          },
+          "locale": {
+            "type": "string",
+            "example": "fr-CG"
+          },
+          "name": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string"
+          },
+          "providerTemplateName": {
+            "type": "string",
+            "nullable": true,
+            "example": "receipt_ready_fr"
+          },
+          "providerTemplateLang": {
+            "type": "string",
+            "nullable": true,
+            "example": "fr"
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "channel",
+          "locale",
+          "name",
+          "subject",
+          "body",
+          "providerTemplateName",
+          "providerTemplateLang",
+          "variables",
+          "isActive",
+          "isSystem",
+          "approvedAt"
+        ]
+      },
+      "NotificationTemplateListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationTemplateDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "UpdateNotificationTemplateDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "providerTemplateName": {
+            "type": "string",
+            "nullable": true
+          },
+          "providerTemplateLang": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TestTemplateDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "+242066000001"
+          }
+        },
+        "required": ["phone"]
+      },
+      "NotificationAcceptedDto": {
+        "type": "object",
+        "properties": {
+          "notificationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["notificationId"]
+      },
+      "MessageLogDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notificationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["QUEUED", "SENT", "DELIVERED", "READ", "FAILED", "REJECTED", "EXPIRED"]
+          },
+          "provider": {
+            "type": "string",
+            "example": "meta-whatsapp"
+          },
+          "providerMessageId": {
+            "type": "string",
+            "nullable": true
+          },
+          "toAddress": {
+            "type": "string",
+            "example": "+242066200001"
+          },
+          "templateCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentPreview": {
+            "type": "string",
+            "nullable": true
+          },
+          "costAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "queuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deliveredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "failedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "relatedEntityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "relatedEntityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "notificationId",
+          "channel",
+          "status",
+          "provider",
+          "providerMessageId",
+          "toAddress",
+          "templateCode",
+          "contentPreview",
+          "costAmount",
+          "queuedAt",
+          "sentAt",
+          "deliveredAt",
+          "readAt",
+          "failedAt",
+          "errorCode",
+          "errorMessage",
+          "relatedEntityType",
+          "relatedEntityId"
+        ]
+      },
+      "PageInfoDto": {
+        "type": "object",
+        "properties": {
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": ["nextCursor", "hasNextPage", "limit"]
+      },
+      "MessageLogPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MessageLogDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "IAM.OTP_INVALID",
+            "description": "Code stable `DOMAINE.RAISON`."
+          },
+          "message": {
+            "type": "string",
+            "example": "Code incorrect.",
+            "description": "Message en français (fr-CG)."
+          },
+          "details": {
+            "type": "object",
+            "example": {
+              "remainingAttempts": 3
+            }
+          }
+        },
+        "required": ["code", "message", "details"]
+      },
+      "WebhookAckDto": {
+        "type": "object",
+        "properties": {
+          "received": {
+            "type": "boolean",
+            "example": true
+          },
+          "duplicate": {
+            "type": "boolean",
+            "description": "Évènement déjà reçu : aucun retraitement."
+          }
+        },
+        "required": ["received", "duplicate"]
+      },
       "OtpRequestDto": {
         "type": "object",
         "properties": {
@@ -4821,28 +8074,6 @@
           }
         },
         "required": ["requestId", "channel", "expiresInSeconds", "resendAfterSeconds"]
-      },
-      "ErrorResponseDto": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string",
-            "example": "IAM.OTP_INVALID",
-            "description": "Code stable `DOMAINE.RAISON`."
-          },
-          "message": {
-            "type": "string",
-            "example": "Code incorrect.",
-            "description": "Message en français (fr-CG)."
-          },
-          "details": {
-            "type": "object",
-            "example": {
-              "remainingAttempts": 3
-            }
-          }
-        },
-        "required": ["code", "message", "details"]
       },
       "OtpVerifyDto": {
         "type": "object",
@@ -5129,6 +8360,72 @@
           }
         }
       },
+      "BillingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "generateDaysBefore": {
+            "type": "number",
+            "example": 5,
+            "description": "Émission J-N avant l’échéance."
+          },
+          "autoIssue": {
+            "type": "boolean",
+            "example": true,
+            "description": "ISSUED directement, sinon DRAFT."
+          },
+          "defaultPenaltyRuleId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "applyPenalties": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": ["generateDaysBefore", "autoIssue", "defaultPenaltyRuleId", "applyPenalties"]
+      },
+      "CashSettingsDto": {
+        "type": "object",
+        "properties": {
+          "collectorHoldingCapAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 500000
+          },
+          "requireTenantSignature": {
+            "type": "boolean",
+            "example": true
+          },
+          "denominationsEnabled": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": ["collectorHoldingCapAmount", "requireTenantSignature", "denominationsEnabled"]
+      },
+      "MessagingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "receiptChannelOrder": {
+            "type": "array",
+            "example": ["WHATSAPP", "SMS"],
+            "items": {
+              "type": "string",
+              "enum": ["WHATSAPP", "SMS"]
+            }
+          },
+          "sendCashReceiptToTenant": {
+            "type": "boolean",
+            "example": true
+          },
+          "sendInvoiceIssued": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": ["receiptChannelOrder", "sendCashReceiptToTenant", "sendInvoiceIssued"]
+      },
       "OrganizationSettingsDto": {
         "type": "object",
         "properties": {
@@ -5160,6 +8457,15 @@
           },
           "smsEnabled": {
             "type": "boolean"
+          },
+          "billing": {
+            "$ref": "#/components/schemas/BillingSettingsDto"
+          },
+          "cash": {
+            "$ref": "#/components/schemas/CashSettingsDto"
+          },
+          "messaging": {
+            "$ref": "#/components/schemas/MessagingSettingsDto"
           }
         },
         "required": [
@@ -5169,8 +8475,66 @@
           "defaultGraceDays",
           "receiptFooterText",
           "whatsappEnabled",
-          "smsEnabled"
+          "smsEnabled",
+          "billing",
+          "cash",
+          "messaging"
         ]
+      },
+      "UpdateBillingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "generateDaysBefore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 60
+          },
+          "autoIssue": {
+            "type": "boolean"
+          },
+          "defaultPenaltyRuleId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "applyPenalties": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateCashSettingsDto": {
+        "type": "object",
+        "properties": {
+          "collectorHoldingCapAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "requireTenantSignature": {
+            "type": "boolean"
+          },
+          "denominationsEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateMessagingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "receiptChannelOrder": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["WHATSAPP", "SMS"]
+            }
+          },
+          "sendCashReceiptToTenant": {
+            "type": "boolean"
+          },
+          "sendInvoiceIssued": {
+            "type": "boolean"
+          }
+        }
       },
       "UpdateOrganizationSettingsDto": {
         "type": "object",
@@ -5198,6 +8562,15 @@
           },
           "smsEnabled": {
             "type": "boolean"
+          },
+          "billing": {
+            "$ref": "#/components/schemas/UpdateBillingSettingsDto"
+          },
+          "cash": {
+            "$ref": "#/components/schemas/UpdateCashSettingsDto"
+          },
+          "messaging": {
+            "$ref": "#/components/schemas/UpdateMessagingSettingsDto"
           }
         }
       },
@@ -5645,22 +9018,6 @@
           "updatedAt",
           "deletedAt"
         ]
-      },
-      "PageInfoDto": {
-        "type": "object",
-        "properties": {
-          "nextCursor": {
-            "type": "string",
-            "nullable": true
-          },
-          "hasNextPage": {
-            "type": "boolean"
-          },
-          "limit": {
-            "type": "number"
-          }
-        },
-        "required": ["nextCursor", "hasNextPage", "limit"]
       },
       "LandlordPageDto": {
         "type": "object",
@@ -10133,6 +13490,2589 @@
             "type": "string"
           }
         }
+      },
+      "InvoiceLeaseRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true,
+            "example": "BAIL-2026-00001"
+          }
+        },
+        "required": ["id", "reference"]
+      },
+      "InvoiceTenantRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Bernadette Loemba"
+          },
+          "primaryPhone": {
+            "type": "string",
+            "example": "+242066200001"
+          }
+        },
+        "required": ["id", "displayName", "primaryPhone"]
+      },
+      "InvoiceUnitRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "A1"
+          }
+        },
+        "required": ["id", "code"]
+      },
+      "InvoicePropertyRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Résidence Mpila"
+          }
+        },
+        "required": ["id", "name"]
+      },
+      "InvoiceSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "LOY-202609-00001"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"]
+          },
+          "lease": {
+            "$ref": "#/components/schemas/InvoiceLeaseRefDto"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/InvoiceTenantRefDto"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/InvoiceUnitRefDto"
+          },
+          "property": {
+            "$ref": "#/components/schemas/InvoicePropertyRefDto"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "graceUntilDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "paidAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "balanceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          }
+        },
+        "required": [
+          "id",
+          "invoiceNumber",
+          "status",
+          "lease",
+          "tenant",
+          "unit",
+          "property",
+          "periodStart",
+          "periodEnd",
+          "dueDate",
+          "graceUntilDate",
+          "totalAmount",
+          "paidAmount",
+          "balanceAmount"
+        ]
+      },
+      "InvoicePageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceSummaryDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "InvoiceLineDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lineType": {
+            "type": "string",
+            "enum": [
+              "RENT",
+              "WATER_CHARGE",
+              "ELECTRICITY_CHARGE",
+              "SERVICE_CHARGE",
+              "PENALTY",
+              "DEPOSIT",
+              "AGENCY_FEE",
+              "REPAIR_REBILL",
+              "DISCOUNT",
+              "OTHER"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "example": 1
+          },
+          "unitPriceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "vatRateBps": {
+            "type": "number"
+          },
+          "vatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "isCredit": {
+            "type": "boolean"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "position": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "invoiceId",
+          "lineType",
+          "label",
+          "description",
+          "quantity",
+          "unitPriceAmount",
+          "amount",
+          "vatRateBps",
+          "vatAmount",
+          "isCredit",
+          "periodStart",
+          "periodEnd",
+          "position"
+        ]
+      },
+      "AllocationViewDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentReference": {
+            "type": "string",
+            "example": "PAY-202609-00001"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "allocationDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "isReversal": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "paymentId",
+          "paymentReference",
+          "method",
+          "amount",
+          "allocationDate",
+          "isReversal"
+        ]
+      },
+      "NamedTenantRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Bernadette Loemba"
+          }
+        },
+        "required": ["id", "displayName"]
+      },
+      "ReceiptSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receiptNumber": {
+            "type": "string",
+            "example": "QUI-202609-00001"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "GENERATING", "ISSUED", "SENT", "CANCELLED"]
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/NamedTenantRefDto"
+          },
+          "paymentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sentChannel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "receiptNumber",
+          "status",
+          "issueDate",
+          "periodStart",
+          "periodEnd",
+          "totalAmount",
+          "tenant",
+          "paymentId",
+          "invoiceId",
+          "sentAt",
+          "sentChannel"
+        ]
+      },
+      "InvoiceDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "LOY-202609-00001"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"]
+          },
+          "lease": {
+            "$ref": "#/components/schemas/InvoiceLeaseRefDto"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/InvoiceTenantRefDto"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/InvoiceUnitRefDto"
+          },
+          "property": {
+            "$ref": "#/components/schemas/InvoicePropertyRefDto"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "graceUntilDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "paidAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "balanceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "rentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "chargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "penaltyAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "otherAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "discountAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancellationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineDto"
+            }
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllocationViewDto"
+            }
+          },
+          "receipt": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReceiptSummaryDto"
+              }
+            ]
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "invoiceNumber",
+          "status",
+          "lease",
+          "tenant",
+          "unit",
+          "property",
+          "periodStart",
+          "periodEnd",
+          "dueDate",
+          "graceUntilDate",
+          "totalAmount",
+          "paidAmount",
+          "balanceAmount",
+          "rentAmount",
+          "chargesAmount",
+          "penaltyAmount",
+          "otherAmount",
+          "discountAmount",
+          "issueDate",
+          "issuedAt",
+          "paidAt",
+          "cancelledAt",
+          "cancellationReason",
+          "lines",
+          "allocations",
+          "receipt",
+          "documentId",
+          "notes"
+        ]
+      },
+      "PdfLinkDto": {
+        "type": "object",
+        "properties": {
+          "downloadUrl": {
+            "type": "string",
+            "description": "URL signée, valable 10 minutes."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["downloadUrl", "expiresAt"]
+      },
+      "InvoiceLineInputDto": {
+        "type": "object",
+        "properties": {
+          "lineType": {
+            "type": "string",
+            "enum": [
+              "RENT",
+              "WATER_CHARGE",
+              "ELECTRICITY_CHARGE",
+              "SERVICE_CHARGE",
+              "PENALTY",
+              "DEPOSIT",
+              "AGENCY_FEE",
+              "REPAIR_REBILL",
+              "DISCOUNT",
+              "OTHER"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "example": "Loyer septembre 2026"
+          },
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "example": 1,
+            "minimum": 0,
+            "description": "Trois décimales au plus."
+          },
+          "unitPriceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 85000
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 85000,
+            "description": "Défaut : quantité × prix unitaire, arrondi."
+          },
+          "vatRateBps": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "isCredit": {
+            "type": "boolean",
+            "default": false
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": ["lineType", "label", "unitPriceAmount"]
+      },
+      "CreateInvoiceDto": {
+        "type": "object",
+        "properties": {
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-01"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-31"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Défaut : jour d’échéance du bail."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineInputDto"
+            }
+          },
+          "notes": {
+            "type": "string"
+          },
+          "issue": {
+            "type": "boolean",
+            "default": false,
+            "description": "Émettre immédiatement (numéro attribué)."
+          }
+        },
+        "required": ["leaseId", "periodStart", "periodEnd", "lines"]
+      },
+      "CancelInvoiceDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Facture émise sur le mauvais bail"
+          }
+        },
+        "required": ["reason"]
+      },
+      "StartBillingRunDto": {
+        "type": "object",
+        "properties": {
+          "periodStart": {
+            "type": "string",
+            "format": "date",
+            "description": "Période ciblée (sinon : règle J-N)."
+          },
+          "dryRun": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "BillingRunAcceptedDto": {
+        "type": "object",
+        "properties": {
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["runId"]
+      },
+      "BillingRunErrorDto": {
+        "type": "object",
+        "properties": {
+          "leaseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["leaseId", "reason"]
+      },
+      "BillingRunDto": {
+        "type": "object",
+        "properties": {
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["RUNNING", "DONE", "FAILED"]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created": {
+            "type": "number"
+          },
+          "skipped": {
+            "type": "number"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BillingRunErrorDto"
+            }
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          }
+        },
+        "required": [
+          "runId",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "created",
+          "skipped",
+          "errors",
+          "dryRun",
+          "periodStart"
+        ]
+      },
+      "DashboardPropertyDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "collected": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "outstanding": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          }
+        },
+        "required": ["propertyId", "name", "expected", "collected", "outstanding"]
+      },
+      "BillingDashboardDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "example": "2026-09"
+          },
+          "expectedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "collectedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "outstandingAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "overdueAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "invoicesCount": {
+            "type": "number"
+          },
+          "paidCount": {
+            "type": "number"
+          },
+          "byProperty": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardPropertyDto"
+            }
+          },
+          "byMethod": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "example": {
+              "CASH": 160000,
+              "MOBILE_MONEY": 0,
+              "BANK_TRANSFER": 0,
+              "BANK_CHECK": 0
+            }
+          }
+        },
+        "required": [
+          "period",
+          "expectedAmount",
+          "collectedAmount",
+          "outstandingAmount",
+          "overdueAmount",
+          "invoicesCount",
+          "paidCount",
+          "byProperty",
+          "byMethod"
+        ]
+      },
+      "PenaltyRuleDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string",
+            "enum": ["RATE_BPS_PER_DAY", "RATE_BPS_PER_MONTH", "FLAT_AMOUNT", "FLAT_AMOUNT_PER_DAY"]
+          },
+          "rateBps": {
+            "type": "number",
+            "nullable": true
+          },
+          "flatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000,
+            "nullable": true
+          },
+          "graceDays": {
+            "type": "number"
+          },
+          "capAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000,
+            "nullable": true
+          },
+          "capRateBps": {
+            "type": "number",
+            "nullable": true
+          },
+          "maxPeriods": {
+            "type": "number",
+            "nullable": true
+          },
+          "appliesToCharges": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "basis",
+          "rateBps",
+          "flatAmount",
+          "graceDays",
+          "capAmount",
+          "capRateBps",
+          "maxPeriods",
+          "appliesToCharges",
+          "isActive",
+          "isDefault",
+          "createdAt"
+        ]
+      },
+      "PenaltyRuleListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PenaltyRuleDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "PenaltyRuleInputDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Retard standard 5 % par mois"
+          },
+          "basis": {
+            "type": "string",
+            "enum": ["RATE_BPS_PER_DAY", "RATE_BPS_PER_MONTH", "FLAT_AMOUNT", "FLAT_AMOUNT_PER_DAY"]
+          },
+          "rateBps": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000,
+            "example": 500
+          },
+          "flatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 85000
+          },
+          "graceDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 60,
+            "default": 5
+          },
+          "capAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 85000
+          },
+          "capRateBps": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "maxPeriods": {
+            "type": "number",
+            "minimum": 0
+          },
+          "appliesToCharges": {
+            "type": "boolean",
+            "default": false
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "isDefault": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": ["name", "basis"]
+      },
+      "UpdatePenaltyRuleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Retard standard 5 % par mois"
+          },
+          "basis": {
+            "type": "string",
+            "enum": ["RATE_BPS_PER_DAY", "RATE_BPS_PER_MONTH", "FLAT_AMOUNT", "FLAT_AMOUNT_PER_DAY"]
+          },
+          "rateBps": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000,
+            "example": 500
+          },
+          "flatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 85000
+          },
+          "graceDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 60,
+            "default": 5
+          },
+          "capAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 85000
+          },
+          "capRateBps": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "maxPeriods": {
+            "type": "number",
+            "minimum": 0
+          },
+          "appliesToCharges": {
+            "type": "boolean",
+            "default": false
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "isDefault": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "AllocationInputDto": {
+        "type": "object",
+        "properties": {
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 100000
+          }
+        },
+        "required": ["invoiceId", "amount"]
+      },
+      "PaymentInputDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 100000
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "valueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "externalReference": {
+            "type": "string",
+            "example": "MP260911.1234.A56789"
+          },
+          "bankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "feeAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "feeBearer": {
+            "type": "string",
+            "enum": ["TENANT", "ORGANIZATION", "LANDLORD", "SHARED"]
+          },
+          "autoAllocate": {
+            "type": "boolean",
+            "description": "Imputation « plus ancienne facture d’abord »."
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllocationInputDto"
+            }
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "MANAGER / ACCOUNTANT : confirmer immédiatement."
+          },
+          "clientRef": {
+            "type": "string",
+            "description": "ULID généré par l’appareil : clé d’idempotence."
+          },
+          "notes": {
+            "type": "string"
+          },
+          "collectionLatitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "collectionLongitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          }
+        },
+        "required": ["method", "amount", "tenantId"]
+      },
+      "PaymentAllocationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantCreditId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "isReversal": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "invoiceId", "invoiceNumber", "tenantCreditId", "amount", "isReversal"]
+      },
+      "CashReceiptSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receiptNumber": {
+            "type": "string",
+            "example": "CASH-AMI-3F9A1C-000012"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "ISSUED", "REMITTED", "CANCELLED"]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/NamedTenantRefDto"
+          },
+          "collectorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "collectorName": {
+            "type": "string",
+            "example": "Alphonse Ngoma"
+          },
+          "remittanceId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "paymentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "receiptNumber",
+          "status",
+          "amount",
+          "receivedAt",
+          "tenant",
+          "collectorUserId",
+          "collectorName",
+          "remittanceId",
+          "paymentId"
+        ]
+      },
+      "PaymentDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "example": "PAY-202609-00001"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PENDING_VERIFICATION",
+              "CONFIRMED",
+              "REJECTED",
+              "CANCELLED",
+              "REVERSED"
+            ]
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["INBOUND", "OUTBOUND"]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "allocatedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "unallocatedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "paymentDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "tenant": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NamedTenantRefDto"
+              }
+            ]
+          },
+          "lease": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InvoiceLeaseRefDto"
+              }
+            ]
+          },
+          "receivedByUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reversalOfId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "externalReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "feeAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "netAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "rejectedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "reversedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reversalReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentAllocationDto"
+            }
+          },
+          "cashReceipt": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CashReceiptSummaryDto"
+              }
+            ]
+          },
+          "receipts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptSummaryDto"
+            }
+          },
+          "clientRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "method",
+          "status",
+          "direction",
+          "amount",
+          "allocatedAmount",
+          "unallocatedAmount",
+          "paymentDate",
+          "tenant",
+          "lease",
+          "receivedByUserId",
+          "reversalOfId",
+          "externalReference",
+          "feeAmount",
+          "netAmount",
+          "confirmedAt",
+          "rejectedAt",
+          "rejectionReason",
+          "reversedAt",
+          "reversalReason",
+          "allocations",
+          "cashReceipt",
+          "receipts",
+          "clientRef",
+          "notes",
+          "createdAt"
+        ]
+      },
+      "PaymentSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "example": "PAY-202609-00001"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PENDING_VERIFICATION",
+              "CONFIRMED",
+              "REJECTED",
+              "CANCELLED",
+              "REVERSED"
+            ]
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["INBOUND", "OUTBOUND"]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "allocatedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "unallocatedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "paymentDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "tenant": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NamedTenantRefDto"
+              }
+            ]
+          },
+          "lease": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InvoiceLeaseRefDto"
+              }
+            ]
+          },
+          "receivedByUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reversalOfId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "method",
+          "status",
+          "direction",
+          "amount",
+          "allocatedAmount",
+          "unallocatedAmount",
+          "paymentDate",
+          "tenant",
+          "lease",
+          "receivedByUserId",
+          "reversalOfId"
+        ]
+      },
+      "PaymentPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentSummaryDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "AddAllocationsDto": {
+        "type": "object",
+        "properties": {
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllocationInputDto"
+            }
+          }
+        },
+        "required": ["allocations"]
+      },
+      "ConfirmPaymentDto": {
+        "type": "object",
+        "properties": {
+          "valueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "ReasonDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Erreur de locataire"
+          }
+        },
+        "required": ["reason"]
+      },
+      "ReversalResultDto": {
+        "type": "object",
+        "properties": {
+          "original": {
+            "$ref": "#/components/schemas/PaymentDetailDto"
+          },
+          "reversal": {
+            "$ref": "#/components/schemas/PaymentDetailDto"
+          }
+        },
+        "required": ["original", "reversal"]
+      },
+      "TenantCreditDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": ["OPEN", "PARTIALLY_USED", "USED", "REFUNDED", "EXPIRED"]
+          },
+          "origin": {
+            "type": "string",
+            "example": "OVERPAYMENT"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "usedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "remainingAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "sourcePaymentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sourceInvoiceId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "leaseId",
+          "status",
+          "origin",
+          "amount",
+          "usedAmount",
+          "remainingAmount",
+          "sourcePaymentId",
+          "sourceInvoiceId",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "TenantCreditListDto": {
+        "type": "object",
+        "properties": {
+          "remainingAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantCreditDto"
+            }
+          }
+        },
+        "required": ["remainingAmount", "items"]
+      },
+      "ApplyCreditDto": {
+        "type": "object",
+        "properties": {
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 100000,
+            "description": "Défaut : le minimum du reste de l’avoir et du reste dû."
+          }
+        },
+        "required": ["invoiceId"]
+      },
+      "ApplyCreditResultDto": {
+        "type": "object",
+        "properties": {
+          "credit": {
+            "$ref": "#/components/schemas/TenantCreditDto"
+          },
+          "invoice": {
+            "$ref": "#/components/schemas/InvoiceDetailDto"
+          }
+        },
+        "required": ["credit", "invoice"]
+      },
+      "StatementLineDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["INVOICE", "PAYMENT", "REVERSAL", "CREDIT"]
+          },
+          "reference": {
+            "type": "string"
+          },
+          "debit": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "credit": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "balance": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          }
+        },
+        "required": ["date", "type", "reference", "debit", "credit", "balance"]
+      },
+      "TenantStatementDto": {
+        "type": "object",
+        "properties": {
+          "openingBalance": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementLineDto"
+            }
+          },
+          "closingBalance": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          }
+        },
+        "required": ["openingBalance", "lines", "closingBalance"]
+      },
+      "CashReceiptInputDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000,
+            "minimum": 1
+          },
+          "payerName": {
+            "type": "string",
+            "example": "Bernadette Loemba"
+          },
+          "payerPhone": {
+            "type": "string",
+            "example": "+242066200001"
+          },
+          "purpose": {
+            "type": "string",
+            "example": "Loyer de septembre"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "autoAllocate": {
+            "type": "boolean",
+            "default": true
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllocationInputDto"
+            }
+          },
+          "signatureDataUrl": {
+            "type": "string",
+            "description": "Signature du locataire : `data:image/png;base64,...`, 512 Ko au plus."
+          },
+          "paperReceiptDocumentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Photo du reçu papier signé (si la signature n’est pas exigée)."
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "clientRef": {
+            "type": "string",
+            "description": "ULID de l’appareil : clé d’idempotence obligatoire."
+          }
+        },
+        "required": ["tenantId", "amount", "clientRef"]
+      },
+      "CashReceiptAllocationDto": {
+        "type": "object",
+        "properties": {
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          }
+        },
+        "required": ["invoiceId", "invoiceNumber", "amount"]
+      },
+      "CashReceiptDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receiptNumber": {
+            "type": "string",
+            "example": "CASH-AMI-3F9A1C-000012"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "ISSUED", "REMITTED", "CANCELLED"]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/NamedTenantRefDto"
+          },
+          "collectorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "collectorName": {
+            "type": "string",
+            "example": "Alphonse Ngoma"
+          },
+          "remittanceId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "paymentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "payerName": {
+            "type": "string"
+          },
+          "payerPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "purpose": {
+            "type": "string",
+            "nullable": true
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "signatureDocumentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "signatureHash": {
+            "type": "string",
+            "nullable": true,
+            "description": "SHA-256 hexadécimal de la signature."
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashReceiptAllocationDto"
+            }
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancellationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientRef": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "receiptNumber",
+          "status",
+          "amount",
+          "receivedAt",
+          "tenant",
+          "collectorUserId",
+          "collectorName",
+          "remittanceId",
+          "paymentId",
+          "payerName",
+          "payerPhone",
+          "purpose",
+          "leaseId",
+          "signatureDocumentId",
+          "signatureHash",
+          "documentId",
+          "allocations",
+          "cancelledAt",
+          "cancellationReason",
+          "clientRef"
+        ]
+      },
+      "CashReceiptPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashReceiptSummaryDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "SendDocumentDto": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS"],
+            "description": "Défaut : ordre des canaux de l’organisation."
+          }
+        }
+      },
+      "CollectorBalanceDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string",
+            "example": "Alphonse Ngoma"
+          },
+          "heldAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "receiptsCount": {
+            "type": "number"
+          },
+          "oldestReceiptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "capAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "overCap": {
+            "type": "boolean"
+          },
+          "lastRemittanceAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "userId",
+          "fullName",
+          "heldAmount",
+          "receiptsCount",
+          "oldestReceiptAt",
+          "capAmount",
+          "overCap",
+          "lastRemittanceAt"
+        ]
+      },
+      "CollectorBalanceListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CollectorBalanceDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "RemittanceInputDto": {
+        "type": "object",
+        "properties": {
+          "cashReceiptIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "declaredAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000,
+            "minimum": 0
+          },
+          "denominations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "example": {
+              "5000": 10,
+              "10000": 70
+            }
+          },
+          "submit": {
+            "type": "boolean",
+            "default": true,
+            "description": "`false` : brouillon OPEN."
+          },
+          "notes": {
+            "type": "string"
+          },
+          "clientRef": {
+            "type": "string"
+          }
+        },
+        "required": ["cashReceiptIds", "declaredAmount"]
+      },
+      "RemittanceItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cashReceiptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receiptNumber": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "varianceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "varianceReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "cashReceiptId",
+          "receiptNumber",
+          "amount",
+          "isVerified",
+          "varianceAmount",
+          "varianceReason"
+        ]
+      },
+      "RemittanceDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "example": "REM-202609-00001"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["OPEN", "SUBMITTED", "VERIFIED", "DEPOSITED", "REJECTED", "CANCELLED"]
+          },
+          "collectorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "collectorName": {
+            "type": "string"
+          },
+          "declaredAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "expectedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "countedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "varianceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000,
+            "description": "Compté − attendu : négatif = manquant."
+          },
+          "receiptsCount": {
+            "type": "number"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RemittanceItemDto"
+            }
+          },
+          "denominations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "verifiedByUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "depositedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "depositBankAccountId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "collectorUserId",
+          "collectorName",
+          "declaredAmount",
+          "expectedAmount",
+          "countedAmount",
+          "varianceAmount",
+          "receiptsCount",
+          "openedAt",
+          "submittedAt",
+          "verifiedAt",
+          "items",
+          "denominations",
+          "verifiedByUserId",
+          "rejectionReason",
+          "depositedAt",
+          "depositBankAccountId",
+          "notes"
+        ]
+      },
+      "RemittanceSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "example": "REM-202609-00001"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["OPEN", "SUBMITTED", "VERIFIED", "DEPOSITED", "REJECTED", "CANCELLED"]
+          },
+          "collectorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "collectorName": {
+            "type": "string"
+          },
+          "declaredAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "expectedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "countedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "varianceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000,
+            "description": "Compté − attendu : négatif = manquant."
+          },
+          "receiptsCount": {
+            "type": "number"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "collectorUserId",
+          "collectorName",
+          "declaredAmount",
+          "expectedAmount",
+          "countedAmount",
+          "varianceAmount",
+          "receiptsCount",
+          "openedAt",
+          "submittedAt",
+          "verifiedAt"
+        ]
+      },
+      "RemittancePageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RemittanceSummaryDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "RemittanceVerifyItemDto": {
+        "type": "object",
+        "properties": {
+          "cashReceiptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "varianceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000
+          },
+          "varianceReason": {
+            "type": "string"
+          }
+        },
+        "required": ["cashReceiptId", "isVerified"]
+      },
+      "RemittanceVerifyDto": {
+        "type": "object",
+        "properties": {
+          "countedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 100000,
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RemittanceVerifyItemDto"
+            }
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": ["countedAmount"]
+      },
+      "RemittanceDepositDto": {
+        "type": "object",
+        "properties": {
+          "bankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "depositedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "depositSlipDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["bankAccountId", "depositedAt"]
+      },
+      "ReceiptPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptSummaryDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "ReceiptDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receiptNumber": {
+            "type": "string",
+            "example": "QUI-202609-00001"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "GENERATING", "ISSUED", "SENT", "CANCELLED"]
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/NamedTenantRefDto"
+          },
+          "paymentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sentChannel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
+            "nullable": true
+          },
+          "rentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "chargesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "penaltyAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "remainingBalanceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "verificationUrl": {
+            "type": "string",
+            "example": "https://app.immodesk.cg/verifier/3f9a…"
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancellationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "messageLogs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MessageLogDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "receiptNumber",
+          "status",
+          "issueDate",
+          "periodStart",
+          "periodEnd",
+          "totalAmount",
+          "tenant",
+          "paymentId",
+          "invoiceId",
+          "sentAt",
+          "sentChannel",
+          "rentAmount",
+          "chargesAmount",
+          "penaltyAmount",
+          "remainingBalanceAmount",
+          "verificationUrl",
+          "documentId",
+          "cancelledAt",
+          "cancellationReason",
+          "messageLogs"
+        ]
+      },
+      "ReceiptVerificationDto": {
+        "type": "object",
+        "properties": {
+          "receiptNumber": {
+            "type": "string",
+            "example": "QUI-202609-00001"
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "period": {
+            "type": "string",
+            "nullable": true,
+            "example": "septembre 2026"
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "tenantName": {
+            "type": "string",
+            "example": "Bernadette Loemba"
+          },
+          "landlordDisplayName": {
+            "type": "string",
+            "example": "SCI Les Manguiers"
+          },
+          "organizationName": {
+            "type": "string",
+            "example": "Agence Mpila Immo"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "GENERATING", "ISSUED", "SENT", "CANCELLED"]
+          }
+        },
+        "required": [
+          "receiptNumber",
+          "issueDate",
+          "period",
+          "totalAmount",
+          "tenantName",
+          "landlordDisplayName",
+          "organizationName",
+          "status"
+        ]
       },
       "HealthCheckDto": {
         "type": "object",

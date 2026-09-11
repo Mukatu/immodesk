@@ -6,7 +6,19 @@ import { http, HttpResponse } from 'msw';
 // spread final du tableau `handlers`, construit tout en bas de ce fichier — donc
 // après que les deux modules aient fini de s'évaluer. Sûr en pratique (testé).
 import { leaseHandlers } from './leases-handlers';
-import { seedLeasesDemoData } from './leases-seed';
+import { leases, seedLeasesDemoData } from './leases-seed';
+import { billingHandlers } from './billing-handlers';
+import { invoices as billingInvoices, seedBillingDemoData } from './billing-seed';
+import { paymentsHandlers, seedPaymentsDemoData } from './payments-handlers';
+import { cashHandlers, seedCashDemoData } from './cash-handlers';
+import { receiptsHandlers, seedReceiptsDemoData } from './receipts-handlers';
+import { receipts as demoReceipts } from './receipts-seed';
+import { messagesHandlers, seedMessagesDemoData } from './messages-handlers';
+import { penaltyRulesHandlers, seedPenaltyRulesDemoData } from './penalty-rules-handlers';
+import {
+  notificationTemplatesHandlers,
+  seedNotificationTemplatesDemoData,
+} from './notification-templates-handlers';
 import { API_BASE } from './api-base';
 
 /**
@@ -66,11 +78,72 @@ interface MockInvitation {
 }
 
 const users = new Map<string, MockUser>();
-const organizations = new Map<string, MockOrganization>();
+export const organizations = new Map<string, MockOrganization>();
 const memberships: MockMembership[] = [];
 const invitations = new Map<string, MockInvitation>();
 const accessTokens = new Map<string, string>(); // token -> userId
 const refreshTokens = new Map<string, string>(); // token -> userId
+
+interface MockOrganizationSettings {
+  defaultPaymentDueDay: number;
+  timezone: string;
+  currency: 'XAF';
+  defaultGraceDays: number;
+  receiptFooterText: string | null;
+  whatsappEnabled: boolean;
+  smsEnabled: boolean;
+  billing: {
+    generateDaysBefore: number;
+    autoIssue: boolean;
+    defaultPenaltyRuleId: string | null;
+    applyPenalties: boolean;
+  };
+  cash: {
+    collectorHoldingCapAmount: number;
+    requireTenantSignature: boolean;
+    denominationsEnabled: boolean;
+  };
+  messaging: {
+    receiptChannelOrder: ('WHATSAPP' | 'SMS')[];
+    sendCashReceiptToTenant: boolean;
+    sendInvoiceIssued: boolean;
+  };
+}
+
+const organizationSettings = new Map<string, MockOrganizationSettings>();
+
+function getOrInitSettings(organizationId: string): MockOrganizationSettings {
+  let settings = organizationSettings.get(organizationId);
+  if (!settings) {
+    settings = {
+      defaultPaymentDueDay: 5,
+      timezone: 'Africa/Brazzaville',
+      currency: 'XAF',
+      defaultGraceDays: 3,
+      receiptFooterText: null,
+      whatsappEnabled: false,
+      smsEnabled: true,
+      billing: {
+        generateDaysBefore: 5,
+        autoIssue: true,
+        defaultPenaltyRuleId: null,
+        applyPenalties: false,
+      },
+      cash: {
+        collectorHoldingCapAmount: 500_000,
+        requireTenantSignature: true,
+        denominationsEnabled: false,
+      },
+      messaging: {
+        receiptChannelOrder: ['WHATSAPP', 'SMS'],
+        sendCashReceiptToTenant: true,
+        sendInvoiceIssued: true,
+      },
+    };
+    organizationSettings.set(organizationId, settings);
+  }
+  return settings;
+}
 
 let seq = 1;
 export function nextId(prefix: string): string {
@@ -750,6 +823,36 @@ export const DEMO_ORG_ID = 'org-demo-cg';
 })();
 
 seedLeasesDemoData({ properties, units, tenants, DEMO_ORG_ID, nextId, normalizePhone });
+seedBillingDemoData({ leases: [...leases.values()], DEMO_ORG_ID, nextId });
+seedPaymentsDemoData({ invoices: billingInvoices, DEMO_ORG_ID, nextId });
+seedCashDemoData({
+  invoices: billingInvoices,
+  DEMO_ORG_ID,
+  nextId,
+  tenantName: (tenantId) => {
+    const tenant = tenants.get(tenantId);
+    return tenant ? serializeTenant(tenant).displayName : 'Locataire inconnu';
+  },
+});
+seedReceiptsDemoData({
+  invoices: billingInvoices,
+  DEMO_ORG_ID,
+  nextId,
+  landlordDisplayNameForProperty: (propertyId) => {
+    const property = properties.get(propertyId);
+    const landlord = property ? landlords.get(property.landlordId) : undefined;
+    return landlord ? landlordSummaryFor(landlord).displayName : 'Bailleur inconnu';
+  },
+  organizationName: 'Agence Immodesk Demo',
+});
+seedMessagesDemoData({
+  receipts: demoReceipts,
+  DEMO_ORG_ID,
+  nextId,
+  tenantPhone: (tenantId) => tenants.get(tenantId)?.primaryPhone ?? '+242060000000',
+});
+seedPenaltyRulesDemoData({ DEMO_ORG_ID, nextId });
+seedNotificationTemplatesDemoData({ DEMO_ORG_ID, nextId });
 
 export function notFound(code: string, message = 'Introuvable.') {
   return HttpResponse.json({ code, message }, { status: 404 });
@@ -879,18 +982,29 @@ export const handlers = [
   }),
 
   http.get(`${API_BASE}/organizations/:id/settings`, ({ params }) => {
-    if (!organizations.has(String(params.id))) {
+    const orgId = String(params.id);
+    if (!organizations.has(orgId)) {
       return HttpResponse.json({ code: 'ORG.NOT_FOUND', message: 'Introuvable.' }, { status: 404 });
     }
-    return HttpResponse.json({
-      defaultPaymentDueDay: 5,
-      timezone: 'Africa/Brazzaville',
-      currency: 'XAF',
-      defaultGraceDays: 3,
-      receiptFooterText: null,
-      whatsappEnabled: false,
-      smsEnabled: true,
-    });
+    return HttpResponse.json(getOrInitSettings(orgId));
+  }),
+
+  http.patch(`${API_BASE}/organizations/:id/settings`, async ({ params, request }) => {
+    const orgId = String(params.id);
+    if (!organizations.has(orgId)) {
+      return HttpResponse.json({ code: 'ORG.NOT_FOUND', message: 'Introuvable.' }, { status: 404 });
+    }
+    const current = getOrInitSettings(orgId);
+    const body = (await request.json()) as Partial<MockOrganizationSettings>;
+    const updated: MockOrganizationSettings = {
+      ...current,
+      ...body,
+      billing: { ...current.billing, ...(body.billing ?? {}) },
+      cash: { ...current.cash, ...(body.cash ?? {}) },
+      messaging: { ...current.messaging, ...(body.messaging ?? {}) },
+    };
+    organizationSettings.set(orgId, updated);
+    return HttpResponse.json(updated);
   }),
 
   http.get(`${API_BASE}/organizations/:id/members`, ({ params }) => {
@@ -1821,4 +1935,11 @@ export const handlers = [
   ),
 
   ...leaseHandlers,
+  ...billingHandlers,
+  ...paymentsHandlers,
+  ...cashHandlers,
+  ...receiptsHandlers,
+  ...messagesHandlers,
+  ...penaltyRulesHandlers,
+  ...notificationTemplatesHandlers,
 ];

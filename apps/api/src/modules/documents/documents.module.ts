@@ -5,6 +5,9 @@ import { DocumentsService } from './application/documents.service';
 import { OBJECT_STORAGE } from './domain/storage.port';
 import { S3ObjectStorage } from './infrastructure/s3-object-storage';
 import { DocumentsController } from './presentation/documents.controller';
+import { PublicLinksController } from './presentation/public-links.controller';
+import { SignedLinksService } from './application/signed-links.service';
+import { PublicRateLimitGuard } from '../../shared/throttler/public-rate-limit.guard';
 
 /**
  * Module `documents` : stockage objet compatible S3 (MinIO en pilote,
@@ -16,14 +19,23 @@ import { DocumentsController } from './presentation/documents.controller';
  */
 @Global()
 @Module({
-  controllers: [DocumentsController],
+  controllers: [DocumentsController, PublicLinksController],
   providers: [
     S3ObjectStorage,
     { provide: OBJECT_STORAGE, useExisting: S3ObjectStorage },
     DocumentsService,
     DocumentPurgeService,
+    SignedLinksService,
+    PublicRateLimitGuard,
     { provide: DOCUMENT_READER, useExisting: DocumentsService },
   ],
-  exports: [DocumentsService, DocumentPurgeService, OBJECT_STORAGE, DOCUMENT_READER],
+  exports: [
+    DocumentsService,
+    DocumentPurgeService,
+    SignedLinksService,
+    PublicRateLimitGuard,
+    OBJECT_STORAGE,
+    DOCUMENT_READER,
+  ],
 })
 export class DocumentsModule {}

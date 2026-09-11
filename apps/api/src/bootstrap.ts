@@ -1,5 +1,6 @@
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
@@ -34,7 +35,15 @@ function enableBigIntSerialization(): void {
 export async function createApp(): Promise<INestApplication> {
   enableBigIntSerialization();
 
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // `rawBody` : les webhooks WhatsApp et SMS se vérifient sur le corps BRUT
+  // (HMAC) ; une signature calculée sur un JSON re-sérialisé ne correspondrait
+  // jamais. Le plafond de 1 Mo admet une signature PNG de 512 Ko en base64.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+  });
+  app.useBodyParser('json', { limit: '1mb' });
+  app.useBodyParser('urlencoded', { limit: '1mb', extended: true });
   app.useLogger(app.get(Logger));
 
   const config = app.get(AppConfigService);

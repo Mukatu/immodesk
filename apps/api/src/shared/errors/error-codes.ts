@@ -216,6 +216,133 @@ export const ERROR_CATALOG = {
     message: 'Mouvement de dépôt invalide : le montant doit être strictement positif.',
   },
 
+  // --- Domaine BILLING (factures, pénalités, campagnes) -----------------
+  'BILLING.INVOICE_NOT_FOUND': { status: 404, message: 'Facture introuvable.' },
+  'BILLING.LINE_NOT_FOUND': { status: 404, message: 'Ligne de facture introuvable.' },
+  'BILLING.INVALID_TRANSITION': {
+    status: 409,
+    message: "Cette transition d'état n'est pas permise pour cette facture.",
+  },
+  'BILLING.INVOICE_NOT_EDITABLE': {
+    status: 409,
+    message: 'Seule une facture en brouillon peut être modifiée.',
+  },
+  'BILLING.INVOICE_HAS_PAYMENTS': {
+    status: 409,
+    message: 'Cette facture porte des encaissements : contre-passez-les avant de l’annuler.',
+  },
+  'BILLING.PERIOD_ALREADY_INVOICED': {
+    status: 409,
+    message: 'Une facture existe déjà pour ce bail et cette période.',
+  },
+  'BILLING.NEGATIVE_TOTAL': {
+    status: 422,
+    message: 'Le total de la facture ne peut pas être négatif : utilisez un avoir.',
+  },
+  'BILLING.LEASE_NOT_BILLABLE': {
+    status: 409,
+    message: 'Ce bail ne peut pas être facturé : il doit être actif ou en préavis.',
+  },
+  'BILLING.PERIOD_INVALID': {
+    status: 422,
+    message: 'Période invalide : le début doit précéder la fin.',
+  },
+  'BILLING.RUN_NOT_FOUND': { status: 404, message: 'Campagne de facturation introuvable.' },
+  'BILLING.PENALTY_RULE_NOT_FOUND': { status: 404, message: 'Règle de pénalité introuvable.' },
+  'BILLING.PENALTY_RULE_INVALID': {
+    status: 422,
+    message: 'Règle de pénalité invalide : un taux ou un montant forfaitaire est requis.',
+  },
+  'BILLING.PENALTY_RULE_NAME_TAKEN': {
+    status: 409,
+    message: 'Une règle de pénalité porte déjà ce nom.',
+  },
+  'BILLING.PDF_UNAVAILABLE': {
+    status: 503,
+    message: 'Génération PDF indisponible : aucun navigateur de rendu configuré.',
+  },
+
+  // --- Domaine PAYMENTS (paiements, imputations, avoirs) ----------------
+  'PAYMENTS.NOT_FOUND': { status: 404, message: 'Paiement introuvable.' },
+  'PAYMENTS.OVER_ALLOCATED': {
+    status: 409,
+    message: 'Imputation supérieure au montant disponible du paiement ou au reste dû.',
+  },
+  'PAYMENTS.INVOICE_NOT_OPEN': {
+    status: 409,
+    message: 'Cette facture n’est pas ouverte à l’encaissement.',
+  },
+  'PAYMENTS.INVOICE_TENANT_MISMATCH': {
+    status: 422,
+    message: 'Cette facture n’appartient pas au locataire du paiement.',
+  },
+  'PAYMENTS.LEASE_TENANT_MISMATCH': {
+    status: 422,
+    message: 'Ce bail n’appartient pas à ce locataire.',
+  },
+  'PAYMENTS.INVALID_TRANSITION': {
+    status: 409,
+    message: "Cette transition d'état n'est pas permise pour ce paiement.",
+  },
+  'PAYMENTS.ALREADY_REVERSED': { status: 409, message: 'Ce paiement a déjà été contre-passé.' },
+  'PAYMENTS.CREDIT_ALREADY_USED': {
+    status: 409,
+    message: 'Un avoir issu de ce paiement a déjà été utilisé : contre-passation impossible.',
+  },
+  'PAYMENTS.CREDIT_NOT_FOUND': { status: 404, message: 'Avoir introuvable.' },
+  'PAYMENTS.CREDIT_NOT_APPLICABLE': {
+    status: 409,
+    message: 'Cet avoir n’est pas imputable : il est épuisé, remboursé ou sans paiement source.',
+  },
+
+  // --- Domaine CASH (reçus de caisse, remises) --------------------------
+  'CASH.RECEIPT_NOT_FOUND': { status: 404, message: 'Reçu de caisse introuvable.' },
+  'CASH.SIGNATURE_REQUIRED': {
+    status: 409,
+    message: 'Signature du locataire (ou photo du reçu papier) obligatoire.',
+  },
+  'CASH.SIGNATURE_INVALID': {
+    status: 422,
+    message:
+      'Signature illisible : une image PNG encodée en base64 de 512 Ko au plus est attendue.',
+  },
+  'CASH.REMITTANCE_NOT_FOUND': { status: 404, message: 'Remise d’espèces introuvable.' },
+  'CASH.REMITTANCE_ALREADY_OPEN': {
+    status: 409,
+    message: 'Une remise est déjà ouverte ou en attente de contrôle pour ce démarcheur.',
+  },
+  'CASH.RECEIPT_ALREADY_REMITTED': {
+    status: 409,
+    message: 'Un des reçus est déjà remis, annulé ou rattaché à une autre remise.',
+  },
+  'CASH.REMITTANCE_INVALID_TRANSITION': {
+    status: 409,
+    message: "Cette transition d'état n'est pas permise pour cette remise.",
+  },
+  'CASH.REMITTANCE_EMPTY': { status: 422, message: 'Une remise porte au moins un reçu.' },
+
+  // --- Domaine RECEIPTS (quittances) ------------------------------------
+  'RECEIPTS.NOT_FOUND': { status: 404, message: 'Quittance introuvable.' },
+  'RECEIPTS.NOT_SENDABLE': {
+    status: 409,
+    message: 'Cette quittance ne peut pas être envoyée : elle est annulée ou pas encore émise.',
+  },
+  'RECEIPTS.PDF_UNAVAILABLE': {
+    status: 503,
+    message: 'Génération PDF indisponible : aucun navigateur de rendu configuré.',
+  },
+
+  // --- Domaine NOTIFICATIONS / WEBHOOKS ---------------------------------
+  'NOTIFICATIONS.TEMPLATE_NOT_FOUND': { status: 404, message: 'Modèle de message introuvable.' },
+  'NOTIFICATIONS.MESSAGE_LOG_NOT_FOUND': { status: 404, message: 'Message introuvable.' },
+  'NOTIFICATIONS.NO_RECIPIENT': {
+    status: 422,
+    message: 'Aucun numéro de téléphone exploitable pour ce destinataire.',
+  },
+  'WEBHOOKS.SIGNATURE_INVALID': { status: 401, message: 'Signature du webhook invalide.' },
+  'WEBHOOKS.VERIFY_TOKEN_INVALID': { status: 403, message: 'Jeton de vérification invalide.' },
+  'PUBLIC.LINK_INVALID': { status: 404, message: 'Lien invalide ou expiré.' },
+
   // --- Domaine VALIDATION / plateforme ----------------------------------
   'VALIDATION.INVALID_PAYLOAD': { status: 422, message: 'Requête invalide.' },
   'PLATFORM.IDEMPOTENCY_CONFLICT': {

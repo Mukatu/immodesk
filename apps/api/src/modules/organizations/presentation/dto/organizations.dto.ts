@@ -11,8 +11,18 @@ import {
   Max,
   Min,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
 import { MEMBER_ROLES } from '../../../../shared/tenant/roles';
+import {
+  BillingSettingsDto,
+  CashSettingsDto,
+  MessagingSettingsDto,
+  Type,
+  UpdateBillingSettingsDto,
+  UpdateCashSettingsDto,
+  UpdateMessagingSettingsDto,
+} from './operational-settings.dto';
 import { OrganizationDto } from '../../../identity/presentation/dto/auth.dto';
 
 const ROLE_VALUES = [...MEMBER_ROLES];
@@ -73,6 +83,9 @@ export class OrganizationSettingsDto {
   @ApiProperty({ nullable: true, type: String }) receiptFooterText!: string | null;
   @ApiProperty() whatsappEnabled!: boolean;
   @ApiProperty() smsEnabled!: boolean;
+  @ApiProperty({ type: BillingSettingsDto }) billing!: BillingSettingsDto;
+  @ApiProperty({ type: CashSettingsDto }) cash!: CashSettingsDto;
+  @ApiProperty({ type: MessagingSettingsDto }) messaging!: MessagingSettingsDto;
 }
 
 export class UpdateOrganizationSettingsDto {
@@ -104,6 +117,24 @@ export class UpdateOrganizationSettingsDto {
 
   @ApiPropertyOptional() @IsOptional() @IsBoolean() whatsappEnabled?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() smsEnabled?: boolean;
+
+  @ApiPropertyOptional({ type: UpdateBillingSettingsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateBillingSettingsDto)
+  billing?: UpdateBillingSettingsDto;
+
+  @ApiPropertyOptional({ type: UpdateCashSettingsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateCashSettingsDto)
+  cash?: UpdateCashSettingsDto;
+
+  @ApiPropertyOptional({ type: UpdateMessagingSettingsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateMessagingSettingsDto)
+  messaging?: UpdateMessagingSettingsDto;
 }
 
 export class MemberUserDto {

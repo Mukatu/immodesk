@@ -1,4 +1,4 @@
-# `@immodesk/api` — API Immodesk (phases 0, 1 et 2)
+# `@immodesk/api` — API Immodesk (phases 0 à 3)
 
 Backend NestJS 11 de la plateforme Immodesk (gestion immobilière,
 Congo-Brazzaville). Monolithe modulaire en Clean Architecture, multi-tenant
@@ -17,6 +17,14 @@ bail (machine à états explicite, anti-chevauchement garanti en base),
 parties, révisions de loyer datées, dépôts de garantie à mouvements
 append-only, numérotation `BAIL-{AAAA}-{seq}`, génération du contrat en PDF
 par un worker BullMQ Puppeteer, et cron quotidien des échéances.
+
+Périmètre de la **phase 3** : facturation et espèces — factures de loyer
+générées par le cron quotidien `billing-daily` (J-N avant l'échéance,
+idempotent), campagnes manuelles, pénalités plafonnées, paiements imputés
+« plus ancienne facture d'abord » avec avoir sur trop-perçu, contre-passation
+miroir, reçus de caisse signés et numérotés par démarcheur, remises d'espèces
+contrôlées avec écart audité, quittances PDF (A5) à QR de vérification
+publique, et messagerie WhatsApp d'abord, SMS en repli, suivie par webhooks.
 
 ---
 
@@ -154,6 +162,63 @@ laisser Puppeteer télécharger son propre binaire à chaque build.
 > CommonJS de Jest 29, lequel ne sait charger ni un module ESM ni un
 > `import()` dynamique sans `--experimental-vm-modules`.
 
+### Facturation, messagerie et liens publics (phase 3)
+
+| Variable                                             | Rôle                                                                                               |
+| :--------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
+| `BILLING_CRON_ENABLED` / `_PATTERN` / `_TIMEZONE`    | Cron `billing-daily` : `0 3 * * *`, `Africa/Brazzaville` (inactif d'office en `NODE_ENV=test`).    |
+| `RECEIPT_PDF_FORMAT`                                 | `A5` (défaut) ou `A4` : format des quittances et reçus de caisse.                                  |
+| `WHATSAPP_PROVIDER`                                  | `fake` (développement, tests) ou `meta` (Cloud API en direct).                                     |
+| `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_ACCESS_TOKEN` | Identifiant du numéro et jeton système Meta. Obligatoires si `meta`.                               |
+| `WHATSAPP_APP_SECRET`                                | Secret de l'application Meta : vérifie `X-Hub-Signature-256` des webhooks.                         |
+| `WHATSAPP_VERIFY_TOKEN`                              | Jeton choisi par l'exploitant, rejoué par Meta lors de la vérification `GET` du webhook.           |
+| `WHATSAPP_API_VERSION` / `WHATSAPP_API_BASE_URL`     | `v21.0`, `https://graph.facebook.com`.                                                             |
+| `SMS_PROVIDER`                                       | `fake` ou `android_gateway` (SMS Gateway for Android, open source).                                |
+| `SMS_GATEWAY_URL` / `_USERNAME` / `_PASSWORD`        | Adresse et identifiants Basic de la passerelle. Obligatoires si `android_gateway`.                 |
+| `SMS_GATEWAY_WEBHOOK_SECRET`                         | Clé partagée des webhooks de la passerelle (`X-Signature` + `X-Timestamp`, ou `X-Webhook-Secret`). |
+| `NOTIFICATIONS_WORKER_ENABLED` / `_CONCURRENCY`      | Worker BullMQ `notifications` (4 envois simultanés).                                               |
+| `PUBLIC_WEB_BASE_URL`                                | Page de vérification : `{PUBLIC_WEB_BASE_URL}/verifier/{token}` (QR et SMS).                       |
+| `PUBLIC_API_BASE_URL`                                | Racine publique de l'API, pour les liens courts de PDF envoyés par SMS.                            |
+| `DOCUMENT_LINK_TTL_SECONDS`                          | Validité des liens de PDF joints aux messages : 604 800 s (7 jours, plafond SigV4).                |
+| `LINK_SIGNING_SECRET`                                | Signature HMAC des liens courts `/v1/public/d/{token}`.                                            |
+| `RATE_LIMIT_PUBLIC_PER_MINUTE`                       | Débit des routes publiques (vérification, liens courts) : 30 / min / IP.                           |
+
+#### Configurer Meta WhatsApp Cloud API
+
+1. Dans le gestionnaire Meta Business, créer une application de type
+   « Business », y ajouter le produit **WhatsApp** et associer le numéro dédié.
+2. Relever l'**identifiant du numéro** (`WHATSAPP_PHONE_NUMBER_ID`), créer un
+   **utilisateur système** avec un jeton permanent (`WHATSAPP_ACCESS_TOKEN`,
+   permissions `whatsapp_business_messaging` et `whatsapp_business_management`),
+   et copier le **secret de l'application** (`WHATSAPP_APP_SECRET`).
+3. Soumettre les modèles de `notification_templates` (canal `WHATSAPP`) sous
+   les noms indiqués (`receipt_ready_fr`, `cash_receipt_fr`,
+   `rent_due_reminder_fr`, `otp_code_fr`), langue `fr`, catégorie
+   « Utility » (« Authentication » pour `otp_code_fr`). Le modèle de quittance
+   porte un en-tête **Document**. Les paramètres suivent l'ordre de la
+   colonne `variables`.
+4. Déclarer le webhook : URL `https://<api>/v1/webhooks/whatsapp`, jeton de
+   vérification = `WHATSAPP_VERIFY_TOKEN`, abonnement au champ `messages`.
+   Meta appelle d'abord `GET ?hub.mode=subscribe&hub.verify_token=…&hub.challenge=…` ;
+   l'API rend le challenge si le jeton concorde.
+5. Passer `WHATSAPP_PROVIDER=meta`. Le démarrage échoue si l'identifiant ou le
+   jeton manquent.
+
+#### Configurer la passerelle SMS Android
+
+1. Installer **SMS Gateway for Android** (capcom6, open source) sur le
+   téléphone dédié équipé de la SIM MTN au forfait illimité ; activer le
+   serveur local (ou le mode cloud privé) et noter l'adresse, l'utilisateur et
+   le mot de passe affichés.
+2. Renseigner `SMS_GATEWAY_URL` (par exemple `http://192.168.1.50:8080`),
+   `SMS_GATEWAY_USERNAME`, `SMS_GATEWAY_PASSWORD`, puis `SMS_PROVIDER=android_gateway`.
+   L'API envoie `POST {SMS_GATEWAY_URL}/message` avec `{ message, phoneNumbers }`.
+3. Enregistrer les webhooks `sms:sent`, `sms:delivered` et `sms:failed` vers
+   `https://<api>/v1/webhooks/sms`, avec la clé de signature =
+   `SMS_GATEWAY_WEBHOOK_SECRET`. Une requête non signée est refusée en 401.
+4. Garder le téléphone sur secteur, en Wi-Fi fixe, l'optimisation de batterie
+   désactivée pour l'application : un téléphone en veille ne remet rien.
+
 ---
 
 ## 3. Base de données et migrations
@@ -261,6 +326,24 @@ Baux de la phase 2 (`prisma/seed-leases.ts`) :
   +5 000 FCFA), que le cron quotidien appliquera à sa date d'effet ;
 - le **gabarit de contrat par défaut** (« bail à usage d'habitation,
   Congo-Brazzaville ») dans `organization_settings.settings_json`.
+
+Facturation de la phase 3 (`prisma/seed-billing.ts`) :
+
+- la **règle de pénalité par défaut** « Retard standard — 5 % par mois »
+  (tolérance 5 jours, plafond 20 %, 4 mois au plus), reprise dans
+  `billing.defaultPenaltyRuleId` ;
+- les **8 modèles système** (`RECEIPT_ISSUED`, `CASH_RECEIPT_ISSUED`,
+  `INVOICE_ISSUED`, `OTP_CODE`, chacun en WhatsApp et en SMS) ;
+- la facture du **mois courant de A1**, ÉMISE ;
+- la facture du **mois courant de A2**, PARTIELLEMENT RÉGLÉE : loyer, charges
+  et une refacturation de serrure (125 000 FCFA), dont 100 000 encaissés en
+  espèces par le COLLECTOR `+242066000002` — reçu `CASH-AMI-…-000001` ;
+- la facture du **mois précédent de A1**, RÉGLÉE par Mobile Money, avec sa
+  **quittance ÉMISE** (`QUI-{YYYYMM}-00001`, jeton de vérification publique) ;
+- une **remise SOUMISE** (`REM-{YYYYMM}-00001`) regroupant le reçu de caisse.
+
+Relancer le seed ne crée rien de plus (factures retrouvées par bail et
+période, paiements par `client_ref`).
 
 ---
 
@@ -415,6 +498,29 @@ se vérifier que sur un vrai serveur.
   **empreinte identique sur deux rendus du même bail**, version suivante après
   révision, **v1 inchangée**, gabarit personnalisable. Se saute proprement si
   aucun navigateur n'est installé.
+- `phase3-billing.int-spec.ts` — paramètres `billing` / `cash` / `messaging`
+  fusionnés, **campagne sur 500 baux en moins de 60 s** (≈ 6 s mesurées),
+  numérotation `LOY` continue, **relance sans doublon**, facture manuelle
+  (brouillon sans numéro, lignes, émission, annulation), passage en retard et
+  **une seule pénalité par jour**.
+- `phase3-payments.int-spec.ts` — paiement partiel, **trop-perçu → avoir**
+  (invariant imputations + avoir = montant vérifié en SQL), imputation de
+  l'avoir sans nouveau paiement, **idempotence `clientRef` et
+  `Idempotency-Key`** (deux appels → un paiement, 200 au rejeu), confirmation
+  et rejet, **contre-passation** (ligne d'origine identique octet pour octet),
+  **UPDATE de montant et DELETE refusés en SQL brut**.
+- `phase3-cash.int-spec.ts` — signature exigée, reçu signé (sha256) et
+  rejoué, **50 encaissements simultanés d'un démarcheur → série 000001..000050
+  sans trou**, encours et plafond, **remise 750 000 / 720 000 : écart −30 000
+  audité** avec contrôleur et démarcheur, rejet de remise, reçu annulé par la
+  contre-passation, UPDATE / DELETE refusés sur `cash_receipts`.
+- `phase3-receipts.int-spec.ts` — modèles semés à la création, **Gherkin
+  paiement partiel puis solde → quittance QUI + `message_logs`**, vérification
+  publique (jeton valide, **jeton altéré → 404**, aucune donnée personnelle),
+  **PDF réel avec QR décodable** (sauté sans navigateur), contre-passation
+  complète, **webhooks WhatsApp signé / non signé** et idempotents, **repli SMS
+  sur échec WhatsApp**, webhook SMS signé, numéro en `…99` → double échec et
+  relance.
 - `rls-isolation.int-spec.ts` — **suite d'isolation, bloquante**.
 
 ### La suite d'isolation RLS
@@ -460,6 +566,18 @@ sont couvertes par la même assertion dédiée. Trois ancres supplémentaires on
 `tenant_id` de la **même** organisation, valeur qu'une table de constantes ne
 peut pas fournir. Le bail d'ancrage et celui qui porte le dépôt d'ancrage sont
 distincts, `deposits_lease_uk` n'admettant qu'un dépôt par bail.
+
+Les **13 tables de la phase 3** — `rent_invoices`, `invoice_lines`,
+`penalty_rules`, `payments`, `payment_allocations`, `tenant_credits`,
+`cash_receipts`, `cash_remittances`, `cash_remittance_items`, `receipts`,
+`notifications`, `sequences`, `webhook_events` — rejoignent l'assertion
+dédiée (47 tables couvertes au total). Quatre ancres de plus dans
+`createFixture` (facture, paiement, reçu de caisse, remise SOUMISE pour
+laisser libre l'index « une remise OPEN par démarcheur ») et trois entrées
+d'indices : période croissante de `rent_invoices`, taux de `penalty_rules`,
+cible unique de `payment_allocations`. Le nettoyage neutralise aussi les
+déclencheurs `guard_financial_row`, sans quoi la cascade de suppression d'une
+organisation de test échouerait silencieusement.
 
 > Une requête émise **sans** contexte de tenant ne retourne jamais de ligne.
 > Selon l'état de la connexion, elle renvoie un ensemble vide (connexion
@@ -514,10 +632,48 @@ src/
     ├── leases/              # leases, lease_parties, lease_rent_revisions, lease_documents, cron
     ├── deposits/            # deposits, deposit_movements (append-only)
     ├── numbering/           # sequences, next_sequence / format_sequence_number
-    ├── pdf/                 # worker BullMQ Puppeteer, gabarit de contrat
+    ├── pdf/                 # worker BullMQ Puppeteer, gabarits contrat, quittance, reçu, facture
+    ├── billing/             # rent_invoices, invoice_lines, penalty_rules, cron billing-daily
+    ├── payments/            # payments, payment_allocations, tenant_credits, contre-passation
+    ├── cash/                # cash_receipts, cash_remittances, cash_remittance_items
+    ├── receipts/            # receipts, vérification publique, pipeline des documents financiers
     ├── audit/               # audit_logs, fonction audit()
     └── platform/            # santé, idempotence, OpenAPI, configuration
 ```
+
+### Les modules de la phase 3
+
+| Module          | Responsabilité                                                                                                     |
+| :-------------- | :----------------------------------------------------------------------------------------------------------------- |
+| `billing`       | Factures, lignes, machine à états, cron `billing-daily`, campagnes (rapport Redis 7 j), pénalités, tableau de bord |
+| `payments`      | Paiements, imputation « plus ancienne facture d'abord », avoirs, contre-passation miroir, relevé locataire         |
+| `cash`          | Reçus de caisse signés, séries par démarcheur, encours et plafond, remises contrôlées                              |
+| `receipts`      | Quittances QUI, jeton et route publique de vérification, pipeline PDF (quittance, reçu, facture)                   |
+| `notifications` | Pipeline BullMQ WhatsApp → SMS, Meta Cloud API, passerelle Android, modèles, journal, webhooks                     |
+
+Les échanges passent par des ports `Symbol`, comme aux phases 1 et 2 :
+
+| Port                             | Déclaré dans           | Implémenté par                | Sert à                                        |
+| :------------------------------- | :--------------------- | :---------------------------- | :-------------------------------------------- |
+| `RECEIPT_ISSUER`                 | `payments/domain`      | `ReceiptIssuerService`        | Quittance à la facture soldée, annulation     |
+| `CASH_RECEIPT_CANCELLER`         | `payments/domain`      | `CashReceiptsService`         | Annuler le reçu d'un paiement contre-passé    |
+| `CASH_RECEIPT_PUBLISHER`         | `cash/domain`          | `FinancialDocumentsPipeline`  | PDF et envoi d'un reçu de caisse après COMMIT |
+| `NOTIFICATION_ENQUEUER`          | `notifications/domain` | `NotificationPipelineService` | Mettre un message en file                     |
+| `NOTIFICATION_OUTCOME_LISTENERS` | `notifications/domain` | `ReceiptDeliveryListener`     | Passer une quittance à SENT                   |
+| `ORGANIZATION_SETUP_LISTENERS`   | `organizations/domain` | `TemplateSeeder`              | Semer les modèles système à la création       |
+
+**Montant payé DÉRIVÉ, jamais saisi.** `rent_invoices.paid_amount`,
+`balance_amount` et le statut d'encaissement ne sont écrits que par
+`InvoiceLedgerService`, dans la transaction qui écrit les
+`payment_allocations`. Les verrous se prennent toujours dans le même ordre
+(série PAY, factures, série QUI, série du démarcheur) : cinquante
+encaissements simultanés s'alignent sans interblocage.
+
+**Trois lectures transverses documentées de plus** (connexion
+d'administration, comme `TenantDirectoryService`) : la liste des
+organisations à facturer par le cron, la vérification publique d'une
+quittance (une ligne, colonnes fermées) et la résolution d'un webhook par
+l'identifiant fournisseur du message. Toute écriture repasse par `withTenant`.
 
 ### Les quatre modules de la phase 2
 
@@ -741,6 +897,47 @@ transmission des signaux et expose une `HEALTHCHECK` sur `/v1/health`.
 ---
 
 ## 11. Écarts et limites connues
+
+### Phase 3
+
+- **Imputation d'un avoir en deux lignes.** `payment_allocations_target_chk`
+  n'admet qu'une cible par ligne : l'imputation écrit, sur le paiement source,
+  une contre-imputation de l'avoir (`is_reversal`, `tenant_credit_id`) et une
+  imputation de la facture. Aucun paiement n'est créé, et la somme nette des
+  imputations du paiement reste égale à son montant.
+- **Le paiement d'origine reste strictement intact** lors d'une
+  contre-passation, colonnes de workflow comprises : `reversedAt` et
+  `reversalReason` de son détail sont dérivés de l'écriture miroir.
+- **Échéance d'une première période proratisée** ramenée à son premier jour
+  facturé quand le jour d'échéance du mois la précède (bail signé le 12,
+  échéance au 5).
+- **Plancher de facturation** : aucune période achevée avant le mois de
+  création du bail dans Immodesk n'est proposée par le cron — un bail repris
+  d'un registre papier n'émet pas d'arriérés. Une période d'un seul jour est
+  fusionnée avec sa voisine (`period_start < period_end` en base).
+- **Pénalité** : elle court après la plus tardive des deux tolérances (bail,
+  règle) ; `capRateBps` porte sur le principal nominal (loyer, et charges si
+  la règle s'y applique), pour que le plafond ne rétrécisse pas à mesure des
+  paiements.
+- **Quittance SENT dès l'acceptation** par un canal ; les webhooks font
+  ensuite avancer `message_logs` (DELIVERED, READ).
+- **Lien de PDF des SMS** : une URL signée S3 ne tient pas dans deux
+  segments. Le SMS porte un lien court signé `/v1/public/d/{token}` (7 jours)
+  qui redirige vers une URL de dix minutes — variables ajoutées
+  `PUBLIC_API_BASE_URL` et `LINK_SIGNING_SECRET`. Le jeton du QR, lui, ne
+  donne jamais accès au PDF.
+- **`POST /v1/payments` admet aussi l'ACCOUNTANT** (virement confirmé par la
+  comptabilité) ; le contrat ne cite que COLLECTOR.
+- **Rejeu `Idempotency-Key`** : une création mémorisée (201) est rendue en
+  200, comme le rejeu par `clientRef`.
+- **OTP** : les modèles `OTP_CODE` sont semés, mais la connexion de la phase 0
+  reste envoyée par SMS ; la bascule WhatsApp d'abord suivra avec les
+  modèles « Authentication » approuvés.
+- **Heures de silence et plafonds de fréquence** (§ 12.5) non appliqués : ils
+  relèvent des relances de la phase 9 ; quittances et reçus sont
+  transactionnels.
+- Les montants des états d'audit sont sérialisés en nombres JSON (filet
+  `BigInt.prototype.toJSON`), comme en phase 2.
 
 ### Phase 2
 

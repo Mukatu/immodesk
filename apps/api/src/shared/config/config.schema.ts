@@ -8,6 +8,12 @@ const booleanish = z
 
 const port = z.coerce.number().int().min(1).max(65535);
 
+/** Texte facultatif : une chaîne vide vaut « non défini ». */
+const optionalText = z
+  .string()
+  .optional()
+  .transform((value) => (value === undefined || value.trim() === '' ? undefined : value.trim()));
+
 /**
  * Schéma de configuration de l'API, validé au démarrage (fail-fast).
  * Toute variable absente ou incohérente empêche le boot du processus.
@@ -107,9 +113,39 @@ export const configSchema = z
     INVITATION_TTL_DAYS: z.coerce.number().int().positive().default(7),
     INVITATION_BASE_URL: z.string().default('https://app.immodesk.cg/invitations'),
 
-    // --- Messagerie ------------------------------------------------------
-    SMS_PROVIDER: z.enum(['fake']).default('fake'),
-    WHATSAPP_PROVIDER: z.enum(['fake']).default('fake'),
+    // --- Messagerie (phase 3 : WhatsApp d'abord, SMS en repli) ----------
+    SMS_PROVIDER: z.enum(['fake', 'android_gateway']).default('fake'),
+    WHATSAPP_PROVIDER: z.enum(['fake', 'meta']).default('fake'),
+    WHATSAPP_PHONE_NUMBER_ID: optionalText,
+    WHATSAPP_ACCESS_TOKEN: optionalText,
+    // Secret d'application Meta : signature `X-Hub-Signature-256` des webhooks.
+    WHATSAPP_APP_SECRET: z.string().min(8).default('immodesk-dev-whatsapp-app-secret'),
+    // Jeton choisi par l'exploitant, rejoué par Meta lors de la vérification GET.
+    WHATSAPP_VERIFY_TOKEN: z.string().min(8).default('immodesk-dev-whatsapp-verify-token'),
+    WHATSAPP_API_VERSION: z.string().default('v21.0'),
+    WHATSAPP_API_BASE_URL: z.string().url().default('https://graph.facebook.com'),
+    SMS_GATEWAY_URL: optionalText,
+    SMS_GATEWAY_USERNAME: optionalText,
+    SMS_GATEWAY_PASSWORD: optionalText,
+    SMS_GATEWAY_WEBHOOK_SECRET: z.string().min(8).default('immodesk-dev-sms-webhook-secret'),
+    NOTIFICATIONS_WORKER_ENABLED: booleanish.default(true),
+    NOTIFICATIONS_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(4),
+
+    // --- Liens publics (quittances, SMS) ---------------------------------
+    // Page de vérification : `{PUBLIC_WEB_BASE_URL}/verifier/{token}` (QR et SMS).
+    PUBLIC_WEB_BASE_URL: z.string().url().default('https://app.immodesk.cg'),
+    // Racine publique de l'API, pour les liens courts de PDF envoyés par SMS.
+    PUBLIC_API_BASE_URL: z.string().url().default('http://localhost:3000'),
+    // Validité des liens de PDF joints aux messages : 7 jours, plafond SigV4.
+    DOCUMENT_LINK_TTL_SECONDS: z.coerce.number().int().min(60).max(604_800).default(604_800),
+    LINK_SIGNING_SECRET: z.string().min(16).default('immodesk-dev-link-signing-secret'),
+    RATE_LIMIT_PUBLIC_PER_MINUTE: z.coerce.number().int().positive().default(30),
+
+    // --- Facturation (phase 3) -------------------------------------------
+    BILLING_CRON_ENABLED: booleanish.default(true),
+    BILLING_CRON_PATTERN: z.string().default('0 3 * * *'),
+    BILLING_CRON_TIMEZONE: z.string().default('Africa/Brazzaville'),
+    RECEIPT_PDF_FORMAT: z.enum(['A5', 'A4']).default('A5'),
 
     // --- Observabilité ---------------------------------------------------
     SENTRY_DSN: z.string().optional(),
@@ -132,6 +168,28 @@ export const configSchema = z
         path: ['JWT_ACCESS_PRIVATE_KEY'],
         message:
           'JWT_ACCESS_PRIVATE_KEY et JWT_ACCESS_PUBLIC_KEY sont obligatoires lorsque JWT_ALGORITHM vaut RS256.',
+      });
+    }
+    if (
+      cfg.WHATSAPP_PROVIDER === 'meta' &&
+      (!cfg.WHATSAPP_PHONE_NUMBER_ID || !cfg.WHATSAPP_ACCESS_TOKEN)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['WHATSAPP_PHONE_NUMBER_ID'],
+        message:
+          'WHATSAPP_PHONE_NUMBER_ID et WHATSAPP_ACCESS_TOKEN sont obligatoires lorsque WHATSAPP_PROVIDER vaut meta.',
+      });
+    }
+    if (
+      cfg.SMS_PROVIDER === 'android_gateway' &&
+      (!cfg.SMS_GATEWAY_URL || !cfg.SMS_GATEWAY_USERNAME || !cfg.SMS_GATEWAY_PASSWORD)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['SMS_GATEWAY_URL'],
+        message:
+          'SMS_GATEWAY_URL, SMS_GATEWAY_USERNAME et SMS_GATEWAY_PASSWORD sont obligatoires lorsque SMS_PROVIDER vaut android_gateway.',
       });
     }
     if (cfg.NODE_ENV === 'production' && cfg.OTP_DEV_CODE) {

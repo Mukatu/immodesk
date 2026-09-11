@@ -2636,6 +2636,478 @@ class CachedLeasesCompanion extends UpdateCompanion<CachedLeaseRow> {
   }
 }
 
+class $CachedInvoicesTable extends CachedInvoices
+    with TableInfo<$CachedInvoicesTable, CachedInvoiceRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedInvoicesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _organizationIdMeta = const VerificationMeta(
+    'organizationId',
+  );
+  @override
+  late final GeneratedColumn<String> organizationId = GeneratedColumn<String>(
+    'organization_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _leaseIdMeta = const VerificationMeta(
+    'leaseId',
+  );
+  @override
+  late final GeneratedColumn<String> leaseId = GeneratedColumn<String>(
+    'lease_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _propertyIdMeta = const VerificationMeta(
+    'propertyId',
+  );
+  @override
+  late final GeneratedColumn<String> propertyId = GeneratedColumn<String>(
+    'property_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dueDateMeta = const VerificationMeta(
+    'dueDate',
+  );
+  @override
+  late final GeneratedColumn<String> dueDate = GeneratedColumn<String>(
+    'due_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    organizationId,
+    leaseId,
+    propertyId,
+    dueDate,
+    payload,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_invoices';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedInvoiceRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('organization_id')) {
+      context.handle(
+        _organizationIdMeta,
+        organizationId.isAcceptableOrUnknown(
+          data['organization_id']!,
+          _organizationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_organizationIdMeta);
+    }
+    if (data.containsKey('lease_id')) {
+      context.handle(
+        _leaseIdMeta,
+        leaseId.isAcceptableOrUnknown(data['lease_id']!, _leaseIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_leaseIdMeta);
+    }
+    if (data.containsKey('property_id')) {
+      context.handle(
+        _propertyIdMeta,
+        propertyId.isAcceptableOrUnknown(data['property_id']!, _propertyIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_propertyIdMeta);
+    }
+    if (data.containsKey('due_date')) {
+      context.handle(
+        _dueDateMeta,
+        dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dueDateMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedInvoiceRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedInvoiceRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      organizationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}organization_id'],
+      )!,
+      leaseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}lease_id'],
+      )!,
+      propertyId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}property_id'],
+      )!,
+      dueDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}due_date'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedInvoicesTable createAlias(String alias) {
+    return $CachedInvoicesTable(attachedDatabase, alias);
+  }
+}
+
+class CachedInvoiceRow extends DataClass
+    implements Insertable<CachedInvoiceRow> {
+  final String id;
+  final String organizationId;
+  final String leaseId;
+  final String propertyId;
+  final String dueDate;
+
+  /// JSON de `InvoiceSummary`.
+  final String payload;
+  final DateTime cachedAt;
+  const CachedInvoiceRow({
+    required this.id,
+    required this.organizationId,
+    required this.leaseId,
+    required this.propertyId,
+    required this.dueDate,
+    required this.payload,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['organization_id'] = Variable<String>(organizationId);
+    map['lease_id'] = Variable<String>(leaseId);
+    map['property_id'] = Variable<String>(propertyId);
+    map['due_date'] = Variable<String>(dueDate);
+    map['payload'] = Variable<String>(payload);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedInvoicesCompanion toCompanion(bool nullToAbsent) {
+    return CachedInvoicesCompanion(
+      id: Value(id),
+      organizationId: Value(organizationId),
+      leaseId: Value(leaseId),
+      propertyId: Value(propertyId),
+      dueDate: Value(dueDate),
+      payload: Value(payload),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedInvoiceRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedInvoiceRow(
+      id: serializer.fromJson<String>(json['id']),
+      organizationId: serializer.fromJson<String>(json['organizationId']),
+      leaseId: serializer.fromJson<String>(json['leaseId']),
+      propertyId: serializer.fromJson<String>(json['propertyId']),
+      dueDate: serializer.fromJson<String>(json['dueDate']),
+      payload: serializer.fromJson<String>(json['payload']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'organizationId': serializer.toJson<String>(organizationId),
+      'leaseId': serializer.toJson<String>(leaseId),
+      'propertyId': serializer.toJson<String>(propertyId),
+      'dueDate': serializer.toJson<String>(dueDate),
+      'payload': serializer.toJson<String>(payload),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedInvoiceRow copyWith({
+    String? id,
+    String? organizationId,
+    String? leaseId,
+    String? propertyId,
+    String? dueDate,
+    String? payload,
+    DateTime? cachedAt,
+  }) => CachedInvoiceRow(
+    id: id ?? this.id,
+    organizationId: organizationId ?? this.organizationId,
+    leaseId: leaseId ?? this.leaseId,
+    propertyId: propertyId ?? this.propertyId,
+    dueDate: dueDate ?? this.dueDate,
+    payload: payload ?? this.payload,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedInvoiceRow copyWithCompanion(CachedInvoicesCompanion data) {
+    return CachedInvoiceRow(
+      id: data.id.present ? data.id.value : this.id,
+      organizationId: data.organizationId.present
+          ? data.organizationId.value
+          : this.organizationId,
+      leaseId: data.leaseId.present ? data.leaseId.value : this.leaseId,
+      propertyId: data.propertyId.present
+          ? data.propertyId.value
+          : this.propertyId,
+      dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedInvoiceRow(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('leaseId: $leaseId, ')
+          ..write('propertyId: $propertyId, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    organizationId,
+    leaseId,
+    propertyId,
+    dueDate,
+    payload,
+    cachedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedInvoiceRow &&
+          other.id == this.id &&
+          other.organizationId == this.organizationId &&
+          other.leaseId == this.leaseId &&
+          other.propertyId == this.propertyId &&
+          other.dueDate == this.dueDate &&
+          other.payload == this.payload &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedInvoicesCompanion extends UpdateCompanion<CachedInvoiceRow> {
+  final Value<String> id;
+  final Value<String> organizationId;
+  final Value<String> leaseId;
+  final Value<String> propertyId;
+  final Value<String> dueDate;
+  final Value<String> payload;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedInvoicesCompanion({
+    this.id = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.leaseId = const Value.absent(),
+    this.propertyId = const Value.absent(),
+    this.dueDate = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedInvoicesCompanion.insert({
+    required String id,
+    required String organizationId,
+    required String leaseId,
+    required String propertyId,
+    required String dueDate,
+    required String payload,
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       organizationId = Value(organizationId),
+       leaseId = Value(leaseId),
+       propertyId = Value(propertyId),
+       dueDate = Value(dueDate),
+       payload = Value(payload);
+  static Insertable<CachedInvoiceRow> custom({
+    Expression<String>? id,
+    Expression<String>? organizationId,
+    Expression<String>? leaseId,
+    Expression<String>? propertyId,
+    Expression<String>? dueDate,
+    Expression<String>? payload,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (organizationId != null) 'organization_id': organizationId,
+      if (leaseId != null) 'lease_id': leaseId,
+      if (propertyId != null) 'property_id': propertyId,
+      if (dueDate != null) 'due_date': dueDate,
+      if (payload != null) 'payload': payload,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedInvoicesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? organizationId,
+    Value<String>? leaseId,
+    Value<String>? propertyId,
+    Value<String>? dueDate,
+    Value<String>? payload,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedInvoicesCompanion(
+      id: id ?? this.id,
+      organizationId: organizationId ?? this.organizationId,
+      leaseId: leaseId ?? this.leaseId,
+      propertyId: propertyId ?? this.propertyId,
+      dueDate: dueDate ?? this.dueDate,
+      payload: payload ?? this.payload,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (organizationId.present) {
+      map['organization_id'] = Variable<String>(organizationId.value);
+    }
+    if (leaseId.present) {
+      map['lease_id'] = Variable<String>(leaseId.value);
+    }
+    if (propertyId.present) {
+      map['property_id'] = Variable<String>(propertyId.value);
+    }
+    if (dueDate.present) {
+      map['due_date'] = Variable<String>(dueDate.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedInvoicesCompanion(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('leaseId: $leaseId, ')
+          ..write('propertyId: $propertyId, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2647,6 +3119,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CachedUnitsTable cachedUnits = $CachedUnitsTable(this);
   late final $CachedTenantsTable cachedTenants = $CachedTenantsTable(this);
   late final $CachedLeasesTable cachedLeases = $CachedLeasesTable(this);
+  late final $CachedInvoicesTable cachedInvoices = $CachedInvoicesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2658,6 +3131,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cachedUnits,
     cachedTenants,
     cachedLeases,
+    cachedInvoices,
   ];
 }
 
@@ -4039,6 +4513,254 @@ typedef $$CachedLeasesTableProcessedTableManager =
       CachedLeaseRow,
       PrefetchHooks Function()
     >;
+typedef $$CachedInvoicesTableCreateCompanionBuilder =
+    CachedInvoicesCompanion Function({
+      required String id,
+      required String organizationId,
+      required String leaseId,
+      required String propertyId,
+      required String dueDate,
+      required String payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedInvoicesTableUpdateCompanionBuilder =
+    CachedInvoicesCompanion Function({
+      Value<String> id,
+      Value<String> organizationId,
+      Value<String> leaseId,
+      Value<String> propertyId,
+      Value<String> dueDate,
+      Value<String> payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedInvoicesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedInvoicesTable> {
+  $$CachedInvoicesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get leaseId => $composableBuilder(
+    column: $table.leaseId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get propertyId => $composableBuilder(
+    column: $table.propertyId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedInvoicesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedInvoicesTable> {
+  $$CachedInvoicesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get leaseId => $composableBuilder(
+    column: $table.leaseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get propertyId => $composableBuilder(
+    column: $table.propertyId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedInvoicesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedInvoicesTable> {
+  $$CachedInvoicesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get leaseId =>
+      $composableBuilder(column: $table.leaseId, builder: (column) => column);
+
+  GeneratedColumn<String> get propertyId => $composableBuilder(
+    column: $table.propertyId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get dueDate =>
+      $composableBuilder(column: $table.dueDate, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$CachedInvoicesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedInvoicesTable,
+          CachedInvoiceRow,
+          $$CachedInvoicesTableFilterComposer,
+          $$CachedInvoicesTableOrderingComposer,
+          $$CachedInvoicesTableAnnotationComposer,
+          $$CachedInvoicesTableCreateCompanionBuilder,
+          $$CachedInvoicesTableUpdateCompanionBuilder,
+          (
+            CachedInvoiceRow,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedInvoicesTable,
+              CachedInvoiceRow
+            >,
+          ),
+          CachedInvoiceRow,
+          PrefetchHooks Function()
+        > {
+  $$CachedInvoicesTableTableManager(
+    _$AppDatabase db,
+    $CachedInvoicesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedInvoicesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedInvoicesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedInvoicesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> organizationId = const Value.absent(),
+                Value<String> leaseId = const Value.absent(),
+                Value<String> propertyId = const Value.absent(),
+                Value<String> dueDate = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedInvoicesCompanion(
+                id: id,
+                organizationId: organizationId,
+                leaseId: leaseId,
+                propertyId: propertyId,
+                dueDate: dueDate,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String organizationId,
+                required String leaseId,
+                required String propertyId,
+                required String dueDate,
+                required String payload,
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedInvoicesCompanion.insert(
+                id: id,
+                organizationId: organizationId,
+                leaseId: leaseId,
+                propertyId: propertyId,
+                dueDate: dueDate,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedInvoicesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedInvoicesTable,
+      CachedInvoiceRow,
+      $$CachedInvoicesTableFilterComposer,
+      $$CachedInvoicesTableOrderingComposer,
+      $$CachedInvoicesTableAnnotationComposer,
+      $$CachedInvoicesTableCreateCompanionBuilder,
+      $$CachedInvoicesTableUpdateCompanionBuilder,
+      (
+        CachedInvoiceRow,
+        BaseReferences<_$AppDatabase, $CachedInvoicesTable, CachedInvoiceRow>,
+      ),
+      CachedInvoiceRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4055,4 +4777,6 @@ class $AppDatabaseManager {
       $$CachedTenantsTableTableManager(_db, _db.cachedTenants);
   $$CachedLeasesTableTableManager get cachedLeases =>
       $$CachedLeasesTableTableManager(_db, _db.cachedLeases);
+  $$CachedInvoicesTableTableManager get cachedInvoices =>
+      $$CachedInvoicesTableTableManager(_db, _db.cachedInvoices);
 }

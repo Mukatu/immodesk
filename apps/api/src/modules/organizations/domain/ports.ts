@@ -33,6 +33,14 @@ export interface OrganizationCreatedEvent {
  */
 export const ORGANIZATION_LIFECYCLE_LISTENERS = Symbol('ORGANIZATION_LIFECYCLE_LISTENERS');
 
+/**
+ * Abonnés de PARAMÉTRAGE à la création d'une organisation (phase 3 : modèles
+ * de messages système). Jeton distinct de `ORGANIZATION_LIFECYCLE_LISTENERS`,
+ * déjà fourni par `parties` : un même jeton publié par deux modules globaux
+ * ferait disparaître l'un des deux abonnés.
+ */
+export const ORGANIZATION_SETUP_LISTENERS = Symbol('ORGANIZATION_SETUP_LISTENERS');
+
 export interface OrganizationLifecycleListener {
   onOrganizationCreated(tx: TenantClient, event: OrganizationCreatedEvent): Promise<void>;
 }

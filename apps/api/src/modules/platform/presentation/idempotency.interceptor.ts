@@ -1,6 +1,6 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import type { Request } from 'express';
-import { Observable, from, of, switchMap, tap } from 'rxjs';
+import { Observable, catchError, concatMap, from, of, switchMap } from 'rxjs';
 import type { AuthenticatedUser } from '../../../shared/auth/auth.contracts';
 import type { TenantContext } from '../../../shared/tenant/tenant-context';
 import { IdempotencyService } from '../application/idempotency.service';
@@ -50,29 +50,37 @@ export class IdempotencyInterceptor implements NestInterceptor {
     ).pipe(
       switchMap((lookup) => {
         if (lookup.replay) {
-          context.switchToHttp().getResponse().status(lookup.replay.status);
+          // Un rejeu ne crée rien : une création mémorisée (201) est rendue
+          // en 200, corps identique (docs/api/phase3-contract.md).
+          const status = lookup.replay.status === 201 ? 200 : lookup.replay.status;
+          context.switchToHttp().getResponse().status(status);
           return of(lookup.replay.body);
         }
         const recordId = lookup.recordId as string;
+        // La réponse n'est rendue qu'APRÈS mémorisation : un second appel
+        // arrivant aussitôt (double appui en réseau dégradé) doit trouver la
+        // réponse à rejouer, et non une clé encore « en cours ».
         return next.handle().pipe(
-          tap({
-            next: (body) => {
-              void this.idempotency.complete({
+          concatMap(async (body) => {
+            await this.idempotency
+              .complete({
                 organizationId: tenant.organizationId,
                 userId: request.user?.userId ?? null,
                 recordId,
                 status: context.switchToHttp().getResponse().statusCode ?? 200,
                 body: body ?? null,
-              });
-            },
-            error: () => {
-              // Échec métier : la clé est libérée pour permettre un nouvel essai.
-              void this.idempotency.release({
-                organizationId: tenant.organizationId,
-                userId: request.user?.userId ?? null,
-                recordId,
-              });
-            },
+              })
+              .catch(() => undefined);
+            return body;
+          }),
+          catchError(async (error: unknown) => {
+            // Échec métier : la clé est libérée pour permettre un nouvel essai.
+            await this.idempotency.release({
+              organizationId: tenant.organizationId,
+              userId: request.user?.userId ?? null,
+              recordId,
+            });
+            throw error;
           }),
         );
       }),

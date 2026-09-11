@@ -12,9 +12,16 @@ import {
 } from '../../identity/application/profile.service';
 import {
   ORGANIZATION_LIFECYCLE_LISTENERS,
+  ORGANIZATION_SETUP_LISTENERS,
   type OrganizationLifecycleListener,
 } from '../domain/ports';
 import { resolveUniqueSlug } from '../domain/slug';
+import {
+  mergeOperationalSettings,
+  readOperationalSettings,
+  type OperationalSettings,
+  type OperationalSettingsPatch,
+} from '../../../shared/settings/operational-settings';
 
 const ORGANIZATION_SELECT = {
   id: true,
@@ -50,7 +57,7 @@ export interface UpdateOrganizationInput {
   logoDocumentId?: string | null;
 }
 
-export interface OrganizationSettingsView {
+export interface OrganizationSettingsView extends OperationalSettings {
   defaultPaymentDueDay: number;
   timezone: string;
   currency: 'XAF';
@@ -59,6 +66,12 @@ export interface OrganizationSettingsView {
   whatsappEnabled: boolean;
   smsEnabled: boolean;
 }
+
+/** Correctif des paramètres : champs de la phase 0 et sections opérationnelles. */
+export type OrganizationSettingsPatch = Partial<
+  Omit<OrganizationSettingsView, 'billing' | 'cash' | 'messaging'>
+> &
+  OperationalSettingsPatch;
 
 @Injectable()
 export class OrganizationsService {
@@ -73,6 +86,9 @@ export class OrganizationsService {
     @Optional()
     @Inject(ORGANIZATION_LIFECYCLE_LISTENERS)
     private readonly lifecycleListeners: OrganizationLifecycleListener[] | null = null,
+    @Optional()
+    @Inject(ORGANIZATION_SETUP_LISTENERS)
+    private readonly setupListeners: OrganizationLifecycleListener[] | null = null,
   ) {}
 
   /**
@@ -150,7 +166,7 @@ export class OrganizationsService {
       // Événement de domaine, émis DANS la transaction : un abonné en échec
       // annule la création plutôt que de laisser une organisation à moitié
       // provisionnée (cf. bailleur « self » du contrat de phase 1).
-      for (const listener of this.lifecycleListeners ?? []) {
+      for (const listener of [...(this.lifecycleListeners ?? []), ...(this.setupListeners ?? [])]) {
         await listener.onOrganizationCreated(tx, {
           organizationId,
           type: input.type,
@@ -231,13 +247,26 @@ export class OrganizationsService {
   async updateSettings(
     organizationId: string,
     userId: string,
-    input: Partial<OrganizationSettingsView>,
+    input: OrganizationSettingsPatch,
   ): Promise<OrganizationSettingsView> {
     return this.prisma.withTenant(organizationId, userId, async (tx) => {
       const before = await tx.organization_settings.findUnique({
         where: { organization_id: organizationId },
       });
       if (!before) throw new DomainError('ORG.SETTINGS_NOT_FOUND', { organizationId });
+
+      // Sections opérationnelles (phase 3) : fusion dans `settings_json`,
+      // sans jamais effacer les autres clés (gabarit de contrat notamment).
+      const operational = { billing: input.billing, cash: input.cash, messaging: input.messaging };
+      const touchesOperational = Boolean(input.billing || input.cash || input.messaging);
+      const penaltyRuleId = input.billing?.defaultPenaltyRuleId;
+      if (penaltyRuleId) {
+        const rule = await tx.penalty_rules.findFirst({
+          where: { id: penaltyRuleId },
+          select: { id: true },
+        });
+        if (!rule) throw new DomainError('BILLING.PENALTY_RULE_NOT_FOUND', { id: penaltyRuleId });
+      }
 
       const after = await tx.organization_settings.update({
         where: { organization_id: organizationId },
@@ -256,6 +285,18 @@ export class OrganizationsService {
             ? { whatsapp_enabled: input.whatsappEnabled }
             : {}),
           ...(input.smsEnabled !== undefined ? { sms_fallback_enabled: input.smsEnabled } : {}),
+          ...(touchesOperational
+            ? {
+                settings_json: mergeOperationalSettings(
+                  before.settings_json,
+                  operational,
+                ) as object,
+              }
+            : {}),
+          ...(penaltyRuleId !== undefined ? { default_penalty_rule_id: penaltyRuleId } : {}),
+          ...(input.billing?.generateDaysBefore !== undefined
+            ? { invoice_generation_lead_days: input.billing.generateDaysBefore }
+            : {}),
           updated_at: new Date(),
         },
       });
@@ -287,8 +328,11 @@ function toSettingsView(row: {
   receipt_verification_base_url: string | null;
   whatsapp_enabled: boolean;
   sms_fallback_enabled: boolean;
+  settings_json: unknown;
+  default_penalty_rule_id: string | null;
 }): OrganizationSettingsView {
   return {
+    ...readOperationalSettings(row.settings_json, row.default_penalty_rule_id),
     defaultPaymentDueDay: row.default_payment_due_day,
     timezone: row.timezone,
     currency: 'XAF',

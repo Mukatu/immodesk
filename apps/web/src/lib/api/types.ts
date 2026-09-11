@@ -48,6 +48,9 @@ export interface OrganizationSettings {
   receiptFooterText: string | null;
   whatsappEnabled: boolean;
   smsEnabled: boolean;
+  billing: BillingSettings;
+  cash: CashSettings;
+  messaging: MessagingSettings;
 }
 
 export interface Member {
@@ -827,4 +830,496 @@ export interface ContractTemplate {
   signatureCity: string; // « Brazzaville »
   showOhadaBlock: boolean; // bloc bail commercial (Acte uniforme OHADA)
   footerText: string | null;
+}
+
+// ---- Énumérations (phase 3 : facturation, paiements, espèces, quittances, messagerie) ----
+
+export type InvoiceStatus =
+  'DRAFT' | 'ISSUED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+
+export type InvoiceLineType =
+  | 'RENT'
+  | 'WATER_CHARGE'
+  | 'ELECTRICITY_CHARGE'
+  | 'SERVICE_CHARGE'
+  | 'PENALTY'
+  | 'DEPOSIT'
+  | 'AGENCY_FEE'
+  | 'REPAIR_REBILL'
+  | 'DISCOUNT'
+  | 'OTHER';
+
+export type PaymentStatus =
+  'PENDING' | 'PENDING_VERIFICATION' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'REVERSED';
+
+export type PaymentDirection = 'INBOUND' | 'OUTBOUND';
+
+export type FeeBearer = 'TENANT' | 'ORGANIZATION' | 'LANDLORD' | 'SHARED';
+
+export type CreditStatus = 'OPEN' | 'PARTIALLY_USED' | 'USED' | 'REFUNDED' | 'EXPIRED';
+
+export type CashReceiptStatus = 'DRAFT' | 'ISSUED' | 'REMITTED' | 'CANCELLED';
+
+export type RemittanceStatus =
+  'OPEN' | 'SUBMITTED' | 'VERIFIED' | 'DEPOSITED' | 'REJECTED' | 'CANCELLED';
+
+export type ReceiptStatus = 'DRAFT' | 'GENERATING' | 'ISSUED' | 'SENT' | 'CANCELLED';
+
+export type NotificationChannel = 'WHATSAPP' | 'SMS' | 'EMAIL' | 'PUSH' | 'IN_APP';
+
+export type NotificationStatus = 'SCHEDULED' | 'QUEUED' | 'SENT' | 'FAILED' | 'CANCELLED';
+
+export type MessageStatus =
+  'QUEUED' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'REJECTED' | 'EXPIRED';
+
+export type PenaltyBasis =
+  'RATE_BPS_PER_DAY' | 'RATE_BPS_PER_MONTH' | 'FLAT_AMOUNT' | 'FLAT_AMOUNT_PER_DAY';
+
+// ---- Paramètres d'organisation (phase 3) ----
+
+export interface BillingSettings {
+  generateDaysBefore: number;
+  autoIssue: boolean;
+  defaultPenaltyRuleId: string | null;
+  applyPenalties: boolean;
+}
+
+export interface CashSettings {
+  collectorHoldingCapAmount: number;
+  requireTenantSignature: boolean;
+  denominationsEnabled: boolean;
+}
+
+export interface MessagingSettings {
+  receiptChannelOrder: ('WHATSAPP' | 'SMS')[];
+  sendCashReceiptToTenant: boolean;
+  sendInvoiceIssued: boolean;
+}
+
+// ---- Facturation ----
+
+export interface InvoiceLineInput {
+  lineType: InvoiceLineType;
+  label: string;
+  description?: string;
+  quantity?: number;
+  unitPriceAmount: number;
+  amount?: number;
+  vatRateBps?: number;
+  isCredit?: boolean;
+  periodStart?: string;
+  periodEnd?: string;
+}
+
+export interface InvoiceLine extends InvoiceLineInput {
+  id: string;
+  invoiceId: string;
+  amount: number;
+  vatAmount: number;
+  position: number;
+}
+
+export interface InvoiceSummary {
+  id: string;
+  invoiceNumber: string | null;
+  status: InvoiceStatus;
+  lease: { id: string; reference: string | null };
+  tenant: { id: string; displayName: string; primaryPhone: string };
+  unit: { id: string; code: string };
+  property: { id: string; name: string };
+  periodStart: string;
+  periodEnd: string;
+  dueDate: string;
+  graceUntilDate: string | null;
+  totalAmount: number;
+  paidAmount: number;
+  balanceAmount: number;
+}
+
+export interface InvoiceDetail extends InvoiceSummary {
+  rentAmount: number;
+  chargesAmount: number;
+  penaltyAmount: number;
+  otherAmount: number;
+  discountAmount: number;
+  issueDate: string;
+  issuedAt: string | null;
+  paidAt: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+  lines: InvoiceLine[];
+  allocations: AllocationView[];
+  receipt: ReceiptSummary | null;
+  documentId: string | null;
+  notes: string | null;
+}
+
+export interface AllocationView {
+  id: string;
+  paymentId: string;
+  paymentReference: string;
+  method: PaymentMethod;
+  amount: number;
+  allocationDate: string;
+  isReversal: boolean;
+}
+
+export interface CreateInvoiceBody {
+  leaseId: string;
+  periodStart: string;
+  periodEnd: string;
+  dueDate?: string;
+  lines: InvoiceLineInput[];
+  notes?: string;
+  issue?: boolean;
+}
+
+export interface PenaltyRuleInput {
+  name: string;
+  basis: PenaltyBasis;
+  rateBps?: number;
+  flatAmount?: number;
+  graceDays?: number;
+  capAmount?: number;
+  capRateBps?: number;
+  maxPeriods?: number;
+  appliesToCharges?: boolean;
+  isActive?: boolean;
+  isDefault?: boolean;
+}
+
+export interface PenaltyRule extends PenaltyRuleInput {
+  id: string;
+  createdAt: string;
+}
+
+export interface BillingRunInput {
+  periodStart?: string;
+  dryRun?: boolean;
+}
+
+export type BillingRunStatus = 'RUNNING' | 'DONE' | 'FAILED';
+
+export interface BillingRun {
+  runId: string;
+  status: BillingRunStatus;
+  startedAt: string;
+  finishedAt: string | null;
+  created: number;
+  skipped: number;
+  errors: { leaseId: string; reason: string }[];
+}
+
+export interface BillingDashboard {
+  period: string;
+  expectedAmount: number;
+  collectedAmount: number;
+  outstandingAmount: number;
+  overdueAmount: number;
+  invoicesCount: number;
+  paidCount: number;
+  byProperty: {
+    propertyId: string;
+    name: string;
+    expected: number;
+    collected: number;
+    outstanding: number;
+  }[];
+  byMethod: Record<PaymentMethod, number>;
+}
+
+// ---- Paiements ----
+
+export interface PaymentInput {
+  method: PaymentMethod;
+  amount: number;
+  tenantId: string;
+  leaseId?: string;
+  paymentDate?: string;
+  valueDate?: string;
+  externalReference?: string;
+  bankAccountId?: string;
+  feeAmount?: number;
+  feeBearer?: FeeBearer;
+  autoAllocate?: boolean;
+  allocations?: { invoiceId: string; amount: number }[];
+  confirmed?: boolean;
+  clientRef?: string;
+  notes?: string;
+  collectionLatitude?: number;
+  collectionLongitude?: number;
+}
+
+export interface PaymentSummary {
+  id: string;
+  reference: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  direction: PaymentDirection;
+  amount: number;
+  allocatedAmount: number;
+  unallocatedAmount: number;
+  paymentDate: string;
+  tenant: { id: string; displayName: string } | null;
+  lease: { id: string; reference: string | null } | null;
+  receivedByUserId: string | null;
+  reversalOfId: string | null;
+}
+
+export interface PaymentDetail extends PaymentSummary {
+  externalReference: string | null;
+  feeAmount: number;
+  netAmount: number;
+  confirmedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  reversedAt: string | null;
+  reversalReason: string | null;
+  allocations: {
+    id: string;
+    invoiceId: string | null;
+    invoiceNumber: string | null;
+    tenantCreditId: string | null;
+    amount: number;
+    isReversal: boolean;
+  }[];
+  cashReceipt: CashReceiptSummary | null;
+  receipts: ReceiptSummary[];
+  clientRef: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface TenantCredit {
+  id: string;
+  tenantId: string;
+  leaseId: string | null;
+  status: CreditStatus;
+  origin: string;
+  amount: number;
+  usedAmount: number;
+  remainingAmount: number;
+  sourcePaymentId: string | null;
+  sourceInvoiceId: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface TenantCredits {
+  remainingAmount: number;
+  items: TenantCredit[];
+}
+
+export interface TenantStatementLine {
+  date: string;
+  type: 'INVOICE' | 'PAYMENT' | 'REVERSAL' | 'CREDIT';
+  reference: string;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface TenantStatement {
+  openingBalance: number;
+  lines: TenantStatementLine[];
+  closingBalance: number;
+}
+
+// ---- Espèces ----
+
+export interface CashReceiptInput {
+  tenantId: string;
+  leaseId?: string;
+  amount: number;
+  payerName?: string;
+  payerPhone?: string;
+  purpose?: string;
+  receivedAt?: string;
+  autoAllocate?: boolean;
+  allocations?: { invoiceId: string; amount: number }[];
+  signatureDataUrl?: string;
+  paperReceiptDocumentId?: string;
+  latitude?: number;
+  longitude?: number;
+  clientRef: string;
+}
+
+export interface CashReceiptSummary {
+  id: string;
+  receiptNumber: string;
+  status: CashReceiptStatus;
+  amount: number;
+  receivedAt: string;
+  tenant: { id: string; displayName: string };
+  collectorUserId: string;
+  collectorName: string;
+  remittanceId: string | null;
+  paymentId: string | null;
+}
+
+export interface CashReceiptDetail extends CashReceiptSummary {
+  payerName: string;
+  payerPhone: string | null;
+  purpose: string | null;
+  leaseId: string | null;
+  signatureDocumentId: string | null;
+  signatureHash: string | null;
+  documentId: string | null;
+  allocations: { invoiceId: string; invoiceNumber: string | null; amount: number }[];
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+  clientRef: string | null;
+}
+
+export interface CollectorBalance {
+  userId: string;
+  fullName: string;
+  heldAmount: number;
+  receiptsCount: number;
+  oldestReceiptAt: string | null;
+  capAmount: number;
+  overCap: boolean;
+  lastRemittanceAt: string | null;
+}
+
+export interface RemittanceInput {
+  cashReceiptIds: string[];
+  declaredAmount: number;
+  denominations?: Record<string, number>;
+  submit?: boolean;
+  notes?: string;
+  clientRef?: string;
+}
+
+export interface RemittanceVerifyInput {
+  countedAmount: number;
+  items?: {
+    cashReceiptId: string;
+    isVerified: boolean;
+    varianceAmount?: number;
+    varianceReason?: string;
+  }[];
+  notes?: string;
+}
+
+export interface RemittanceSummary {
+  id: string;
+  reference: string;
+  status: RemittanceStatus;
+  collectorUserId: string;
+  collectorName: string;
+  declaredAmount: number;
+  expectedAmount: number;
+  countedAmount: number;
+  varianceAmount: number;
+  receiptsCount: number;
+  openedAt: string;
+  submittedAt: string | null;
+  verifiedAt: string | null;
+}
+
+export interface RemittanceDetail extends RemittanceSummary {
+  items: {
+    id: string;
+    cashReceiptId: string;
+    receiptNumber: string;
+    amount: number;
+    isVerified: boolean;
+    varianceAmount: number;
+    varianceReason: string | null;
+  }[];
+  denominations: Record<string, number>;
+  verifiedByUserId: string | null;
+  rejectionReason: string | null;
+  depositedAt: string | null;
+  depositBankAccountId: string | null;
+  notes: string | null;
+}
+
+// ---- Quittances ----
+
+export interface ReceiptSummary {
+  id: string;
+  receiptNumber: string;
+  status: ReceiptStatus;
+  issueDate: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  totalAmount: number;
+  tenant: { id: string; displayName: string };
+  paymentId: string;
+  invoiceId: string | null;
+  sentAt: string | null;
+  sentChannel: NotificationChannel | null;
+}
+
+export interface ReceiptDetail extends ReceiptSummary {
+  rentAmount: number;
+  chargesAmount: number;
+  penaltyAmount: number;
+  remainingBalanceAmount: number;
+  verificationUrl: string;
+  documentId: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+  messageLogs: MessageLog[];
+}
+
+export interface ReceiptVerification {
+  receiptNumber: string;
+  issueDate: string;
+  period: string | null;
+  totalAmount: number;
+  tenantName: string;
+  landlordDisplayName: string;
+  organizationName: string;
+  status: ReceiptStatus;
+}
+
+// ---- Messagerie ----
+
+export interface NotificationTemplate {
+  id: string;
+  code: string;
+  channel: NotificationChannel;
+  locale: string;
+  name: string;
+  subject: string | null;
+  body: string;
+  providerTemplateName: string | null;
+  providerTemplateLang: string | null;
+  variables: string[];
+  isActive: boolean;
+  isSystem: boolean;
+  approvedAt: string | null;
+}
+
+export interface UpdateNotificationTemplateBody {
+  body?: string;
+  subject?: string;
+  providerTemplateName?: string;
+  providerTemplateLang?: string;
+  isActive?: boolean;
+}
+
+export interface MessageLog {
+  id: string;
+  notificationId: string | null;
+  channel: NotificationChannel;
+  status: MessageStatus;
+  provider: string;
+  providerMessageId: string | null;
+  toAddress: string;
+  templateCode: string | null;
+  contentPreview: string | null;
+  costAmount: number;
+  queuedAt: string;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  readAt: string | null;
+  failedAt: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  relatedEntityType: string | null;
+  relatedEntityId: string | null;
 }

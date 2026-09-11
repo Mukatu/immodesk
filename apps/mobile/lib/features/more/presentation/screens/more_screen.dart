@@ -23,6 +23,20 @@ class MoreScreen extends ConsumerWidget {
           ),
           const Divider(height: 1),
           ListTile(
+            key: const ValueKey('more-collection-tile'),
+            leading: const Icon(Icons.route_outlined),
+            title: const Text('Ma tournée'),
+            onTap: () => context.push(RoutePaths.collectionRound),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            key: const ValueKey('more-cash-tile'),
+            leading: const Icon(Icons.savings_outlined),
+            title: const Text('Ma caisse'),
+            onTap: () => context.push(RoutePaths.cashHome),
+          ),
+          const Divider(height: 1),
+          ListTile(
             key: const ValueKey('more-diagnostics-tile'),
             leading: const Icon(Icons.wifi_tethering_outlined),
             title: const Text('À propos / diagnostic'),

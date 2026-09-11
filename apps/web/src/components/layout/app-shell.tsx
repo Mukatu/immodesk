@@ -3,11 +3,16 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Banknote,
   Building2,
+  CreditCard,
+  FileCheck2,
   FileText,
   Home,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
+  Receipt,
   Settings,
   Users,
   Users2,
@@ -35,6 +40,11 @@ const NAV_ITEMS = [
   { href: '/app/baux', label: 'Baux', icon: FileText },
   { href: '/app/depots', label: 'Dépôts', icon: Wallet },
   { href: '/app/immeubles', label: 'Immeubles', icon: Building2 },
+  { href: '/app/factures', label: 'Factures', icon: Receipt },
+  { href: '/app/paiements', label: 'Paiements', icon: CreditCard },
+  { href: '/app/caisse', label: 'Caisse', icon: Banknote },
+  { href: '/app/quittances', label: 'Quittances', icon: FileCheck2 },
+  { href: '/app/messages', label: 'Messages', icon: MessageSquare },
   { href: '/app/equipe', label: 'Équipe', icon: Users },
   { href: '/app/parametres', label: 'Paramètres', icon: Settings },
 ];

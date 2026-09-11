@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -106,6 +107,27 @@ export default function ParametresPage() {
         title="Paramètres"
         description="Identité de l’organisation et réglages de facturation."
       />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/app/parametres/facturation"
+          className="rounded-md border border-border p-4 hover:bg-accent"
+        >
+          <p className="font-medium">Facturation, caisse et messagerie</p>
+          <p className="text-sm text-muted-foreground">
+            Génération des factures, plafond de caisse, règles de pénalité.
+          </p>
+        </Link>
+        <Link
+          href="/app/parametres/messages"
+          className="rounded-md border border-border p-4 hover:bg-accent"
+        >
+          <p className="font-medium">Gabarits de messages</p>
+          <p className="text-sm text-muted-foreground">
+            Corps des messages WhatsApp et SMS envoyés aux locataires.
+          </p>
+        </Link>
+      </div>
 
       <Card>
         <CardHeader>

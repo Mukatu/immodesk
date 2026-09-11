@@ -41,6 +41,22 @@ export class NumberingService {
     overrides: Partial<SequenceFormat> = {},
   ): Promise<{ value: bigint; period: string; number: string }> {
     const format = { ...SEQUENCE_FORMATS[kind], ...overrides };
+    return this.nextNumberFor(tx, organizationId, kind, format, at);
+  }
+
+  /**
+   * Variante à clé libre : le compteur est identifié par `key` (TEXT en
+   * base), ce qui permet une série PAR DÉMARCHEUR — `CASH_RECEIPT:{userId}`
+   * — sans multiplier les natures déclarées.
+   */
+  async nextNumberFor(
+    tx: TenantClient,
+    organizationId: string,
+    key: string,
+    format: SequenceFormat,
+    at: Date = new Date(),
+  ): Promise<{ value: bigint; period: string; number: string }> {
+    const kind = key;
     const period = sequencePeriod(format.scope, at);
 
     const rows = await tx.$queryRawUnsafe<Array<{ value: bigint; number: string }>>(

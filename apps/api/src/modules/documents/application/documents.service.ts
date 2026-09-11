@@ -273,6 +273,109 @@ export class DocumentsService {
     return toDocumentView(created);
   }
 
+  /**
+   * Dépose un objet engendré par l'API AVANT toute transaction.
+   *
+   * Un encaissement terrain téléverse la signature du locataire : l'envoi
+   * vers le stockage ne doit pas immobiliser une connexion PostgreSQL. La
+   * fiche est ensuite écrite par `registerStoredObject` dans la transaction
+   * métier ; si celle-ci échoue, l'objet orphelin est ramassé par la purge.
+   */
+  async storeGeneratedObject(
+    organizationId: string,
+    input: { kind: DocumentKind; mimeType: string; body: Buffer },
+  ): Promise<{ documentId: string; objectKey: string; sizeBytes: number }> {
+    assertUploadAllowed(input.mimeType, input.body.byteLength);
+    const documentId = newId();
+    const objectKey = buildObjectKey({
+      organizationId,
+      documentId,
+      kind: input.kind,
+      mimeType: input.mimeType,
+    });
+    const stored = await this.storage.putObject({
+      objectKey,
+      mimeType: input.mimeType,
+      body: input.body,
+    });
+    return { documentId, objectKey, sizeBytes: stored.sizeBytes };
+  }
+
+  /** Écrit la fiche d'un objet déposé par `storeGeneratedObject`, dans la transaction ouverte. */
+  async registerStoredObject(
+    tx: TenantClient,
+    organizationId: string,
+    userId: string | null,
+    stored: { documentId: string; objectKey: string; sizeBytes: number },
+    input: {
+      kind: DocumentKind;
+      fileName: string;
+      mimeType: string;
+      relatedEntityType?: string | null;
+      relatedEntityId?: string | null;
+      checksumSha256?: string | null;
+    },
+    metadata?: Record<string, unknown>,
+  ): Promise<DocumentView> {
+    const created = (await tx.documents.create({
+      data: {
+        ...(metadata ? { metadata: metadata as object } : {}),
+        id: stored.documentId,
+        organization_id: organizationId,
+        kind: input.kind,
+        storage_provider: this.storage.provider,
+        bucket: this.storage.bucket,
+        object_key: stored.objectKey,
+        file_name: sanitizeFileName(input.fileName),
+        mime_type: input.mimeType,
+        size_bytes: BigInt(stored.sizeBytes),
+        checksum_sha256: input.checksumSha256 ?? null,
+        related_entity_type: input.relatedEntityType ?? null,
+        related_entity_id: input.relatedEntityId ?? null,
+        uploaded_by_user_id: userId,
+      },
+    })) as unknown as DocumentRow;
+    await audit(this.auditService, tx, {
+      organizationId,
+      actorUserId: userId,
+      action: 'CREATE',
+      operation: AUDIT_OPERATIONS.DOCUMENT_REGISTERED,
+      entityType: 'documents',
+      entityId: stored.documentId,
+      newState: toJsonState({ ...toDocumentView(created), generated: true }),
+    });
+    return toDocumentView(created);
+  }
+
+  /** URL signée pour un lien public vérifié (lien court des SMS), sans utilisateur. */
+  async systemDownloadUrl(
+    organizationId: string,
+    documentId: string,
+    ttlSeconds = SIGNED_URL_TTL_SECONDS,
+  ): Promise<{ downloadUrl: string; expiresAt: string } | null> {
+    return this.prisma.withTenant(organizationId, null, (tx) =>
+      this.signedLinkFor(tx, documentId, ttlSeconds),
+    );
+  }
+
+  /** URL signée d'un document connu, sans audit : liens des messages sortants. */
+  async signedLinkFor(
+    tx: TenantClient,
+    documentId: string,
+    ttlSeconds: number,
+  ): Promise<{ downloadUrl: string; expiresAt: string } | null> {
+    const found = await tx.documents.findFirst({
+      where: { id: documentId, deleted_at: null },
+      select: { object_key: true, file_name: true },
+    });
+    if (!found) return null;
+    return this.storage.createDownloadUrl({
+      objectKey: found.object_key,
+      fileName: found.file_name,
+      ttlSeconds,
+    });
+  }
+
   async list(
     organizationId: string,
     userId: string,

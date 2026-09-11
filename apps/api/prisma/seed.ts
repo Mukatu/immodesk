@@ -8,6 +8,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import { v7 as uuidv7 } from 'uuid';
+import { seedBilling } from './seed-billing';
 import { seedLeases } from './seed-leases';
 import { seedPortfolio } from './seed-portfolio';
 
@@ -47,6 +48,9 @@ async function main(): Promise<void> {
   // --- Phase 2 : baux, dépôts et gabarit de contrat ---------------------
   const leases = await seedLeases(prisma, organizationId);
 
+  // --- Phase 3 : facturation, espèces, quittances, modèles de messages --
+  const billing = await seedBilling(prisma, organizationId);
+
   console.info('Seed Immodesk — terminé.');
   console.info(`  Organisation : Agence Mpila Immo (${organizationId})`);
   console.info(`  OWNER        : ${OWNER_PHONE}`);
@@ -62,6 +66,15 @@ async function main(): Promise<void> {
     `  Dépôts       : ${leases.deposits} partiellement encaissés, ${leases.revisions} révision future`,
   );
   console.info('  Contrat      : gabarit par défaut « bail à usage d’habitation » enregistré');
+  console.info(
+    `  Facturation  : ${billing.invoices} factures créées (A1 émise, A2 partiellement réglée, A1 du mois précédent réglée)`,
+  );
+  console.info(
+    `  Espèces      : ${billing.cashReceipts} reçu de 100 000 FCFA (démarcheur), ${billing.remittances} remise SOUMISE`,
+  );
+  console.info(
+    `  Quittances   : ${billing.receipts} émise ; règle de pénalité par défaut ; ${billing.templates} modèles système`,
+  );
   console.info('  Connexion    : POST /v1/auth/otp/request puis /v1/auth/otp/verify');
   console.info('                 avec OTP_DEV_CODE (000000 par défaut) en développement.');
 }

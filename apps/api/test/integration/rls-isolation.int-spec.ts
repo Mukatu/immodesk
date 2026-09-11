@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { v7 as uuidv7 } from 'uuid';
-import { withAuditTriggersDisabled } from './helpers';
+import './helpers';
 import { buildInsert, listTenantTables, planMinimalRow, type Anchors } from './rls-matrix';
 
 /**
@@ -57,6 +57,37 @@ const PHASE2_TENANT_TABLES = [
   'deposits',
   'deposit_movements',
 ] as const;
+
+/**
+ * Tables de la phase 3 (facturation, encaissements, espèces, quittances,
+ * messagerie). `notification_templates`, `message_logs`, `idempotency_keys`
+ * et `audit_logs` sont déjà exigées depuis la phase 0, `documents` depuis la
+ * phase 1.
+ */
+const PHASE3_TENANT_TABLES = [
+  'rent_invoices',
+  'invoice_lines',
+  'penalty_rules',
+  'payments',
+  'payment_allocations',
+  'tenant_credits',
+  'cash_receipts',
+  'cash_remittances',
+  'cash_remittance_items',
+  'receipts',
+  'notifications',
+  'sequences',
+  'webhook_events',
+] as const;
+
+/** Tables dont les déclencheurs refusent le DELETE (append-only ou colonnes verrouillées). */
+const GUARDED_TABLES = [
+  'audit_logs',
+  'payment_allocations',
+  'payments',
+  'receipts',
+  'cash_receipts',
+];
 
 interface Fixture {
   organizationId: string;
@@ -314,6 +345,11 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
     expect({ missing, phase: 1 }).toEqual({ missing: [], phase: 1 });
   });
 
+  it('couvre obligatoirement les 13 tables de la phase 3 (facturation, espèces, quittances, messagerie)', () => {
+    const missing = PHASE3_TENANT_TABLES.filter((t) => !covered.includes(t));
+    expect({ missing, phase: 3 }).toEqual({ missing: [], phase: 3 });
+  });
+
   it('couvre obligatoirement les 6 tables de la phase 2 (baux et dépôts)', () => {
     const missing = PHASE2_TENANT_TABLES.filter((t) => !covered.includes(t));
     expect({ missing, phase: 2 }).toEqual({ missing: [], phase: 2 });
@@ -563,6 +599,60 @@ async function createFixture(admin: PrismaClient, label: string): Promise<Fixtur
   anchors.set('deposits', depositId);
   anchors.set('documents', documentId);
 
+  // --- Ancres de la phase 3 --------------------------------------------
+  //
+  // La facture d'ancrage vit sur le SECOND bail et sur une période passée :
+  // la ligne de balayage de `rent_invoices` (bail d'ancrage, période du jour)
+  // ne heurte ainsi pas `rent_invoices_period_uk`. La remise d'ancrage est
+  // SUBMITTED, pour laisser libre l'index « une remise OPEN par démarcheur ».
+  const invoiceId = uuidv7();
+  const paymentId = uuidv7();
+  const cashReceiptId = uuidv7();
+  const remittanceId = uuidv7();
+  await admin.$executeRawUnsafe(
+    `INSERT INTO rent_invoices (id, organization_id, lease_id, tenant_id, unit_id, property_id, landlord_id,
+                                invoice_number, period_start, period_end, due_date)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6::uuid, $7::uuid, $8,
+             current_date - 60, current_date - 31, current_date - 55)`,
+    invoiceId,
+    organizationId,
+    depositLeaseId,
+    tenantId,
+    unitId,
+    propertyId,
+    landlordId,
+    `RLS-LOY-${label}-${suffix}`,
+  );
+  await admin.$executeRawUnsafe(
+    `INSERT INTO payments (id, organization_id, tenant_id, method, status, reference, amount)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, 'CASH', 'CONFIRMED', $4, 0)`,
+    paymentId,
+    organizationId,
+    tenantId,
+    `RLS-PAY-${label}-${suffix}`,
+  );
+  await admin.$executeRawUnsafe(
+    `INSERT INTO cash_remittances (id, organization_id, collector_user_id, reference, status)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4, 'SUBMITTED')`,
+    remittanceId,
+    organizationId,
+    userIds[0],
+    `RLS-REM-${label}-${suffix}`,
+  );
+  await admin.$executeRawUnsafe(
+    `INSERT INTO cash_receipts (id, organization_id, tenant_id, collector_user_id, receipt_number, amount, payer_name)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, 0, 'Payeur RLS')`,
+    cashReceiptId,
+    organizationId,
+    tenantId,
+    userIds[0],
+    `RLS-CASH-${label}-${suffix}`,
+  );
+  anchors.set('rent_invoices', invoiceId);
+  anchors.set('payments', paymentId);
+  anchors.set('cash_receipts', cashReceiptId);
+  anchors.set('cash_remittances', remittanceId);
+
   return { organizationId, userIds, anchors, slug };
 }
 
@@ -570,7 +660,7 @@ async function dropFixture(admin: PrismaClient, fixture: Fixture): Promise<void>
   // ON DELETE CASCADE nettoie l'ensemble des lignes rattachées ; les
   // déclencheurs append-only d'`audit_logs` sont neutralisés le temps du
   // nettoyage (artifice réservé aux tests).
-  await withAuditTriggersDisabled(admin, async () => {
+  await withGuardedTriggersDisabled(admin, async () => {
     await admin
       .$executeRawUnsafe(`DELETE FROM organizations WHERE id = $1::uuid`, fixture.organizationId)
       .catch(() => undefined);
@@ -595,7 +685,7 @@ async function cleanupRows(admin: PrismaClient, table: string, ids: string[]): P
         .catch(() => undefined);
     }
   };
-  if (table === 'audit_logs' || table === 'payment_allocations') {
+  if (GUARDED_TABLES.includes(table)) {
     await admin.$executeRawUnsafe(`ALTER TABLE "${table}" DISABLE TRIGGER USER`);
     try {
       await remove();
@@ -605,6 +695,25 @@ async function cleanupRows(admin: PrismaClient, table: string, ids: string[]): P
     return;
   }
   await remove();
+}
+
+/**
+ * Suppression d'une organisation de test : la cascade traverse `payments`,
+ * `receipts`, `cash_receipts` et `payment_allocations`, dont les
+ * déclencheurs refusent tout DELETE. Artifice RÉSERVÉ AUX TESTS.
+ */
+async function withGuardedTriggersDisabled(
+  admin: PrismaClient,
+  work: () => Promise<void>,
+): Promise<void> {
+  for (const table of GUARDED_TABLES)
+    await admin.$executeRawUnsafe(`ALTER TABLE "${table}" DISABLE TRIGGER USER`);
+  try {
+    await work();
+  } finally {
+    for (const table of GUARDED_TABLES)
+      await admin.$executeRawUnsafe(`ALTER TABLE "${table}" ENABLE TRIGGER USER`);
+  }
 }
 
 function firstLine(error: unknown): string {

@@ -27,4 +27,20 @@ abstract final class RoutePaths {
 
   /// Onglet « Plus » (diagnostic, déconnexion).
   static const String more = '/more';
+
+  /// Tournée du démarcheur (`feature collection`) : factures dues
+  /// regroupées par immeuble, puis encaissement et confirmation d'un reçu.
+  static const String collectionRound = '/collection';
+  static const String collectionEncaissementPattern =
+      '$collectionRound/encaissement/:invoiceId';
+  static String collectionEncaissement(String invoiceId) =>
+      '$collectionRound/encaissement/$invoiceId';
+  static const String collectionConfirmationPattern =
+      '$collectionRound/confirmation';
+  static const String collectionConfirmation = '$collectionRound/confirmation';
+
+  /// Caisse du démarcheur (`feature cash`) : encours, remises.
+  static const String cashHome = '/cash';
+  static const String cashRemittanceNew = '$cashHome/remittances/new';
+  static const String cashRemittances = '$cashHome/remittances';
 }

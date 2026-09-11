@@ -4,6 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/screens/otp_verification_screen.dart';
 import '../../features/auth/presentation/screens/phone_entry_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
+import '../../features/cash/presentation/screens/ma_caisse_screen.dart';
+import '../../features/cash/presentation/screens/remittance_creation_screen.dart';
+import '../../features/cash/presentation/screens/remittance_list_screen.dart';
+import '../../features/collection/domain/entities/cash_receipt_result.dart';
+import '../../features/collection/presentation/screens/collection_round_screen.dart';
+import '../../features/collection/presentation/screens/confirmation_screen.dart';
+import '../../features/collection/presentation/screens/encaissement_screen.dart';
 import '../../features/diagnostics/presentation/screens/diagnostics_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/leases/presentation/screens/lease_detail_screen.dart';
@@ -120,6 +127,34 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
                         LeaseDetailScreen(leaseId: state.pathParameters['id']!),
                   ),
                 ],
+              ),
+              GoRoute(
+                path: RoutePaths.collectionRound,
+                builder: (context, state) => const CollectionRoundScreen(),
+              ),
+              GoRoute(
+                path: RoutePaths.collectionEncaissementPattern,
+                builder: (context, state) => EncaissementScreen(
+                  invoiceId: state.pathParameters['invoiceId']!,
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.collectionConfirmationPattern,
+                builder: (context, state) => ConfirmationScreen(
+                  result: state.extra! as CashReceiptResult,
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.cashHome,
+                builder: (context, state) => const MaCaisseScreen(),
+              ),
+              GoRoute(
+                path: RoutePaths.cashRemittanceNew,
+                builder: (context, state) => const RemittanceCreationScreen(),
+              ),
+              GoRoute(
+                path: RoutePaths.cashRemittances,
+                builder: (context, state) => const RemittanceListScreen(),
               ),
             ],
           ),

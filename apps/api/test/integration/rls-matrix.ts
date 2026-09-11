@@ -56,6 +56,13 @@ export const TABLE_HINTS: Record<string, Record<string, unknown>> = {
   // facultative avec le mode « paiement déclaré » (migration 1_momo_declared),
   // si bien que le générateur ne la renseigne plus d'elle-même.
   mobile_money_transactions: { aggregator: 'CINETPAY', payer_msisdn: '+242066000095' },
+  // Phase 3 — rent_invoices_period_chk : période strictement croissante.
+  rent_invoices: {
+    period_start: { raw: 'current_date' },
+    period_end: { raw: 'current_date + 30' },
+  },
+  // penalty_rules_value_chk : un taux OU un montant forfaitaire.
+  penalty_rules: { rate_bps: { raw: '500' } },
 };
 
 /**
@@ -74,6 +81,11 @@ export const DYNAMIC_TABLE_HINTS: Record<string, (anchors: Anchors) => Record<st
   lease_parties: (anchors) => ({
     role: { raw: `'CO_TENANT'::lease_party_role` },
     tenant_id: typed(anchors.known.get('tenants'), 'uuid'),
+  }),
+  // payment_allocations_target_chk : exactement UNE cible (facture, dépôt ou
+  // avoir) — la facture d'ancrage de la même organisation.
+  payment_allocations: (anchors) => ({
+    invoice_id: typed(anchors.known.get('rent_invoices'), 'uuid'),
   }),
 };
 

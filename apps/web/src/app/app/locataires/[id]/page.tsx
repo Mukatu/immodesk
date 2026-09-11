@@ -1,9 +1,11 @@
 'use client';
 
+import * as React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/business/page-header';
 import { EmptyState } from '@/components/business/empty-state';
@@ -15,12 +17,26 @@ import { useLeases } from '@/lib/api/hooks/use-leases';
 import { TenantIdentitySection } from './_components/identity-section';
 import { GuarantorsSection } from './_components/guarantors-section';
 import { ContactChannelsSection } from './_components/contact-channels-section';
+import { InvoicesTab } from './_components/invoices-tab';
+import { PaymentsTab } from './_components/payments-tab';
+import { CreditsTab } from './_components/credits-tab';
+import { StatementTab } from './_components/statement-tab';
+
+const ACCOUNTING_TABS = [
+  { key: 'factures', label: 'Factures' },
+  { key: 'paiements', label: 'Paiements' },
+  { key: 'credits', label: 'Crédits' },
+  { key: 'releve', label: 'Relevé de compte' },
+] as const;
+
+type AccountingTab = (typeof ACCOUNTING_TABS)[number]['key'];
 
 export default function LocataireDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { data: tenant, isLoading } = useTenant(id);
   const { data: leases } = useLeases({ tenantId: id, limit: 50 });
+  const [accountingTab, setAccountingTab] = React.useState<AccountingTab>('factures');
 
   if (isLoading) {
     return (
@@ -96,6 +112,36 @@ export default function LocataireDetailPage() {
               description="Ce locataire n'a pas encore de bail associé."
             />
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Comptabilité</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div
+            className="inline-flex flex-wrap items-center gap-1 rounded-md border border-border p-1"
+            role="group"
+            aria-label="Onglets de comptabilité"
+          >
+            {ACCOUNTING_TABS.map((tab) => (
+              <Button
+                key={tab.key}
+                type="button"
+                size="sm"
+                variant={accountingTab === tab.key ? 'default' : 'ghost'}
+                aria-pressed={accountingTab === tab.key}
+                onClick={() => setAccountingTab(tab.key)}
+              >
+                {tab.label}
+              </Button>
+            ))}
+          </div>
+          {accountingTab === 'factures' ? <InvoicesTab tenantId={tenant.id} /> : null}
+          {accountingTab === 'paiements' ? <PaymentsTab tenantId={tenant.id} /> : null}
+          {accountingTab === 'credits' ? <CreditsTab tenantId={tenant.id} /> : null}
+          {accountingTab === 'releve' ? <StatementTab tenantId={tenant.id} /> : null}
         </CardContent>
       </Card>
     </div>

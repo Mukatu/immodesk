@@ -123,6 +123,26 @@ class CachedLeases extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Factures dues mises en cache (tournée du démarcheur), pour un affichage
+/// hors ligne en lecture seule de « Ma tournée ». L'encaissement reste
+/// exclu du hors ligne en phase 3 (message clair « connexion requise »,
+/// voir `EncaissementController`) : ce cache ne sert qu'à la consultation.
+@DataClassName('CachedInvoiceRow')
+class CachedInvoices extends Table {
+  TextColumn get id => text()();
+  TextColumn get organizationId => text()();
+  TextColumn get leaseId => text()();
+  TextColumn get propertyId => text()();
+  TextColumn get dueDate => text()();
+
+  /// JSON de `InvoiceSummary`.
+  TextColumn get payload => text()();
+  DateTimeColumn get cachedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// Base locale Drift (SQLite).
 ///
 /// Chiffrement : NON activé en phase 0. `sqlcipher_flutter_libs` est prévu
@@ -137,6 +157,7 @@ class CachedLeases extends Table {
     CachedUnits,
     CachedTenants,
     CachedLeases,
+    CachedInvoices,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -145,7 +166,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -158,6 +179,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await m.createTable(cachedLeases);
+      }
+      if (from < 4) {
+        await m.createTable(cachedInvoices);
       }
     },
   );
@@ -307,6 +331,28 @@ class AppDatabase extends _$AppDatabase {
     if (active.isEmpty) return null;
     active.sort((a, b) => b.cachedAt.compareTo(a.cachedAt));
     return active.first;
+  }
+
+  Future<void> replaceCachedInvoicesForOrganization(
+    String organizationId,
+    List<CachedInvoiceRow> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(
+        cachedInvoices,
+      )..where((tbl) => tbl.organizationId.equals(organizationId))).go();
+      for (final CachedInvoiceRow row in rows) {
+        await into(cachedInvoices).insertOnConflictUpdate(row);
+      }
+    });
+  }
+
+  Future<List<CachedInvoiceRow>> getCachedInvoicesForOrganization(
+    String organizationId,
+  ) {
+    return (select(
+      cachedInvoices,
+    )..where((tbl) => tbl.organizationId.equals(organizationId))).get();
   }
 
   Future<String?> getSetting(String key) async {

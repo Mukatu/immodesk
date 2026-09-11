@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ContractTemplateService } from './application/contract-template.service';
+import { FinancialPdfService } from './application/financial-pdf.service';
 import { LeaseContractService } from './application/lease-contract.service';
 import { LeaseContractWorker } from './infrastructure/lease-contract.worker';
 import { PdfBrowserService } from './infrastructure/pdf-browser.service';
@@ -26,7 +27,14 @@ import { LeaseContractController } from './presentation/lease-contract.controlle
     ContractTemplateService,
     LeaseContractService,
     LeaseContractWorker,
+    FinancialPdfService,
   ],
-  exports: [PdfBrowserService, ContractTemplateService, LeaseContractService, LeaseContractWorker],
+  exports: [
+    PdfBrowserService,
+    ContractTemplateService,
+    LeaseContractService,
+    LeaseContractWorker,
+    FinancialPdfService,
+  ],
 })
 export class PdfModule {}

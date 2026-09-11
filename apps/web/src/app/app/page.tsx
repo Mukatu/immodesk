@@ -1,8 +1,10 @@
 'use client';
 
+import * as React from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
+  AlertTriangle,
   Building2,
   ClipboardList,
   DoorOpen,
@@ -17,13 +19,25 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/business/page-header';
+import { PeriodPicker, currentPeriod } from '@/components/business/period-picker';
+import { MoneyXaf } from '@/components/business/money-xaf';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useProperties } from '@/lib/api/hooks/use-properties';
 import { useUnits } from '@/lib/api/hooks/use-units';
 import { useTenants } from '@/lib/api/hooks/use-tenants';
 import { useLeases } from '@/lib/api/hooks/use-leases';
 import { useDepositsSummary } from '@/lib/api/hooks/use-deposits';
+import { useBillingDashboard } from '@/lib/api/hooks/use-billing-dashboard';
+import { PAYMENT_METHOD_LABELS } from '@/lib/enum-labels';
 import { formatXaf } from '@/lib/money';
 
 const NEXT_STEPS = [
@@ -107,6 +121,8 @@ function KpiCard({ icon: Icon, label, value, isLoading, href, linkLabel }: KpiCa
 
 export default function DashboardPage() {
   const { status, currentOrganization } = useAuth();
+  const [period, setPeriod] = React.useState(currentPeriod());
+  const billingDashboardQuery = useBillingDashboard(period);
   const propertiesQuery = useProperties({ limit: DASHBOARD_PAGE_LIMIT });
   const unitsQuery = useUnits({ limit: DASHBOARD_PAGE_LIMIT });
   const tenantsQuery = useTenants({ limit: DASHBOARD_PAGE_LIMIT });
@@ -168,6 +184,143 @@ export default function DashboardPage() {
         }
         description="Votre tableau de bord est prêt. Voici quelques étapes pour bien démarrer."
       />
+
+      <section aria-labelledby="encaissement-titre" className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 id="encaissement-titre" className="text-lg font-semibold">
+            Encaissement du mois
+          </h2>
+          <PeriodPicker value={period} onValueChange={setPeriod} />
+        </div>
+
+        {billingDashboardQuery.isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full" />
+            ))}
+          </div>
+        ) : billingDashboardQuery.data ? (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Attendu</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-semibold">
+                    <MoneyXaf amount={billingDashboardQuery.data.expectedAmount} />
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Encaissé</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-semibold">
+                    <MoneyXaf amount={billingDashboardQuery.data.collectedAmount} colorize />
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Reste à encaisser</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-semibold">
+                    <MoneyXaf amount={billingDashboardQuery.data.outstandingAmount} />
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription className="flex items-center gap-1">
+                    <AlertTriangle className="size-3.5 text-destructive" aria-hidden="true" />
+                    En retard
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-semibold">
+                    <MoneyXaf amount={billingDashboardQuery.data.overdueAmount} colorize />
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Par immeuble</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {billingDashboardQuery.data.byProperty.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Aucune donnée pour cette période.
+                    </p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Immeuble</TableHead>
+                          <TableHead>Attendu</TableHead>
+                          <TableHead>Encaissé</TableHead>
+                          <TableHead>Reste</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {billingDashboardQuery.data.byProperty.map((row) => (
+                          <TableRow key={row.propertyId}>
+                            <TableCell>{row.name}</TableCell>
+                            <TableCell>
+                              <MoneyXaf amount={row.expected} />
+                            </TableCell>
+                            <TableCell>
+                              <MoneyXaf amount={row.collected} colorize />
+                            </TableCell>
+                            <TableCell>
+                              <MoneyXaf amount={row.outstanding} />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Par mode de paiement</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Mode</TableHead>
+                        <TableHead>Montant</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(billingDashboardQuery.data.byMethod).map(
+                        ([method, amount]) => (
+                          <TableRow key={method}>
+                            <TableCell>
+                              {PAYMENT_METHOD_LABELS[method as keyof typeof PAYMENT_METHOD_LABELS]}
+                            </TableCell>
+                            <TableCell>
+                              <MoneyXaf amount={amount} />
+                            </TableCell>
+                          </TableRow>
+                        ),
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        ) : null}
+      </section>
 
       <section aria-labelledby="apercu-titre" className="space-y-4">
         <h2 id="apercu-titre" className="text-lg font-semibold">

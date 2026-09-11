@@ -65,7 +65,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     organizationId: string,
     userId: string | null,
     fn: (tx: TenantClient) => Promise<T>,
-    options?: { isolationLevel?: Prisma.TransactionIsolationLevel; timeout?: number },
+    options?: {
+      isolationLevel?: Prisma.TransactionIsolationLevel;
+      timeout?: number;
+      /** Attente maximale d'une connexion du pool (encaissements concurrents). */
+      maxWait?: number;
+    },
   ): Promise<T> {
     return this.$transaction(
       async (tx) => {
@@ -80,7 +85,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       {
         isolationLevel: options?.isolationLevel ?? Prisma.TransactionIsolationLevel.ReadCommitted,
         timeout: options?.timeout ?? 15_000,
-        maxWait: 5_000,
+        maxWait: options?.maxWait ?? 5_000,
       },
     );
   }

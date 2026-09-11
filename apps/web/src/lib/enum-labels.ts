@@ -4,19 +4,29 @@
  */
 import type {
   BankAccountHolderType,
+  CashReceiptStatus,
   ContactChannelType,
+  CreditStatus,
   DepositMovementType,
   DepositStatus,
   DocumentKind,
   Gender,
   IdDocumentType,
+  InvoiceLineType,
+  InvoiceStatus,
   LeaseDocumentKind,
   LeasePartyRole,
   LeaseStatus,
+  MessageStatus,
   MomoProvider,
+  NotificationChannel,
   PartyType,
   PaymentMethod,
+  PaymentStatus,
+  PenaltyBasis,
   PropertyType,
+  ReceiptStatus,
+  RemittanceStatus,
   RentPeriod,
   UnitStatus,
   UnitType,
@@ -180,6 +190,99 @@ export const DEPOSIT_MOVEMENT_TYPE_LABELS: Record<DepositMovementType, string> =
   DEDUCTION: 'Retenue',
   TRANSFER: 'Transfert',
   ADJUSTMENT: 'Ajustement',
+};
+
+/**
+ * Libellés fr-CG des énumérations du contrat d'API (phase 3 : facturation, paiements,
+ * espèces, quittances, messagerie), pour affichage sans jamais exposer les codes
+ * techniques à l'utilisateur.
+ */
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  DRAFT: 'Brouillon',
+  ISSUED: 'Émise',
+  PARTIALLY_PAID: 'Partiellement payée',
+  PAID: 'Payée',
+  OVERDUE: 'En retard',
+  CANCELLED: 'Annulée',
+};
+
+export const INVOICE_LINE_TYPE_LABELS: Record<InvoiceLineType, string> = {
+  RENT: 'Loyer',
+  WATER_CHARGE: "Charge d'eau",
+  ELECTRICITY_CHARGE: "Charge d'électricité",
+  SERVICE_CHARGE: 'Charges',
+  PENALTY: 'Pénalité',
+  DEPOSIT: 'Dépôt de garantie',
+  AGENCY_FEE: "Frais d'agence",
+  REPAIR_REBILL: 'Refacturation de réparation',
+  DISCOUNT: 'Remise',
+  OTHER: 'Autre',
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  PENDING: 'En attente',
+  PENDING_VERIFICATION: 'En attente de vérification',
+  CONFIRMED: 'Confirmé',
+  REJECTED: 'Rejeté',
+  CANCELLED: 'Annulé',
+  REVERSED: 'Contre-passé',
+};
+
+export const CREDIT_STATUS_LABELS: Record<CreditStatus, string> = {
+  OPEN: 'Disponible',
+  PARTIALLY_USED: 'Partiellement utilisé',
+  USED: 'Utilisé',
+  REFUNDED: 'Remboursé',
+  EXPIRED: 'Expiré',
+};
+
+export const CASH_RECEIPT_STATUS_LABELS: Record<CashReceiptStatus, string> = {
+  DRAFT: 'Brouillon',
+  ISSUED: 'Émis',
+  REMITTED: 'Remis',
+  CANCELLED: 'Annulé',
+};
+
+export const REMITTANCE_STATUS_LABELS: Record<RemittanceStatus, string> = {
+  OPEN: 'Ouverte',
+  SUBMITTED: 'Soumise',
+  VERIFIED: 'Vérifiée',
+  DEPOSITED: 'Déposée',
+  REJECTED: 'Rejetée',
+  CANCELLED: 'Annulée',
+};
+
+export const RECEIPT_STATUS_LABELS: Record<ReceiptStatus, string> = {
+  DRAFT: 'Brouillon',
+  GENERATING: 'Génération en cours',
+  ISSUED: 'Émise',
+  SENT: 'Envoyée',
+  CANCELLED: 'Annulée',
+};
+
+export const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannel, string> = {
+  WHATSAPP: 'WhatsApp',
+  SMS: 'SMS',
+  EMAIL: 'E-mail',
+  PUSH: 'Notification push',
+  IN_APP: 'Dans l’application',
+};
+
+export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = {
+  QUEUED: 'En file',
+  SENT: 'Envoyé',
+  DELIVERED: 'Remis',
+  READ: 'Lu',
+  FAILED: 'Échec',
+  REJECTED: 'Rejeté',
+  EXPIRED: 'Expiré',
+};
+
+export const PENALTY_BASIS_LABELS: Record<PenaltyBasis, string> = {
+  RATE_BPS_PER_DAY: 'Taux par jour',
+  RATE_BPS_PER_MONTH: 'Taux par mois',
+  FLAT_AMOUNT: 'Montant forfaitaire',
+  FLAT_AMOUNT_PER_DAY: 'Montant forfaitaire par jour',
 };
 
 /** Convertit un Record de libellés en options `{ value, label }` (ex. pour un Select). */

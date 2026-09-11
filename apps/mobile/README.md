@@ -17,6 +17,15 @@ gestionnaires indépendants.
   locataires existants, avec cache local (Drift), documents du bail
   (téléchargement et partage). Voir `docs/04_plan_de_phases.md` (§2.x) et
   `docs/api/phase2-contract.md`.
+- **Phase 3** : tournée du démarcheur (`feature collection`) — factures dues
+  regroupées par immeuble (cache local Drift pour la lecture hors ligne),
+  encaissement en espèces (signature tactile ou photo du reçu papier,
+  idempotence par `clientRef` ULID), confirmation avec partage du reçu PDF et
+  renvoi WhatsApp/SMS. Caisse du démarcheur (`feature cash`) — encours avec
+  alerte de plafond, remise des reçus (coupures optionnelles), suivi des
+  remises. L'encaissement reste exclu du hors ligne (message clair, l'outbox
+  de collecte arrive en phase 5). Voir `docs/04_plan_de_phases.md` (§3.x) et
+  `docs/api/phase3-contract.md`.
 
 ## Prérequis
 
@@ -79,7 +88,10 @@ flutter test
   (`test/features/portfolio/domain`), recherche locale de locataires
   (`test/features/portfolio/presentation/tenants_search_test.dart`), mapping
   JSON des entités bail/dépôt et calcul du solde du dépôt de garantie
-  (`test/features/leases/domain`).
+  (`test/features/leases/domain`), regroupement des factures dues par
+  immeuble et aperçu d'imputation (plus ancienne facture d'abord) et calcul
+  d'encours du démarcheur (`test/features/collection/domain`,
+  `test/features/cash/domain`).
 - Tests de widget (avec `dio` mocké via `mocktail` et une base Drift en
   mémoire, `AppDatabase.forTesting(NativeDatabase.memory())`) : parcours
   connexion (`test/features/auth/presentation`), liste des immeubles avec
@@ -87,8 +99,12 @@ flutter test
   Appeler / WhatsApp, prise de photo hors ligne ajoutée à l'outbox
   (`test/features/portfolio/presentation`, `test/features/documents/presentation`),
   fiche bail affichée depuis un lot/locataire et liste des documents du bail
-  avec action de partage (`test/features/leases/presentation`).
-- **Total** : 77 tests (59 + 18 leases), tous au vert (`flutter analyze` : 0 erreur).
+  avec action de partage (`test/features/leases/presentation`), tournée
+  regroupée par immeuble, encaissement (double appui ne déclenchant qu'un
+  seul appel réseau, `clientRef` conservé après un échec), ma caisse et
+  soumission d'une remise (`test/features/collection/presentation`,
+  `test/features/cash/presentation`).
+- **Total** : 93 tests, tous au vert (`flutter analyze` : 0 erreur).
 
 ## Architecture
 
@@ -136,8 +152,29 @@ Clean Architecture par fonctionnalité (`lib/features/<feature>/{domain,data,pre
   ou ouverts via `share_plus` et `open_filex`, avec indicateur de progression
   et gestion d'absence de connexion. Périmètre volontairement lecture seule
   (aucune création/modification).
+- `lib/features/collection` : « Ma tournée » (`GET /invoices` filtré aux
+  lots du démarcheur, regroupé par immeuble, trié par montant dû
+  décroissant ; cache local Drift `CachedInvoices` pour la lecture hors
+  ligne — bascule automatique avec bandeau « Données du … », jamais
+  utilisée pour encaisser). Écran d'encaissement : locataire/bail
+  pré-remplis, sélection des factures à solder avec aperçu d'imputation
+  (plus ancienne facture d'abord), montant XAF, signature tactile
+  (`signature`, export PNG base64) ou photo du reçu papier, `clientRef`
+  ULID généré avant l'appel et conservé jusqu'à la réponse (une nouvelle
+  tentative après échec rejoue le même `clientRef`), bouton « Valider »
+  verrouillé dès le premier appui. Écran de confirmation (numéro de reçu,
+  partage du PDF via `download-url` + `share_plus`, renvoi WhatsApp/SMS).
+  Hors ligne, l'encaissement est bloqué avec un message clair (« Connexion
+  requise pour encaisser ») : l'outbox de collecte arrive en phase 5.
+- `lib/features/cash` : « Ma caisse » (encours du démarcheur via
+  `GET /cash/collectors/{userId}/balance`, alerte si le plafond
+  d'organisation est dépassé, liste des reçus non remis triés du plus
+  ancien au plus récent). Création d'une remise (sélection des reçus,
+  montant déclaré, coupures optionnelles, soumission directe en
+  `SUBMITTED`) et suivi des remises (statuts, écart constaté par l'agence
+  à la vérification).
 - `lib/features/more` : onglet « Plus » (diagnostic, déconnexion, accès aux
-  baux).
+  baux, à la tournée et à la caisse).
 - `lib/shared/widgets` : composants réutilisables (`MoneyXafText`,
   `PhoneField`, `OtpField`, `StatusBadge`, `EmptyState`,
   `OfflineDataBanner`, `AppBottomNavShell`).
@@ -152,9 +189,10 @@ code). Modèles `freezed` / `json_serializable`. Base locale Drift déclarée
 avec `app_settings` (clé/valeur), `outbox` (idempotence via `client_ref`,
 utilisée par la feature `documents`) et le cache de référentiels
 (`cached_properties`, `cached_units`, `cached_tenants`, `cached_leases`,
-schéma v3 avec migration). **Le chiffrement SQLCipher n'est pas encore
-activé** — voir le commentaire dans `lib/core/db/app_database.dart` ; prévu
-à l'activation du mode offline complet (phase 5, `docs/02_architecture_technique.md` §10.9).
+`cached_invoices`, schéma v4 avec migrations). **Le chiffrement SQLCipher
+n'est pas encore activé** — voir le commentaire dans
+`lib/core/db/app_database.dart` ; prévu à l'activation du mode offline
+complet (phase 5, `docs/02_architecture_technique.md` §10.9).
 
 ## Ce qui reste (hors périmètre phase 1)
 

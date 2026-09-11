@@ -5,6 +5,8 @@
  * (docs/schema/schema.sql, partie 01). `sequences.kind` est volontairement
  * une colonne TEXT : `next_sequence(uuid, text, text)` reste ainsi appelable
  * sans transtypage, tandis que l'énumération documente les valeurs admises.
+ * `PAYMENT` et `REVERSAL` (phase 3) et les compteurs de reçus de caisse PAR
+ * DÉMARCHEUR (`CASH_RECEIPT:{userId}`) profitent de cette souplesse.
  *
  * Ce fichier est du DOMAINE PUR : ni Nest, ni Prisma, ni SQL. Il décrit
  * comment un compteur devient un numéro lisible, rien de plus.
@@ -19,6 +21,8 @@ export const SEQUENCE_KINDS = [
   'EXPENSE',
   'PAYOUT',
   'SUBSCRIPTION_INVOICE',
+  'PAYMENT',
+  'REVERSAL',
 ] as const;
 
 export type SequenceKind = (typeof SEQUENCE_KINDS)[number];
@@ -37,15 +41,15 @@ export interface SequenceFormat {
 
 /**
  * Formats arrêtés par les décisions communes (§ « Numérotation
- * séquentielle ») et par le contrat de la phase 2 pour les baux.
+ * séquentielle »), l'architecture (§ 7.4) et les contrats des phases 2 et 3.
  *
- * Seul `LEASE` est exercé en phase 2 ; les autres sont déclarés ici pour que
- * les phases suivantes n'aient pas à réinventer la règle — et pour qu'un
- * changement de format se voie dans un seul fichier.
+ * Le reçu de caisse n'est JAMAIS remis à zéro et son compteur est propre à
+ * chaque démarcheur : l'agence contrôle ainsi l'intégralité des reçus d'un
+ * encaisseur, un trou dans sa série signalant une pièce disparue.
  */
 export const SEQUENCE_FORMATS: Readonly<Record<SequenceKind, SequenceFormat>> = {
   LEASE: { prefix: 'BAIL', scope: 'YEARLY', padding: 5 },
-  CASH_RECEIPT: { prefix: 'CASH', scope: 'MONTHLY', padding: 5 },
+  CASH_RECEIPT: { prefix: 'CASH', scope: 'CONTINUOUS', padding: 6 },
   RENT_INVOICE: { prefix: 'LOY', scope: 'MONTHLY', padding: 5 },
   RECEIPT: { prefix: 'QUI', scope: 'MONTHLY', padding: 5 },
   OWNER_STATEMENT: { prefix: 'REL', scope: 'MONTHLY', padding: 5 },
@@ -53,6 +57,8 @@ export const SEQUENCE_FORMATS: Readonly<Record<SequenceKind, SequenceFormat>> = 
   EXPENSE: { prefix: 'DEP', scope: 'MONTHLY', padding: 5 },
   PAYOUT: { prefix: 'VER', scope: 'MONTHLY', padding: 5 },
   SUBSCRIPTION_INVOICE: { prefix: 'ABO', scope: 'MONTHLY', padding: 5 },
+  PAYMENT: { prefix: 'PAY', scope: 'MONTHLY', padding: 5 },
+  REVERSAL: { prefix: 'REV', scope: 'MONTHLY', padding: 5 },
 };
 
 /**
@@ -85,4 +91,41 @@ export function formatSequenceNumber(
 ): string {
   const counter = value.toString(10).padStart(Math.max(padding, 1), '0');
   return [prefix, period === '' ? null : period, counter].filter((p) => p !== null).join('-');
+}
+
+/** Clé du compteur de reçus d'un démarcheur : `CASH_RECEIPT:{userId}`. */
+export function cashReceiptSequenceKey(collectorUserId: string): string {
+  return `CASH_RECEIPT:${collectorUserId}`;
+}
+
+/**
+ * Code court d'organisation pour `CASH-{org}-{collector}-{seq}` : initiales
+ * des segments du slug, 2 à 4 lettres (`agence-mpila-immo` → `AMI`).
+ * L'unicité n'est pas requise d'une organisation à l'autre : le numéro est
+ * unique PAR organisation (`cash_receipts_number_uk`).
+ */
+export function organizationShortCode(slug: string): string {
+  const segments = slug
+    .toUpperCase()
+    .split(/[^A-Z0-9]+/)
+    .filter((s) => s.length > 0);
+  const initials = segments.map((s) => s[0]).join('');
+  if (initials.length >= 2) return initials.slice(0, 4);
+  const compact = segments.join('');
+  return (compact.length >= 2 ? compact : `${compact}ORG`).slice(0, 4);
+}
+
+/**
+ * Code court de démarcheur : les six derniers caractères hexadécimaux de son
+ * identifiant. Pour un UUID v7, ce sont des bits ALÉATOIRES — deux
+ * démarcheurs d'une même organisation ne peuvent pratiquement pas le
+ * partager, là où quatre chiffres de téléphone se croiseraient vite.
+ */
+export function collectorShortCode(userId: string): string {
+  return userId.replace(/-/g, '').slice(-6).toUpperCase();
+}
+
+/** Préfixe complet d'un reçu de caisse : `CASH-AMI-3F9A1C`. */
+export function cashReceiptPrefix(organizationSlug: string, collectorUserId: string): string {
+  return `CASH-${organizationShortCode(organizationSlug)}-${collectorShortCode(collectorUserId)}`;
 }

@@ -977,16 +977,15 @@ Scénario: Déclaration de paiement Mobile Money en attente de validation
   Quand le locataire déclare un paiement de 50000 XAF en saisissant la référence de transaction de l'opérateur
   Alors une ligne est créée dans "mobile_money_transactions" avec le canal DECLARED et le statut DECLARED, avec la capture d'écran facultative si fournie
   Et une notification est envoyée au gestionnaire
-  Quand un MANAGER ou un ACCOUNTANT ouvre la déclaration pour instruction
-  Alors la déclaration passe au statut PENDING_VERIFICATION en attendant validation manuelle ou rapprochement avec le relevé opérateur
+  Et la transaction reste au statut DECLARED jusqu'à validation manuelle, rapprochement avec le relevé opérateur, ou rejet
 ```
 
 ```gherkin
 Scénario: Validation d'une déclaration de paiement Mobile Money
-  Étant donné une déclaration de paiement Mobile Money au statut PENDING_VERIFICATION
+  Étant donné une déclaration de paiement Mobile Money au statut DECLARED
   Quand un ACCOUNTANT la valide après rapprochement avec le relevé opérateur
-  Alors la déclaration passe au statut CONFIRMED
-  Et un paiement de méthode MOBILE_MONEY est créé sans commission
+  Alors la transaction passe au statut SUCCEEDED
+  Et un paiement de méthode MOBILE_MONEY est créé en statut CONFIRMED, sans commission
   Et la facture passe au statut PARTIALLY_PAID ou PAID selon le montant
 ```
 
@@ -1007,8 +1006,10 @@ Scénario: Déclaration de virement validée par le gestionnaire
   Et le document est stocké et rattaché à la déclaration
   Et une notification est envoyée au gestionnaire
   Quand un ACCOUNTANT valide la déclaration
-  Alors un paiement de méthode BANK_TRANSFER est créé au statut PENDING_VERIFICATION
-  Et la facture passe au statut PARTIALLY_PAID ou PAID selon le montant, avec la mention "en attente de confirmation bancaire"
+  Alors un paiement de méthode BANK_TRANSFER est créé, dont le statut dépend de la politique confirmOnApproval de l'organisation :
+    - Si confirmOnApproval = true (défaut) : paiement en statut CONFIRMED, alloué, quittance générée
+    - Si confirmOnApproval = false : paiement en statut PENDING_VERIFICATION non alloué, facture affiche « en attente de confirmation bancaire » jusqu'au rapprochement de la phase 6
+  Et la facture passe au statut PARTIALLY_PAID ou PAID selon le montant
   Quand l'ACCOUNTANT rejette une autre déclaration avec le motif "montant non reçu"
   Alors aucune ligne n'est créée dans "payments"
   Et le locataire est notifié du rejet et du motif
@@ -1029,6 +1030,8 @@ Scénario: Déclaration de virement validée par le gestionnaire
 | `platform`       | Activation par `feature_flags` (par pays et par organisation)                                                                                                                                                                                                                                             |
 
 ## 4.5 Endpoints API principaux
+
+Les routes exactes, les rôles et les formats font foi dans `docs/api/phase4-contract.md` ; ce tableau en donne une vue d'ensemble.
 
 | Méthode | Route                                              | Rôle requis          | Description courte                                         |
 | :------ | :------------------------------------------------- | :------------------- | :--------------------------------------------------------- |
@@ -1082,7 +1085,7 @@ Scénario: Déclaration de virement validée par le gestionnaire
 
 ## 4.8 Livrables et critères de sortie
 
-- [ ] Mode Mobile Money déclaré livré en priorité : déclaration par référence de transaction, validation manuelle ou rapprochement, statuts PENDING → PENDING_VERIFICATION → CONFIRMED/REJECTED, zéro commission, activable indépendamment de l'agrégateur.
+- [ ] Mode Mobile Money déclaré livré en priorité : déclaration par référence de transaction, validation manuelle ou rapprochement, transaction DECLARED → SUCCEEDED ou REJECTED ; paiement créé CONFIRMED à la validation, zéro commission, activable indépendamment de l'agrégateur.
 - [ ] Interface `MobileMoneyProvider` documentée, avec l'adaptateur CinetPay et un simulateur utilisable en CI (sous-module agrégateur, conditionné à la signature du contrat — son retard ne bloque pas le pilote qui peut fonctionner avec le seul mode déclaré).
 - [ ] Aucune confirmation de paiement possible sur la seule base d'un webhook : la re-interrogation est obligatoire et testée.
 - [ ] `webhook_events` alimenté systématiquement, avec rejeu possible et sans effet de bord.

@@ -33,6 +33,9 @@ import type {
   ReceiptStatus,
   RemittanceStatus,
   RentPeriod,
+  SyncBatchStatus,
+  SyncOperationOutcome,
+  SyncOperationType,
   UnitStatus,
   UnitType,
   WebhookSource,
@@ -362,6 +365,31 @@ export const MOMO_FEE_BEARER_LABELS: Record<MomoFeeBearer, string> = {
 export const MOMO_AGGREGATOR_PROVIDER_LABELS: Record<MomoAggregatorProvider, string> = {
   SIMULATOR: 'Simulateur',
   CINETPAY: 'CinetPay',
+};
+
+/**
+ * Libellés fr-CG des énumérations du contrat d'API (phase 5 : synchronisation
+ * hors ligne par lots), pour affichage sans jamais exposer les codes
+ * techniques au gestionnaire ni au démarcheur.
+ */
+export const SYNC_BATCH_STATUS_LABELS: Record<SyncBatchStatus, string> = {
+  APPLIED: 'Appliqué',
+  PARTIALLY_APPLIED: 'Partiellement appliqué',
+  REJECTED: 'Rejeté',
+  FAILED: 'Échec technique',
+};
+
+export const SYNC_OPERATION_OUTCOME_LABELS: Record<SyncOperationOutcome, string> = {
+  APPLIED: 'Appliquée',
+  DUPLICATE: 'Déjà connue (doublon évité)',
+  REJECTED: 'Rejetée',
+  CONFLICT: 'En conflit',
+  SKIPPED: 'Ignorée (dépendance rejetée)',
+};
+
+export const SYNC_OPERATION_TYPE_LABELS: Record<SyncOperationType, string> = {
+  CASH_RECEIPT: 'Encaissement espèces',
+  DOCUMENT: 'Pièce jointe',
 };
 
 /** Convertit un Record de libellés en options `{ value, label }` (ex. pour un Select). */

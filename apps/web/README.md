@@ -53,7 +53,9 @@ src/
                           /app/parametres/facturation, /app/parametres/messages,
                           /verifier/[token] (page publique, sans authentification), phase 4 :
                           /app/parametres/paiements, /app/parametres/webhooks,
-                          /app/paiements/declarations, /app/paiements/mobile-money
+                          /app/paiements/declarations, /app/paiements/mobile-money, phase 5 :
+                          /app/synchronisation, /app/synchronisation/conflits,
+                          /app/synchronisation/appareils
   components/
     ui/                   Primitives shadcn/ui (Radix + class-variance-authority)
     business/             Composants métier : MoneyXaf, MoneyInput, PhoneInput, StatusBadge,
@@ -65,7 +67,8 @@ src/
                           RemittanceStatusBadge, MessageStatusBadge, AllocationPreview,
                           CashHoldingGauge, PeriodPicker, StatementTable (phase 3),
                           MomoStatusBadge, DeclarationStatusBadge, WebhookStatusBadge, OperatorBadge,
-                          PaymentInstructionsCard, MomoWaitingPanel (phase 4)
+                          PaymentInstructionsCard, MomoWaitingPanel (phase 4), SyncBatchStatusBadge,
+                          SyncOutcomeBadge, ConflictResolutionDialog, DeviceFreshnessIndicator (phase 5)
     layout/                En-tête applicatif, sélecteur d'organisation
   lib/
     api/                   client.ts (fetch typé, Authorization + X-Organization-Id,
@@ -78,7 +81,8 @@ src/
                           cash-collectors, cash-remittances, receipts, notification-templates,
                           message-logs, payment-methods, payment-instructions,
                           mobile-money-declarations, mobile-money-transactions,
-                          bank-transfer-declarations, webhook-events)
+                          bank-transfer-declarations, webhook-events, sync-batches,
+                          sync-conflicts, sync-devices, mobile-config)
     auth/                  Contexte d'authentification client, cookie httpOnly du refresh token
     money.ts, phone.ts     Formatage XAF et téléphone congolais
     enum-labels.ts         Labels pour énumérations (statuts, types, genres)
@@ -91,7 +95,9 @@ e2e/                       Scénarios Playwright : phase 0 (login OTP → créat
                           locataire + garant → téléversement pièce d'identité), phase 2 (bail →
                           activation → contrat → résiliation → restitution), phase 3 (facture
                           émise → encaissement partiel → second encaissement → quittance →
-                          message → vérification publique)
+                          message → vérification publique), phase 4 (déclaration Mobile Money
+                          validée, déclaration virement rejetée), phase 5 (conflit de
+                          synchronisation résolu en appliquant sur une autre facture)
 ```
 
 ## Authentification
@@ -180,9 +186,41 @@ avant notification de tiers). Règle métier centrale : une déclaration ne cré
 `webhook-events-handlers.ts`, `payments-phase4-seed.ts`. Simulateur Mobile Money piloté par suffixe
 numéro payeur (…01 succès, …02 échec, …03 expiration), rejeu événementiel webhooks.
 
+### Synchronisation hors ligne (phase 5)
+
+**Domaine** : lots de synchronisation envoyés par les appareils démarcheurs hors ligne
+(`docs/api/phase5-contract.md`, périmètre volontairement réduit à trois écrans). Le protocole est
+générique ; un seul type d'opération réel en phase 5 (`CASH_RECEIPT`, plus `DOCUMENT` pour les
+pièces jointes). Aucune table de conflits côté API : un conflit est une opération rejetée pour
+changement côté serveur (ex. facture annulée pendant l'absence de connexion), agrégée depuis
+`sync_batches.result`.
+
+**Écrans** : `/app/synchronisation` (file des lots avec appareil, démarcheur, date de réception,
+statut, compteurs reçus/appliqués/rejetés/en conflit, filtres démarcheur/statut/période, détail
+d'un lot avec chaque opération et son issue), `/app/synchronisation/conflits` (conflits non résolus
+en tête, démarcheur, ancienneté, motif lisible, détail corps d'origine face à l'état actuel de la
+facture visée, résolution en deux choix : appliquer avec correction facultative de la facture et de
+l'imputation automatique, ou abandonner avec motif obligatoire — le `clientRef` d'origine est
+toujours conservé, aucun doublon n'est créé), `/app/synchronisation/appareils` (par démarcheur et
+appareil : dernière synchronisation réussie, statut du dernier lot, conflits en attente, total
+appliqué, appareils silencieux depuis plus de 24 h mis en évidence).
+
+**Composants** : `SyncBatchStatusBadge`, `SyncOutcomeBadge`, `ConflictResolutionDialog`,
+`DeviceFreshnessIndicator`. Tuile « Conflits de synchronisation » sur le tableau de bord.
+
+**Hooks** : `use-sync-batches`, `use-sync-conflicts`, `use-sync-devices`, `use-mobile-config`.
+
+**Mocks MSW** : `sync-handlers.ts`, `sync-seed.ts`. Les lots et conflits ne pouvant être créés que
+par le mobile (hors périmètre web), le mock amorce paresseusement, à la première requête reçue pour
+une organisation donnée, un lot entièrement appliqué, un lot partiellement appliqué avec un conflit,
+et un appareil silencieux depuis trois jours ; le conflit se rattache à la première facture non
+annulée de l'organisation dès qu'elle en compte une (bascule automatiquement à CANCELLED pour
+rejouer le scénario), ce qui fonctionne aussi bien pour les données de démonstration que pour une
+organisation e2e fraîchement créée.
+
 ## Tests
 
-- **Unitaires** (`pnpm test`, Vitest + Testing Library, **131 tests** répartis sur 24 fichiers) :
+- **Unitaires** (`pnpm test`, Vitest + Testing Library, **143 tests** répartis sur 30 fichiers) :
   formatage XAF (`MoneyXaf`), saisie téléphone congolaise (`PhoneInput`), affichage téléphone
   (`PhoneDisplay`), badge occupation (`OccupancyBadge`), validation taille et MIME de
   `DocumentUploader`, client API (`apiFetch`) incluant le rafraîchissement automatique de token et
@@ -192,7 +230,10 @@ numéro payeur (…01 succès, …02 échec, …03 expiration), rejeu événemen
   répartition d'un encaissement sur les factures ouvertes (`AllocationPreview`), jauge encours vs
   plafond de caisse (`CashHoldingGauge`), sélecteur de période (`PeriodPicker`), relevé de compte
   (`StatementTable`), badges phase 4 (`MomoStatusBadge`, `DeclarationStatusBadge`,
-  `WebhookStatusBadge`, `OperatorBadge`), bloc instructions de paiement, écran d'attente Mobile Money.
+  `WebhookStatusBadge`, `OperatorBadge`), bloc instructions de paiement, écran d'attente Mobile Money,
+  badges de statut phase 5 (`SyncBatchStatusBadge`, `SyncOutcomeBadge`), fraîcheur de synchronisation
+  d'un appareil (`DeviceFreshnessIndicator`), résolution d'un conflit en deux choix avec motif
+  obligatoire à l'abandon (`ConflictResolutionDialog`).
 - **e2e** (`pnpm test:e2e`, Playwright) :
   - **Phase 0** (`e2e/login-onboarding-invitation.spec.ts`) : connexion OTP → création
     d'organisation → invitation, entièrement mocké via MSW.
@@ -208,6 +249,10 @@ numéro payeur (…01 succès, …02 échec, …03 expiration), rejeu événemen
   - **Phase 4** (`e2e/phase4-paiements.spec.ts`) : déclaration Mobile Money → validation → facture
     payée avec quittance ; déclaration virement → rejet avec motif → aucun paiement, entièrement
     mocké via MSW.
+  - **Phase 5** (`e2e/phase5-synchronisation.spec.ts`) : ouverture de la file de synchronisation →
+    ouverture d'un conflit (facture annulée pendant l'absence de connexion) → résolution en
+    appliquant sur une autre facture → disparition du conflit de la liste des conflits non résolus,
+    entièrement mocké via MSW.
 
 Tous les scénarios e2e utilisent MSW (`src/mocks/handlers.ts`), interceptée côté serveur
 (`msw/node`, activé dans `instrumentation.ts` quand `E2E_MOCK=1`). Les appels directs du navigateur
@@ -237,6 +282,16 @@ Phase 4 enrichit `payments-handlers.ts` avec `mobile-money-handlers.ts`/`payment
 simulateur Mobile Money est piloté par le suffixe du numéro payeur (…01 succès, …02 échec, …03
 expiration) ; une déclaration ne crée un paiement que postérieure à sa validation ; rejeu événementiel
 webhooks implémenté.
+
+Phase 5 ajoute `sync-handlers.ts`/`sync-seed.ts` (lots de synchronisation, conflits, appareils,
+configuration mobile). Les lots ne pouvant être créés que côté mobile, le mock amorce paresseusement
+des données de démonstration à la première requête de synchronisation reçue pour une organisation
+(plutôt qu'au chargement du module comme les phases précédentes) : un lot appliqué, un lot
+partiellement appliqué avec un conflit, un appareil silencieux depuis trois jours. Le conflit se
+rattache à la première facture non annulée de l'organisation dès qu'elle en compte une, en la
+basculant à CANCELLED pour rejouer le scénario « changement côté serveur pendant l'absence de
+connexion » — fonctionne aussi bien pour `DEMO_ORG_ID` que pour une organisation e2e fraîchement
+créée dont le portefeuille est construit via l'écran Factures.
 
 ## Accessibilité et performance
 

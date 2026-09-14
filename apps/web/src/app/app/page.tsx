@@ -10,6 +10,7 @@ import {
   DoorOpen,
   FileText,
   Percent,
+  RefreshCw,
   Settings,
   UserPlus,
   Users2,
@@ -37,6 +38,7 @@ import { useTenants } from '@/lib/api/hooks/use-tenants';
 import { useLeases } from '@/lib/api/hooks/use-leases';
 import { useDepositsSummary } from '@/lib/api/hooks/use-deposits';
 import { useBillingDashboard } from '@/lib/api/hooks/use-billing-dashboard';
+import { useSyncConflicts } from '@/lib/api/hooks/use-sync-conflicts';
 import { PAYMENT_METHOD_LABELS } from '@/lib/enum-labels';
 import { formatXaf } from '@/lib/money';
 
@@ -128,6 +130,7 @@ export default function DashboardPage() {
   const tenantsQuery = useTenants({ limit: DASHBOARD_PAGE_LIMIT });
   const activeLeasesQuery = useLeases({ status: 'ACTIVE', limit: DASHBOARD_PAGE_LIMIT });
   const depositsSummaryQuery = useDepositsSummary();
+  const pendingConflictsQuery = useSyncConflicts({ resolved: false, limit: DASHBOARD_PAGE_LIMIT });
 
   const properties = propertiesQuery.data?.items ?? [];
   const propertiesValue = formatApproxCount(
@@ -173,6 +176,14 @@ export default function DashboardPage() {
   );
 
   const depositsHeldValue = formatXaf(depositsSummaryQuery.data?.heldTotal ?? 0);
+
+  const pendingConflictsCount = pendingConflictsQuery.data?.items.length ?? 0;
+  const pendingConflictsValue = formatApproxCount(
+    pendingConflictsCount,
+    pendingConflictsQuery.data?.pageInfo.hasNextPage ?? false,
+    'conflit en attente',
+    'conflits en attente',
+  );
 
   return (
     <div className="space-y-8">
@@ -370,6 +381,14 @@ export default function DashboardPage() {
             isLoading={depositsSummaryQuery.isLoading}
             href="/app/depots"
             linkLabel="Voir les dépôts"
+          />
+          <KpiCard
+            icon={RefreshCw}
+            label="Conflits de synchronisation"
+            value={pendingConflictsValue}
+            isLoading={pendingConflictsQuery.isLoading}
+            href="/app/synchronisation/conflits"
+            linkLabel="Voir les conflits"
           />
         </div>
       </section>

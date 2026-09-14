@@ -31,6 +31,8 @@ export interface DataTableProps<TData, TValue> {
   onNextPage?: () => void;
   onPreviousPage?: () => void;
   hasPreviousPage?: boolean;
+  /** Classe CSS additionnelle par ligne (ex. mise en évidence d'une anomalie), jamais seule porteuse d'information. */
+  getRowClassName?: (row: TData) => string | undefined;
 }
 
 export function DataTable<TData, TValue>({
@@ -43,6 +45,7 @@ export function DataTable<TData, TValue>({
   onNextPage,
   onPreviousPage,
   hasPreviousPage = false,
+  getRowClassName,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -83,7 +86,7 @@ export function DataTable<TData, TValue>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow key={row.id} className={getRowClassName?.(row.original)}>
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

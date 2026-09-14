@@ -13,6 +13,7 @@ import {
   LogOut,
   MessageSquare,
   Receipt,
+  RefreshCw,
   Settings,
   Users,
   Users2,
@@ -45,6 +46,7 @@ const NAV_ITEMS = [
   { href: '/app/caisse', label: 'Caisse', icon: Banknote },
   { href: '/app/quittances', label: 'Quittances', icon: FileCheck2 },
   { href: '/app/messages', label: 'Messages', icon: MessageSquare },
+  { href: '/app/synchronisation', label: 'Synchronisation', icon: RefreshCw },
   { href: '/app/equipe', label: 'Équipe', icon: Users },
   { href: '/app/parametres', label: 'Paramètres', icon: Settings },
 ];

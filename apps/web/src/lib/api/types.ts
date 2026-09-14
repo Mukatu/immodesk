@@ -1535,3 +1535,139 @@ export interface WebhookEvent {
   relatedEntityId: string | null;
   rawPayload: unknown;
 }
+
+/**
+ * Types du contrat d'API — Phase 5 (mode hors ligne mobile, synchronisation par
+ * lots). Recopiés depuis docs/api/phase5-contract.md. Ne pas diverger du
+ * contrat sans mettre à jour ce fichier et le document source. Le protocole
+ * est générique ; un seul type d'opération réel en phase 5 : `CASH_RECEIPT`
+ * (plus `DOCUMENT` pour les pièces jointes). Aucune table de conflits côté
+ * API : un conflit est une opération rejetée pour changement côté serveur,
+ * agrégée depuis `sync_batches.result`.
+ */
+
+// ---- Énumérations ----
+
+export type SyncOperationType = 'CASH_RECEIPT' | 'DOCUMENT';
+
+export type SyncOperationOutcome = 'APPLIED' | 'DUPLICATE' | 'REJECTED' | 'CONFLICT' | 'SKIPPED';
+
+export type SyncBatchStatus = 'APPLIED' | 'PARTIALLY_APPLIED' | 'REJECTED' | 'FAILED';
+
+export type SyncConflictResolution = 'APPLIED' | 'DISCARDED';
+
+// ---- Lots de synchronisation ----
+
+export interface SyncOperationResult {
+  clientRef: string;
+  type: SyncOperationType;
+  outcome: SyncOperationOutcome;
+  resourceType?: string;
+  resourceId?: string;
+  /** Code d'erreur métier, ex. BILLING.INVOICE_NOT_OPEN. */
+  code?: string;
+  /** Message en français, affichable au démarcheur. */
+  message?: string;
+  retryable?: boolean;
+}
+
+/**
+ * `deviceId`/`devicePlatform`/`appVersion`/`collector` : extension web par
+ * rapport au `SyncBatchResult` du contrat (qui ne détaille que le résultat),
+ * nécessaire pour les colonnes « appareil » et « démarcheur » de l'écran de
+ * supervision et pour les filtres `collectorUserId` de la route de liste.
+ */
+export interface SyncBatchSummary {
+  id: string;
+  batchRef: string;
+  status: SyncBatchStatus;
+  deviceId: string;
+  devicePlatform: string | null;
+  appVersion: string | null;
+  collector: { userId: string; fullName: string };
+  operationsCount: number;
+  appliedCount: number;
+  rejectedCount: number;
+  conflictsCount: number;
+  receivedAt: string;
+  appliedAt: string | null;
+}
+
+export interface SyncBatchDetail extends SyncBatchSummary {
+  clientGeneratedAt: string | null;
+  offlineDurationMinutes: number | null;
+  results: SyncOperationResult[];
+}
+
+// ---- Conflits ----
+
+export interface SyncConflict {
+  /** batchId + clientRef, encodé. */
+  id: string;
+  batchId: string;
+  clientRef: string;
+  type: SyncOperationType;
+  code: string;
+  message: string;
+  /** Corps d'origine de l'opération, pour rejouer après décision. */
+  payload: unknown;
+  collector: { userId: string; fullName: string };
+  deviceId: string;
+  clientCreatedAt: string;
+  receivedAt: string;
+  resolvedAt: string | null;
+  resolution: SyncConflictResolution | null;
+  /**
+   * Extension web (non contractuelle) : résumé de la facture visée par
+   * l'opération d'origine, pour l'affichage face à l'état actuel dans
+   * /app/synchronisation/conflits. Absent si la facture n'existe plus.
+   */
+  targetInvoice: {
+    id: string;
+    invoiceNumber: string | null;
+    status: InvoiceStatus;
+    balanceAmount: number;
+    tenantDisplayName: string;
+  } | null;
+  /** Motif d'abandon, renseigné une fois résolu par DISCARD. */
+  resolutionReason: string | null;
+}
+
+export interface ResolveConflictBody {
+  decision: 'APPLY' | 'DISCARD';
+  overrides?: { invoiceId?: string; autoAllocate?: boolean };
+  reason?: string;
+}
+
+export interface ResolveConflictResponse {
+  conflict: SyncConflict;
+  result: SyncOperationResult;
+}
+
+// ---- Appareils ----
+
+/** Réponse de supervision « quel démarcheur n'a pas synchronisé depuis longtemps ». */
+export interface DeviceStatus {
+  deviceId: string;
+  devicePlatform: string | null;
+  appVersion: string | null;
+  collector: { userId: string; fullName: string };
+  lastBatchAt: string | null;
+  lastBatchStatus: SyncBatchStatus | null;
+  pendingConflicts: number;
+  totalApplied: number;
+}
+
+// ---- Configuration mobile ----
+
+/** `GET /v1/mobile/config` : paramètres appliqués par le mobile sans recompilation. */
+export interface MobileConfig {
+  maxPhotoBytes: number;
+  photoMaxDimension: number;
+  photoQuality: number;
+  maxSignatureBytes: number;
+  retentionHours: number;
+  syncIntervalSeconds: number;
+  maxOperationsPerBatch: number;
+  offlineWritesEnabled: boolean;
+}

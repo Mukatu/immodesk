@@ -23,6 +23,7 @@ import { paymentMethodsHandlers, seedPaymentsPhase4DemoData } from './payment-me
 import { mobileMoneyHandlers } from './mobile-money-handlers';
 import { bankTransferHandlers } from './bank-transfer-handlers';
 import { webhookEventsHandlers } from './webhook-events-handlers';
+import { syncHandlers } from './sync-handlers';
 import { API_BASE } from './api-base';
 
 /**
@@ -1958,4 +1959,5 @@ export const handlers = [
   ...mobileMoneyHandlers,
   ...bankTransferHandlers,
   ...webhookEventsHandlers,
+  ...syncHandlers,
 ];

@@ -1,4 +1,4 @@
-# `@immodesk/api` — API Immodesk (phases 0 à 4)
+# `@immodesk/api` — API Immodesk (phases 0 à 5)
 
 Backend NestJS 11 de la plateforme Immodesk (gestion immobilière,
 Congo-Brazzaville). Monolithe modulaire en Clean Architecture, multi-tenant
@@ -36,6 +36,18 @@ re-interrogation (`momo:verify-status`), rattrapage à repli exponentiel
 (`momo:reconcile-pending`), déclarations de virement avec preuve dont
 l'unicité est contrôlée par empreinte SHA-256, et réception de webhooks
 signés persistés bruts avant tout traitement (`webhook_events`).
+
+Périmètre de la **phase 5** : synchronisation mobile hors ligne par lots —
+protocole générique (`mobile-sync`) avec un registre de gestionnaires par
+type d'opération, deux types livrés (`CASH_RECEIPT`, `DOCUMENT`) qui
+réutilisent tels quels les cas d'usage en ligne existants, tri des
+opérations d'un lot par dépendances puis horodatage client, une transaction
+par opération, rejeu idempotent du même `batchRef`, distinction explicite
+entre rejet définitif et conflit dû à un changement survenu côté serveur
+pendant la coupure, conflits agrégés depuis `sync_batches.result` (aucune
+table dédiée) et résolubles en `APPLY` ou `DISCARD`, périmètre du
+démarcheur téléchargeable par `GET /v1/sync/pull` à curseur signé, et
+configuration mobile pilotée par variables d'environnement.
 
 ---
 
@@ -285,6 +297,22 @@ exacts de champs de l'API marchande CinetPay n'ont pas pu être vérifiés sans
 compte actif. Ils sont isolés dans le seul fichier
 `infrastructure/cinetpay-field-map.ts`, signalés « à confirmer avec la
 documentation marchande », et à valider avant toute activation en production.
+
+### Synchronisation mobile et configuration mobile (phase 5)
+
+| Variable                                                             | Rôle                                                                                          |
+| :------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| `SYNC_MAX_OPERATIONS_PER_BATCH`                                      | Plafond dur appliqué par `POST /v1/sync/batches` (100) : au-delà, `413 SYNC.BATCH_TOO_LARGE`. |
+| `SYNC_MAX_BODY_BYTES`                                                | Plafond de corps de requête (1 Mo), même erreur.                                              |
+| `MOBILE_MAX_PHOTO_BYTES` / `_PHOTO_MAX_DIMENSION` / `_PHOTO_QUALITY` | Compression cible côté appareil, réseaux 2G/3G congolais.                                     |
+| `MOBILE_MAX_SIGNATURE_BYTES`                                         | Taille maximale d'une signature PNG encodée en base64.                                        |
+| `MOBILE_RETENTION_HOURS`                                             | Au-delà, le mobile purge les données de référence préchargées (jamais l'outbox).              |
+| `MOBILE_SYNC_INTERVAL_SECONDS`                                       | Période de la tâche de fond de synchronisation automatique.                                   |
+| `MOBILE_MAX_OPERATIONS_PER_BATCH`                                    | Taille de lot RECOMMANDÉE au mobile (50), distincte du plafond dur ci-dessus.                 |
+| `MOBILE_OFFLINE_WRITES_ENABLED`                                      | Coupe le mode hors ligne à distance en cas d'incident.                                        |
+
+Toutes surchargeables sans recompiler l'application : `GET /v1/mobile/config`
+les restitue, valeurs par défaut du contrat (docs/api/phase5-contract.md).
 
 ---
 
@@ -588,6 +616,16 @@ se vérifier que sur un vrai serveur.
   complète, **webhooks WhatsApp signé / non signé** et idempotents, **repli SMS
   sur échec WhatsApp**, webhook SMS signé, numéro en `…99` → double échec et
   relance.
+- `phase5-sync.int-spec.ts` — lot rejoué (même `batchId`, **aucun doublon**
+  de `cash_receipts`), `413 SYNC.BATCH_TOO_LARGE` au-delà de 100 opérations,
+  **12 opérations dont 11 appliquées et 1 en `CONFLICT`** sur une facture
+  annulée entre-temps (`PAYMENTS.INVOICE_NOT_OPEN`, non rejouable), conflit
+  résolu en `APPLY` vers une autre facture (**un seul** reçu de caisse créé,
+  motif conservé), conflit `DISCARD` (motif obligatoire, `422` sans lui),
+  **deux démarcheurs synchronisant 20 opérations chacun simultanément** sans
+  perte ni blocage, périmètre de `GET /v1/sync/pull` **prouvé étanche**
+  entre deux tournées, et forme de `GET /v1/sync/batches` (`deviceId`,
+  `devicePlatform`, `appVersion`, `collector`).
 - `rls-isolation.int-spec.ts` — **suite d'isolation, bloquante**.
 
 ### La suite d'isolation RLS
@@ -645,6 +683,11 @@ d'indices : période croissante de `rent_invoices`, taux de `penalty_rules`,
 cible unique de `payment_allocations`. Le nettoyage neutralise aussi les
 déclencheurs `guard_financial_row`, sans quoi la cascade de suppression d'une
 organisation de test échouerait silencieusement.
+
+La table de la **phase 5** — `sync_batches` — rejoint l'assertion dédiée sans
+aucune entrée dans `TABLE_HINTS` ni `DYNAMIC_TABLE_HINTS` : en dehors
+d'`organization_id`, ses seules colonnes obligatoires sont des clés
+étrangères vers `organizations` et `users`, déjà ancrées génériquement.
 
 > Une requête émise **sans** contexte de tenant ne retourne jamais de ligne.
 > Selon l'état de la connexion, elle renvoie un ensemble vide (connexion
@@ -705,7 +748,11 @@ src/
     ├── cash/                # cash_receipts, cash_remittances, cash_remittance_items
     ├── receipts/            # receipts, vérification publique, pipeline des documents financiers
     ├── audit/               # audit_logs, fonction audit()
-    └── platform/            # santé, idempotence, OpenAPI, configuration
+    ├── platform/            # santé, idempotence, OpenAPI, configuration
+    ├── mobile-money/        # mobile_money_transactions, déclaré et agrégateur
+    ├── webhooks/            # webhook_events, réception signée, rejeu
+    ├── bank-transfers/      # bank_transfer_declarations
+    └── mobile-sync/         # sync_batches, registre d'opérations, pull, conflits, config mobile
 ```
 
 ### Les modules de la phase 3
@@ -772,6 +819,43 @@ vérification pour la même transaction sans jamais la confirmer deux fois.
 autorise `payment.status = CONFIRMED`. Un montant divergent laisse le
 paiement `PENDING_VERIFICATION` (code `MOMO.STATUS_MISMATCH`), jamais
 `CONFIRMED` sur la seule foi du webhook.
+
+### Le module de la phase 5 : `mobile-sync`
+
+Un seul module NestJS, quatre responsabilités, toutes documentées par
+`docs/api/phase5-contract.md` :
+
+| Domaine  | Pièces                                                                                                                                                                  |
+| :------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lots     | `SyncBatchesService` (réservation + rejeu par INSERT sur `sync_batches_ref_uk`), `SyncBatchApplier` (tri, application), `SyncBatchFinalizer` (compteurs, statut, audit) |
+| Registre | `SyncOperationRegistry`, alimenté par le provider multi-valué `SYNC_OPERATION_HANDLERS` : `CashReceiptOperationHandler` et `DocumentOperationHandler` en phase 5        |
+| Pull     | `SyncPullService` : périmètre du démarcheur (`collector_user_id`), curseur signé (`shared/pagination/cursor`)                                                           |
+| Conflits | `SyncConflictsService` (liste, agrégée depuis `sync_batches.result`), `SyncConflictResolutionService` (`APPLY` / `DISCARD`)                                             |
+
+**Un gestionnaire, pas un cas d'usage dupliqué.** Chaque type d'opération
+réutilise le service en ligne existant tel quel (`CashReceiptsService.create`,
+`DocumentsService.register`) avec le même `clientRef` : c'est CE service qui
+porte sa propre transaction et l'idempotence par contrainte SQL unique.
+Le moteur de lot ne fait qu'ordonner les appels et traduire les erreurs via
+`SyncOperationHandler.classify()`. Ajouter un type en phase 8 (`inspections`,
+`meter_readings`, `maintenance_requests`) se limite à écrire un nouveau
+gestionnaire et à l'ajouter au tableau de providers — ni la route, ni le tri
+par dépendances, ni le format d'enveloppe ne changent.
+
+**Rejet contre conflit.** `classifyDomainError` (domaine `mobile-sync`)
+maintient la liste des codes métier signifiant qu'un changement est survenu
+côté SERVEUR pendant la coupure (`PAYMENTS.INVOICE_NOT_OPEN`,
+`LEASES.INVALID_TRANSITION`, tiers ou bail introuvable...) : ceux-là
+deviennent `CONFLICT`. Tout autre code métier reconnu est un `REJECTED`
+définitif. Une erreur non reconnue ne fait jamais échouer le reste du lot :
+`REJECTED` / `SYNC.OPERATION_FAILED` / `retryable: true`.
+
+**Conflit résolu ≠ conflit disparu.** `conflicts_count` ne compte QUE les
+conflits encore à arbitrer ; un conflit résolu (`APPLY` ou `DISCARD`) reste
+listable via `GET /v1/sync/conflicts?resolved=true` (recherche par
+containment JSONB sur `result`, pas sur ce compteur) et conserve son
+historique — `resolution`, `resolvedAt`, `resolutionReason` — dans l'élément
+d'origine, sans jamais changer son `outcome` d'origine (`CONFLICT`).
 
 ### Les quatre modules de la phase 2
 
@@ -995,6 +1079,34 @@ transmission des signaux et expose une `HEALTHCHECK` sur `/v1/health`.
 ---
 
 ## 11. Écarts et limites connues
+
+### Phase 5
+
+- **`GET /v1/sync/pull` sans miroir de version.** Le périmètre est recalculé
+  à chaque appel (baux du collecteur, puis lots/immeubles/locataires/factures
+  dérivés), filtré par `updated_at > since` : correct et simple, mais ne
+  distingue pas un identifiant réellement absent d'un identifiant jamais vu.
+  Les sorties de périmètre (`deleted`) ne couvrent que les baux — supprimés
+  ou réaffectés à un autre collecteur — pas encore les lots ou immeubles
+  détachés d'un bail sans être eux-mêmes supprimés.
+- **Conflits : pagination en mémoire.** `GET /v1/sync/conflicts` charge
+  jusqu'à 1000 lots portant au moins un conflit (recherche JSONB par
+  containment, `result @> '[{"outcome":"CONFLICT"}]'`) puis pagine le tableau
+  aplati en mémoire. Largement suffisant au volume réel d'une organisation
+  (quelques conflits par tournée), mais pas un keyset SQL.
+- **`APPLY` avec correctifs (`overrides`) fusionne au premier niveau.** Un
+  correctif `{ allocations: [...] }` REMPLACE le tableau d'origine plutôt que
+  de le fusionner élément par élément — le comportement attendu pour
+  rediriger un encaissement vers une autre facture, mais à garder en tête
+  pour un correctif partiel sur un objet imbriqué.
+- **Pas de verrou consultatif entre lots de démarcheurs différents**, et ce
+  n'est pas nécessaire : chaque lot réserve sa propre ligne `sync_batches`
+  par `INSERT`, et chaque opération réutilise un cas d'usage déjà conçu pour
+  la concurrence (verrous de numérotation ordonnés). Le test d'intégration
+  fait la preuve avec deux démarcheurs et 20 opérations chacun.
+- **`DOCUMENT` ne porte pas `sync_batch_id`.** La colonne n'existe pas sur
+  `documents` (DDL non modifiable) ; seule `cash_receipts` (et, en amont,
+  `payments`) la porte pour cette phase.
 
 ### Phase 4
 

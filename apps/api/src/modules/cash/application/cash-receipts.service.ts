@@ -43,6 +43,8 @@ export interface CashReceiptInput {
   latitude?: number | null;
   longitude?: number | null;
   clientRef: string;
+  /** Renseigné par le moteur de synchronisation mobile (module `mobile-sync`). */
+  syncBatchId?: string | null;
 }
 
 /**
@@ -165,6 +167,7 @@ export class CashReceiptsService implements CashReceiptCanceller {
         clientRef: input.clientRef,
         collectionLatitude: input.latitude ?? null,
         collectionLongitude: input.longitude ?? null,
+        syncBatchId: input.syncBatchId ?? null,
       },
     );
 
@@ -221,6 +224,7 @@ export class CashReceiptsService implements CashReceiptCanceller {
         signature_document_id: stored?.documentId ?? input.paperReceiptDocumentId ?? null,
         signature_hash: signature?.sha256 ?? null,
         client_ref: input.clientRef,
+        sync_batch_id: input.syncBatchId ?? null,
       },
     });
     await audit(this.auditService, tx, {

@@ -86,6 +86,14 @@ const PHASE3_TENANT_TABLES = [
  */
 const PHASE4_TENANT_TABLES = ['mobile_money_transactions', 'bank_transfer_declarations'] as const;
 
+/**
+ * Table de la phase 5 (synchronisation mobile par lots). Aucune ancre
+ * supplémentaire n'est nécessaire : `sync_batches` ne porte, en dehors de
+ * `organization_id`, que des clés étrangères vers `organizations` et
+ * `users`, déjà ancrées génériquement par `planMinimalRow`.
+ */
+const PHASE5_TENANT_TABLES = ['sync_batches'] as const;
+
 /** Tables dont les déclencheurs refusent le DELETE (append-only ou colonnes verrouillées). */
 const GUARDED_TABLES = [
   'audit_logs',
@@ -364,6 +372,11 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
   it('couvre obligatoirement les tables de la phase 4 (Mobile Money, virement déclaré)', () => {
     const missing = PHASE4_TENANT_TABLES.filter((t) => !covered.includes(t));
     expect({ missing, phase: 4 }).toEqual({ missing: [], phase: 4 });
+  });
+
+  it('couvre obligatoirement la table de la phase 5 (synchronisation mobile par lots)', () => {
+    const missing = PHASE5_TENANT_TABLES.filter((t) => !covered.includes(t));
+    expect({ missing, phase: 5 }).toEqual({ missing: [], phase: 5 });
   });
 
   it('vérifie que les tables d’authentification sont bien GLOBALES et hors RLS', async () => {

@@ -417,6 +417,26 @@ export const ERROR_CATALOG = {
     message: 'Le motif est obligatoire lorsque le montant validé diffère du montant déclaré.',
   },
 
+  // --- Domaine SYNC (synchronisation mobile par lots, phase 5) ----------
+  'SYNC.BATCH_IN_PROGRESS': {
+    status: 409,
+    message: 'Ce lot est déjà en cours de traitement.',
+  },
+  'SYNC.BATCH_TOO_LARGE': {
+    status: 413,
+    message: 'Lot trop volumineux : 100 opérations ou 1 Mo de corps au plus.',
+  },
+  'SYNC.BATCH_NOT_FOUND': { status: 404, message: 'Lot de synchronisation introuvable.' },
+  'SYNC.CONFLICT_NOT_FOUND': { status: 404, message: 'Conflit de synchronisation introuvable.' },
+  'SYNC.CONFLICT_ALREADY_RESOLVED': {
+    status: 409,
+    message: 'Ce conflit a déjà été résolu.',
+  },
+  'SYNC.DISCARD_REASON_REQUIRED': {
+    status: 422,
+    message: 'Le motif est obligatoire pour abandonner une opération en conflit.',
+  },
+
   // --- Domaine VALIDATION / plateforme ----------------------------------
   'VALIDATION.INVALID_PAYLOAD': { status: 422, message: 'Requête invalide.' },
   'PLATFORM.IDEMPOTENCY_CONFLICT': {

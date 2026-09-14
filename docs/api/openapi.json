@@ -8789,6 +8789,498 @@
         "summary": "Instructions de paiement de la plus ancienne facture ouverte du bail",
         "tags": ["Instructions de paiement"]
       }
+    },
+    "/v1/sync/batches": {
+      "post": {
+        "description": "Tri par dépendances puis horodatage client, une transaction par opération (réutilise le cas d’usage en ligne). Rejeu du même batchRef : résultat mémorisé, sans retraitement.",
+        "operationId": "SyncBatchesController_submit",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncBatchInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncBatchResultDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "SYNC.BATCH_IN_PROGRESS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "SYNC.BATCH_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Envoyer un lot de synchronisation",
+        "tags": ["Synchronisation mobile"]
+      },
+      "get": {
+        "operationId": "SyncBatchesController_list",
+        "parameters": [
+          {
+            "name": "collectorUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RECEIVED",
+                "VALIDATING",
+                "APPLIED",
+                "PARTIALLY_APPLIED",
+                "REJECTED",
+                "FAILED"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncBatchPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les lots de synchronisation",
+        "tags": ["Synchronisation mobile"]
+      }
+    },
+    "/v1/sync/batches/{id}": {
+      "get": {
+        "operationId": "SyncBatchesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncBatchResultDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SYNC.BATCH_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Statut d’un lot (COLLECTOR auteur, ou MANAGER)",
+        "tags": ["Synchronisation mobile"]
+      }
+    },
+    "/v1/sync/pull": {
+      "get": {
+        "description": "Strictement limité au périmètre du COLLECTOR authentifié ; un MANAGER ou un OWNER reçoit le périmètre complet de l’organisation. `since` reprend le `nextCursor` du dernier appel.",
+        "operationId": "SyncPullController_pullSince",
+        "parameters": [
+          {
+            "name": "since",
+            "required": false,
+            "in": "query",
+            "description": "Curseur signé renvoyé par un appel précédent (`nextCursor`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 1000,
+              "type": "number"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncPullResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Télécharger le périmètre du démarcheur",
+        "tags": ["Synchronisation mobile"]
+      }
+    },
+    "/v1/sync/conflicts": {
+      "get": {
+        "operationId": "SyncConflictsController_list",
+        "parameters": [
+          {
+            "name": "resolved",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "collectorUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncConflictPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les conflits de synchronisation",
+        "tags": ["Synchronisation mobile"]
+      }
+    },
+    "/v1/sync/conflicts/{id}/resolve": {
+      "post": {
+        "description": "APPLY rejoue l’opération avec le clientRef d’origine (corrections facultatives) ; DISCARD exige un motif. Écrit dans audit_logs et met à jour sync_batches.result.",
+        "operationId": "SyncConflictsController_resolve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveConflictDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveConflictResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SYNC.CONFLICT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "SYNC.CONFLICT_ALREADY_RESOLVED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "SYNC.DISCARD_REASON_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Résoudre un conflit",
+        "tags": ["Synchronisation mobile"]
+      }
+    },
+    "/v1/sync/devices": {
+      "get": {
+        "operationId": "SyncDevicesController_list",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceStatusPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Supervision des appareils : dernière synchronisation, conflits en attente",
+        "tags": ["Synchronisation mobile"]
+      }
+    },
+    "/v1/mobile/config": {
+      "get": {
+        "operationId": "MobileConfigController_get",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileConfigDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Paramètres mobiles applicables sans recompiler l’application",
+        "tags": ["Synchronisation mobile"]
+      }
     }
   },
   "info": {
@@ -17626,6 +18118,543 @@
           }
         },
         "required": ["reason"]
+      },
+      "SyncOperationInputDto": {
+        "type": "object",
+        "properties": {
+          "clientRef": {
+            "type": "string",
+            "description": "ULID généré sur l’appareil, unique par organisation."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["CASH_RECEIPT", "DOCUMENT"]
+          },
+          "clientCreatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage local, informatif."
+          },
+          "dependsOn": {
+            "description": "clientRef d’opérations du même lot à appliquer avant.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Corps identique à la route en ligne."
+          }
+        },
+        "required": ["clientRef", "type", "clientCreatedAt", "payload"]
+      },
+      "SyncBatchInputDto": {
+        "type": "object",
+        "properties": {
+          "batchRef": {
+            "type": "string",
+            "description": "ULID du lot, unique par appareil."
+          },
+          "deviceId": {
+            "type": "string",
+            "description": "Identifiant stable de l’appareil."
+          },
+          "devicePlatform": {
+            "type": "string",
+            "example": "android"
+          },
+          "appVersion": {
+            "type": "string"
+          },
+          "clientGeneratedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "offlineDurationMinutes": {
+            "type": "number",
+            "minimum": 0
+          },
+          "operations": {
+            "minItems": 1,
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncOperationInputDto"
+            }
+          }
+        },
+        "required": ["batchRef", "deviceId", "operations"]
+      },
+      "SyncOperationResultDto": {
+        "type": "object",
+        "properties": {
+          "clientRef": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": ["APPLIED", "DUPLICATE", "REJECTED", "CONFLICT", "SKIPPED"]
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "resourceId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": ["clientRef", "type", "outcome"]
+      },
+      "SyncBatchResultDto": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "string"
+          },
+          "batchRef": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["APPLIED", "PARTIALLY_APPLIED", "REJECTED", "FAILED"]
+          },
+          "operationsCount": {
+            "type": "number"
+          },
+          "appliedCount": {
+            "type": "number"
+          },
+          "rejectedCount": {
+            "type": "number"
+          },
+          "conflictsCount": {
+            "type": "number"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "appliedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncOperationResultDto"
+            }
+          }
+        },
+        "required": [
+          "batchId",
+          "batchRef",
+          "status",
+          "operationsCount",
+          "appliedCount",
+          "rejectedCount",
+          "conflictsCount",
+          "receivedAt",
+          "results"
+        ]
+      },
+      "SyncBatchSummaryDto": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "string"
+          },
+          "batchRef": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "devicePlatform": {
+            "type": "object",
+            "nullable": true
+          },
+          "appVersion": {
+            "type": "object",
+            "nullable": true
+          },
+          "collectorUserId": {
+            "type": "string"
+          },
+          "collector": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "operationsCount": {
+            "type": "number"
+          },
+          "appliedCount": {
+            "type": "number"
+          },
+          "rejectedCount": {
+            "type": "number"
+          },
+          "conflictsCount": {
+            "type": "number"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "appliedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "batchId",
+          "batchRef",
+          "deviceId",
+          "collectorUserId",
+          "collector",
+          "status",
+          "operationsCount",
+          "appliedCount",
+          "rejectedCount",
+          "conflictsCount",
+          "receivedAt"
+        ]
+      },
+      "SyncBatchPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncBatchSummaryDto"
+            }
+          },
+          "pageInfo": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "SyncPullChangedDto": {
+        "type": "object",
+        "properties": {
+          "properties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "tenants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "leases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "invoices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "cashReceipts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "remittances": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "properties",
+          "units",
+          "tenants",
+          "leases",
+          "invoices",
+          "cashReceipts",
+          "remittances"
+        ]
+      },
+      "SyncPullResultDto": {
+        "type": "object",
+        "properties": {
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "retentionHours": {
+            "type": "number"
+          },
+          "changed": {
+            "$ref": "#/components/schemas/SyncPullChangedDto"
+          },
+          "deleted": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["serverTime", "nextCursor", "hasMore", "retentionHours", "changed", "deleted"]
+      },
+      "SyncConflictDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "batchId": {
+            "type": "string"
+          },
+          "clientRef": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "collector": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "clientCreatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "resolution": {
+            "type": "string",
+            "enum": ["APPLIED", "DISCARDED"],
+            "nullable": true
+          },
+          "resolutionReason": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "batchId",
+          "clientRef",
+          "type",
+          "code",
+          "message",
+          "payload",
+          "collector",
+          "deviceId",
+          "clientCreatedAt",
+          "receivedAt"
+        ]
+      },
+      "SyncConflictPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncConflictDto"
+            }
+          },
+          "pageInfo": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "ResolveConflictDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": ["APPLY", "DISCARD"]
+          },
+          "overrides": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Corrections facultatives, décision `APPLY` uniquement."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Obligatoire pour la décision `DISCARD`."
+          }
+        },
+        "required": ["decision"]
+      },
+      "ResolveConflictResponseDto": {
+        "type": "object",
+        "properties": {
+          "conflict": {
+            "$ref": "#/components/schemas/SyncConflictDto"
+          },
+          "result": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": ["conflict", "result"]
+      },
+      "DeviceStatusDto": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "devicePlatform": {
+            "type": "object",
+            "nullable": true
+          },
+          "appVersion": {
+            "type": "object",
+            "nullable": true
+          },
+          "collector": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "lastBatchAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastBatchStatus": {
+            "type": "string"
+          },
+          "pendingConflicts": {
+            "type": "number"
+          },
+          "totalApplied": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "deviceId",
+          "devicePlatform",
+          "appVersion",
+          "collector",
+          "lastBatchAt",
+          "lastBatchStatus",
+          "pendingConflicts",
+          "totalApplied"
+        ]
+      },
+      "DeviceStatusPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceStatusDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "MobileConfigDto": {
+        "type": "object",
+        "properties": {
+          "maxPhotoBytes": {
+            "type": "number"
+          },
+          "photoMaxDimension": {
+            "type": "number"
+          },
+          "photoQuality": {
+            "type": "number"
+          },
+          "maxSignatureBytes": {
+            "type": "number"
+          },
+          "retentionHours": {
+            "type": "number"
+          },
+          "syncIntervalSeconds": {
+            "type": "number"
+          },
+          "maxOperationsPerBatch": {
+            "type": "number"
+          },
+          "offlineWritesEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "maxPhotoBytes",
+          "photoMaxDimension",
+          "photoQuality",
+          "maxSignatureBytes",
+          "retentionHours",
+          "syncIntervalSeconds",
+          "maxOperationsPerBatch",
+          "offlineWritesEnabled"
+        ]
       }
     }
   }

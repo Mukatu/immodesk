@@ -39,6 +39,8 @@ export interface PaymentInput {
   notes?: string | null;
   collectionLatitude?: number | null;
   collectionLongitude?: number | null;
+  /** Renseigné par le moteur de synchronisation mobile (module `mobile-sync`). */
+  syncBatchId?: string | null;
 }
 
 export interface CreatedPayment {
@@ -173,6 +175,7 @@ export class PaymentsService {
         confirmed_at: status === 'CONFIRMED' ? new Date() : null,
         confirmed_by_user_id: status === 'CONFIRMED' ? reader.userId : null,
         client_ref: input.clientRef ?? null,
+        sync_batch_id: input.syncBatchId ?? null,
         notes: input.notes ?? null,
       },
     });

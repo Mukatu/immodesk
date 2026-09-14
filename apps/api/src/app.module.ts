@@ -10,6 +10,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { LeasesModule } from './modules/leases/leases.module';
 import { MobileMoneyModule } from './modules/mobile-money/mobile-money.module';
+import { MobileSyncModule } from './modules/mobile-sync/mobile-sync.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { NumberingModule } from './modules/numbering/numbering.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
@@ -77,6 +78,10 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     MobileMoneyModule,
     WebhooksModule,
     BankTransfersModule,
+    // Phase 5 — synchronisation mobile hors ligne par lots. Consomme `cash`
+    // et `documents` (tous deux `@Global()`) via ses gestionnaires
+    // d'opération, sans import de module.
+    MobileSyncModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

@@ -162,6 +162,24 @@ export const configSchema = z
     CINETPAY_SECRET_KEY: optionalText,
     CINETPAY_BASE_URL: z.string().url().default('https://api-checkout.cinetpay.com'),
 
+    // --- Synchronisation mobile par lots (phase 5) ------------------------
+    // Limite dure appliquée par le serveur à `POST /v1/sync/batches`.
+    SYNC_MAX_OPERATIONS_PER_BATCH: z.coerce.number().int().positive().max(1000).default(100),
+    SYNC_MAX_BODY_BYTES: z.coerce.number().int().positive().default(1_048_576),
+
+    // --- Configuration mobile (`GET /v1/mobile/config`, phase 5) ---------
+    // Valeurs par défaut appliquées par l'application sans être recompilée.
+    MOBILE_MAX_PHOTO_BYTES: z.coerce.number().int().positive().default(1_500_000),
+    MOBILE_PHOTO_MAX_DIMENSION: z.coerce.number().int().positive().default(1600),
+    MOBILE_PHOTO_QUALITY: z.coerce.number().int().min(1).max(100).default(80),
+    MOBILE_MAX_SIGNATURE_BYTES: z.coerce.number().int().positive().default(200_000),
+    MOBILE_RETENTION_HOURS: z.coerce.number().int().positive().default(72),
+    MOBILE_SYNC_INTERVAL_SECONDS: z.coerce.number().int().positive().default(300),
+    // Conseillé au mobile (taille de lot RECOMMANDÉE), distinct du plafond
+    // dur `SYNC_MAX_OPERATIONS_PER_BATCH` que le serveur applique réellement.
+    MOBILE_MAX_OPERATIONS_PER_BATCH: z.coerce.number().int().positive().default(50),
+    MOBILE_OFFLINE_WRITES_ENABLED: booleanish.default(true),
+
     // --- Observabilité ---------------------------------------------------
     SENTRY_DSN: z.string().optional(),
     SWAGGER_ENABLED: booleanish.default(true),

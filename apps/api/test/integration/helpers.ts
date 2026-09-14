@@ -2,13 +2,18 @@ import type { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { v7 as uuidv7 } from 'uuid';
 import { createApp } from '../../src/bootstrap';
-import { FakeSmsProvider } from '../../src/modules/notifications/infrastructure/fake-sms.provider';
+import {
+  FakeSmsProvider,
+  FakeWhatsAppProvider,
+} from '../../src/modules/notifications/infrastructure/fake-sms.provider';
+import { normalizePhoneE164 } from '../../src/shared/phone/e164';
 import { RedisThrottlerStorage } from '../../src/shared/throttler/redis-throttler.storage';
 
 export interface TestContext {
   app: INestApplication;
   admin: PrismaClient;
   sms: FakeSmsProvider;
+  whatsapp: FakeWhatsAppProvider;
   throttler: RedisThrottlerStorage;
   baseUrl: string;
 }
@@ -29,6 +34,7 @@ export async function startTestApp(): Promise<TestContext> {
     app,
     admin,
     sms: app.get(FakeSmsProvider),
+    whatsapp: app.get(FakeWhatsAppProvider),
     throttler: app.get(RedisThrottlerStorage),
     baseUrl: `http://127.0.0.1:${address.port}/v1`,
   };
@@ -87,13 +93,36 @@ export function uniquePhone(): string {
   return `+2420${suffix}`;
 }
 
-/** Extrait le code du SMS simulé : le chemin de hachage réel est exercé. */
-export function readOtpCodeFromSms(ctx: TestContext): string {
-  const message = ctx.sms.peekLastMessage();
-  if (!message) throw new Error("Aucun SMS simulé : l'envoi de l'OTP n'a pas eu lieu.");
-  const match = message.body.match(/\b(\d{6})\b/);
-  if (!match) throw new Error(`Code introuvable dans le SMS simulé : « ${message.body} »`);
-  return match[1];
+/**
+ * Attend et extrait le code du message OTP simulé (WhatsApp par défaut, ou
+ * SMS si demandé explicitement ou en repli).
+ *
+ * L'envoi part désormais du pipeline de notifications (ou d'une promesse non
+ * attendue quand aucune organisation n'est connue) : il ne doit jamais
+ * retarder la réponse HTTP, et n'a donc pas forcément eu lieu au moment où
+ * `/auth/otp/request` répond. On attend son apparition plutôt que de le lire
+ * immédiatement.
+ */
+export async function readOtpCode(
+  ctx: TestContext,
+  phone: string,
+  timeoutMs = 15_000,
+): Promise<string> {
+  const normalized = normalizePhoneE164(phone);
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const whatsapp = [...ctx.whatsapp.sent].reverse().find((m) => m.to === normalized)?.text;
+    const sms = [...ctx.sms.sent].reverse().find((m) => m.to === normalized)?.body;
+    const text = whatsapp ?? sms;
+    if (text) {
+      const match = text.match(/\b(\d{4,8})\b/);
+      if (match) return match[1];
+    }
+    if (Date.now() > deadline) {
+      throw new Error(`Aucun message OTP simulé pour ${normalized} dans le délai imparti.`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  }
 }
 
 /**
@@ -120,7 +149,7 @@ export async function login(
     throw new Error(`Demande d'OTP en échec : ${JSON.stringify(requested.body)}`);
   }
 
-  const code = readOtpCodeFromSms(ctx);
+  const code = await readOtpCode(ctx, phone);
   const verified = await api(ctx, 'POST', '/auth/otp/verify', {
     body: { phone, code, deviceName: 'Test intégration' },
   });

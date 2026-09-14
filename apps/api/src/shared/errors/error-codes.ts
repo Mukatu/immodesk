@@ -339,6 +339,11 @@ export const ERROR_CATALOG = {
     status: 422,
     message: 'Aucun numéro de téléphone exploitable pour ce destinataire.',
   },
+  'NOTIFICATIONS.RETRY_NOT_ALLOWED': {
+    status: 409,
+    message:
+      'Ce message ne peut pas être relancé : les modèles d’authentification ne se relancent pas, redemandez un nouveau code.',
+  },
   'WEBHOOKS.SIGNATURE_INVALID': { status: 401, message: 'Signature du webhook invalide.' },
   'WEBHOOKS.VERIFY_TOKEN_INVALID': { status: 403, message: 'Jeton de vérification invalide.' },
   'PUBLIC.LINK_INVALID': { status: 404, message: 'Lien invalide ou expiré.' },

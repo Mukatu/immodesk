@@ -252,6 +252,7 @@
     },
     "/v1/message-logs/{id}/retry": {
       "post": {
+        "description": "Refusée pour un modèle d'authentification (OTP) : un code de connexion ne se relance jamais, redemandez-en un nouveau via `POST /v1/auth/otp/request`.",
         "operationId": "NotificationsController_retry",
         "parameters": [
           {
@@ -279,6 +280,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NotificationAcceptedDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "NOTIFICATIONS.RETRY_NOT_ALLOWED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -409,7 +420,7 @@
     },
     "/v1/auth/otp/request": {
       "post": {
-        "description": "Génère un code à 6 chiffres, le stocke haché dans `otp_codes` (expiration 5 minutes, 5 tentatives) et l'envoie par SMS. La réponse est identique que le numéro soit connu ou non. Limitation : 3 demandes / 10 min par numéro, 20 / heure par adresse IP.",
+        "description": "Génère un code à 6 chiffres, le stocke haché dans `otp_codes` (expiration 5 minutes, 5 tentatives) et l'envoie par WhatsApp (modèle d'authentification approuvé), avec repli SMS automatique si la remise WhatsApp échoue. Un canal `SMS` explicite envoie par SMS uniquement, sans tentative WhatsApp. La réponse est identique que le numéro soit connu ou non. Limitation : 3 demandes / 10 min par numéro, 20 / heure par adresse IP.",
         "operationId": "AuthController_requestOtp",
         "parameters": [
           {
@@ -8048,7 +8059,8 @@
           "channel": {
             "type": "string",
             "enum": ["SMS", "WHATSAPP"],
-            "default": "SMS"
+            "default": "WHATSAPP",
+            "description": "Canal tenté en premier. Par défaut WhatsApp, avec repli SMS automatique en cas d'échec de remise. `SMS` envoie par SMS uniquement, sans tentative WhatsApp."
           }
         },
         "required": ["phone"]

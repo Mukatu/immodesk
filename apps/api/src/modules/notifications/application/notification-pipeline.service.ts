@@ -5,13 +5,19 @@ import { normalizePhoneE164 } from '../../../shared/phone/e164';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { isUniqueViolation } from '../../../shared/prisma/sql-errors';
 import { readOperationalSettings } from '../../../shared/settings/operational-settings';
-import { channelSequence, type DeliveryChannel } from '../domain/delivery-rules';
+import {
+  channelSequence,
+  previewForTemplate,
+  redactSecretVariables,
+  type DeliveryChannel,
+} from '../domain/delivery-rules';
 import type {
   EnqueueNotificationInput,
   NotificationAttachment,
   NotificationEnqueuer,
 } from '../domain/ports';
 import { systemTemplate } from '../domain/template-catalog';
+import { isSecretTemplate } from '../domain/template-codes';
 import { renderTemplate } from '../domain/template-renderer';
 import { NotificationsWorker } from '../infrastructure/notifications.worker';
 
@@ -48,6 +54,11 @@ export class NotificationPipelineService implements NotificationEnqueuer {
     }
     const organizationId = input.organizationId;
     const actor = input.actorUserId ?? null;
+    // Un modèle secret (OTP_CODE) ne doit jamais laisser son code en clair
+    // dans `notifications` : le corps stocké est masqué et les variables
+    // sensibles sont rédigées. Le rendu réel repart des vraies variables,
+    // transmises au job BullMQ (Redis, éphémère), jamais via cette ligne.
+    const secret = isSecretTemplate(input.templateCode);
 
     const created = await this.prisma
       .withTenant(organizationId, actor, async (tx) => {
@@ -70,16 +81,20 @@ export class NotificationPipelineService implements NotificationEnqueuer {
           where: { code: input.templateCode, channel: order[0], is_active: true },
           select: { id: true, body: true },
         });
-        const body = renderTemplate(
+        const rendered = renderTemplate(
           template?.body ??
             systemTemplate(input.templateCode, order[0])?.body ??
             input.templateCode,
           input.variables,
         );
+        // `body` (colonne persistée) et `payload.variables` sont masqués
+        // pour un modèle secret : seul le job BullMQ (voir plus bas) garde
+        // les vraies variables, nécessaires au rendu effectif par le worker.
+        const body = secret ? previewForTemplate(input.templateCode, rendered) : rendered;
         const payload: NotificationPayload = {
           templateCode: input.templateCode,
           channelOrder: order,
-          variables: input.variables,
+          variables: secret ? redactSecretVariables(input.variables) : input.variables,
           attachments: input.attachments ?? [],
           recipientName: input.recipient.name ?? null,
         };
@@ -119,7 +134,14 @@ export class NotificationPipelineService implements NotificationEnqueuer {
       });
 
     if (created.created) {
-      const jobId = await this.worker.dispatch({ organizationId, notificationId: created.id });
+      // Les vraies variables ne transitent que par le job BullMQ (Redis,
+      // éphémère) pour un modèle secret : jamais via la ligne `notifications`
+      // relue par le worker, qui ne porte que la copie rédigée.
+      const jobId = await this.worker.dispatch({
+        organizationId,
+        notificationId: created.id,
+        variables: secret ? input.variables : undefined,
+      });
       await this.prisma.withTenant(organizationId, actor, (tx) =>
         tx.notifications.updateMany({
           where: { id: created.id, status: 'SCHEDULED' },

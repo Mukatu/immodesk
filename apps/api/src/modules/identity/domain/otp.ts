@@ -66,6 +66,16 @@ export function reachesAttemptLimit(previousAttempts: number, policy: OtpPolicy)
 }
 
 /**
+ * Ordre des canaux pour l'envoi du code : WhatsApp d'abord avec repli SMS
+ * automatique par défaut ; SMS seul si le client le demande explicitement
+ * (décisions communes, § « Messagerie »). Pur, sans dépendance au module
+ * `notifications` : c'est la couche applicative qui choisit le fournisseur.
+ */
+export function otpChannelOrder(channel: 'SMS' | 'WHATSAPP'): Array<'WHATSAPP' | 'SMS'> {
+  return channel === 'SMS' ? ['SMS'] : ['WHATSAPP', 'SMS'];
+}
+
+/**
  * Secondes restantes avant qu'un renvoi soit autorisé.
  * 0 signifie « renvoi possible immédiatement ».
  */

@@ -3,6 +3,7 @@ import {
   generateOtpCode,
   hashOtpCode,
   isOtpExpired,
+  otpChannelOrder,
   otpExpiresAt,
   otpHashMatches,
   reachesAttemptLimit,
@@ -126,6 +127,16 @@ describe('Comptage des tentatives', () => {
   it('signale le plafond via reachesAttemptLimit', () => {
     expect(reachesAttemptLimit(3, DEFAULT_OTP_POLICY)).toBe(false);
     expect(reachesAttemptLimit(4, DEFAULT_OTP_POLICY)).toBe(true);
+  });
+});
+
+describe('Ordre des canaux de remise du code', () => {
+  it('essaie WhatsApp puis SMS par défaut', () => {
+    expect(otpChannelOrder('WHATSAPP')).toEqual(['WHATSAPP', 'SMS']);
+  });
+
+  it('se limite au SMS quand le client le demande explicitement', () => {
+    expect(otpChannelOrder('SMS')).toEqual(['SMS']);
   });
 });
 

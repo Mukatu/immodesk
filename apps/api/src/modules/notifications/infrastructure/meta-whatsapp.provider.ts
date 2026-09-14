@@ -12,6 +12,53 @@ import type {
 import { parseMetaStatuses, verifyMetaSignature } from '../domain/webhook-parsing';
 
 /**
+ * Composants Graph API d'un message `template`.
+ *
+ * Un modèle « Authentication » (OTP) n'admet qu'UN paramètre de corps — le
+ * code — et exige en plus un composant bouton reprenant ce même code.
+ * Attention : `COPY_CODE` (`otp_type: "COPY_CODE"`) ne désigne QUE le bouton
+ * choisi à la CRÉATION du modèle dans l'éditeur Meta. Au moment de l'ENVOI
+ * via l'API Cloud, ce même bouton s'adresse avec `sub_type: "url"` — PAS
+ * `"copy_code"`, qui n'est pas un `sub_type` valide côté envoi. C'est
+ * contre-intuitif mais documenté (developers.facebook.com/docs/whatsapp,
+ * § modèles d'authentification et boutons). Un modèle « Utility »
+ * (quittance, etc.) suit le schéma habituel : en-tête document optionnel
+ * puis paramètres de corps positionnels.
+ */
+export function buildTemplateComponents(message: TemplateMessage): Array<Record<string, unknown>> {
+  const components: Array<Record<string, unknown>> = [];
+  if (message.document) {
+    components.push({
+      type: 'header',
+      parameters: [
+        {
+          type: 'document',
+          document: { link: message.document.link, filename: message.document.filename },
+        },
+      ],
+    });
+  }
+  if (message.authentication) {
+    const code = message.bodyParameters[0] ?? '';
+    components.push({ type: 'body', parameters: [{ type: 'text', text: code }] });
+    components.push({
+      type: 'button',
+      sub_type: 'url',
+      index: '0',
+      parameters: [{ type: 'text', text: code }],
+    });
+    return components;
+  }
+  if (message.bodyParameters.length > 0) {
+    components.push({
+      type: 'body',
+      parameters: message.bodyParameters.map((text) => ({ type: 'text', text })),
+    });
+  }
+  return components;
+}
+
+/**
  * Meta WhatsApp Cloud API, en accès direct (pas d'intermédiaire).
  *
  * `POST {base}/{version}/{phoneNumberId}/messages`, jeton Bearer. Hors de la
@@ -32,27 +79,13 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
   }
 
   async sendTemplate(message: TemplateMessage): Promise<SendResult> {
-    const components: Array<Record<string, unknown>> = [];
-    if (message.document) {
-      components.push({
-        type: 'header',
-        parameters: [
-          {
-            type: 'document',
-            document: { link: message.document.link, filename: message.document.filename },
-          },
-        ],
-      });
-    }
-    if (message.bodyParameters.length > 0) {
-      components.push({
-        type: 'body',
-        parameters: message.bodyParameters.map((text) => ({ type: 'text', text })),
-      });
-    }
     return this.post(message.to, {
       type: 'template',
-      template: { name: message.templateName, language: { code: message.language }, components },
+      template: {
+        name: message.templateName,
+        language: { code: message.language },
+        components: buildTemplateComponents(message),
+      },
     });
   }
 

@@ -5,6 +5,7 @@ import { DomainError } from '../../../shared/errors/domain-error';
 import { newId } from '../../../shared/ids/uuid';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { needsWebhookFallback, nextMessageStatus } from '../domain/delivery-rules';
+import { isSecretTemplate } from '../domain/template-codes';
 import {
   SMS_PROVIDER,
   WHATSAPP_PROVIDER,
@@ -200,6 +201,12 @@ export class WebhooksService implements OnModuleDestroy {
         where: { notification_id: log.notification_id, channel: 'SMS' },
       });
       const payload = notification?.payload as unknown as NotificationPayload | undefined;
+      // Un modèle secret (OTP_CODE) ne peut pas être repris ici : sa ligne
+      // `notifications.payload` ne porte plus que des variables rédigées
+      // (voir `NotificationPipelineService.enqueue`), donc plus le vrai
+      // code. Renvoyer un SMS avec un code rédigé serait pire que ne rien
+      // renvoyer : l'utilisateur redemande simplement un nouveau code.
+      if (payload && isSecretTemplate(payload.templateCode)) return null;
       return needsWebhookFallback({
         eventStatus: next,
         channel: log.channel,

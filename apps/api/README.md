@@ -197,6 +197,20 @@ laisser Puppeteer télécharger son propre binaire à chaque build.
    « Utility » (« Authentication » pour `otp_code_fr`). Le modèle de quittance
    porte un en-tête **Document**. Les paramètres suivent l'ordre de la
    colonne `variables`.
+   - `otp_code_fr` (catégorie **Authentication**) : à la CRÉATION du modèle
+     dans l'éditeur Meta, choisir l'option **Copier le code**
+     (`otp_type: "COPY_CODE"`) ; ne pas utiliser de bouton personnalisé.
+     Corps à un seul paramètre — le code. Piège documenté par Meta : au
+     moment de l'ENVOI via l'API Cloud, ce même bouton s'adresse avec
+     `sub_type: "url"` et NON `"copy_code"` — ce dernier nom n'existe que
+     côté `otp_type` de création, jamais comme `sub_type` d'envoi. Requête
+     Graph API envoyée par `MetaWhatsAppProvider` :
+     `components: [{ type: "body", parameters: [{ type: "text", text: <code> }] }, { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: <code> }] }]`.
+     La variable `minutes` du gabarit interne (délai d'expiration) n'est PAS
+     envoyée à Meta : les modèles Authentication n'admettent qu'un seul
+     paramètre de corps ; le délai d'expiration se configure séparément dans
+     l'éditeur de modèle Meta (option « Ajouter la sécurité renforcée » /
+     expiration du code), pas comme variable.
 4. Déclarer le webhook : URL `https://<api>/v1/webhooks/whatsapp`, jeton de
    vérification = `WHATSAPP_VERIFY_TOKEN`, abonnement au champ `messages`.
    Meta appelle d'abord `GET ?hub.mode=subscribe&hub.verify_token=…&hub.challenge=…` ;
@@ -930,9 +944,30 @@ transmission des signaux et expose une `HEALTHCHECK` sur `/v1/health`.
   comptabilité) ; le contrat ne cite que COLLECTOR.
 - **Rejeu `Idempotency-Key`** : une création mémorisée (201) est rendue en
   200, comme le rejeu par `clientRef`.
-- **OTP** : les modèles `OTP_CODE` sont semés, mais la connexion de la phase 0
-  reste envoyée par SMS ; la bascule WhatsApp d'abord suivra avec les
-  modèles « Authentication » approuvés.
+- **OTP WhatsApp d'abord, SMS en repli** : `POST /v1/auth/otp/request` envoie
+  désormais par WhatsApp par défaut (modèle `OTP_CODE`/`otp_code_fr`,
+  catégorie Authentication), avec repli SMS automatique si la remise échoue ;
+  `channel: "SMS"` explicite envoie par SMS uniquement. Quand le numéro
+  appartient à un utilisateur déjà membre d'une organisation, l'envoi passe
+  par le pipeline de la phase 3 (`notifications`/`message_logs`, canal par
+  canal) : `notifications.body` et `notifications.payload.variables` sont
+  rédigés (code remplacé par `[REDACTED]`) pour ce modèle secret — le vrai
+  code ne transite que par le job BullMQ (Redis, éphémère) consommé par le
+  worker, jamais par une ligne Postgres. Un webhook de statut tardif ne
+  déclenche donc pas de repli SMS pour l'OTP (le vrai code n'est plus
+  disponible à ce stade) : l'utilisateur redemande un nouveau code. La
+  relance manuelle (`POST /v1/message-logs/{id}/retry`) est refusée pour tout
+  modèle d'authentification (`NOTIFICATIONS.RETRY_NOT_ALLOWED`), pour la même
+  raison. Sans organisation connue (première connexion, invité non encore
+  accepté, futur compte des portails bailleur/locataire — le cas le PLUS
+  FRÉQUENT en pratique), `notifications` et `message_logs` sont protégés par
+  RLS (`organization_id NOT NULL`) et n'admettent aucune écriture hors
+  tenant : l'envoi part alors directement (mêmes canal et repli), sans trace
+  `message_logs`. Si WhatsApp ET SMS échouent tous les deux sur ce chemin,
+  seul un avertissement applicatif est journalisé (numéro masqué, jamais le
+  code) : la traçabilité complète de ce cas nécessiterait une organisation
+  « plateforme » (migration de schéma, hors périmètre `apps/api/`) pour
+  unifier ce chemin avec le pipeline normal.
 - **Heures de silence et plafonds de fréquence** (§ 12.5) non appliqués : ils
   relèvent des relances de la phase 9 ; quittances et reçus sont
   transactionnels.

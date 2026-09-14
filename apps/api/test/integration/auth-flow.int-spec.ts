@@ -2,7 +2,7 @@ import {
   api,
   cleanupUser,
   login,
-  readOtpCodeFromSms,
+  readOtpCode,
   resetOtpLimits,
   startTestApp,
   stopTestApp,
@@ -30,14 +30,14 @@ describe("Cycle d'authentification OTP", () => {
 
     expect(requested.status).toBe(201);
     expect(requested.body).toMatchObject({
-      channel: 'SMS',
+      channel: 'WHATSAPP',
       expiresInSeconds: 300,
       resendAfterSeconds: 60,
     });
     expect(requested.body.requestId).toBeDefined();
 
     // Le code est stocké HACHÉ : la valeur claire n'est jamais en base.
-    const code = readOtpCodeFromSms(ctx);
+    const code = await readOtpCode(ctx, phone);
     const stored = await ctx.admin.otp_codes.findFirst({
       where: { phone_e164: phone },
       orderBy: { created_at: 'desc' },
@@ -135,7 +135,7 @@ describe("Cycle d'authentification OTP", () => {
     try {
       await resetOtpLimits(ctx, lockPhone);
       await api(ctx, 'POST', '/auth/otp/request', { body: { phone: lockPhone } });
-      const realCode = readOtpCodeFromSms(ctx);
+      const realCode = await readOtpCode(ctx, lockPhone);
       const wrongCode = realCode === '999999' ? '111111' : '999999';
 
       const statuses: number[] = [];
@@ -208,7 +208,7 @@ describe("Cycle d'authentification OTP", () => {
       const requested = await api(ctx, 'POST', '/auth/otp/request', { body: { phone: national } });
       expect(requested.status).toBe(201);
 
-      const code = readOtpCodeFromSms(ctx);
+      const code = await readOtpCode(ctx, national);
       const verified = await api(ctx, 'POST', '/auth/otp/verify', {
         body: { phone: international, code },
       });

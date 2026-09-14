@@ -11,7 +11,13 @@ export class OtpRequestDto {
   @MaxLength(24)
   phone!: string;
 
-  @ApiPropertyOptional({ enum: ['SMS', 'WHATSAPP'], default: 'SMS' })
+  @ApiPropertyOptional({
+    enum: ['SMS', 'WHATSAPP'],
+    default: 'WHATSAPP',
+    description:
+      'Canal tenté en premier. Par défaut WhatsApp, avec repli SMS automatique en cas ' +
+      "d'échec de remise. `SMS` envoie par SMS uniquement, sans tentative WhatsApp.",
+  })
   @IsOptional()
   @IsIn(['SMS', 'WHATSAPP'])
   channel?: 'SMS' | 'WHATSAPP';

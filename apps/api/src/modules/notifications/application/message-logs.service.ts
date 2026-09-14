@@ -5,6 +5,7 @@ import { buildPage, type Page } from '../../../shared/pagination/cursor';
 import { buildKeyset, keysetOrderBy } from '../../../shared/pagination/keyset';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { channelSequence, type DeliveryChannel } from '../domain/delivery-rules';
+import { isAuthenticationTemplateCode } from '../domain/template-codes';
 import { toMessageLogView, type MessageLogRow, type MessageLogView } from './message-log-views';
 import {
   NotificationPipelineService,
@@ -89,6 +90,14 @@ export class MessageLogsService {
         });
       return { log, notification };
     });
+    // Un modèle d'authentification (OTP) ne se relance jamais : sa ligne
+    // `notifications.payload` ne porte plus que des variables rédigées (le
+    // vrai code n'a transité que par le job BullMQ d'origine, désormais
+    // consommé), et un code de connexion périmé n'a de toute façon aucun
+    // sens à renvoyer. L'utilisateur redemande un nouveau code.
+    if (isAuthenticationTemplateCode(source.log.template_code ?? '')) {
+      throw new DomainError('NOTIFICATIONS.RETRY_NOT_ALLOWED', { id: logId });
+    }
     const payload = source.notification.payload as unknown as NotificationPayload;
     const result = await this.pipeline.enqueue({
       organizationId,

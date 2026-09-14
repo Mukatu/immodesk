@@ -34,7 +34,9 @@ export class AuthController {
   @ApiOperation({
     summary: 'Demander un code de connexion',
     description:
-      "Génère un code à 6 chiffres, le stocke haché dans `otp_codes` (expiration 5 minutes, 5 tentatives) et l'envoie par SMS. " +
+      "Génère un code à 6 chiffres, le stocke haché dans `otp_codes` (expiration 5 minutes, 5 tentatives) et l'envoie par WhatsApp " +
+      "(modèle d'authentification approuvé), avec repli SMS automatique si la remise WhatsApp échoue. " +
+      'Un canal `SMS` explicite envoie par SMS uniquement, sans tentative WhatsApp. ' +
       'La réponse est identique que le numéro soit connu ou non. ' +
       'Limitation : 3 demandes / 10 min par numéro, 20 / heure par adresse IP.',
   })
@@ -50,7 +52,11 @@ export class AuthController {
     @Body() dto: OtpRequestDto,
     @Req() request: Request,
   ): Promise<OtpRequestResponseDto> {
-    const result = await this.otp.requestOtp(dto.phone, dto.channel ?? 'SMS', clientIp(request));
+    const result = await this.otp.requestOtp(
+      dto.phone,
+      dto.channel ?? 'WHATSAPP',
+      clientIp(request),
+    );
     return {
       requestId: result.requestId,
       channel: result.channel as 'SMS' | 'WHATSAPP',

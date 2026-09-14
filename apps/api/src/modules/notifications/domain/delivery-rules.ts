@@ -125,3 +125,40 @@ export function estimatedCost(provider: string): bigint {
   if (provider === 'meta-whatsapp') return 25n;
   return 0n;
 }
+
+/** Codes de modèle dont le corps ne doit JAMAIS survivre dans un journal technique. */
+const SECRET_TEMPLATE_CODES: ReadonlySet<string> = new Set(['OTP_CODE', 'auth.otp_login']);
+
+/**
+ * Aperçu écrit dans `message_logs.content_preview`.
+ *
+ * Un code de connexion ne doit jamais y apparaître en clair, quel que soit le
+ * canal ou le fournisseur : chaque tentative (WhatsApp échouée comme SMS de
+ * repli) passe par cette même fonction.
+ */
+export function previewForTemplate(templateCode: string, body: string): string {
+  if (SECRET_TEMPLATE_CODES.has(templateCode)) {
+    return 'Code de connexion Immodesk (code expurgé).';
+  }
+  return body.length > 180 ? `${body.slice(0, 177)}...` : body;
+}
+
+/** Noms de variables dont la valeur ne doit jamais être persistée en clair. */
+const SECRET_VARIABLE_NAMES: ReadonlySet<string> = new Set(['code']);
+
+/**
+ * Copie des variables d'un modèle secret (OTP_CODE) où les valeurs
+ * sensibles sont rédigées avant toute écriture en base
+ * (`notifications.payload`). Les variables non sensibles (ex: `minutes`)
+ * restent lisibles : elles n'ouvrent aucune fuite à elles seules. Le rendu
+ * réel du message envoyé aux fournisseurs n'utilise JAMAIS cette copie —
+ * seules les variables d'origine, tenues hors Postgres (job BullMQ), servent
+ * au rendu effectif.
+ */
+export function redactSecretVariables(variables: Record<string, string>): Record<string, string> {
+  const redacted: Record<string, string> = {};
+  for (const [key, value] of Object.entries(variables)) {
+    redacted[key] = SECRET_VARIABLE_NAMES.has(key) ? '[REDACTED]' : value;
+  }
+  return redacted;
+}

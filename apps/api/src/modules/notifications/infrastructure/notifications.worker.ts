@@ -14,6 +14,13 @@ export interface NotificationJob {
   notificationId: string;
   /** Reprise à partir d'un canal (repli après webhook, relance manuelle). */
   from?: DeliveryChannel | null;
+  /**
+   * Vraies variables d'un modèle secret (OTP_CODE), absentes pour tout autre
+   * modèle. Ne transitent QUE par ici (le job BullMQ, dans Redis, purgé par
+   * `removeOnComplete`/`removeOnFail`) : `notifications.payload` en base ne
+   * porte qu'une copie rédigée. Voir `NotificationPipelineService.enqueue`.
+   */
+  variables?: Record<string, string> | null;
 }
 
 /**
@@ -48,6 +55,7 @@ export class NotificationsWorker implements OnModuleInit, OnModuleDestroy {
             job.data.organizationId,
             job.data.notificationId,
             job.data.from ?? null,
+            job.data.variables ?? null,
           ),
         {
           connection: this.connection,
@@ -89,7 +97,7 @@ export class NotificationsWorker implements OnModuleInit, OnModuleDestroy {
       }
     }
     const task = this.delivery
-      .deliver(job.organizationId, job.notificationId, job.from ?? null)
+      .deliver(job.organizationId, job.notificationId, job.from ?? null, job.variables ?? null)
       .catch((error: Error) =>
         this.logger.error(`Notification ${job.notificationId} en échec : ${error.message}`),
       )

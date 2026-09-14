@@ -50,6 +50,12 @@ export interface TemplateMessage {
   document?: { link: string; filename: string } | null;
   /** Texte rendu, conservé dans le journal. */
   previewText: string;
+  /**
+   * Modèle Meta de catégorie « Authentication » (OTP) : un seul paramètre de
+   * corps (le code) et un bouton « Copier le code » portant le même code,
+   * au lieu des paramètres de corps positionnels habituels.
+   */
+  authentication?: boolean;
 }
 
 export interface DocumentMessage {

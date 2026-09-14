@@ -7,6 +7,7 @@ import {
   channelSequence,
   isAccepted,
   orderedParameters,
+  previewForTemplate,
   toGsm7,
   type DeliveryChannel,
 } from '../domain/delivery-rules';
@@ -20,7 +21,7 @@ import {
   type SmsProvider,
   type WhatsAppProvider,
 } from '../domain/ports';
-import { MESSAGE_TEMPLATE_CODES } from '../domain/template-codes';
+import { isAuthenticationTemplateCode } from '../domain/template-codes';
 import { systemTemplate } from '../domain/template-catalog';
 import { renderTemplate } from '../domain/template-renderer';
 import type { NotificationPayload } from './notification-pipeline.service';
@@ -56,6 +57,15 @@ export class NotificationDeliveryService {
     organizationId: string,
     notificationId: string,
     from?: DeliveryChannel | null,
+    /**
+     * Vraies variables d'un modèle secret (OTP_CODE), fournies par le job
+     * BullMQ. `payload.variables` (relu depuis Postgres) n'en porte qu'une
+     * copie rédigée pour tout modèle secret : sans ce paramètre, le rendu
+     * réutiliserait la valeur rédigée. `undefined`/`null` pour tout autre
+     * modèle : le comportement historique (lecture de `payload.variables`)
+     * reste inchangé.
+     */
+    overrideVariables?: Record<string, string> | null,
   ): Promise<'SENT' | 'FAILED' | 'SKIPPED'> {
     const loaded = await this.prisma.withTenant(organizationId, null, async (tx) => {
       const notification = await tx.notifications.findFirst({ where: { id: notificationId } });
@@ -81,11 +91,12 @@ export class NotificationDeliveryService {
     });
     if (!loaded) return 'SKIPPED';
     const { notification, payload } = loaded;
+    const variables = overrideVariables ?? payload.variables;
 
     for (const channel of channelSequence(payload.channelOrder, from)) {
       const template = this.templateFor(loaded.templates, payload.templateCode, channel);
       if (!template) continue;
-      const body = renderTemplate(template.body, payload.variables);
+      const body = renderTemplate(template.body, variables);
       const to = notification.recipient_address;
       let result: SendResult;
       try {
@@ -95,12 +106,13 @@ export class NotificationDeliveryService {
                 to,
                 templateName: template.providerTemplateName ?? payload.templateCode.toLowerCase(),
                 language: template.providerTemplateLang ?? 'fr',
-                bodyParameters: orderedParameters(payload.variables, template.variables),
+                bodyParameters: orderedParameters(variables, template.variables),
                 document:
                   loaded.link && loaded.attachment
                     ? { link: loaded.link.downloadUrl, filename: loaded.attachment.fileName }
                     : null,
                 previewText: body,
+                authentication: isAuthenticationTemplateCode(payload.templateCode),
               })
             : await this.sms.send({
                 to,
@@ -136,7 +148,7 @@ export class NotificationDeliveryService {
             direction: 'OUTBOUND',
             to_address: to,
             template_code: payload.templateCode,
-            content_preview: this.preview(
+            content_preview: previewForTemplate(
               payload.templateCode,
               channel === 'SMS' ? toGsm7(body) : body,
             ),
@@ -226,13 +238,6 @@ export class NotificationDeliveryService {
       providerTemplateLang: row?.provider_template_lang ?? fallback?.providerTemplateLang ?? null,
       variables,
     };
-  }
-
-  /** Un code de connexion ne survit jamais dans le journal technique. */
-  private preview(code: string, body: string): string {
-    if (code === MESSAGE_TEMPLATE_CODES.OTP_CODE || code === 'auth.otp_login')
-      return 'Code de connexion Immodesk (code expurgé).';
-    return body.length > 180 ? `${body.slice(0, 177)}...` : body;
   }
 
   private async announce(

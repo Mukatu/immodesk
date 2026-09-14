@@ -107,8 +107,16 @@ export class NotificationsController {
   @ApiHeader(ORG_HEADER)
   @ApiOperation({
     summary: 'Relancer un envoi (nouvelle notification, à partir du canal du message)',
+    description:
+      "Refusée pour un modèle d'authentification (OTP) : un code de connexion ne se relance " +
+      'jamais, redemandez-en un nouveau via `POST /v1/auth/otp/request`.',
   })
   @ApiResponse({ status: 202, type: NotificationAcceptedDto })
+  @ApiResponse({
+    status: 409,
+    type: ErrorResponseDto,
+    description: 'NOTIFICATIONS.RETRY_NOT_ALLOWED',
+  })
   async retry(
     @CurrentTenant() tenant: TenantContext,
     @Param('id', ParseUUIDPipe) id: string,

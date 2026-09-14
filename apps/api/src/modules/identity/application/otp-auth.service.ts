@@ -9,13 +9,29 @@ import { TenantDirectoryService } from '../../../shared/prisma/tenant-directory.
 import { AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS } from '../../audit/domain/audit-entry';
 import {
-  NotificationsService,
-  TEMPLATE_CODES,
-} from '../../notifications/application/notifications.service';
-import type { NotificationChannel } from '../../notifications/domain/ports';
+  channelSequence,
+  isAccepted,
+  orderedParameters,
+  toGsm7,
+  type DeliveryChannel,
+} from '../../notifications/domain/delivery-rules';
+import {
+  NOTIFICATION_ENQUEUER,
+  SMS_PROVIDER,
+  WHATSAPP_PROVIDER,
+  type NotificationChannel,
+  type NotificationEnqueuer,
+  type SendResult,
+  type SmsProvider,
+  type WhatsAppProvider,
+} from '../../notifications/domain/ports';
+import { systemTemplate } from '../../notifications/domain/template-catalog';
+import { MESSAGE_TEMPLATE_CODES } from '../../notifications/domain/template-codes';
+import { renderTemplate } from '../../notifications/domain/template-renderer';
 import {
   generateOtpCode,
   hashOtpCode,
+  otpChannelOrder,
   otpExpiresAt,
   resendCooldownRemaining,
   verifyOtp,
@@ -42,7 +58,9 @@ export class OtpAuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sessions: SessionService,
-    private readonly notifications: NotificationsService,
+    @Inject(NOTIFICATION_ENQUEUER) private readonly notifier: NotificationEnqueuer,
+    @Inject(WHATSAPP_PROVIDER) private readonly whatsapp: WhatsAppProvider,
+    @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
     private readonly audit: AuditService,
     private readonly directory: TenantDirectoryService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
@@ -117,17 +135,32 @@ export class OtpAuthService {
     });
 
     const organizationId = await this.resolveTraceOrganization(user?.id ?? null);
-    await this.notifications.sendTemplated({
-      organizationId,
-      to: phone,
-      templateCode: TEMPLATE_CODES.OTP_LOGIN,
-      channel,
-      variables: { code, minutes: String(Math.round(policy.ttlSeconds / 60)) },
-      fallbackBody:
-        'Immodesk : votre code de connexion est {{code}}. Il expire dans {{minutes}} minutes. Ne le communiquez à personne.',
-      relatedEntityType: 'otp_codes',
-      relatedEntityId: requestId,
-    });
+    const channelOrder = otpChannelOrder(channel === 'SMS' ? 'SMS' : 'WHATSAPP');
+    const variables = { code, minutes: String(Math.round(policy.ttlSeconds / 60)) };
+
+    if (organizationId) {
+      // Pipeline phase 3 : ligne `notifications` (SCHEDULED→QUEUED) puis job
+      // BullMQ, qui tente les canaux dans l'ordre et écrit une ligne
+      // `message_logs` par tentative (masquée pour OTP_CODE). L'enqueue est
+      // attendu (écriture rapide), mais jamais l'envoi réel : c'est le
+      // worker, hors requête, qui parle à WhatsApp/SMS.
+      await this.notifier.enqueue({
+        organizationId,
+        templateCode: MESSAGE_TEMPLATE_CODES.OTP_CODE,
+        channelOrder,
+        recipient: { phone, userId: user?.id ?? null },
+        variables,
+        relatedEntity: { type: 'otp_codes', id: requestId },
+      });
+    } else {
+      // Première connexion ou numéro sans organisation : `notifications` et
+      // `message_logs` sont protégés par RLS (organization_id NOT NULL) et
+      // n'admettent aucune écriture hors tenant. L'envoi part directement,
+      // avec le même repli WhatsApp → SMS, sans jamais retarder la réponse.
+      this.sendOtpWithoutTrace(phone, channelOrder, variables).catch((error: Error) =>
+        this.logger.error(`Envoi OTP direct en échec pour ${maskPhone(phone)} : ${error.message}`),
+      );
+    }
 
     this.logger.log(`Code de connexion émis pour ${maskPhone(phone)} (canal ${channel}).`);
 
@@ -137,6 +170,74 @@ export class OtpAuthService {
       expiresInSeconds: policy.ttlSeconds,
       resendAfterSeconds: policy.resendAfterSeconds,
     };
+  }
+
+  /**
+   * Envoi direct (WhatsApp d'abord, SMS en repli), hors pipeline, pour les
+   * numéros sans organisation connue : voir le commentaire de `requestOtp`.
+   * Le code n'est jamais journalisé ici — seuls `FakeWhatsAppProvider` et
+   * `FakeSmsProvider` (développement) le font, ce qui reste toléré.
+   *
+   * LIMITE CONNUE (assumée, hors périmètre `apps/api/`) : ce chemin est
+   * SÉPARÉ du pipeline phase 3 et n'écrit donc AUCUNE ligne `message_logs`
+   * (la RLS de `notifications`/`message_logs` exige `organization_id NOT
+   * NULL`). C'est pourtant, en pratique, le cas le PLUS FRÉQUENT : première
+   * connexion, invités pas encore acceptés, futurs comptes des portails
+   * bailleur/locataire qui n'auront jamais d'adhésion `organization_members`.
+   * Si TOUS les canaux échouent, l'OTP demandé disparaîtrait sans laisser
+   * aucune trace : on journalise donc un avertissement applicatif (numéro
+   * masqué, codes d'erreur des fournisseurs, jamais le code OTP) pour garder
+   * un minimum de visibilité, en mitigation partielle seulement. Résoudre
+   * complètement le problème demanderait une organisation « plateforme »
+   * dédiée (migration de `docs/schema/schema.sql`) pour unifier ce chemin
+   * avec le pipeline normal — hors périmètre de cette correction.
+   */
+  private async sendOtpWithoutTrace(
+    phone: string,
+    channelOrder: DeliveryChannel[],
+    variables: Record<string, string>,
+  ): Promise<void> {
+    const failures: string[] = [];
+    for (const channel of channelSequence(channelOrder)) {
+      const template = systemTemplate(MESSAGE_TEMPLATE_CODES.OTP_CODE, channel);
+      if (!template) continue;
+      const body = renderTemplate(template.body, variables);
+      let result: SendResult;
+      try {
+        result =
+          channel === 'WHATSAPP'
+            ? await this.whatsapp.sendTemplate({
+                to: phone,
+                templateName: template.providerTemplateName ?? 'otp_code_fr',
+                language: template.providerTemplateLang ?? 'fr',
+                bodyParameters: orderedParameters(variables, template.variables),
+                document: null,
+                previewText: body,
+                authentication: true,
+              })
+            : await this.sms.send({
+                to: phone,
+                body: toGsm7(body),
+                templateCode: MESSAGE_TEMPLATE_CODES.OTP_CODE,
+              });
+      } catch (error) {
+        result = {
+          providerMessageId: null,
+          provider: channel === 'WHATSAPP' ? this.whatsapp.name : this.sms.name,
+          segments: 1,
+          costAmount: 0n,
+          status: 'FAILED',
+          errorCode: 'PROVIDER_ERROR',
+          errorMessage: (error as Error).message,
+        };
+      }
+      if (isAccepted(result.status)) return;
+      failures.push(`${channel}=${result.errorCode ?? 'ERREUR_INCONNUE'}`);
+    }
+    this.logger.warn(
+      `OTP non remis pour ${maskPhone(phone)} : échec sur tous les canaux (${failures.join(', ')}). ` +
+        'Numéro sans organisation : aucune trace message_logs pour cette tentative (voir limite connue ci-dessus).',
+    );
   }
 
   /**

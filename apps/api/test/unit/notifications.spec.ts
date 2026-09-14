@@ -5,6 +5,7 @@ import {
   needsWebhookFallback,
   nextMessageStatus,
   orderedParameters,
+  previewForTemplate,
   smsSegments,
   toGsm7,
 } from '../../src/modules/notifications/domain/delivery-rules';
@@ -12,6 +13,7 @@ import {
   SYSTEM_TEMPLATES,
   systemTemplate,
 } from '../../src/modules/notifications/domain/template-catalog';
+import { isAuthenticationTemplateCode } from '../../src/modules/notifications/domain/template-codes';
 import { renderTemplate } from '../../src/modules/notifications/domain/template-renderer';
 import {
   parseGatewayEvents,
@@ -20,6 +22,7 @@ import {
   verifyMetaSignature,
 } from '../../src/modules/notifications/domain/webhook-parsing';
 import { isSimulatedFailure } from '../../src/modules/notifications/infrastructure/fake-sms.provider';
+import { buildTemplateComponents } from '../../src/modules/notifications/infrastructure/meta-whatsapp.provider';
 
 describe('Choix du canal et repli WhatsApp → SMS', () => {
   it('essaie les canaux dans l’ordre, sans doublon, en reprenant au canal demandé', () => {
@@ -87,6 +90,77 @@ describe('Modèles et SMS', () => {
     expect(smsSegments(text)).toBeLessThanOrEqual(2);
     expect(toGsm7('Réglé à échéance — « merci »')).toBe('Regle a echeance - " merci "');
     expect(orderedParameters({ a: '1', c: '3' }, ['a', 'b', 'c'])).toEqual(['1', '', '3']);
+  });
+});
+
+describe('Code OTP : masquage du journal et modèle Meta « Authentication »', () => {
+  it('masque systématiquement le code de connexion dans content_preview', () => {
+    expect(previewForTemplate('OTP_CODE', 'Votre code de connexion Immodesk est 123456.')).toBe(
+      'Code de connexion Immodesk (code expurgé).',
+    );
+    expect(previewForTemplate('auth.otp_login', 'Votre code est 654321.')).toBe(
+      'Code de connexion Immodesk (code expurgé).',
+    );
+    // Sans rapport avec l'OTP : le corps rendu passe tel quel (tronqué au-delà de 180).
+    expect(previewForTemplate('RECEIPT_ISSUED', 'Quittance disponible.')).toBe(
+      'Quittance disponible.',
+    );
+  });
+
+  it('masque le code à CHAQUE tentative de canal, WhatsApp échouée comme SMS de repli', () => {
+    const attempts = [
+      { channel: 'WHATSAPP', body: 'Votre code de connexion Immodesk est 111111.' },
+      { channel: 'SMS', body: 'Immodesk : votre code est 111111.' },
+    ];
+    for (const attempt of attempts) {
+      const preview = previewForTemplate('OTP_CODE', attempt.body);
+      expect(preview).not.toContain('111111');
+      expect(preview).toBe('Code de connexion Immodesk (code expurgé).');
+    }
+  });
+
+  it('identifie OTP_CODE comme seul modèle de catégorie Authentication', () => {
+    expect(isAuthenticationTemplateCode('OTP_CODE')).toBe(true);
+    expect(isAuthenticationTemplateCode('RECEIPT_ISSUED')).toBe(false);
+  });
+
+  it('construit le corps + bouton « copier le code » attendus par Meta pour un OTP', () => {
+    const components = buildTemplateComponents({
+      to: '+242066000001',
+      templateName: 'otp_code_fr',
+      language: 'fr',
+      bodyParameters: ['123456', '5'],
+      previewText: 'Votre code de connexion Immodesk est 123456. Il expire dans 5 minutes.',
+      authentication: true,
+    });
+    expect(components).toEqual([
+      { type: 'body', parameters: [{ type: 'text', text: '123456' }] },
+      {
+        type: 'button',
+        sub_type: 'url',
+        index: '0',
+        parameters: [{ type: 'text', text: '123456' }],
+      },
+    ]);
+  });
+
+  it('garde les paramètres de corps positionnels habituels hors Authentication', () => {
+    const components = buildTemplateComponents({
+      to: '+242066000001',
+      templateName: 'receipt_ready_fr',
+      language: 'fr',
+      bodyParameters: ['Jean', 'QUI-1'],
+      previewText: 'peu importe',
+    });
+    expect(components).toEqual([
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: 'Jean' },
+          { type: 'text', text: 'QUI-1' },
+        ],
+      },
+    ]);
   });
 });
 

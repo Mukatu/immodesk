@@ -16,13 +16,6 @@ function isoDate(days = 0): string {
     .slice(0, 10);
 }
 
-function firstOfMonth(months: number): string {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + months, 1))
-    .toISOString()
-    .slice(0, 10);
-}
-
 /**
  * Génération RÉELLE du contrat PDF, Chromium compris.
  *
@@ -238,7 +231,14 @@ describe('Phase 2 — contrat de bail PDF (Puppeteer)', () => {
 
     const revision = await api(ctx, 'POST', `/leases/${leaseId}/rent-revisions`, {
       ...asOwner(),
-      body: { effectiveDate: firstOfMonth(0), newRentAmount: 175000, reason: 'Révision annuelle' },
+      // `isoDate(0)` (aujourd'hui) : toujours >= au 1er du mois courant ET >=
+      // à `startDate` (= isoDate(-10)), quel que soit le jour du mois où le
+      // test s'exécute — et <= aujourd'hui, donc appliquée immédiatement
+      // (`appliedNow`) : le loyer change bien tout de suite, l'empreinte du
+      // contrat régénéré doit donc différer de la v1. Un `firstOfMonth(0)`
+      // aurait pu tomber avant `startDate` selon le jour du mois (c'était la
+      // fragilité corrigée ici).
+      body: { effectiveDate: isoDate(0), newRentAmount: 175000, reason: 'Révision annuelle' },
     });
     expect(revision.status).toBe(201);
 

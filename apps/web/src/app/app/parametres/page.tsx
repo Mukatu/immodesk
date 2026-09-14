@@ -40,7 +40,8 @@ const identitySchema = z.object({
 type IdentityValues = z.infer<typeof identitySchema>;
 
 export default function ParametresPage() {
-  const { currentOrganizationId } = useAuth();
+  const { currentOrganizationId, currentOrganization } = useAuth();
+  const isOwner = currentOrganization?.role === 'OWNER';
   const { data: organization, isLoading: loadingOrg } = useOrganization(currentOrganizationId);
   const { data: settings, isLoading: loadingSettings } =
     useOrganizationSettings(currentOrganizationId);
@@ -127,6 +128,26 @@ export default function ParametresPage() {
             Corps des messages WhatsApp et SMS envoyés aux locataires.
           </p>
         </Link>
+        <Link
+          href="/app/parametres/paiements"
+          className="rounded-md border border-border p-4 hover:bg-accent"
+        >
+          <p className="font-medium">Méthodes de paiement</p>
+          <p className="text-sm text-muted-foreground">
+            Mobile Money déclaré, Mobile Money agrégateur et virement bancaire.
+          </p>
+        </Link>
+        {isOwner ? (
+          <Link
+            href="/app/parametres/webhooks"
+            className="rounded-md border border-border p-4 hover:bg-accent"
+          >
+            <p className="font-medium">Webhooks</p>
+            <p className="text-sm text-muted-foreground">
+              Journal technique des événements entrants et rejeu.
+            </p>
+          </Link>
+        ) : null}
       </div>
 
       <Card>

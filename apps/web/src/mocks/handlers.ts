@@ -19,6 +19,10 @@ import {
   notificationTemplatesHandlers,
   seedNotificationTemplatesDemoData,
 } from './notification-templates-handlers';
+import { paymentMethodsHandlers, seedPaymentsPhase4DemoData } from './payment-methods-handlers';
+import { mobileMoneyHandlers } from './mobile-money-handlers';
+import { bankTransferHandlers } from './bank-transfer-handlers';
+import { webhookEventsHandlers } from './webhook-events-handlers';
 import { API_BASE } from './api-base';
 
 /**
@@ -233,7 +237,7 @@ export type UnitStatus =
   'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'UNDER_MAINTENANCE' | 'UNAVAILABLE';
 type ContactOwnerType = 'LANDLORD' | 'TENANT' | 'GUARANTOR' | 'MEMBER' | 'SUPPLIER';
 type ContactChannelType = 'PHONE' | 'MOBILE' | 'WHATSAPP' | 'EMAIL' | 'FAX';
-type BankAccountHolderType = 'ORGANIZATION' | 'LANDLORD' | 'TENANT';
+export type BankAccountHolderType = 'ORGANIZATION' | 'LANDLORD' | 'TENANT';
 type MomoProvider = 'MTN_MOMO' | 'AIRTEL_MONEY' | 'CINETPAY' | 'PAWAPAY' | 'OTHER';
 export type PaymentMethod = 'CASH' | 'MOBILE_MONEY' | 'BANK_TRANSFER' | 'BANK_CHECK';
 export type DocumentKind =
@@ -428,7 +432,7 @@ export interface MockUnit {
   deletedAt: string | null;
 }
 
-interface MockBankAccount {
+export interface MockBankAccount {
   id: string;
   organizationId: string;
   holderType: BankAccountHolderType;
@@ -477,7 +481,7 @@ const guarantors = new Map<string, MockGuarantor>();
 const contactChannels = new Map<string, MockContactChannel>();
 export const properties = new Map<string, MockProperty>();
 export const units = new Map<string, MockUnit>();
-const bankAccounts = new Map<string, MockBankAccount>();
+export const bankAccounts = new Map<string, MockBankAccount>();
 export const documents = new Map<string, MockDocument>();
 const pendingUploadObjects = new Map<
   string,
@@ -635,7 +639,7 @@ export function serializeUnit(unit: MockUnit) {
   return rest;
 }
 
-function serializeBankAccount(account: MockBankAccount) {
+export function serializeBankAccount(account: MockBankAccount) {
   const { organizationId: _organizationId, ...rest } = account;
   return rest;
 }
@@ -853,6 +857,14 @@ seedMessagesDemoData({
 });
 seedPenaltyRulesDemoData({ DEMO_ORG_ID, nextId });
 seedNotificationTemplatesDemoData({ DEMO_ORG_ID, nextId });
+seedPaymentsPhase4DemoData({
+  invoices: billingInvoices,
+  leases,
+  bankAccounts,
+  documents,
+  DEMO_ORG_ID,
+  nextId,
+});
 
 export function notFound(code: string, message = 'Introuvable.') {
   return HttpResponse.json({ code, message }, { status: 404 });
@@ -1942,4 +1954,8 @@ export const handlers = [
   ...messagesHandlers,
   ...penaltyRulesHandlers,
   ...notificationTemplatesHandlers,
+  ...paymentMethodsHandlers,
+  ...mobileMoneyHandlers,
+  ...bankTransferHandlers,
+  ...webhookEventsHandlers,
 ];

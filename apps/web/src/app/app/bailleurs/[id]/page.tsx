@@ -575,6 +575,8 @@ const bankAccountSchema = z.object({
   bankName: z.string().min(1, 'Nom de la banque requis.'),
   accountHolderName: z.string().min(1, 'Titulaire requis.'),
   accountNumber: z.string().optional(),
+  momoProvider: z.enum(['MTN_MOMO', 'AIRTEL_MONEY']).or(z.literal('')),
+  momoMsisdn: z.string().optional(),
 });
 
 type BankAccountValues = z.infer<typeof bankAccountSchema>;
@@ -585,6 +587,8 @@ const BANK_ACCOUNT_DEFAULTS: BankAccountValues = {
   bankName: '',
   accountHolderName: '',
   accountNumber: '',
+  momoProvider: '',
+  momoMsisdn: '',
 };
 
 function AddBankAccountDialog({ landlordId }: { landlordId: string }) {
@@ -600,6 +604,7 @@ function AddBankAccountDialog({ landlordId }: { landlordId: string }) {
   async function onSubmit(values: BankAccountValues) {
     setServerError(null);
     try {
+      const momoMsisdn = values.momoMsisdn ? toE164Congo(values.momoMsisdn) : null;
       await createBankAccount.mutateAsync({
         holderType: 'LANDLORD',
         landlordId,
@@ -608,6 +613,8 @@ function AddBankAccountDialog({ landlordId }: { landlordId: string }) {
         bankName: values.bankName,
         accountHolderName: values.accountHolderName,
         accountNumber: values.accountNumber || undefined,
+        momoProvider: values.momoProvider || undefined,
+        momoMsisdn: momoMsisdn ?? undefined,
       });
       form.reset(BANK_ACCOUNT_DEFAULTS);
       setOpen(false);
@@ -708,6 +715,46 @@ function AddBankAccountDialog({ landlordId }: { landlordId: string }) {
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="momoProvider"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel htmlFor="bank-momo-provider">
+                      Opérateur Mobile Money (optionnel)
+                    </FormLabel>
+                    <FormControl>
+                      <EnumSelect
+                        id="bank-momo-provider"
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        labels={{ MTN_MOMO: 'MTN Mobile Money', AIRTEL_MONEY: 'Airtel Money' }}
+                        placeholder="Aucun"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="momoMsisdn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel htmlFor="bank-momo-msisdn">Numéro Mobile Money</FormLabel>
+                    <FormControl>
+                      <PhoneInput
+                        id="bank-momo-msisdn"
+                        value={field.value ?? ''}
+                        onValueChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             {serverError ? (
               <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
                 {serverError}

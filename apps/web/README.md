@@ -51,7 +51,9 @@ src/
                           /app/caisse/remises, /app/caisse/remises/[id], /app/caisse/recus,
                           /app/quittances, /app/quittances/[id], /app/messages,
                           /app/parametres/facturation, /app/parametres/messages,
-                          /verifier/[token] (page publique, sans authentification)
+                          /verifier/[token] (page publique, sans authentification), phase 4 :
+                          /app/parametres/paiements, /app/parametres/webhooks,
+                          /app/paiements/declarations, /app/paiements/mobile-money
   components/
     ui/                   Primitives shadcn/ui (Radix + class-variance-authority)
     business/             Composants métier : MoneyXaf, MoneyInput, PhoneInput, StatusBadge,
@@ -61,7 +63,9 @@ src/
                           LeaseStatusBadge, DepositStatusBadge, DepositBalance, RentRevisionTimeline,
                           PartyList, ContractJobStatus, InvoiceStatusBadge, PaymentStatusBadge,
                           RemittanceStatusBadge, MessageStatusBadge, AllocationPreview,
-                          CashHoldingGauge, PeriodPicker, StatementTable (phase 3)
+                          CashHoldingGauge, PeriodPicker, StatementTable (phase 3),
+                          MomoStatusBadge, DeclarationStatusBadge, WebhookStatusBadge, OperatorBadge,
+                          PaymentInstructionsCard, MomoWaitingPanel (phase 4)
     layout/                En-tête applicatif, sélecteur d'organisation
   lib/
     api/                   client.ts (fetch typé, Authorization + X-Organization-Id,
@@ -72,7 +76,9 @@ src/
                           contract-template, invoices, billing-runs, billing-dashboard,
                           penalty-rules, payments, tenant-credits, tenant-statement, cash-receipts,
                           cash-collectors, cash-remittances, receipts, notification-templates,
-                          message-logs)
+                          message-logs, payment-methods, payment-instructions,
+                          mobile-money-declarations, mobile-money-transactions,
+                          bank-transfer-declarations, webhook-events)
     auth/                  Contexte d'authentification client, cookie httpOnly du refresh token
     money.ts, phone.ts     Formatage XAF et téléphone congolais
     enum-labels.ts         Labels pour énumérations (statuts, types, genres)
@@ -147,9 +153,36 @@ append-only). **Caisse** : encours par démarcheur avec alerte de plafond, **rem
 étendus : facturation (délai d'émission, pénalités), caisse (plafond, signature), messagerie
 (ordre des canaux) et **gabarits de notification** (WhatsApp/SMS, test d'envoi).
 
+### Paiements Mobile Money, virements et webhooks (phase 4)
+
+**Domaine Mobile Money & virements** : **paiements Mobile Money** (déclarés et via agrégateur),
+**virements bancaires** (déclarés), **webhooks** (ingestion événementielle asynchrone).
+
+**Écrans** : `/app/parametres/paiements` (configuration modes de paiement, prise en charge des frais,
+bornes de montant, fenêtre d'expiration, stratégie confirmOnApproval), `/app/parametres/webhooks`
+(journal technique réservé OWNER, rejeu), `/app/paiements/declarations` (onglets Mobile Money/Virement,
+file triée par ancienneté, alerte 72h+, actions validation/rejet/prise en charge),
+`/app/paiements/mobile-money` (journal transactions, filtres, re-interrogation agrégateur).
+
+**Intégration facture** : bloc **Instructions de paiement** (déclaration Mobile Money, déclaration
+virement, demande via agrégateur), **devis e-paiement** (écran d'attente avec compte à rebours,
+règles de rechargement), **bandeau paiement en attente de confirmation bancaire** (état post-validé,
+avant notification de tiers). Règle métier centrale : une déclaration ne crée un paiement que postérieure
+à sa validation.
+
+**Composants** : `MomoStatusBadge`, `DeclarationStatusBadge`, `WebhookStatusBadge`, `OperatorBadge`,
+`PaymentInstructionsCard`, `MomoWaitingPanel`.
+
+**Hooks** : `use-payment-methods`, `use-payment-instructions`, `use-mobile-money-declarations`,
+`use-mobile-money-transactions`, `use-bank-transfer-declarations`, `use-webhook-events`.
+
+**Mocks MSW** : `mobile-money-handlers.ts`, `bank-transfer-handlers.ts`, `payment-methods-handlers.ts`,
+`webhook-events-handlers.ts`, `payments-phase4-seed.ts`. Simulateur Mobile Money piloté par suffixe
+numéro payeur (…01 succès, …02 échec, …03 expiration), rejeu événementiel webhooks.
+
 ## Tests
 
-- **Unitaires** (`pnpm test`, Vitest + Testing Library, **97 tests** répartis sur 19 fichiers) :
+- **Unitaires** (`pnpm test`, Vitest + Testing Library, **131 tests** répartis sur 24 fichiers) :
   formatage XAF (`MoneyXaf`), saisie téléphone congolaise (`PhoneInput`), affichage téléphone
   (`PhoneDisplay`), badge occupation (`OccupancyBadge`), validation taille et MIME de
   `DocumentUploader`, client API (`apiFetch`) incluant le rafraîchissement automatique de token et
@@ -158,7 +191,8 @@ append-only). **Caisse** : encours par démarcheur avec alerte de plafond, **rem
   (`InvoiceStatusBadge`, `PaymentStatusBadge`, `RemittanceStatusBadge`, `MessageStatusBadge`),
   répartition d'un encaissement sur les factures ouvertes (`AllocationPreview`), jauge encours vs
   plafond de caisse (`CashHoldingGauge`), sélecteur de période (`PeriodPicker`), relevé de compte
-  (`StatementTable`).
+  (`StatementTable`), badges phase 4 (`MomoStatusBadge`, `DeclarationStatusBadge`,
+  `WebhookStatusBadge`, `OperatorBadge`), bloc instructions de paiement, écran d'attente Mobile Money.
 - **e2e** (`pnpm test:e2e`, Playwright) :
   - **Phase 0** (`e2e/login-onboarding-invitation.spec.ts`) : connexion OTP → création
     d'organisation → invitation, entièrement mocké via MSW.
@@ -171,6 +205,9 @@ append-only). **Caisse** : encours par démarcheur avec alerte de plafond, **rem
     partiel au comptoir → second encaissement (solde → facture payée) → quittance créée
     automatiquement → journal de messages → vérification publique de la quittance sans
     authentification (nouveau contexte navigateur, sans cookies), entièrement mocké via MSW.
+  - **Phase 4** (`e2e/phase4-paiements.spec.ts`) : déclaration Mobile Money → validation → facture
+    payée avec quittance ; déclaration virement → rejet avec motif → aucun paiement, entièrement
+    mocké via MSW.
 
 Tous les scénarios e2e utilisent MSW (`src/mocks/handlers.ts`), interceptée côté serveur
 (`msw/node`, activé dans `instrumentation.ts` quand `E2E_MOCK=1`). Les appels directs du navigateur
@@ -194,6 +231,12 @@ collecteurs, remises), `receipts-handlers.ts`/`receipts-seed.ts` (quittances, v�
 `notification-templates-handlers.ts`. Une facture réglée en totalité (comptoir ou application d'un
 crédit) déclenche automatiquement la création de la quittance et d'un message WhatsApp « envoyé »
 dans le mock ; une contre-passation de paiement annule la quittance associée.
+
+Phase 4 enrichit `payments-handlers.ts` avec `mobile-money-handlers.ts`/`payments-phase4-seed.ts`,
+`bank-transfer-handlers.ts`, `payment-methods-handlers.ts`, `webhook-events-handlers.ts`. Le
+simulateur Mobile Money est piloté par le suffixe du numéro payeur (…01 succès, …02 échec, …03
+expiration) ; une déclaration ne crée un paiement que postérieure à sa validation ; rejeu événementiel
+webhooks implémenté.
 
 ## Accessibilité et performance
 

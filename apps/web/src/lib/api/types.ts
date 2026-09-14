@@ -1323,3 +1323,215 @@ export interface MessageLog {
   relatedEntityType: string | null;
   relatedEntityId: string | null;
 }
+
+/**
+ * Types du contrat d'API — Phase 4 (Mobile Money à deux modes, virement déclaré,
+ * webhooks). Recopiés depuis docs/api/phase4-contract.md. Ne pas diverger du
+ * contrat sans mettre à jour ce fichier et le document source.
+ */
+
+// ---- Énumérations ----
+
+export type MomoChannel = 'AGGREGATOR' | 'DECLARED';
+
+export type MomoStatus =
+  | 'INITIATED'
+  | 'PENDING'
+  | 'DECLARED'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'EXPIRED'
+  | 'CANCELLED'
+  | 'REJECTED'
+  | 'REFUNDED';
+
+/** Statut d'une déclaration de virement bancaire (`bank_transfer_declarations`). */
+export type DeclarationStatus =
+  'SUBMITTED' | 'UNDER_REVIEW' | 'MATCHED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+export type WebhookSource =
+  'CINETPAY' | 'PAWAPAY' | 'MTN_MOMO' | 'AIRTEL_MONEY' | 'WHATSAPP_CLOUD' | 'SMS_GATEWAY' | 'OTHER';
+
+export type WebhookStatus = 'RECEIVED' | 'PROCESSING' | 'PROCESSED' | 'IGNORED' | 'FAILED';
+
+/**
+ * Fournisseur d'agrégateur Mobile Money configuré pour l'organisation (distinct
+ * de `MomoProvider`, qui identifie l'opérateur d'une transaction donnée).
+ */
+export type MomoAggregatorProvider = 'SIMULATOR' | 'CINETPAY';
+
+/**
+ * Prise en charge des frais d'agrégateur Mobile Money : seulement TENANT ou
+ * ORGANIZATION. Distinct de `FeeBearer` (phase 3), qui couvre aussi LANDLORD et
+ * SHARED pour les paiements en général — `MomoTransaction.feeBearer` réutilise
+ * `FeeBearer` tel quel car le contrat lui donne les 4 valeurs.
+ */
+export type MomoFeeBearer = 'TENANT' | 'ORGANIZATION';
+
+// ---- Paramètres d'organisation : méthodes de paiement ----
+
+export interface PaymentMethodsSettings {
+  mobileMoneyDeclared: { enabled: boolean };
+  mobileMoneyAggregator: {
+    enabled: boolean;
+    provider: MomoAggregatorProvider;
+    feeBearer: MomoFeeBearer;
+    feeRateBps: number;
+    minAmount: number;
+    maxAmount: number;
+  };
+  bankTransfer: { enabled: boolean; confirmOnApproval: boolean };
+  pendingExpiryMinutes: number;
+}
+
+/** Réponse de `GET/PATCH /v1/organizations/{id}/payment-methods`. */
+export interface PaymentMethodsSettingsResponse extends PaymentMethodsSettings {
+  aggregatorAvailable: boolean;
+}
+
+// ---- Mobile Money : déclaré ----
+
+export interface MomoDeclarationInput {
+  tenantId: string;
+  leaseId?: string;
+  invoiceId?: string;
+  provider: 'MTN_MOMO' | 'AIRTEL_MONEY';
+  operatorReference: string;
+  payerMsisdn: string;
+  payeeMsisdn: string;
+  amount: number;
+  paidAt?: string;
+  proofDocumentId?: string;
+  clientRef: string;
+  notes?: string;
+}
+
+export interface MomoApproveInput {
+  approvedAmount?: number;
+  reason?: string;
+  allocations?: { invoiceId: string; amount: number }[];
+}
+
+export interface MomoTransaction {
+  id: string;
+  channel: MomoChannel;
+  status: MomoStatus;
+  provider: MomoProvider;
+  aggregator: string | null;
+  merchantReference: string;
+  providerTransactionId: string | null;
+  aggregatorTransactionId: string | null;
+  payerMsisdn: string;
+  payeeMsisdn: string | null;
+  amount: number;
+  feeAmount: number;
+  feeBearer: FeeBearer;
+  netAmount: number;
+  tenant: { id: string; displayName: string } | null;
+  invoice: { id: string; invoiceNumber: string | null } | null;
+  paymentId: string | null;
+  proofDocumentId: string | null;
+  declaredByUserId: string | null;
+  verifiedByUserId: string | null;
+  verifiedAt: string | null;
+  rejectionReason: string | null;
+  failureCode: string | null;
+  failureMessage: string | null;
+  initiatedAt: string;
+  completedAt: string | null;
+  expiresAt: string | null;
+  statusCheckedAt: string | null;
+  statusCheckCount: number;
+}
+
+// ---- Mobile Money : agrégateur ----
+
+export interface MomoQuote {
+  amount: number;
+  feeAmount: number;
+  totalDebited: number;
+  netReceived: number;
+  feeBearer: MomoFeeBearer;
+}
+
+export interface MomoInitiateInput {
+  invoiceId?: string;
+  tenantId: string;
+  amount: number;
+  payerMsisdn: string;
+  clientRef: string;
+}
+
+// ---- Virement déclaré ----
+
+export interface TransferDeclarationInput {
+  tenantId: string;
+  leaseId?: string;
+  invoiceId?: string;
+  declaredAmount: number;
+  transferDate: string;
+  transferReference?: string;
+  payerName: string;
+  payerBankCode?: string;
+  payerBankName?: string;
+  payerAccountNumber?: string;
+  beneficiaryBankAccountId: string;
+  proofDocumentId: string;
+  clientRef: string;
+  notes?: string;
+}
+
+export interface TransferDeclaration extends TransferDeclarationInput {
+  id: string;
+  status: DeclarationStatus;
+  tenant: { id: string; displayName: string } | null;
+  invoice: { id: string; invoiceNumber: string | null } | null;
+  paymentId: string | null;
+  submittedByUserId: string | null;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  matchedStatementLineId: string | null;
+  ageHours: number;
+  createdAt: string;
+}
+
+// ---- Instructions de paiement ----
+
+export interface PaymentInstructions {
+  transferReference: string | null;
+  invoice: { id: string; invoiceNumber: string | null; balanceAmount: number } | null;
+  bankAccounts: {
+    id: string;
+    bankName: string;
+    accountHolderName: string;
+    accountNumber: string | null;
+    ribKey: string | null;
+    iban: string | null;
+  }[];
+  mobileMoneyNumbers: {
+    bankAccountId: string;
+    provider: MomoProvider;
+    msisdn: string;
+    holderName: string;
+  }[];
+  aggregatorAvailable: boolean;
+}
+
+// ---- Webhooks ----
+
+export interface WebhookEvent {
+  id: string;
+  source: WebhookSource;
+  eventType: string;
+  status: WebhookStatus;
+  externalEventId: string | null;
+  signatureValid: boolean | null;
+  receivedAt: string;
+  processedAt: string | null;
+  processingAttempts: number;
+  errorMessage: string | null;
+  relatedEntityType: string | null;
+  relatedEntityId: string | null;
+  rawPayload: unknown;
+}

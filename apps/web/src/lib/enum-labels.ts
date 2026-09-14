@@ -7,6 +7,7 @@ import type {
   CashReceiptStatus,
   ContactChannelType,
   CreditStatus,
+  DeclarationStatus,
   DepositMovementType,
   DepositStatus,
   DocumentKind,
@@ -18,7 +19,11 @@ import type {
   LeasePartyRole,
   LeaseStatus,
   MessageStatus,
+  MomoAggregatorProvider,
+  MomoChannel,
+  MomoFeeBearer,
   MomoProvider,
+  MomoStatus,
   NotificationChannel,
   PartyType,
   PaymentMethod,
@@ -30,6 +35,8 @@ import type {
   RentPeriod,
   UnitStatus,
   UnitType,
+  WebhookSource,
+  WebhookStatus,
 } from '@/lib/api/types';
 
 export const PARTY_TYPE_LABELS: Record<PartyType, string> = {
@@ -283,6 +290,78 @@ export const PENALTY_BASIS_LABELS: Record<PenaltyBasis, string> = {
   RATE_BPS_PER_MONTH: 'Taux par mois',
   FLAT_AMOUNT: 'Montant forfaitaire',
   FLAT_AMOUNT_PER_DAY: 'Montant forfaitaire par jour',
+};
+
+/**
+ * Libellés fr-CG des énumérations du contrat d'API (phase 4 : Mobile Money à
+ * deux modes, virement déclaré, webhooks), pour affichage sans jamais exposer
+ * les codes techniques à l'utilisateur.
+ */
+export const MOMO_STATUS_LABELS: Record<MomoStatus, string> = {
+  INITIATED: 'Initiée',
+  PENDING: 'En attente',
+  DECLARED: 'Déclarée',
+  SUCCEEDED: 'Réussie',
+  FAILED: 'Échec',
+  EXPIRED: 'Expirée',
+  CANCELLED: 'Annulée',
+  REJECTED: 'Rejetée',
+  REFUNDED: 'Remboursée',
+};
+
+export const MOMO_CHANNEL_LABELS: Record<MomoChannel, string> = {
+  AGGREGATOR: 'Agrégateur',
+  DECLARED: 'Déclaré',
+};
+
+/**
+ * Nommé précisément (déclarations de virement) plutôt que `DECLARATION_STATUS_LABELS`
+ * pour ne pas entrer en collision avec un futur Record de libellés portant sur un
+ * autre type de déclaration.
+ */
+export const TRANSFER_DECLARATION_STATUS_LABELS: Record<DeclarationStatus, string> = {
+  SUBMITTED: 'Soumise',
+  UNDER_REVIEW: 'En instruction',
+  MATCHED: 'Rapprochée',
+  APPROVED: 'Validée',
+  REJECTED: 'Rejetée',
+  CANCELLED: 'Retirée',
+};
+
+export const WEBHOOK_SOURCE_LABELS: Record<WebhookSource, string> = {
+  CINETPAY: 'CinetPay',
+  PAWAPAY: 'PawaPay',
+  MTN_MOMO: 'MTN Mobile Money',
+  AIRTEL_MONEY: 'Airtel Money',
+  WHATSAPP_CLOUD: 'WhatsApp Cloud API',
+  SMS_GATEWAY: 'Passerelle SMS',
+  OTHER: 'Autre',
+};
+
+export const WEBHOOK_STATUS_LABELS: Record<WebhookStatus, string> = {
+  RECEIVED: 'Reçu',
+  PROCESSING: 'En traitement',
+  PROCESSED: 'Traité',
+  IGNORED: 'Ignoré',
+  FAILED: 'Échec',
+};
+
+/**
+ * Nommé `MOMO_FEE_BEARER_LABELS` (et non `FEE_BEARER_LABELS`) car `FeeBearer`
+ * (phase 3) porte 4 valeurs (TENANT, ORGANIZATION, LANDLORD, SHARED) pour les
+ * paiements en général, alors que les paramètres d'agrégateur Mobile Money et
+ * le devis (`MomoQuote`) n'admettent que TENANT ou ORGANIZATION (`MomoFeeBearer`,
+ * phase 4). Redéfinir `FeeBearer` en 2 valeurs aurait cassé son usage existant.
+ */
+export const MOMO_FEE_BEARER_LABELS: Record<MomoFeeBearer, string> = {
+  TENANT: 'Locataire',
+  ORGANIZATION: 'Organisation',
+};
+
+/** Fournisseur d'agrégateur Mobile Money configuré pour l'organisation (phase 4). */
+export const MOMO_AGGREGATOR_PROVIDER_LABELS: Record<MomoAggregatorProvider, string> = {
+  SIMULATOR: 'Simulateur',
+  CINETPAY: 'CinetPay',
 };
 
 /** Convertit un Record de libellés en options `{ value, label }` (ex. pour un Select). */

@@ -1,32 +1,35 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { PageHeader } from '@/components/business/page-header';
 import { DataTable } from '@/components/business/data-table';
-import { MoneyXaf } from '@/components/business/money-xaf';
-import { PaymentStatusBadge } from '@/components/business/payment-status-badge';
 import { EnumSelect } from '@/components/business/enum-select';
-import { Button } from '@/components/ui/button';
+import { MomoStatusBadge } from '@/components/business/momo-status-badge';
+import { MoneyXaf } from '@/components/business/money-xaf';
+import { OperatorBadge } from '@/components/business/operator-badge';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { usePayments } from '@/lib/api/hooks/use-payments';
-import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/enum-labels';
-import type { PaymentMethod, PaymentStatus, PaymentSummary } from '@/lib/api/types';
+import { useMomoTransactions } from '@/lib/api/hooks/use-mobile-money-transactions';
+import { MOMO_CHANNEL_LABELS, MOMO_STATUS_LABELS } from '@/lib/enum-labels';
+import type { MomoChannel, MomoStatus, MomoTransaction } from '@/lib/api/types';
+import { RefreshMomoButton } from './_components/refresh-momo-button';
 
 const PAGE_SIZE = 20;
+const REFRESHABLE_STATUSES: MomoStatus[] = ['INITIATED', 'PENDING'];
 
-export default function PaiementsPage() {
-  const [method, setMethod] = React.useState<PaymentMethod | ''>('');
-  const [status, setStatus] = React.useState<PaymentStatus | ''>('');
+/** Journal des transactions Mobile Money, agrégateur et déclarées confondues. */
+export default function MobileMoneyJournalPage() {
+  const [channel, setChannel] = React.useState<MomoChannel | ''>('');
+  const [status, setStatus] = React.useState<MomoStatus | ''>('');
   const [from, setFrom] = React.useState('');
   const [to, setTo] = React.useState('');
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
   const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
 
-  const { data, isLoading } = usePayments({
-    method: method || undefined,
+  const { data, isLoading } = useMomoTransactions({
+    channel: channel || undefined,
     status: status || undefined,
     from: from || undefined,
     to: to || undefined,
@@ -34,7 +37,7 @@ export default function PaiementsPage() {
     limit: PAGE_SIZE,
   });
 
-  const payments = data?.items ?? [];
+  const transactions = data?.items ?? [];
 
   function resetPagination() {
     setCursor(undefined);
@@ -57,28 +60,35 @@ export default function PaiementsPage() {
     });
   }
 
-  const columns = React.useMemo<ColumnDef<PaymentSummary>[]>(
+  const columns = React.useMemo<ColumnDef<MomoTransaction>[]>(
     () => [
       {
-        header: 'Référence',
+        header: 'Canal',
         cell: ({ row }) => (
-          <Link
-            href={`/app/paiements/${row.original.id}`}
-            className="font-medium text-primary hover:underline"
-          >
-            {row.original.reference}
-          </Link>
+          <Badge variant="outline">{MOMO_CHANNEL_LABELS[row.original.channel]}</Badge>
         ),
       },
-      { header: 'Locataire', cell: ({ row }) => row.original.tenant?.displayName ?? '—' },
-      { header: 'Méthode', cell: ({ row }) => PAYMENT_METHOD_LABELS[row.original.method] },
-      { header: 'Montant', cell: ({ row }) => <MoneyXaf amount={row.original.amount} /> },
+      { header: 'Statut', cell: ({ row }) => <MomoStatusBadge status={row.original.status} /> },
       {
-        header: 'Alloué',
-        cell: ({ row }) => <MoneyXaf amount={row.original.allocatedAmount} colorize />,
+        header: 'Opérateur',
+        cell: ({ row }) => <OperatorBadge msisdn={row.original.payerMsisdn} />,
       },
-      { header: 'Statut', cell: ({ row }) => <PaymentStatusBadge status={row.original.status} /> },
-      { header: 'Date', cell: ({ row }) => row.original.paymentDate },
+      { header: 'Référence', cell: ({ row }) => row.original.merchantReference },
+      { header: 'Montant', cell: ({ row }) => <MoneyXaf amount={row.original.amount} /> },
+      { header: 'Frais', cell: ({ row }) => <MoneyXaf amount={row.original.feeAmount} /> },
+      { header: 'Net', cell: ({ row }) => <MoneyXaf amount={row.original.netAmount} /> },
+      {
+        header: 'Date',
+        cell: ({ row }) => new Date(row.original.initiatedAt).toLocaleString('fr-CG'),
+      },
+      {
+        header: '',
+        cell: ({ row }) =>
+          row.original.channel === 'AGGREGATOR' &&
+          REFRESHABLE_STATUSES.includes(row.original.status) ? (
+            <RefreshMomoButton transactionId={row.original.id} />
+          ) : null,
+      },
     ],
     [],
   );
@@ -86,52 +96,39 @@ export default function PaiementsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Paiements"
-        description="Suivez les encaissements et leur affectation aux factures."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline">
-              <Link href="/app/paiements/declarations">Déclarations</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/app/paiements/mobile-money">Journal Mobile Money</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/app/paiements/nouveau">Saisir un paiement</Link>
-            </Button>
-          </div>
-        }
+        title="Journal Mobile Money"
+        description="Transactions agrégateur et déclarées, toutes confondues."
       />
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-48 space-y-1">
-          <label htmlFor="method-filter" className="text-xs font-medium text-muted-foreground">
-            Méthode
+          <label htmlFor="channel-filter" className="text-xs font-medium text-muted-foreground">
+            Canal
           </label>
-          <EnumSelect<PaymentMethod>
-            id="method-filter"
-            value={method}
+          <EnumSelect<MomoChannel>
+            id="channel-filter"
+            value={channel}
             onValueChange={(v) => {
-              setMethod(v);
+              setChannel(v);
               resetPagination();
             }}
-            labels={PAYMENT_METHOD_LABELS}
-            placeholder="Toutes les méthodes"
+            labels={MOMO_CHANNEL_LABELS}
+            placeholder="Tous les canaux"
           />
         </div>
 
         <div className="w-52 space-y-1">
-          <label htmlFor="status-filter" className="text-xs font-medium text-muted-foreground">
+          <label htmlFor="momo-status-filter" className="text-xs font-medium text-muted-foreground">
             Statut
           </label>
-          <EnumSelect<PaymentStatus>
-            id="status-filter"
+          <EnumSelect<MomoStatus>
+            id="momo-status-filter"
             value={status}
             onValueChange={(v) => {
               setStatus(v);
               resetPagination();
             }}
-            labels={PAYMENT_STATUS_LABELS}
+            labels={MOMO_STATUS_LABELS}
             placeholder="Tous les statuts"
           />
         </div>
@@ -169,10 +166,10 @@ export default function PaiementsPage() {
 
       <DataTable
         columns={columns}
-        data={payments}
+        data={transactions}
         isLoading={isLoading}
-        emptyTitle="Aucun paiement"
-        emptyDescription="Les paiements apparaissent ici une fois saisis au comptoir ou déclarés."
+        emptyTitle="Aucune transaction"
+        emptyDescription="Les transactions Mobile Money apparaissent ici une fois initiées ou déclarées."
         pageInfo={data?.pageInfo}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}

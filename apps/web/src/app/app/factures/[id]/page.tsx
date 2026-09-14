@@ -21,10 +21,16 @@ import { PageHeader } from '@/components/business/page-header';
 import { EmptyState } from '@/components/business/empty-state';
 import { MoneyXaf } from '@/components/business/money-xaf';
 import { InvoiceStatusBadge } from '@/components/business/invoice-status-badge';
+import { PaymentInstructionsCard } from '@/components/business/payment-instructions-card';
 import { useInvoice, useInvoicePdf, useIssueInvoice } from '@/lib/api/hooks/use-invoices';
+import { useInvoicePaymentInstructions } from '@/lib/api/hooks/use-payment-instructions';
 import { INVOICE_LINE_TYPE_LABELS } from '@/lib/enum-labels';
 import { ApiError } from '@/lib/api/client';
 import { CancelInvoiceDialog } from './_components/cancel-invoice-dialog';
+import { PendingVerificationBanner } from './_components/pending-verification-banner';
+import { DeclareMomoDialog } from './_components/declare-momo-dialog';
+import { DeclareTransferDialog } from './_components/declare-transfer-dialog';
+import { RequestMomoPaymentDialog } from './_components/request-momo-payment-dialog';
 
 export default function FactureDetailPage() {
   const params = useParams<{ id: string }>();
@@ -32,6 +38,7 @@ export default function FactureDetailPage() {
   const { data: invoice, isLoading, error } = useInvoice(id);
   const issueInvoice = useIssueInvoice(id);
   const invoicePdf = useInvoicePdf(id);
+  const { data: paymentInstructions } = useInvoicePaymentInstructions(id);
 
   if (isLoading) {
     return (
@@ -94,6 +101,8 @@ export default function FactureDetailPage() {
         Retour aux factures
       </Link>
 
+      <PendingVerificationBanner invoiceId={invoice.id} />
+
       <PageHeader
         title={invoice.invoiceNumber ?? 'Facture brouillon'}
         description={`${invoice.tenant.displayName} — ${invoice.property.name} (${invoice.unit.code})`}
@@ -133,6 +142,35 @@ export default function FactureDetailPage() {
         <SummaryTile label="Payé" amount={invoice.paidAmount} colorize />
         <SummaryTile label="Solde restant" amount={invoice.balanceAmount} emphasize />
       </div>
+
+      {invoice.balanceAmount > 0 && invoice.status !== 'CANCELLED' && paymentInstructions ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <PaymentInstructionsCard instructions={paymentInstructions} />
+          <Card>
+            <CardHeader>
+              <CardTitle>Encaisser cette facture</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <DeclareMomoDialog
+                invoiceId={invoice.id}
+                tenantId={invoice.tenant.id}
+                leaseId={invoice.lease.id}
+                mobileMoneyNumbers={paymentInstructions.mobileMoneyNumbers}
+              />
+              <DeclareTransferDialog
+                invoiceId={invoice.id}
+                tenantId={invoice.tenant.id}
+                leaseId={invoice.lease.id}
+                transferReference={paymentInstructions.transferReference}
+                bankAccounts={paymentInstructions.bankAccounts}
+              />
+              {paymentInstructions.aggregatorAvailable ? (
+                <RequestMomoPaymentDialog invoiceId={invoice.id} tenantId={invoice.tenant.id} />
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader>

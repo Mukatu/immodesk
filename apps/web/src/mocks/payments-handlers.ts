@@ -56,7 +56,7 @@ function allocatedAmountOf(payment: MockPayment): number {
   return payment.allocations.filter((a) => !a.isReversal).reduce((sum, a) => sum + a.amount, 0);
 }
 
-function serializePaymentSummary(payment: MockPayment) {
+export function serializePaymentSummary(payment: MockPayment) {
   const allocatedAmount = allocatedAmountOf(payment);
   return {
     id: payment.id,
@@ -75,7 +75,7 @@ function serializePaymentSummary(payment: MockPayment) {
   };
 }
 
-function serializePaymentDetail(payment: MockPayment) {
+export function serializePaymentDetail(payment: MockPayment) {
   return {
     ...serializePaymentSummary(payment),
     externalReference: payment.externalReference,
@@ -117,7 +117,7 @@ function serializeTenantCredit(credit: MockTenantCredit) {
  * plus ancienne d'abord, puis crédite le reliquat. Mute les factures concernées
  * (Map partagée avec billing-handlers) et retourne les allocations créées.
  */
-function applyAllocations(params: {
+export function applyAllocations(params: {
   organizationId: string;
   tenantId: string;
   budget: number;

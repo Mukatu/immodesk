@@ -3,9 +3,11 @@ import { FeatureFlagsService } from './application/feature-flags.service';
 import { InvitationsService } from './application/invitations.service';
 import { MembersService } from './application/members.service';
 import { OrganizationsService } from './application/organizations.service';
+import { PaymentMethodsService } from './application/payment-methods.service';
 import { FeatureFlagsController } from './presentation/feature-flags.controller';
 import { InvitationsController } from './presentation/invitations.controller';
 import { OrganizationsController } from './presentation/organizations.controller';
+import { PaymentMethodsController } from './presentation/payment-methods.controller';
 
 /**
  * Module `organizations` : tenant SaaS, paramétrage, membres, invitations et
@@ -14,8 +16,25 @@ import { OrganizationsController } from './presentation/organizations.controller
  * `invitations` et `feature_flags`.
  */
 @Module({
-  controllers: [OrganizationsController, InvitationsController, FeatureFlagsController],
-  providers: [OrganizationsService, MembersService, InvitationsService, FeatureFlagsService],
-  exports: [OrganizationsService, MembersService, InvitationsService, FeatureFlagsService],
+  controllers: [
+    OrganizationsController,
+    InvitationsController,
+    FeatureFlagsController,
+    PaymentMethodsController,
+  ],
+  providers: [
+    OrganizationsService,
+    MembersService,
+    InvitationsService,
+    FeatureFlagsService,
+    PaymentMethodsService,
+  ],
+  exports: [
+    OrganizationsService,
+    MembersService,
+    InvitationsService,
+    FeatureFlagsService,
+    PaymentMethodsService,
+  ],
 })
 export class OrganizationsModule {}

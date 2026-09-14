@@ -1,4 +1,4 @@
-# `@immodesk/api` — API Immodesk (phases 0 à 3)
+# `@immodesk/api` — API Immodesk (phases 0 à 4)
 
 Backend NestJS 11 de la plateforme Immodesk (gestion immobilière,
 Congo-Brazzaville). Monolithe modulaire en Clean Architecture, multi-tenant
@@ -25,6 +25,17 @@ idempotent), campagnes manuelles, pénalités plafonnées, paiements imputés
 miroir, reçus de caisse signés et numérotés par démarcheur, remises d'espèces
 contrôlées avec écart audité, quittances PDF (A5) à QR de vérification
 publique, et messagerie WhatsApp d'abord, SMS en repli, suivie par webhooks.
+
+Périmètre de la **phase 4** : Mobile Money à deux modes et virement déclaré —
+mode déclaré (référence opérateur, validation manuelle, zéro commission) et
+mode agrégateur derrière un double verrou (drapeau plateforme +
+paramètre d'organisation), interface `MobileMoneyProvider` avec un
+simulateur piloté par les deux derniers chiffres du numéro payeur et un
+adaptateur CinetPay écrit mais non activé, confirmation exclusivement par
+re-interrogation (`momo:verify-status`), rattrapage à repli exponentiel
+(`momo:reconcile-pending`), déclarations de virement avec preuve dont
+l'unicité est contrôlée par empreinte SHA-256, et réception de webhooks
+signés persistés bruts avant tout traitement (`webhook_events`).
 
 ---
 
@@ -232,6 +243,48 @@ laisser Puppeteer télécharger son propre binaire à chaque build.
    `SMS_GATEWAY_WEBHOOK_SECRET`. Une requête non signée est refusée en 401.
 4. Garder le téléphone sur secteur, en Wi-Fi fixe, l'optimisation de batterie
    désactivée pour l'application : un téléphone en veille ne remet rien.
+
+### Mobile Money et virement déclaré (phase 4)
+
+| Variable                                        | Rôle                                                                                                                   |
+| :---------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
+| `MOMO_PROVIDER_DEFAULT`                         | `SIMULATOR` (défaut) ou `CINETPAY`. Choix repris par organisation via `paymentMethods.mobileMoneyAggregator.provider`. |
+| `MOMO_SIMULATOR_DELAY_MS`                       | Délai avant que le simulateur envoie son webhook signé (1 500 ms par défaut).                                          |
+| `MOMO_SIMULATOR_SECRET`                         | Secret HMAC du simulateur (en-tête `x-simulator-signature`).                                                           |
+| `MOMO_WEBHOOK_BASE_URL`                         | URL publique par laquelle le simulateur, puis CinetPay, rappellent l'API.                                              |
+| `CINETPAY_API_KEY` / `_SITE_ID` / `_SECRET_KEY` | Identifiants marchands CinetPay. Obligatoires si `MOMO_PROVIDER_DEFAULT=CINETPAY`.                                     |
+| `CINETPAY_BASE_URL`                             | Racine de l'API CinetPay (`https://api-checkout.cinetpay.com`).                                                        |
+
+Le simulateur (`SimulatedMobileMoneyProvider`) est piloté par les deux
+derniers chiffres du numéro payeur : `…01` succès, `…02` échec, `…03` aucune
+réponse (rattrapage puis expiration), `…04` succès annoncé mais montant
+divergent à la re-interrogation, `…05` webhook envoyé deux fois, `…06`
+webhook arrivant avant la réponse d'initiation. Tout autre suffixe réussit.
+
+#### Activer le mode agrégateur
+
+Le mode agrégateur est livré derrière un double verrou et n'est actif nulle
+part par défaut :
+
+1. **Drapeau plateforme** `payments.mobile_money_aggregator`
+   (`feature_flags`, `organization_id` nul) : désactivé par le seed. À
+   activer par l'administration plateforme (`is_enabled = true`), globalement
+   ou par organisation.
+2. **Paramètre d'organisation** `PATCH /v1/organizations/{id}/payment-methods`
+   (OWNER) avec `mobileMoneyAggregator.enabled = true`. La réponse expose
+   `aggregatorAvailable`, vrai seulement si les deux verrous sont levés.
+3. **Fournisseur** : `paymentMethods.mobileMoneyAggregator.provider` vaut
+   `SIMULATOR` par défaut hors production. Le passage à `CINETPAY` exige
+   `CINETPAY_API_KEY`, `CINETPAY_SITE_ID`, `CINETPAY_SECRET_KEY` renseignés
+   (le démarrage échoue sinon si `MOMO_PROVIDER_DEFAULT=CINETPAY`) et un
+   contrat commercial signé.
+
+**CinetPay : champs à confirmer.** L'adaptateur (`infrastructure/cinetpay.provider.ts`)
+est écrit et testable (analyse de webhook, calcul de signature) mais les noms
+exacts de champs de l'API marchande CinetPay n'ont pas pu être vérifiés sans
+compte actif. Ils sont isolés dans le seul fichier
+`infrastructure/cinetpay-field-map.ts`, signalés « à confirmer avec la
+documentation marchande », et à valider avant toute activation en production.
 
 ---
 
@@ -689,6 +742,37 @@ organisations à facturer par le cron, la vérification publique d'une
 quittance (une ligne, colonnes fermées) et la résolution d'un webhook par
 l'identifiant fournisseur du message. Toute écriture repasse par `withTenant`.
 
+### Les modules de la phase 4
+
+| Module           | Responsabilité                                                                                                                            |
+| :--------------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
+| `mobile-money`   | Mode déclaré et agrégateur, port `MobileMoneyProvider`, simulateur et adaptateur CinetPay, `momo:verify-status`, `momo:reconcile-pending` |
+| `webhooks`       | Réception signée, persistance brute dans `webhook_events` avant tout traitement, journal et rejeu réservés OWNER                          |
+| `bank-transfers` | Instructions de paiement, déclarations de virement avec preuve, unicité par empreinte SHA-256, prise en charge, validation, rejet         |
+
+`webhooks` importe `mobile-money` (registre de fournisseurs, file de
+vérification) — dépendance à SENS UNIQUE : `mobile-money` ignore `webhooks`,
+et peut donc s'utiliser seul dans un test unitaire. `mobile-money` et
+`bank-transfers` réutilisent `PaymentsService.createInTx` (paiement dans LEUR
+transaction, comme `cash` en phase 3) plutôt que de dupliquer la création
+d'un paiement, et `PaymentMethodsService` (module `organizations`) pour lire
+`settings_json.paymentMethods` — d'où l'import explicite d'`OrganizationsModule`,
+seul module métier non `@Global()` de la chaîne.
+
+**Idempotence à trois niveaux.** `client_ref` sur les déclarations et
+l'initiation (rejeu applicatif, réponse `200` sur ce qui a déjà été créé),
+`external_event_id` sur `webhook_events` (contrainte SQL `webhook_events_external_uk`,
+un doublon répond `200` sans retraiter), et `idempotency_keys` de portée
+`momo:verify-status:{transactionId}` autour de la confirmation elle-même —
+un webhook, la file et le rattrapage peuvent tous les trois déclencher une
+vérification pour la même transaction sans jamais la confirmer deux fois.
+
+**La confirmation ne vient jamais du webhook.** Le webhook déclenche
+`momo:verify-status` ; seul le retour de `getStatus()` du fournisseur
+autorise `payment.status = CONFIRMED`. Un montant divergent laisse le
+paiement `PENDING_VERIFICATION` (code `MOMO.STATUS_MISMATCH`), jamais
+`CONFIRMED` sur la seule foi du webhook.
+
 ### Les quatre modules de la phase 2
 
 | Module      | Responsabilité                                                                                   |
@@ -911,6 +995,48 @@ transmission des signaux et expose une `HEALTHCHECK` sur `/v1/health`.
 ---
 
 ## 11. Écarts et limites connues
+
+### Phase 4
+
+- **CinetPay non vérifié sur compte réel.** Les noms de champs de l'API
+  marchande (`infrastructure/cinetpay-field-map.ts`) sont reconstitués depuis
+  la documentation publique, sans compte actif pour les confirmer. À valider
+  avant toute activation en production (voir § 2, « Activer le mode
+  agrégateur »).
+- **Ancienneté en heures ouvrées, approximation horaire.** `businessHoursElapsed`
+  (module `bank-transfers`) compte les heures pleines 08h-18h, lundi-samedi,
+  sans les minutes ni les jours fériés locaux — suffisant pour l'indicateur
+  d'ancienneté du contrat (seuil 72 h), pas pour une comptabilité fine du
+  temps ouvré.
+- **`momo:reconcile-pending` sans planificateur en test.** Le worker qui
+  consomme `momo:verify-status` reste actif en `NODE_ENV=test` (les
+  scénarios d'intégration en dépendent), mais le job répétable de rattrapage
+  est désactivé comme les autres crons (`MomoJobsService`, même garde que
+  `BillingCronScheduler`) : les tests appellent
+  `MomoReconcileService.reconcilePending()` directement plutôt que d'attendre
+  l'intervalle de 5 minutes.
+- **BullMQ interdit `:` dans un nom de file.** `momo:verify-status`, nom
+  métier documenté par le contrat, est le nom de la file BullMQ
+  `momo-verify-status` (tiret) ; le nom à deux-points ne survit que dans la
+  portée `idempotency_keys` (`momo:verify-status:{transactionId}`, une simple
+  colonne texte) et les commentaires.
+- **`bank_accounts.holder_type = TENANT` non proposé aux instructions de
+  paiement.** `PaymentInstructionsService` ne lit que les comptes du bailleur
+  du bail, puis ceux de l'organisation (contrat) : un compte de réception
+  porté par un locataire (cas rare, hors périmètre décrit) n'apparaît pas.
+- **Rejeu d'un webhook (`POST /webhook-events/{id}/replay`)** ne revérifie
+  pas la signature d'origine : le corps brut est conservé en JSONB, non en
+  octets exacts, et le rejeu est une action OWNER authentifiée, pas un appel
+  du fournisseur. Il relit `merchant_reference` depuis le corps persisté et
+  ré-enfile `momo:verify-status` pour la transaction correspondante.
+- **Notification « au gestionnaire »** (déclaration Mobile Money ou virement
+  soumise) part vers tout membre `OWNER`/`MANAGER` actif de l'organisation,
+  un message chacun — le contrat ne précise pas de destinataire unique.
+- **Suite CI/CD** : quelques appels réseau internes du simulateur vers
+  lui-même peuvent achever un test après la dépose de l'organisation (Redis
+  a déjà planifié le job) ; l'erreur de contrainte est journalisée par
+  Postgres mais n'affecte aucune assertion, car elle s'exécute après la fin
+  du test concerné.
 
 ### Phase 3
 

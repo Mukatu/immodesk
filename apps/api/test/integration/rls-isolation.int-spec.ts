@@ -80,6 +80,12 @@ const PHASE3_TENANT_TABLES = [
   'webhook_events',
 ] as const;
 
+/**
+ * Tables de la phase 4 (Mobile Money, virement déclaré). `webhook_events`
+ * est déjà exigée depuis la phase 3 ; `idempotency_keys` depuis la phase 0.
+ */
+const PHASE4_TENANT_TABLES = ['mobile_money_transactions', 'bank_transfer_declarations'] as const;
+
 /** Tables dont les déclencheurs refusent le DELETE (append-only ou colonnes verrouillées). */
 const GUARDED_TABLES = [
   'audit_logs',
@@ -353,6 +359,11 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
   it('couvre obligatoirement les 6 tables de la phase 2 (baux et dépôts)', () => {
     const missing = PHASE2_TENANT_TABLES.filter((t) => !covered.includes(t));
     expect({ missing, phase: 2 }).toEqual({ missing: [], phase: 2 });
+  });
+
+  it('couvre obligatoirement les tables de la phase 4 (Mobile Money, virement déclaré)', () => {
+    const missing = PHASE4_TENANT_TABLES.filter((t) => !covered.includes(t));
+    expect({ missing, phase: 4 }).toEqual({ missing: [], phase: 4 });
   });
 
   it('vérifie que les tables d’authentification sont bien GLOBALES et hors RLS', async () => {

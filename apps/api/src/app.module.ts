@@ -2,12 +2,14 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditModule } from './modules/audit/audit.module';
 import { BankingModule } from './modules/banking/banking.module';
+import { BankTransfersModule } from './modules/bank-transfers/bank-transfers.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { CashModule } from './modules/cash/cash.module';
 import { DepositsModule } from './modules/deposits/deposits.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { LeasesModule } from './modules/leases/leases.module';
+import { MobileMoneyModule } from './modules/mobile-money/mobile-money.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { NumberingModule } from './modules/numbering/numbering.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
@@ -17,6 +19,7 @@ import { PdfModule } from './modules/pdf/pdf.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { IdempotencyInterceptor } from './modules/platform/presentation/idempotency.interceptor';
 import { JwtAuthGuard } from './shared/auth/jwt-auth.guard';
 import { AppConfigModule } from './shared/config/config.module';
@@ -68,6 +71,12 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     CashModule,
     ReceiptsModule,
     PlatformModule,
+    // Phase 4 — Mobile Money, virement déclaré, webhooks. `mobile-money`
+    // publie le registre de fournisseurs et la file de vérification que
+    // `webhooks` importe pour router sans jamais nommer un fournisseur.
+    MobileMoneyModule,
+    WebhooksModule,
+    BankTransfersModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

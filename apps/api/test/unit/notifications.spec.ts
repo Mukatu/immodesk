@@ -70,7 +70,7 @@ describe('Modèles et SMS', () => {
       expect(systemTemplate(code, 'WHATSAPP')?.providerTemplateName).toBeTruthy();
       expect(systemTemplate(code, 'SMS')).not.toBeNull();
     }
-    expect(SYSTEM_TEMPLATES).toHaveLength(8);
+    expect(SYSTEM_TEMPLATES).toHaveLength(16);
   });
 
   it('translittère en GSM-7 et tient la quittance en deux segments', () => {

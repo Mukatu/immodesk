@@ -29,16 +29,52 @@ export interface MessagingSettings {
   sendInvoiceIssued: boolean;
 }
 
+/** `settings_json.paymentMethods` (phase 4, docs/api/phase4-contract.md). */
+export type MomoAggregatorProvider = 'SIMULATOR' | 'CINETPAY';
+export type FeeBearerChoice = 'TENANT' | 'ORGANIZATION';
+
+export interface MobileMoneyDeclaredSettings {
+  enabled: boolean;
+}
+
+export interface MobileMoneyAggregatorSettings {
+  enabled: boolean;
+  provider: MomoAggregatorProvider;
+  feeBearer: FeeBearerChoice;
+  feeRateBps: number;
+  minAmount: number;
+  maxAmount: number;
+}
+
+export interface BankTransferSettings {
+  enabled: boolean;
+  confirmOnApproval: boolean;
+}
+
+export interface PaymentMethodsSettings {
+  mobileMoneyDeclared: MobileMoneyDeclaredSettings;
+  mobileMoneyAggregator: MobileMoneyAggregatorSettings;
+  bankTransfer: BankTransferSettings;
+  pendingExpiryMinutes: number;
+}
+
 export interface OperationalSettings {
   billing: BillingSettings;
   cash: CashSettings;
   messaging: MessagingSettings;
+  paymentMethods: PaymentMethodsSettings;
 }
 
 export type OperationalSettingsPatch = {
   billing?: Partial<BillingSettings>;
   cash?: Partial<CashSettings>;
   messaging?: Partial<MessagingSettings>;
+  paymentMethods?: {
+    mobileMoneyDeclared?: Partial<MobileMoneyDeclaredSettings>;
+    mobileMoneyAggregator?: Partial<MobileMoneyAggregatorSettings>;
+    bankTransfer?: Partial<BankTransferSettings>;
+    pendingExpiryMinutes?: number;
+  };
 };
 
 export const DEFAULT_OPERATIONAL_SETTINGS: Readonly<OperationalSettings> =
@@ -58,6 +94,19 @@ export const DEFAULT_OPERATIONAL_SETTINGS: Readonly<OperationalSettings> =
       receiptChannelOrder: ['WHATSAPP', 'SMS'],
       sendCashReceiptToTenant: true,
       sendInvoiceIssued: true,
+    },
+    paymentMethods: {
+      mobileMoneyDeclared: { enabled: true },
+      mobileMoneyAggregator: {
+        enabled: false,
+        provider: 'SIMULATOR',
+        feeBearer: 'TENANT',
+        feeRateBps: 300,
+        minAmount: 500,
+        maxAmount: 2_000_000,
+      },
+      bankTransfer: { enabled: true, confirmOnApproval: true },
+      pendingExpiryMinutes: 120,
     },
   });
 
@@ -84,6 +133,39 @@ function channels(value: unknown, fallback: MessagingChannel[]): MessagingChanne
   const picked = value.filter((v): v is MessagingChannel => CHANNELS.includes(v));
   const unique = [...new Set(picked)];
   return unique.length > 0 ? unique : [...fallback];
+}
+
+function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return typeof value === 'string' && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : fallback;
+}
+
+const MOMO_PROVIDERS: readonly MomoAggregatorProvider[] = ['SIMULATOR', 'CINETPAY'];
+const FEE_BEARER_CHOICES: readonly FeeBearerChoice[] = ['TENANT', 'ORGANIZATION'];
+
+function readPaymentMethods(root: Record<string, unknown>): PaymentMethodsSettings {
+  const section = asObject(root.paymentMethods);
+  const declared = asObject(section.mobileMoneyDeclared);
+  const aggregator = asObject(section.mobileMoneyAggregator);
+  const transfer = asObject(section.bankTransfer);
+  const d = DEFAULT_OPERATIONAL_SETTINGS.paymentMethods;
+  return {
+    mobileMoneyDeclared: { enabled: bool(declared.enabled, d.mobileMoneyDeclared.enabled) },
+    mobileMoneyAggregator: {
+      enabled: bool(aggregator.enabled, d.mobileMoneyAggregator.enabled),
+      provider: oneOf(aggregator.provider, MOMO_PROVIDERS, d.mobileMoneyAggregator.provider),
+      feeBearer: oneOf(aggregator.feeBearer, FEE_BEARER_CHOICES, d.mobileMoneyAggregator.feeBearer),
+      feeRateBps: int(aggregator.feeRateBps, d.mobileMoneyAggregator.feeRateBps, 0, 10_000),
+      minAmount: int(aggregator.minAmount, d.mobileMoneyAggregator.minAmount, 0, 100_000_000),
+      maxAmount: int(aggregator.maxAmount, d.mobileMoneyAggregator.maxAmount, 0, 100_000_000),
+    },
+    bankTransfer: {
+      enabled: bool(transfer.enabled, d.bankTransfer.enabled),
+      confirmOnApproval: bool(transfer.confirmOnApproval, d.bankTransfer.confirmOnApproval),
+    },
+    pendingExpiryMinutes: int(section.pendingExpiryMinutes, d.pendingExpiryMinutes, 5, 10_080),
+  };
 }
 
 /**
@@ -132,6 +214,7 @@ export function readOperationalSettings(
       ),
       sendInvoiceIssued: bool(messaging.sendInvoiceIssued, d.messaging.sendInvoiceIssued),
     },
+    paymentMethods: readPaymentMethods(root),
   };
 }
 
@@ -152,6 +235,21 @@ export function mergeOperationalSettings(
       Object.entries(changes).filter(([, value]) => value !== undefined),
     );
     root[section] = { ...current[section], ...defined };
+  }
+  const pm = patch.paymentMethods;
+  if (pm) {
+    root.paymentMethods = {
+      mobileMoneyDeclared: {
+        ...current.paymentMethods.mobileMoneyDeclared,
+        ...pm.mobileMoneyDeclared,
+      },
+      mobileMoneyAggregator: {
+        ...current.paymentMethods.mobileMoneyAggregator,
+        ...pm.mobileMoneyAggregator,
+      },
+      bankTransfer: { ...current.paymentMethods.bankTransfer, ...pm.bankTransfer },
+      pendingExpiryMinutes: pm.pendingExpiryMinutes ?? current.paymentMethods.pendingExpiryMinutes,
+    };
   }
   return root;
 }

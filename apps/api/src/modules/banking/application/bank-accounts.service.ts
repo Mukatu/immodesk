@@ -262,6 +262,19 @@ export class BankAccountsService {
     return rows.map(toBankAccountView);
   }
 
+  /**
+   * Comptes actifs de l'organisation elle-même (`holder_type = ORGANIZATION`),
+   * dans une transaction déjà ouverte — utilisé par les instructions de
+   * paiement (phase 4) en repli quand le bailleur du bail n'en porte aucun.
+   */
+  async listActiveForOrganization(tx: TenantClient): Promise<BankAccountView[]> {
+    const rows = (await tx.bank_accounts.findMany({
+      where: { holder_type: 'ORGANIZATION', is_active: true },
+      orderBy: [{ is_default: 'desc' }, { created_at: 'desc' }],
+    })) as unknown as BankAccountRow[];
+    return rows.map(toBankAccountView);
+  }
+
   private async require(tx: TenantClient, id: string): Promise<BankAccountRow> {
     const row = (await tx.bank_accounts.findUnique({
       where: { id },

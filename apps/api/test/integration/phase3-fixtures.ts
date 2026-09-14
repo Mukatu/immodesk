@@ -213,6 +213,8 @@ export async function dropOrganization(
     'message_logs',
     'notifications',
     'webhook_events',
+    'mobile_money_transactions',
+    'bank_transfer_declarations',
     'payments WHERE reversal_of_id IS NOT NULL AND organization_id = $1::uuid',
     'payments',
     'invoice_lines',

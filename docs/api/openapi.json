@@ -1460,6 +1460,101 @@
         "tags": ["Organisations"]
       }
     },
+    "/v1/organizations/{id}/payment-methods": {
+      "get": {
+        "operationId": "PaymentMethodsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentMethodsSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Moyens de paiement actifs pour cette organisation",
+        "tags": ["Organisations"]
+      },
+      "patch": {
+        "description": "`aggregatorAvailable` n'est jamais accepté en entrée : il est recalculé depuis le drapeau plateforme.",
+        "operationId": "PaymentMethodsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePaymentMethodsSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentMethodsSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Activer ou paramétrer les moyens de paiement",
+        "tags": ["Organisations"]
+      }
+    },
     "/v1/landlords": {
       "post": {
         "description": "Personne physique (`lastName` obligatoire) ou morale (`companyName` obligatoire). Le téléphone est normalisé en E.164 `+242…`.",
@@ -7666,6 +7761,1034 @@
         "summary": "Sonde de disponibilité",
         "tags": ["Plateforme"]
       }
+    },
+    "/v1/payments/mobile-money/declarations": {
+      "post": {
+        "operationId": "MobileMoneyController_declare",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MomoDeclareDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Déclarer un paiement Mobile Money",
+        "tags": ["Mobile Money"]
+      },
+      "get": {
+        "operationId": "MobileMoneyController_listDeclarations",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "channel",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "File des déclarations Mobile Money",
+        "tags": ["Mobile Money"]
+      }
+    },
+    "/v1/payments/mobile-money/declarations/{id}/approve": {
+      "post": {
+        "operationId": "MobileMoneyController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MomoApproveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Valider une déclaration Mobile Money",
+        "tags": ["Mobile Money"]
+      }
+    },
+    "/v1/payments/mobile-money/declarations/{id}/reject": {
+      "post": {
+        "operationId": "MobileMoneyController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MomoReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rejeter une déclaration Mobile Money",
+        "tags": ["Mobile Money"]
+      }
+    },
+    "/v1/payments/mobile-money/declarations/{id}/cancel": {
+      "post": {
+        "operationId": "MobileMoneyController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MomoReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retirer une déclaration Mobile Money",
+        "tags": ["Mobile Money"]
+      }
+    },
+    "/v1/payments/mobile-money/quote": {
+      "post": {
+        "operationId": "MobileMoneyController_quote",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MomoQuoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Devis Mobile Money agrégateur",
+        "tags": ["Mobile Money"]
+      }
+    },
+    "/v1/payments/mobile-money/initiate": {
+      "post": {
+        "operationId": "MobileMoneyController_initiate",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MomoInitiateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Initier un paiement Mobile Money agrégateur",
+        "tags": ["Mobile Money"]
+      }
+    },
+    "/v1/payments/mobile-money/transactions": {
+      "get": {
+        "operationId": "MobileMoneyController_listTransactions",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "channel",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Journal des transactions Mobile Money",
+        "tags": ["Mobile Money"]
+      }
+    },
+    "/v1/payments/mobile-money/transactions/{id}": {
+      "get": {
+        "operationId": "MobileMoneyController_getTransaction",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d'une transaction Mobile Money",
+        "tags": ["Mobile Money"]
+      }
+    },
+    "/v1/payments/mobile-money/transactions/{id}/refresh": {
+      "post": {
+        "operationId": "MobileMoneyController_refresh",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Forcer la re-interrogation du fournisseur",
+        "tags": ["Mobile Money"]
+      }
+    },
+    "/v1/webhook-events": {
+      "get": {
+        "operationId": "WebhookEventsController_list",
+        "parameters": [
+          {
+            "name": "source",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "signatureValid",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Journal des webhooks reçus",
+        "tags": ["Webhooks"]
+      }
+    },
+    "/v1/webhook-events/{id}/replay": {
+      "post": {
+        "operationId": "WebhookEventsController_replay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rejouer un événement (retraitement idempotent)",
+        "tags": ["Webhooks"]
+      }
+    },
+    "/v1/webhooks/mobile-money/{provider}": {
+      "post": {
+        "operationId": "MobileMoneyWebhooksController_receive",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Réception des webhooks Mobile Money agrégateur",
+        "tags": ["Webhooks"]
+      }
+    },
+    "/v1/bank-transfer-declarations": {
+      "post": {
+        "operationId": "BankTransferDeclarationsController_declare",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferDeclareDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Déclarer un virement",
+        "tags": ["Virements déclarés"]
+      },
+      "get": {
+        "operationId": "BankTransferDeclarationsController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "File des déclarations de virement",
+        "tags": ["Virements déclarés"]
+      }
+    },
+    "/v1/bank-transfer-declarations/{id}": {
+      "get": {
+        "operationId": "BankTransferDeclarationsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d'une déclaration de virement",
+        "tags": ["Virements déclarés"]
+      }
+    },
+    "/v1/bank-transfer-declarations/{id}/review": {
+      "post": {
+        "operationId": "BankTransferDeclarationsController_review",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Prendre en charge une déclaration",
+        "tags": ["Virements déclarés"]
+      }
+    },
+    "/v1/bank-transfer-declarations/{id}/approve": {
+      "post": {
+        "operationId": "BankTransferDeclarationsController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferApproveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Valider une déclaration de virement",
+        "tags": ["Virements déclarés"]
+      }
+    },
+    "/v1/bank-transfer-declarations/{id}/reject": {
+      "post": {
+        "operationId": "BankTransferDeclarationsController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rejeter une déclaration de virement",
+        "tags": ["Virements déclarés"]
+      }
+    },
+    "/v1/bank-transfer-declarations/{id}/cancel": {
+      "post": {
+        "operationId": "BankTransferDeclarationsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retirer une déclaration de virement",
+        "tags": ["Virements déclarés"]
+      }
+    },
+    "/v1/invoices/{id}/payment-instructions": {
+      "get": {
+        "operationId": "PaymentInstructionsController_forInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Instructions de paiement d'une facture",
+        "tags": ["Instructions de paiement"]
+      }
+    },
+    "/v1/leases/{id}/payment-instructions": {
+      "get": {
+        "operationId": "PaymentInstructionsController_forLease",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Instructions de paiement de la plus ancienne facture ouverte du bail",
+        "tags": ["Instructions de paiement"]
+      }
     }
   },
   "info": {
@@ -8757,6 +9880,160 @@
           }
         },
         "required": ["flags"]
+      },
+      "MobileMoneyDeclaredSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": ["enabled"]
+      },
+      "MobileMoneyAggregatorSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": false
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["SIMULATOR", "CINETPAY"],
+            "example": "SIMULATOR"
+          },
+          "feeBearer": {
+            "type": "string",
+            "enum": ["TENANT", "ORGANIZATION"],
+            "example": "TENANT"
+          },
+          "feeRateBps": {
+            "type": "number",
+            "example": 300,
+            "description": "Points de base (1/100 %)."
+          },
+          "minAmount": {
+            "type": "number",
+            "example": 500
+          },
+          "maxAmount": {
+            "type": "number",
+            "example": 2000000
+          }
+        },
+        "required": ["enabled", "provider", "feeBearer", "feeRateBps", "minAmount", "maxAmount"]
+      },
+      "BankTransferSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "confirmOnApproval": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": ["enabled", "confirmOnApproval"]
+      },
+      "PaymentMethodsSettingsDto": {
+        "type": "object",
+        "properties": {
+          "mobileMoneyDeclared": {
+            "$ref": "#/components/schemas/MobileMoneyDeclaredSettingsDto"
+          },
+          "mobileMoneyAggregator": {
+            "$ref": "#/components/schemas/MobileMoneyAggregatorSettingsDto"
+          },
+          "bankTransfer": {
+            "$ref": "#/components/schemas/BankTransferSettingsDto"
+          },
+          "pendingExpiryMinutes": {
+            "type": "number",
+            "example": 120
+          },
+          "aggregatorAvailable": {
+            "type": "boolean",
+            "example": false,
+            "description": "Vrai seulement si le drapeau plateforme `payments.mobile_money_aggregator` est actif."
+          }
+        },
+        "required": [
+          "mobileMoneyDeclared",
+          "mobileMoneyAggregator",
+          "bankTransfer",
+          "pendingExpiryMinutes",
+          "aggregatorAvailable"
+        ]
+      },
+      "UpdateMobileMoneyDeclaredSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateMobileMoneyAggregatorSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["SIMULATOR", "CINETPAY"]
+          },
+          "feeBearer": {
+            "type": "string",
+            "enum": ["TENANT", "ORGANIZATION"]
+          },
+          "feeRateBps": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "minAmount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "maxAmount": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "UpdateBankTransferSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "confirmOnApproval": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdatePaymentMethodsSettingsDto": {
+        "type": "object",
+        "properties": {
+          "mobileMoneyDeclared": {
+            "$ref": "#/components/schemas/UpdateMobileMoneyDeclaredSettingsDto"
+          },
+          "mobileMoneyAggregator": {
+            "$ref": "#/components/schemas/UpdateMobileMoneyAggregatorSettingsDto"
+          },
+          "bankTransfer": {
+            "$ref": "#/components/schemas/UpdateBankTransferSettingsDto"
+          },
+          "pendingExpiryMinutes": {
+            "type": "number",
+            "minimum": 5,
+            "maximum": 10080
+          }
+        }
       },
       "CreateLandlordDto": {
         "type": "object",
@@ -16129,6 +17406,226 @@
           }
         },
         "required": ["status", "checks"]
+      },
+      "MomoDeclareDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["MTN_MOMO", "AIRTEL_MONEY"]
+          },
+          "operatorReference": {
+            "type": "string",
+            "example": "MP260911.1234.A56789"
+          },
+          "payerMsisdn": {
+            "type": "string",
+            "example": "+242066000001"
+          },
+          "payeeMsisdn": {
+            "type": "string",
+            "example": "+242066000099"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 50000
+          },
+          "proofDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientRef": {
+            "type": "string",
+            "example": "01J8Z...ULID"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "provider",
+          "operatorReference",
+          "payerMsisdn",
+          "payeeMsisdn",
+          "amount",
+          "clientRef"
+        ]
+      },
+      "MomoApproveDto": {
+        "type": "object",
+        "properties": {
+          "approvedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 50000
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "MomoReasonDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["reason"]
+      },
+      "MomoQuoteDto": {
+        "type": "object",
+        "properties": {
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 50000
+          }
+        },
+        "required": ["amount"]
+      },
+      "MomoInitiateDto": {
+        "type": "object",
+        "properties": {
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 50000
+          },
+          "payerMsisdn": {
+            "type": "string",
+            "example": "+242066000001"
+          },
+          "clientRef": {
+            "type": "string",
+            "example": "01J8Z...ULID"
+          }
+        },
+        "required": ["tenantId", "amount", "payerMsisdn", "clientRef"]
+      },
+      "TransferDeclareDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "declaredAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 300000
+          },
+          "transferDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "transferReference": {
+            "type": "string"
+          },
+          "payerName": {
+            "type": "string",
+            "example": "Jean Mabiala"
+          },
+          "payerBankCode": {
+            "type": "string"
+          },
+          "payerBankName": {
+            "type": "string"
+          },
+          "payerAccountNumber": {
+            "type": "string"
+          },
+          "beneficiaryBankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "proofDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientRef": {
+            "type": "string",
+            "example": "01J8Z...ULID"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "declaredAmount",
+          "transferDate",
+          "payerName",
+          "beneficiaryBankAccountId",
+          "proofDocumentId",
+          "clientRef"
+        ]
+      },
+      "TransferApproveDto": {
+        "type": "object",
+        "properties": {
+          "approvedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 300000
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "TransferReasonDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["reason"]
       }
     }
   }

@@ -23,6 +23,8 @@ export const SEQUENCE_KINDS = [
   'SUBSCRIPTION_INVOICE',
   'PAYMENT',
   'REVERSAL',
+  'MOMO_DECLARED',
+  'MOMO_AGGREGATOR',
 ] as const;
 
 export type SequenceKind = (typeof SEQUENCE_KINDS)[number];
@@ -59,6 +61,10 @@ export const SEQUENCE_FORMATS: Readonly<Record<SequenceKind, SequenceFormat>> = 
   SUBSCRIPTION_INVOICE: { prefix: 'ABO', scope: 'MONTHLY', padding: 5 },
   PAYMENT: { prefix: 'PAY', scope: 'MONTHLY', padding: 5 },
   REVERSAL: { prefix: 'REV', scope: 'MONTHLY', padding: 5 },
+  // Phase 4 : `merchant_reference` des transactions Mobile Money, déclarées
+  // (MMD) et agrégateur (MMA) — deux séries distinctes, mêmes règles.
+  MOMO_DECLARED: { prefix: 'MMD', scope: 'MONTHLY', padding: 5 },
+  MOMO_AGGREGATOR: { prefix: 'MMA', scope: 'MONTHLY', padding: 5 },
 };
 
 /**

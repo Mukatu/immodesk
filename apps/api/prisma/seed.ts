@@ -10,6 +10,7 @@ import { PrismaClient } from '@prisma/client';
 import { v7 as uuidv7 } from 'uuid';
 import { seedBilling } from './seed-billing';
 import { seedLeases } from './seed-leases';
+import { seedPhase4 } from './seed-phase4';
 import { seedPortfolio } from './seed-portfolio';
 
 const prisma = new PrismaClient({
@@ -51,6 +52,10 @@ async function main(): Promise<void> {
   // --- Phase 3 : facturation, espèces, quittances, modèles de messages --
   const billing = await seedBilling(prisma, organizationId);
 
+  // --- Phase 4 : Mobile Money déclarée, virement déclaré, agrégateur ----
+  await upsertAggregatorFlag();
+  const phase4 = await seedPhase4(prisma, organizationId);
+
   console.info('Seed Immodesk — terminé.');
   console.info(`  Organisation : Agence Mpila Immo (${organizationId})`);
   console.info(`  OWNER        : ${OWNER_PHONE}`);
@@ -74,6 +79,12 @@ async function main(): Promise<void> {
   );
   console.info(
     `  Quittances   : ${billing.receipts} émise ; règle de pénalité par défaut ; ${billing.templates} modèles système`,
+  );
+  console.info(
+    `  Mobile Money : ${phase4.momoDeclarations} déclaration DECLARED en attente (mode agrégateur désactivé)`,
+  );
+  console.info(
+    `  Virement     : ${phase4.bankTransferDeclarations} déclaration SUBMITTED en attente`,
   );
   console.info('  Connexion    : POST /v1/auth/otp/request puis /v1/auth/otp/verify');
   console.info('                 avec OTP_DEV_CODE (000000 par défaut) en développement.');
@@ -248,6 +259,32 @@ async function upsertFeatureFlag(organizationId: string): Promise<void> {
       is_enabled: true,
       rollout_percentage: 100,
       payload: { message: 'Environnement de démonstration Immodesk.' },
+    },
+  });
+}
+
+/**
+ * Drapeau plateforme `payments.mobile_money_aggregator` (contrat phase 4,
+ * arbitrage 6) : GLOBAL (`organization_id` nul), désactivé par défaut. Le
+ * mode agrégateur reste conditionné à ce drapeau ET au paramètre
+ * `paymentMethods.mobileMoneyAggregator.enabled` de chaque organisation.
+ */
+async function upsertAggregatorFlag(): Promise<void> {
+  const existing = await prisma.feature_flags.findFirst({
+    where: { organization_id: null, key: 'payments.mobile_money_aggregator' },
+    select: { id: true },
+  });
+  if (existing) return;
+
+  await prisma.feature_flags.create({
+    data: {
+      id: uuidv7(),
+      organization_id: null,
+      key: 'payments.mobile_money_aggregator',
+      description:
+        'Active le sous-module Mobile Money agrégateur (CinetPay). Désactivé tant que le contrat commercial n’est pas signé.',
+      is_enabled: false,
+      rollout_percentage: 0,
     },
   });
 }

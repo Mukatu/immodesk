@@ -147,6 +147,21 @@ export const configSchema = z
     BILLING_CRON_TIMEZONE: z.string().default('Africa/Brazzaville'),
     RECEIPT_PDF_FORMAT: z.enum(['A5', 'A4']).default('A5'),
 
+    // --- Mobile Money (phase 4) -------------------------------------------
+    // `MOMO_PROVIDER_DEFAULT` sélectionne l'implémentation quand l'organisation
+    // n'a pas encore choisi (`paymentMethods.mobileMoneyAggregator.provider`
+    // fait foi sinon). Le simulateur est le seul actif hors production tant
+    // que le contrat CinetPay n'est pas signé (arbitrage 6 du contrat phase 4).
+    MOMO_PROVIDER_DEFAULT: z.enum(['SIMULATOR', 'CINETPAY']).default('SIMULATOR'),
+    MOMO_SIMULATOR_DELAY_MS: z.coerce.number().int().nonnegative().default(1500),
+    MOMO_SIMULATOR_SECRET: z.string().min(8).default('immodesk-dev-momo-simulator-secret'),
+    // URL publique par laquelle le simulateur (et CinetPay) rappellent l'API.
+    MOMO_WEBHOOK_BASE_URL: z.string().url().default('http://localhost:3000'),
+    CINETPAY_API_KEY: optionalText,
+    CINETPAY_SITE_ID: optionalText,
+    CINETPAY_SECRET_KEY: optionalText,
+    CINETPAY_BASE_URL: z.string().url().default('https://api-checkout.cinetpay.com'),
+
     // --- Observabilité ---------------------------------------------------
     SENTRY_DSN: z.string().optional(),
     SWAGGER_ENABLED: booleanish.default(true),
@@ -190,6 +205,17 @@ export const configSchema = z
         path: ['SMS_GATEWAY_URL'],
         message:
           'SMS_GATEWAY_URL, SMS_GATEWAY_USERNAME et SMS_GATEWAY_PASSWORD sont obligatoires lorsque SMS_PROVIDER vaut android_gateway.',
+      });
+    }
+    if (
+      cfg.MOMO_PROVIDER_DEFAULT === 'CINETPAY' &&
+      (!cfg.CINETPAY_API_KEY || !cfg.CINETPAY_SITE_ID || !cfg.CINETPAY_SECRET_KEY)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CINETPAY_API_KEY'],
+        message:
+          'CINETPAY_API_KEY, CINETPAY_SITE_ID et CINETPAY_SECRET_KEY sont obligatoires lorsque MOMO_PROVIDER_DEFAULT vaut CINETPAY.',
       });
     }
     if (cfg.NODE_ENV === 'production' && cfg.OTP_DEV_CODE) {

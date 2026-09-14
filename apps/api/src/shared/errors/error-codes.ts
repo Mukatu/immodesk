@@ -346,7 +346,76 @@ export const ERROR_CATALOG = {
   },
   'WEBHOOKS.SIGNATURE_INVALID': { status: 401, message: 'Signature du webhook invalide.' },
   'WEBHOOKS.VERIFY_TOKEN_INVALID': { status: 403, message: 'Jeton de vérification invalide.' },
+  'WEBHOOKS.EVENT_NOT_FOUND': { status: 404, message: 'Événement de webhook introuvable.' },
   'PUBLIC.LINK_INVALID': { status: 404, message: 'Lien invalide ou expiré.' },
+
+  // --- Domaine MOMO (Mobile Money, déclaré et agrégateur) ----------------
+  'MOMO.NOT_FOUND': { status: 404, message: 'Transaction Mobile Money introuvable.' },
+  'MOMO.REFERENCE_ALREADY_USED': {
+    status: 409,
+    message: 'Cette référence opérateur a déjà été utilisée.',
+  },
+  'MOMO.OPERATOR_UNKNOWN': {
+    status: 422,
+    message: 'Opérateur Mobile Money non reconnu pour ce numéro.',
+  },
+  'MOMO.AMOUNT_OUT_OF_RANGE': {
+    status: 422,
+    message: 'Montant hors des bornes autorisées pour le paiement Mobile Money.',
+  },
+  'MOMO.AGGREGATOR_DISABLED': {
+    status: 409,
+    message: "Le mode agrégateur Mobile Money n'est pas activé pour cette organisation.",
+  },
+  'MOMO.DECLARED_DISABLED': {
+    status: 409,
+    message: "Le mode Mobile Money déclaré n'est pas activé pour cette organisation.",
+  },
+  'MOMO.PROVIDER_UNAVAILABLE': {
+    status: 503,
+    message: 'Fournisseur Mobile Money indisponible. Réessayez dans un instant.',
+  },
+  'MOMO.STATUS_MISMATCH': {
+    status: 409,
+    message: 'Le montant confirmé par le fournisseur diverge du montant attendu.',
+  },
+  'MOMO.WEBHOOK_SIGNATURE_INVALID': {
+    status: 401,
+    message: 'Signature du webhook Mobile Money invalide.',
+  },
+  'MOMO.INVALID_TRANSITION': {
+    status: 409,
+    message: "Cette transition d'état n'est pas permise pour cette transaction Mobile Money.",
+  },
+  'MOMO.PROOF_NOT_FOUND': { status: 404, message: 'Capture jointe introuvable.' },
+  'MOMO.APPROVED_AMOUNT_REASON_REQUIRED': {
+    status: 422,
+    message: 'Le motif est obligatoire lorsque le montant validé diffère du montant déclaré.',
+  },
+
+  // --- Domaine BANK (virement déclaré) -----------------------------------
+  'BANK.NOT_FOUND': { status: 404, message: 'Déclaration de virement introuvable.' },
+  'BANK.PROOF_ALREADY_USED': {
+    status: 409,
+    message: 'Cette preuve a déjà été utilisée pour une autre déclaration.',
+  },
+  'BANK.PROOF_NOT_FOUND': { status: 404, message: 'Preuve de virement introuvable.' },
+  'BANK.INVALID_TRANSITION': {
+    status: 409,
+    message: "Cette transition d'état n'est pas permise pour cette déclaration de virement.",
+  },
+  'BANK.TRANSFER_DISABLED': {
+    status: 409,
+    message: "Le virement déclaré n'est pas activé pour cette organisation.",
+  },
+  'BANK.BENEFICIARY_ACCOUNT_INVALID': {
+    status: 422,
+    message: 'Compte bénéficiaire invalide ou inactif pour cette organisation.',
+  },
+  'BANK.APPROVED_AMOUNT_REASON_REQUIRED': {
+    status: 422,
+    message: 'Le motif est obligatoire lorsque le montant validé diffère du montant déclaré.',
+  },
 
   // --- Domaine VALIDATION / plateforme ----------------------------------
   'VALIDATION.INVALID_PAYLOAD': { status: 422, message: 'Requête invalide.' },

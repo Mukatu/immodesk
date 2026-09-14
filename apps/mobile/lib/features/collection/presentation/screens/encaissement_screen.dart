@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../shared/widgets/money_xaf_text.dart';
+import '../../../../shared/widgets/offline_data_banner.dart';
 import '../../domain/entities/invoice_summary.dart';
 import '../../domain/payment_allocation_preview.dart';
 import '../controllers/encaissement_controller.dart';
@@ -45,6 +46,18 @@ class _EncaissementScreenState extends ConsumerState<EncaissementScreen> {
           RoutePaths.collectionConfirmation,
           extra: result,
         );
+        return;
+      }
+      final bool queuedNow = next.value?.queuedOffline ?? false;
+      final bool queuedBefore = previous?.value?.queuedOffline ?? false;
+      if (queuedNow && !queuedBefore) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            key: ValueKey('encaissement-queued-snackbar'),
+            content: Text(EncaissementState.queuedOfflineMessage),
+          ),
+        );
+        context.go(RoutePaths.collectionRound);
       }
     });
 
@@ -54,29 +67,6 @@ class _EncaissementScreenState extends ConsumerState<EncaissementScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Erreur : $error')),
         data: (state) {
-          if (state.isOfflineBlocked) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.cloud_off_outlined,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      EncaissementState.offlineMessage,
-                      key: const ValueKey('encaissement-offline-message'),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
           if (!_amountInitialized) {
             _amountController.text = state.amount.toString();
             _amountInitialized = true;
@@ -87,70 +77,82 @@ class _EncaissementScreenState extends ConsumerState<EncaissementScreen> {
             amountXaf: state.amount,
           );
 
-          return ListView(
-            key: const ValueKey('encaissement-form'),
-            padding: const EdgeInsets.all(16),
+          return Column(
             children: [
-              _TenantHeader(invoice: state.primaryInvoice),
-              const SizedBox(height: 16),
-              Text(
-                'Factures à solder',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              for (final invoice in state.leaseInvoices)
-                CheckboxListTile(
-                  key: ValueKey('invoice-checkbox-${invoice.id}'),
-                  value: state.selectedInvoiceIds.contains(invoice.id),
-                  onChanged: (_) => notifier.toggleInvoice(invoice.id),
-                  title: Text(invoice.invoiceNumber ?? invoice.id),
-                  subtitle: Text('Échéance le ${invoice.dueDate}'),
-                  secondary: MoneyXafText(invoice.balanceAmount),
-                ),
-              const SizedBox(height: 16),
-              TextFormField(
-                key: const ValueKey('amount-field'),
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Montant encaissé (FCFA)',
-                ),
-                onChanged: (value) =>
-                    notifier.setAmount(int.tryParse(value) ?? 0),
-              ),
-              const SizedBox(height: 16),
-              AllocationPreviewList(preview: preview),
-              const SizedBox(height: 16),
-              ProofCaptureSection(
-                onSignatureCaptured: notifier.setSignature,
-                onPaperPhotoCaptured: notifier.setPaperReceiptPhoto,
-              ),
-              if (state.errorMessage != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  state.errorMessage!,
-                  key: const ValueKey('encaissement-error'),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-              const SizedBox(height: 24),
-              FilledButton(
-                key: const ValueKey('submit-encaissement-button'),
-                onPressed:
-                    state.isSubmitting || state.amount <= 0 || !state.hasProof
-                    ? null
-                    : notifier.submit,
-                child: state.isSubmitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Valider'),
-              ),
+              if (state.isOffline) const OfflineDataBanner(cachedAt: null),
+              Expanded(child: _buildForm(context, state, notifier, preview)),
             ],
           );
         },
       ),
+    );
+  }
+
+  Widget _buildForm(
+    BuildContext context,
+    EncaissementState state,
+    EncaissementController notifier,
+    AllocationPreview preview,
+  ) {
+    return ListView(
+      key: const ValueKey('encaissement-form'),
+      padding: const EdgeInsets.all(16),
+      children: [
+        _TenantHeader(invoice: state.primaryInvoice),
+        const SizedBox(height: 16),
+        Text(
+          'Factures à solder',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        for (final invoice in state.leaseInvoices)
+          CheckboxListTile(
+            key: ValueKey('invoice-checkbox-${invoice.id}'),
+            value: state.selectedInvoiceIds.contains(invoice.id),
+            onChanged: (_) => notifier.toggleInvoice(invoice.id),
+            title: Text(invoice.invoiceNumber ?? invoice.id),
+            subtitle: Text('Échéance le ${invoice.dueDate}'),
+            secondary: MoneyXafText(invoice.balanceAmount),
+          ),
+        const SizedBox(height: 16),
+        TextFormField(
+          key: const ValueKey('amount-field'),
+          controller: _amountController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Montant encaissé (FCFA)',
+          ),
+          onChanged: (value) => notifier.setAmount(int.tryParse(value) ?? 0),
+        ),
+        const SizedBox(height: 16),
+        AllocationPreviewList(preview: preview),
+        const SizedBox(height: 16),
+        ProofCaptureSection(
+          onSignatureCaptured: notifier.setSignature,
+          onPaperPhotoCaptured: notifier.setPaperReceiptPhoto,
+        ),
+        if (state.errorMessage != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            state.errorMessage!,
+            key: const ValueKey('encaissement-error'),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
+        const SizedBox(height: 24),
+        FilledButton(
+          key: const ValueKey('submit-encaissement-button'),
+          onPressed: state.isSubmitting || state.amount <= 0 || !state.hasProof
+              ? null
+              : notifier.submit,
+          child: state.isSubmitting
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Valider'),
+        ),
+      ],
     );
   }
 }

@@ -304,6 +304,28 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _lastErrorMessageMeta = const VerificationMeta(
+    'lastErrorMessage',
+  );
+  @override
+  late final GeneratedColumn<String> lastErrorMessage = GeneratedColumn<String>(
+    'last_error_message',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _batchRefMeta = const VerificationMeta(
+    'batchRef',
+  );
+  @override
+  late final GeneratedColumn<String> batchRef = GeneratedColumn<String>(
+    'batch_ref',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -339,6 +361,8 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
     attemptCount,
     status,
     lastErrorCode,
+    lastErrorMessage,
+    batchRef,
     createdAt,
     nextAttemptAt,
   ];
@@ -422,6 +446,21 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
         ),
       );
     }
+    if (data.containsKey('last_error_message')) {
+      context.handle(
+        _lastErrorMessageMeta,
+        lastErrorMessage.isAcceptableOrUnknown(
+          data['last_error_message']!,
+          _lastErrorMessageMeta,
+        ),
+      );
+    }
+    if (data.containsKey('batch_ref')) {
+      context.handle(
+        _batchRefMeta,
+        batchRef.isAcceptableOrUnknown(data['batch_ref']!, _batchRefMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -478,6 +517,14 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
         DriftSqlType.string,
         data['${effectivePrefix}last_error_code'],
       ),
+      lastErrorMessage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error_message'],
+      ),
+      batchRef: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}batch_ref'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -500,19 +547,27 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
   final String clientRef;
   final String organizationId;
 
-  /// Ex. `cash_receipt.create`, `remittance.close`…
+  /// `CASH_RECEIPT`, `DOCUMENT`, ou (legacy) `documents.property_photo.create`.
   final String operation;
 
-  /// JSON canonique de la commande à rejouer.
+  /// JSON canonique de la commande à rejouer (`payload` de l'enveloppe).
   final String payload;
 
-  /// Ordre de rejeu : ULID de l'opération dont celle-ci dépend.
+  /// Ordre de rejeu : JSON d'un tableau de `clientRef` (`dependsOn` du
+  /// contrat), à appliquer avant celle-ci dans le même lot.
   final String? dependsOnClientRef;
   final int attemptCount;
 
-  /// PENDING, SENDING, ACKED, REJECTED.
+  /// PENDING, SENDING, SENT, FAILED, CONFLICT.
   final String status;
   final String? lastErrorCode;
+
+  /// Message en français, affichable tel quel au démarcheur.
+  final String? lastErrorMessage;
+
+  /// `batchRef` (ULID) du lot en cours d'envoi : conservé et rejoué tel
+  /// quel après une coupure, jamais régénéré.
+  final String? batchRef;
   final DateTime createdAt;
   final DateTime nextAttemptAt;
   const OutboxRow({
@@ -524,6 +579,8 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     required this.attemptCount,
     required this.status,
     this.lastErrorCode,
+    this.lastErrorMessage,
+    this.batchRef,
     required this.createdAt,
     required this.nextAttemptAt,
   });
@@ -541,6 +598,12 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || lastErrorCode != null) {
       map['last_error_code'] = Variable<String>(lastErrorCode);
+    }
+    if (!nullToAbsent || lastErrorMessage != null) {
+      map['last_error_message'] = Variable<String>(lastErrorMessage);
+    }
+    if (!nullToAbsent || batchRef != null) {
+      map['batch_ref'] = Variable<String>(batchRef);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['next_attempt_at'] = Variable<DateTime>(nextAttemptAt);
@@ -561,6 +624,12 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
       lastErrorCode: lastErrorCode == null && nullToAbsent
           ? const Value.absent()
           : Value(lastErrorCode),
+      lastErrorMessage: lastErrorMessage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastErrorMessage),
+      batchRef: batchRef == null && nullToAbsent
+          ? const Value.absent()
+          : Value(batchRef),
       createdAt: Value(createdAt),
       nextAttemptAt: Value(nextAttemptAt),
     );
@@ -582,6 +651,8 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
       attemptCount: serializer.fromJson<int>(json['attemptCount']),
       status: serializer.fromJson<String>(json['status']),
       lastErrorCode: serializer.fromJson<String?>(json['lastErrorCode']),
+      lastErrorMessage: serializer.fromJson<String?>(json['lastErrorMessage']),
+      batchRef: serializer.fromJson<String?>(json['batchRef']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       nextAttemptAt: serializer.fromJson<DateTime>(json['nextAttemptAt']),
     );
@@ -598,6 +669,8 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
       'attemptCount': serializer.toJson<int>(attemptCount),
       'status': serializer.toJson<String>(status),
       'lastErrorCode': serializer.toJson<String?>(lastErrorCode),
+      'lastErrorMessage': serializer.toJson<String?>(lastErrorMessage),
+      'batchRef': serializer.toJson<String?>(batchRef),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'nextAttemptAt': serializer.toJson<DateTime>(nextAttemptAt),
     };
@@ -612,6 +685,8 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     int? attemptCount,
     String? status,
     Value<String?> lastErrorCode = const Value.absent(),
+    Value<String?> lastErrorMessage = const Value.absent(),
+    Value<String?> batchRef = const Value.absent(),
     DateTime? createdAt,
     DateTime? nextAttemptAt,
   }) => OutboxRow(
@@ -627,6 +702,10 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     lastErrorCode: lastErrorCode.present
         ? lastErrorCode.value
         : this.lastErrorCode,
+    lastErrorMessage: lastErrorMessage.present
+        ? lastErrorMessage.value
+        : this.lastErrorMessage,
+    batchRef: batchRef.present ? batchRef.value : this.batchRef,
     createdAt: createdAt ?? this.createdAt,
     nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,
   );
@@ -648,6 +727,10 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
       lastErrorCode: data.lastErrorCode.present
           ? data.lastErrorCode.value
           : this.lastErrorCode,
+      lastErrorMessage: data.lastErrorMessage.present
+          ? data.lastErrorMessage.value
+          : this.lastErrorMessage,
+      batchRef: data.batchRef.present ? data.batchRef.value : this.batchRef,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       nextAttemptAt: data.nextAttemptAt.present
           ? data.nextAttemptAt.value
@@ -666,6 +749,8 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
           ..write('attemptCount: $attemptCount, ')
           ..write('status: $status, ')
           ..write('lastErrorCode: $lastErrorCode, ')
+          ..write('lastErrorMessage: $lastErrorMessage, ')
+          ..write('batchRef: $batchRef, ')
           ..write('createdAt: $createdAt, ')
           ..write('nextAttemptAt: $nextAttemptAt')
           ..write(')'))
@@ -682,6 +767,8 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     attemptCount,
     status,
     lastErrorCode,
+    lastErrorMessage,
+    batchRef,
     createdAt,
     nextAttemptAt,
   );
@@ -697,6 +784,8 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
           other.attemptCount == this.attemptCount &&
           other.status == this.status &&
           other.lastErrorCode == this.lastErrorCode &&
+          other.lastErrorMessage == this.lastErrorMessage &&
+          other.batchRef == this.batchRef &&
           other.createdAt == this.createdAt &&
           other.nextAttemptAt == this.nextAttemptAt);
 }
@@ -710,6 +799,8 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
   final Value<int> attemptCount;
   final Value<String> status;
   final Value<String?> lastErrorCode;
+  final Value<String?> lastErrorMessage;
+  final Value<String?> batchRef;
   final Value<DateTime> createdAt;
   final Value<DateTime> nextAttemptAt;
   final Value<int> rowid;
@@ -722,6 +813,8 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     this.attemptCount = const Value.absent(),
     this.status = const Value.absent(),
     this.lastErrorCode = const Value.absent(),
+    this.lastErrorMessage = const Value.absent(),
+    this.batchRef = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.nextAttemptAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -735,6 +828,8 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     this.attemptCount = const Value.absent(),
     this.status = const Value.absent(),
     this.lastErrorCode = const Value.absent(),
+    this.lastErrorMessage = const Value.absent(),
+    this.batchRef = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.nextAttemptAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -751,6 +846,8 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     Expression<int>? attemptCount,
     Expression<String>? status,
     Expression<String>? lastErrorCode,
+    Expression<String>? lastErrorMessage,
+    Expression<String>? batchRef,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? nextAttemptAt,
     Expression<int>? rowid,
@@ -765,6 +862,8 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
       if (attemptCount != null) 'attempt_count': attemptCount,
       if (status != null) 'status': status,
       if (lastErrorCode != null) 'last_error_code': lastErrorCode,
+      if (lastErrorMessage != null) 'last_error_message': lastErrorMessage,
+      if (batchRef != null) 'batch_ref': batchRef,
       if (createdAt != null) 'created_at': createdAt,
       if (nextAttemptAt != null) 'next_attempt_at': nextAttemptAt,
       if (rowid != null) 'rowid': rowid,
@@ -780,6 +879,8 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     Value<int>? attemptCount,
     Value<String>? status,
     Value<String?>? lastErrorCode,
+    Value<String?>? lastErrorMessage,
+    Value<String?>? batchRef,
     Value<DateTime>? createdAt,
     Value<DateTime>? nextAttemptAt,
     Value<int>? rowid,
@@ -793,6 +894,8 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
       attemptCount: attemptCount ?? this.attemptCount,
       status: status ?? this.status,
       lastErrorCode: lastErrorCode ?? this.lastErrorCode,
+      lastErrorMessage: lastErrorMessage ?? this.lastErrorMessage,
+      batchRef: batchRef ?? this.batchRef,
       createdAt: createdAt ?? this.createdAt,
       nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,
       rowid: rowid ?? this.rowid,
@@ -826,6 +929,12 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     if (lastErrorCode.present) {
       map['last_error_code'] = Variable<String>(lastErrorCode.value);
     }
+    if (lastErrorMessage.present) {
+      map['last_error_message'] = Variable<String>(lastErrorMessage.value);
+    }
+    if (batchRef.present) {
+      map['batch_ref'] = Variable<String>(batchRef.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -849,6 +958,8 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
           ..write('attemptCount: $attemptCount, ')
           ..write('status: $status, ')
           ..write('lastErrorCode: $lastErrorCode, ')
+          ..write('lastErrorMessage: $lastErrorMessage, ')
+          ..write('batchRef: $batchRef, ')
           ..write('createdAt: $createdAt, ')
           ..write('nextAttemptAt: $nextAttemptAt, ')
           ..write('rowid: $rowid')
@@ -3108,6 +3219,639 @@ class CachedInvoicesCompanion extends UpdateCompanion<CachedInvoiceRow> {
   }
 }
 
+class $CachedCashReceiptsTable extends CachedCashReceipts
+    with TableInfo<$CachedCashReceiptsTable, CachedCashReceiptRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedCashReceiptsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _organizationIdMeta = const VerificationMeta(
+    'organizationId',
+  );
+  @override
+  late final GeneratedColumn<String> organizationId = GeneratedColumn<String>(
+    'organization_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, organizationId, payload, cachedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_cash_receipts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedCashReceiptRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('organization_id')) {
+      context.handle(
+        _organizationIdMeta,
+        organizationId.isAcceptableOrUnknown(
+          data['organization_id']!,
+          _organizationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_organizationIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedCashReceiptRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedCashReceiptRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      organizationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}organization_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedCashReceiptsTable createAlias(String alias) {
+    return $CachedCashReceiptsTable(attachedDatabase, alias);
+  }
+}
+
+class CachedCashReceiptRow extends DataClass
+    implements Insertable<CachedCashReceiptRow> {
+  final String id;
+  final String organizationId;
+
+  /// JSON de `CashReceiptSummary`.
+  final String payload;
+  final DateTime cachedAt;
+  const CachedCashReceiptRow({
+    required this.id,
+    required this.organizationId,
+    required this.payload,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['organization_id'] = Variable<String>(organizationId);
+    map['payload'] = Variable<String>(payload);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedCashReceiptsCompanion toCompanion(bool nullToAbsent) {
+    return CachedCashReceiptsCompanion(
+      id: Value(id),
+      organizationId: Value(organizationId),
+      payload: Value(payload),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedCashReceiptRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedCashReceiptRow(
+      id: serializer.fromJson<String>(json['id']),
+      organizationId: serializer.fromJson<String>(json['organizationId']),
+      payload: serializer.fromJson<String>(json['payload']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'organizationId': serializer.toJson<String>(organizationId),
+      'payload': serializer.toJson<String>(payload),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedCashReceiptRow copyWith({
+    String? id,
+    String? organizationId,
+    String? payload,
+    DateTime? cachedAt,
+  }) => CachedCashReceiptRow(
+    id: id ?? this.id,
+    organizationId: organizationId ?? this.organizationId,
+    payload: payload ?? this.payload,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedCashReceiptRow copyWithCompanion(CachedCashReceiptsCompanion data) {
+    return CachedCashReceiptRow(
+      id: data.id.present ? data.id.value : this.id,
+      organizationId: data.organizationId.present
+          ? data.organizationId.value
+          : this.organizationId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedCashReceiptRow(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, organizationId, payload, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedCashReceiptRow &&
+          other.id == this.id &&
+          other.organizationId == this.organizationId &&
+          other.payload == this.payload &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedCashReceiptsCompanion
+    extends UpdateCompanion<CachedCashReceiptRow> {
+  final Value<String> id;
+  final Value<String> organizationId;
+  final Value<String> payload;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedCashReceiptsCompanion({
+    this.id = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedCashReceiptsCompanion.insert({
+    required String id,
+    required String organizationId,
+    required String payload,
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       organizationId = Value(organizationId),
+       payload = Value(payload);
+  static Insertable<CachedCashReceiptRow> custom({
+    Expression<String>? id,
+    Expression<String>? organizationId,
+    Expression<String>? payload,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (organizationId != null) 'organization_id': organizationId,
+      if (payload != null) 'payload': payload,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedCashReceiptsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? organizationId,
+    Value<String>? payload,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedCashReceiptsCompanion(
+      id: id ?? this.id,
+      organizationId: organizationId ?? this.organizationId,
+      payload: payload ?? this.payload,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (organizationId.present) {
+      map['organization_id'] = Variable<String>(organizationId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedCashReceiptsCompanion(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedRemittancesTable extends CachedRemittances
+    with TableInfo<$CachedRemittancesTable, CachedRemittanceRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedRemittancesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _organizationIdMeta = const VerificationMeta(
+    'organizationId',
+  );
+  @override
+  late final GeneratedColumn<String> organizationId = GeneratedColumn<String>(
+    'organization_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, organizationId, payload, cachedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_remittances';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedRemittanceRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('organization_id')) {
+      context.handle(
+        _organizationIdMeta,
+        organizationId.isAcceptableOrUnknown(
+          data['organization_id']!,
+          _organizationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_organizationIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedRemittanceRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedRemittanceRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      organizationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}organization_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedRemittancesTable createAlias(String alias) {
+    return $CachedRemittancesTable(attachedDatabase, alias);
+  }
+}
+
+class CachedRemittanceRow extends DataClass
+    implements Insertable<CachedRemittanceRow> {
+  final String id;
+  final String organizationId;
+
+  /// JSON de `RemittanceSummary`.
+  final String payload;
+  final DateTime cachedAt;
+  const CachedRemittanceRow({
+    required this.id,
+    required this.organizationId,
+    required this.payload,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['organization_id'] = Variable<String>(organizationId);
+    map['payload'] = Variable<String>(payload);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedRemittancesCompanion toCompanion(bool nullToAbsent) {
+    return CachedRemittancesCompanion(
+      id: Value(id),
+      organizationId: Value(organizationId),
+      payload: Value(payload),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedRemittanceRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedRemittanceRow(
+      id: serializer.fromJson<String>(json['id']),
+      organizationId: serializer.fromJson<String>(json['organizationId']),
+      payload: serializer.fromJson<String>(json['payload']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'organizationId': serializer.toJson<String>(organizationId),
+      'payload': serializer.toJson<String>(payload),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedRemittanceRow copyWith({
+    String? id,
+    String? organizationId,
+    String? payload,
+    DateTime? cachedAt,
+  }) => CachedRemittanceRow(
+    id: id ?? this.id,
+    organizationId: organizationId ?? this.organizationId,
+    payload: payload ?? this.payload,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedRemittanceRow copyWithCompanion(CachedRemittancesCompanion data) {
+    return CachedRemittanceRow(
+      id: data.id.present ? data.id.value : this.id,
+      organizationId: data.organizationId.present
+          ? data.organizationId.value
+          : this.organizationId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedRemittanceRow(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, organizationId, payload, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedRemittanceRow &&
+          other.id == this.id &&
+          other.organizationId == this.organizationId &&
+          other.payload == this.payload &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedRemittancesCompanion extends UpdateCompanion<CachedRemittanceRow> {
+  final Value<String> id;
+  final Value<String> organizationId;
+  final Value<String> payload;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedRemittancesCompanion({
+    this.id = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedRemittancesCompanion.insert({
+    required String id,
+    required String organizationId,
+    required String payload,
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       organizationId = Value(organizationId),
+       payload = Value(payload);
+  static Insertable<CachedRemittanceRow> custom({
+    Expression<String>? id,
+    Expression<String>? organizationId,
+    Expression<String>? payload,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (organizationId != null) 'organization_id': organizationId,
+      if (payload != null) 'payload': payload,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedRemittancesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? organizationId,
+    Value<String>? payload,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedRemittancesCompanion(
+      id: id ?? this.id,
+      organizationId: organizationId ?? this.organizationId,
+      payload: payload ?? this.payload,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (organizationId.present) {
+      map['organization_id'] = Variable<String>(organizationId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedRemittancesCompanion(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3120,6 +3864,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CachedTenantsTable cachedTenants = $CachedTenantsTable(this);
   late final $CachedLeasesTable cachedLeases = $CachedLeasesTable(this);
   late final $CachedInvoicesTable cachedInvoices = $CachedInvoicesTable(this);
+  late final $CachedCashReceiptsTable cachedCashReceipts =
+      $CachedCashReceiptsTable(this);
+  late final $CachedRemittancesTable cachedRemittances =
+      $CachedRemittancesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3132,6 +3880,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cachedTenants,
     cachedLeases,
     cachedInvoices,
+    cachedCashReceipts,
+    cachedRemittances,
   ];
 }
 
@@ -3284,6 +4034,8 @@ typedef $$OutboxTableCreateCompanionBuilder =
       Value<int> attemptCount,
       Value<String> status,
       Value<String?> lastErrorCode,
+      Value<String?> lastErrorMessage,
+      Value<String?> batchRef,
       Value<DateTime> createdAt,
       Value<DateTime> nextAttemptAt,
       Value<int> rowid,
@@ -3298,6 +4050,8 @@ typedef $$OutboxTableUpdateCompanionBuilder =
       Value<int> attemptCount,
       Value<String> status,
       Value<String?> lastErrorCode,
+      Value<String?> lastErrorMessage,
+      Value<String?> batchRef,
       Value<DateTime> createdAt,
       Value<DateTime> nextAttemptAt,
       Value<int> rowid,
@@ -3349,6 +4103,16 @@ class $$OutboxTableFilterComposer
 
   ColumnFilters<String> get lastErrorCode => $composableBuilder(
     column: $table.lastErrorCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastErrorMessage => $composableBuilder(
+    column: $table.lastErrorMessage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get batchRef => $composableBuilder(
+    column: $table.batchRef,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3412,6 +4176,16 @@ class $$OutboxTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get lastErrorMessage => $composableBuilder(
+    column: $table.lastErrorMessage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get batchRef => $composableBuilder(
+    column: $table.batchRef,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3464,6 +4238,14 @@ class $$OutboxTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get lastErrorMessage => $composableBuilder(
+    column: $table.lastErrorMessage,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get batchRef =>
+      $composableBuilder(column: $table.batchRef, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -3509,6 +4291,8 @@ class $$OutboxTableTableManager
                 Value<int> attemptCount = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> lastErrorCode = const Value.absent(),
+                Value<String?> lastErrorMessage = const Value.absent(),
+                Value<String?> batchRef = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> nextAttemptAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -3521,6 +4305,8 @@ class $$OutboxTableTableManager
                 attemptCount: attemptCount,
                 status: status,
                 lastErrorCode: lastErrorCode,
+                lastErrorMessage: lastErrorMessage,
+                batchRef: batchRef,
                 createdAt: createdAt,
                 nextAttemptAt: nextAttemptAt,
                 rowid: rowid,
@@ -3535,6 +4321,8 @@ class $$OutboxTableTableManager
                 Value<int> attemptCount = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> lastErrorCode = const Value.absent(),
+                Value<String?> lastErrorMessage = const Value.absent(),
+                Value<String?> batchRef = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> nextAttemptAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -3547,6 +4335,8 @@ class $$OutboxTableTableManager
                 attemptCount: attemptCount,
                 status: status,
                 lastErrorCode: lastErrorCode,
+                lastErrorMessage: lastErrorMessage,
+                batchRef: batchRef,
                 createdAt: createdAt,
                 nextAttemptAt: nextAttemptAt,
                 rowid: rowid,
@@ -4761,6 +5551,398 @@ typedef $$CachedInvoicesTableProcessedTableManager =
       CachedInvoiceRow,
       PrefetchHooks Function()
     >;
+typedef $$CachedCashReceiptsTableCreateCompanionBuilder =
+    CachedCashReceiptsCompanion Function({
+      required String id,
+      required String organizationId,
+      required String payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedCashReceiptsTableUpdateCompanionBuilder =
+    CachedCashReceiptsCompanion Function({
+      Value<String> id,
+      Value<String> organizationId,
+      Value<String> payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedCashReceiptsTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedCashReceiptsTable> {
+  $$CachedCashReceiptsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedCashReceiptsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedCashReceiptsTable> {
+  $$CachedCashReceiptsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedCashReceiptsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedCashReceiptsTable> {
+  $$CachedCashReceiptsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$CachedCashReceiptsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedCashReceiptsTable,
+          CachedCashReceiptRow,
+          $$CachedCashReceiptsTableFilterComposer,
+          $$CachedCashReceiptsTableOrderingComposer,
+          $$CachedCashReceiptsTableAnnotationComposer,
+          $$CachedCashReceiptsTableCreateCompanionBuilder,
+          $$CachedCashReceiptsTableUpdateCompanionBuilder,
+          (
+            CachedCashReceiptRow,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedCashReceiptsTable,
+              CachedCashReceiptRow
+            >,
+          ),
+          CachedCashReceiptRow,
+          PrefetchHooks Function()
+        > {
+  $$CachedCashReceiptsTableTableManager(
+    _$AppDatabase db,
+    $CachedCashReceiptsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedCashReceiptsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedCashReceiptsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedCashReceiptsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> organizationId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedCashReceiptsCompanion(
+                id: id,
+                organizationId: organizationId,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String organizationId,
+                required String payload,
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedCashReceiptsCompanion.insert(
+                id: id,
+                organizationId: organizationId,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedCashReceiptsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedCashReceiptsTable,
+      CachedCashReceiptRow,
+      $$CachedCashReceiptsTableFilterComposer,
+      $$CachedCashReceiptsTableOrderingComposer,
+      $$CachedCashReceiptsTableAnnotationComposer,
+      $$CachedCashReceiptsTableCreateCompanionBuilder,
+      $$CachedCashReceiptsTableUpdateCompanionBuilder,
+      (
+        CachedCashReceiptRow,
+        BaseReferences<
+          _$AppDatabase,
+          $CachedCashReceiptsTable,
+          CachedCashReceiptRow
+        >,
+      ),
+      CachedCashReceiptRow,
+      PrefetchHooks Function()
+    >;
+typedef $$CachedRemittancesTableCreateCompanionBuilder =
+    CachedRemittancesCompanion Function({
+      required String id,
+      required String organizationId,
+      required String payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedRemittancesTableUpdateCompanionBuilder =
+    CachedRemittancesCompanion Function({
+      Value<String> id,
+      Value<String> organizationId,
+      Value<String> payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedRemittancesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedRemittancesTable> {
+  $$CachedRemittancesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedRemittancesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedRemittancesTable> {
+  $$CachedRemittancesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedRemittancesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedRemittancesTable> {
+  $$CachedRemittancesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$CachedRemittancesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedRemittancesTable,
+          CachedRemittanceRow,
+          $$CachedRemittancesTableFilterComposer,
+          $$CachedRemittancesTableOrderingComposer,
+          $$CachedRemittancesTableAnnotationComposer,
+          $$CachedRemittancesTableCreateCompanionBuilder,
+          $$CachedRemittancesTableUpdateCompanionBuilder,
+          (
+            CachedRemittanceRow,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedRemittancesTable,
+              CachedRemittanceRow
+            >,
+          ),
+          CachedRemittanceRow,
+          PrefetchHooks Function()
+        > {
+  $$CachedRemittancesTableTableManager(
+    _$AppDatabase db,
+    $CachedRemittancesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedRemittancesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedRemittancesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedRemittancesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> organizationId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedRemittancesCompanion(
+                id: id,
+                organizationId: organizationId,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String organizationId,
+                required String payload,
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedRemittancesCompanion.insert(
+                id: id,
+                organizationId: organizationId,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedRemittancesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedRemittancesTable,
+      CachedRemittanceRow,
+      $$CachedRemittancesTableFilterComposer,
+      $$CachedRemittancesTableOrderingComposer,
+      $$CachedRemittancesTableAnnotationComposer,
+      $$CachedRemittancesTableCreateCompanionBuilder,
+      $$CachedRemittancesTableUpdateCompanionBuilder,
+      (
+        CachedRemittanceRow,
+        BaseReferences<
+          _$AppDatabase,
+          $CachedRemittancesTable,
+          CachedRemittanceRow
+        >,
+      ),
+      CachedRemittanceRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4779,4 +5961,8 @@ class $AppDatabaseManager {
       $$CachedLeasesTableTableManager(_db, _db.cachedLeases);
   $$CachedInvoicesTableTableManager get cachedInvoices =>
       $$CachedInvoicesTableTableManager(_db, _db.cachedInvoices);
+  $$CachedCashReceiptsTableTableManager get cachedCashReceipts =>
+      $$CachedCashReceiptsTableTableManager(_db, _db.cachedCashReceipts);
+  $$CachedRemittancesTableTableManager get cachedRemittances =>
+      $$CachedRemittancesTableTableManager(_db, _db.cachedRemittances);
 }

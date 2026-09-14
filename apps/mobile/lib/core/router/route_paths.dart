@@ -28,6 +28,13 @@ abstract final class RoutePaths {
   /// Onglet « Plus » (diagnostic, déconnexion).
   static const String more = '/more';
 
+  /// Écran Outbox (phase 5) : liste des écritures créées hors ligne, avec
+  /// statut, détail et nouvelle tentative.
+  static const String outbox = '/outbox';
+
+  /// Écran de préchargement de tournée (phase 5).
+  static const String preload = '/preload';
+
   /// Tournée du démarcheur (`feature collection`) : factures dues
   /// regroupées par immeuble, puis encaissement et confirmation d'un reçu.
   static const String collectionRound = '/collection';

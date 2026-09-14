@@ -47,10 +47,65 @@ class DiagnosticsScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               Text(info.healthCheckResult!, textAlign: TextAlign.center),
             ],
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              key: const ValueKey('preload-now-button'),
+              onPressed: () =>
+                  ref.read(diagnosticsControllerProvider.notifier).preloadNow(),
+              icon: const Icon(Icons.cloud_download_outlined),
+              label: const Text('Précharger ma tournée'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              key: const ValueKey('reset-local-database-button'),
+              onPressed: () => _confirmReset(context, ref),
+              icon: const Icon(Icons.restart_alt),
+              label: const Text('Réinitialiser la base locale'),
+            ),
+            if (info.syncMessage != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                info.syncMessage!,
+                key: const ValueKey('sync-message'),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _confirmReset(BuildContext context, WidgetRef ref) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Réinitialiser la base locale ?'),
+        content: const Text(
+          'Les données préchargées (tournée, factures, locataires) seront '
+          'effacées et redemandées. Les encaissements déjà créés hors '
+          'ligne mais non encore synchronisés (outbox) ne sont jamais '
+          'supprimés.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Réinitialiser'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref
+          .read(diagnosticsControllerProvider.notifier)
+          .resetLocalDatabase();
+    }
   }
 }
 

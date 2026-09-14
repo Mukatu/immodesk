@@ -27,6 +27,7 @@ import '../../features/portfolio/presentation/screens/property_detail_screen.dar
 import '../../features/portfolio/presentation/screens/tenant_detail_screen.dart';
 import '../../features/portfolio/presentation/screens/tenants_list_screen.dart';
 import '../../features/portfolio/presentation/screens/unit_detail_screen.dart';
+import '../../features/sync/presentation/screens/outbox_screen.dart';
 import '../../shared/widgets/app_bottom_nav_shell.dart';
 import 'route_paths.dart';
 
@@ -183,6 +184,10 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: RoutePaths.cashRemittances,
                 builder: (context, state) => const RemittanceListScreen(),
+              ),
+              GoRoute(
+                path: RoutePaths.outbox,
+                builder: (context, state) => const OutboxScreen(),
               ),
             ],
           ),

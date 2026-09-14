@@ -1,26 +1,18 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config/env.dart';
+import '../storage/secure_storage_provider.dart';
 import 'auth_events.dart';
 import 'auth_interceptor.dart';
 import 'auth_token_store.dart';
 
-final Provider<FlutterSecureStorage> secureStorageProvider =
-    Provider<FlutterSecureStorage>((ref) {
-  return const FlutterSecureStorage(
-    aOptions: AndroidOptions(),
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock_this_device,
-    ),
-  );
-});
+export '../storage/secure_storage_provider.dart' show secureStorageProvider;
 
 final Provider<AuthTokenStore> authTokenStoreProvider =
     Provider<AuthTokenStore>((ref) {
-  return AuthTokenStore(ref.watch(secureStorageProvider));
-});
+      return AuthTokenStore(ref.watch(secureStorageProvider));
+    });
 
 final Provider<AuthEventBus> authEventBusProvider = Provider<AuthEventBus>((
   ref,

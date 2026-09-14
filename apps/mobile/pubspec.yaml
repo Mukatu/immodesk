@@ -29,7 +29,8 @@ dependencies:
   riverpod_annotation: 4.0.2
   share_plus: ^13.3.0
   signature: ^6.4.0
-  sqlite3_flutter_libs: ^0.6.0+eol
+  sqlcipher_flutter_libs: ^0.6.0
+  sqlite3: ^2.4.6
   url_launcher: ^6.3.1
 
 dev_dependencies:
@@ -47,3 +48,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+# Base locale chiffrée (phase 5, docs/api/phase5-contract.md « Côté mobile »).
+# `sqlcipher_flutter_libs` remplace `sqlite3_flutter_libs` : il embarque les
+# bibliothèques natives SQLCipher (au lieu du SQLite en clair) pour Android,
+# iOS, macOS, Linux et Windows. `AppDatabase` bascule le chargeur natif via
+# `open.overrideFor` puis ouvre la base avec `PRAGMA key` (voir
+# `lib/core/db/app_database.dart`).

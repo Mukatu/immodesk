@@ -46,6 +46,28 @@ gestionnaires indépendants.
   « connexion requise », comme l'encaissement en espèces). Voir
   `docs/04_plan_de_phases.md` (§4.6) et `docs/api/phase4-contract.md`
   (section « Arbitrages »).
+- **Phase 5** : mode hors ligne complet du démarcheur. Base locale Drift
+  chiffrée par défaut (SQLCipher, clé de 256 bits générée à la première
+  ouverture et conservée dans `flutter_secure_storage`, voir « Base locale
+  chiffrée » ci-dessous). Outbox généralisée (`CASH_RECEIPT`, `DOCUMENT`)
+  rejouée par lots via `SyncEngine` (`lib/core/sync`) : `batchRef` conservé
+  et rejoué à l'identique après une coupure, repli exponentiel plafonné à 5
+  minutes, reprise automatique au retour du réseau, respect des dépendances
+  (`dependsOn`) entre une pièce jointe et l'encaissement qui la référence.
+  L'encaissement en espèces fonctionne désormais hors ligne (signature ou
+  photo stockées localement, téléversées à la synchronisation, plus de
+  message bloquant) ; les paiements numériques (Mobile Money, virement)
+  restent en ligne uniquement, comme en phase 4. Préchargement de la
+  tournée (`GET /v1/sync/pull`, curseur mémorisé) avec purge des seules
+  données de référence après `retentionHours` sans synchronisation
+  réussie — l'outbox n'est **jamais** purgée automatiquement. Indicateur
+  permanent (badge) et écran « File d'attente » (`feature sync`) listant
+  chaque élément, son statut, un détail et une nouvelle tentative ; un
+  conflit reste visible avec une explication et ne peut être tranché que
+  par un gestionnaire côté dashboard. Mode démarcheur restreint : un
+  `COLLECTOR` ne voit que sa tournée, ses reçus et sa caisse (onglets
+  Immeubles/Locataires et liste des baux masqués). Voir
+  `docs/04_plan_de_phases.md` (§5.x) et `docs/api/phase5-contract.md`.
 
 ## Prérequis
 
@@ -131,8 +153,25 @@ flutter test
   `test/features/cash/presentation`), déclaration Mobile Money (double appui
   ne déclenchant qu'un seul appel réseau), Mobile Money par agrégateur
   (attente puis succès, attente puis expiration avec nouvelle tentative)
-  (`test/features/payments/presentation`).
-- **Total** : 106 tests, tous au vert (`flutter analyze` : 0 erreur, 0 info).
+  (`test/features/payments/presentation`) ; génération et unicité des ULID
+  (`test/core/sync/ulid_test.dart`), chiffrement/déchiffrement de la clé de
+  base locale et réinitialisation (`test/core/db/db_encryption_test.dart`),
+  sérialisation de l'outbox, ordre de rejeu selon `dependsOn`, conservation
+  du `batchRef` entre deux tentatives, blocage de la relance d'un conflit
+  (`test/core/sync/outbox_repository_test.dart`), repli exponentiel plafonné
+  à 5 minutes (`test/core/sync/backoff_test.dart`), traitement des
+  résultats `APPLIED`/`REJECTED`/`CONFLICT`/`SKIPPED` par le `SyncEngine`
+  (`test/core/sync/sync_engine_test.dart`), purge des référentiels qui
+  épargne l'outbox (`test/core/db/purge_reference_data_test.dart`).
+- Tests de widget complémentaires (phase 5) : encaissement créé en mode
+  avion versé à l'outbox sans appel réseau
+  (`test/features/collection/presentation/encaissement_offline_test.dart`),
+  badge d'attente masqué/affiché selon le contenu de l'outbox
+  (`test/features/more/presentation/more_screen_outbox_badge_test.dart`),
+  écran Outbox (liste, détail, nouvelle tentative, explication d'un
+  conflit sans bouton de relance)
+  (`test/features/sync/presentation/outbox_screen_test.dart`).
+- **Total** : 130 tests, tous au vert (`flutter analyze` : 0 erreur, 0 info).
 
 ## Architecture
 
@@ -141,7 +180,10 @@ Clean Architecture par fonctionnalité (`lib/features/<feature>/{domain,data,pre
 - `lib/core` : configuration (`--dart-define`), thème Material 3, routage
   `go_router`, client HTTP `dio` (intercepteur d'authentification avec
   rafraîchissement automatique et file d'attente sur 401), erreurs typées
-  `{code, message}`, formatage XAF et téléphone, base locale Drift.
+  `{code, message}`, formatage XAF et téléphone, base locale Drift chiffrée
+  par SQLCipher (`lib/core/db/app_database.dart`, voir « Base locale
+  chiffrée » ci-dessous), `lib/core/sync` (outbox généralisée, `SyncEngine`,
+  préchargement/purge — voir `feature sync`).
 - `lib/features/auth` : demande/vérification OTP, session, stockage du
   jeton de rafraîchissement dans `flutter_secure_storage` (jeton d'accès en
   mémoire uniquement).
@@ -167,8 +209,9 @@ Clean Architecture par fonctionnalité (`lib/features/<feature>/{domain,data,pre
   stockée localement et ajoutée à la table `outbox` existante
   (`client_ref` ULID généré sur l'appareil, sans dépendance externe —
   `lib/core/sync/ulid.dart`) ; le rejeu automatique est déclenché au retour
-  du réseau (`OutboxConnectivityWatcher`). Mécanisme volontairement simple :
-  le `SyncEngine` complet arrive en phase 5.
+  du réseau (`OutboxConnectivityWatcher`). Mécanisme volontairement simple,
+  conservé tel quel : le `SyncEngine` généralisé (phase 5, `lib/core/sync`)
+  gère séparément les opérations `CASH_RECEIPT`/`DOCUMENT`.
 - `lib/features/leases` : consultation en lecture seule des baux du
   portefeuille. Bail actif affiché depuis les fiches `UnitDetailScreen` et
   `TenantDetailScreen` (statut, référence, loyer et charges XAF, dates).
@@ -192,8 +235,13 @@ Clean Architecture par fonctionnalité (`lib/features/<feature>/{domain,data,pre
   tentative après échec rejoue le même `clientRef`), bouton « Valider »
   verrouillé dès le premier appui. Écran de confirmation (numéro de reçu,
   partage du PDF via `download-url` + `share_plus`, renvoi WhatsApp/SMS).
-  Hors ligne, l'encaissement est bloqué avec un message clair (« Connexion
-  requise pour encaisser ») : l'outbox de collecte arrive en phase 5.
+  Depuis la phase 5, l'encaissement fonctionne hors ligne : bandeau
+  informatif (non bloquant) quand la tournée provient du cache, mise en
+  attente dans l'outbox généralisée (`core/sync`) à la validation —
+  signature encodée en base64 comme en ligne, photo de reçu papier
+  envoyée en opération `DOCUMENT` séparée rattachée par `dependsOn` — puis
+  retour à la tournée avec confirmation. Seul l'encaissement en espèces est
+  concerné : Mobile Money et virement restent en ligne uniquement.
 - `lib/features/cash` : « Ma caisse » (encours du démarcheur via
   `GET /cash/collectors/{userId}/balance`, alerte si le plafond
   d'organisation est dépassé, liste des reçus non remis triés du plus
@@ -213,39 +261,100 @@ Clean Architecture par fonctionnalité (`lib/features/<feature>/{domain,data,pre
   (`MomoPollingCoordinator`, intervalle surchargeable en test), jamais de
   confirmation sur la seule foi d'un webhook côté mobile non plus. Aucun
   cache local : ces écritures sont en ligne uniquement (`PaymentsOfflineMessage`).
-- `lib/features/more` : onglet « Plus » (diagnostic, déconnexion, accès aux
-  baux, à la tournée et à la caisse).
+- `lib/features/sync` (phase 5) : écran Outbox (`OutboxScreen`, liste
+  triée par date de création, détail par élément avec message d'erreur en
+  français, nouvelle tentative pour un échec, explication non actionnable
+  pour un conflit — « seul un gestionnaire peut trancher »). Badge
+  permanent (nombre d'éléments en attente/en cours, couleur d'alerte si un
+  échec ou un conflit existe) affiché dans l'onglet « Plus » et sur l'onglet
+  bas correspondant.
+- `lib/features/more` : onglet « Plus » (diagnostic, déconnexion, accès à
+  la tournée, à la caisse et à la file d'attente Outbox). L'accès aux baux
+  est masqué en mode démarcheur restreint (voir ci-dessous).
 - `lib/shared/widgets` : composants réutilisables (`MoneyXafText`,
   `PhoneField`, `OtpField`, `StatusBadge`, `EmptyState`,
   `OfflineDataBanner`, `AppBottomNavShell`).
 
 Navigation par onglets bas (`StatefulShellRoute.indexedStack` de
-`go_router`) : Accueil / Immeubles / Locataires / Plus, accessibles à tous
-les rôles (`COLLECTOR` inclus) — la feature `portfolio` est entièrement en
-lecture seule en phase 1.
+`go_router`) : Accueil / Immeubles / Locataires / Plus pour les rôles
+`OWNER`/`MANAGER`/`ACCOUNTANT`/`VIEWER` (la feature `portfolio` reste en
+lecture seule). Depuis la phase 5, le mode démarcheur restreint
+(`isCollectorModeProvider`, dérivé du rôle dans l'organisation courante)
+réduit la barre à Accueil/Plus pour un `COLLECTOR` — les onglets
+Immeubles/Locataires et l'accès aux baux, qui parcourent tout le
+portefeuille de l'organisation, lui sont masqués ; un lien profond vers un
+onglet masqué le ramène automatiquement à l'accueil.
 
 État applicatif géré par Riverpod (`riverpod_annotation` + génération de
 code). Modèles `freezed` / `json_serializable`. Base locale Drift déclarée
-avec `app_settings` (clé/valeur), `outbox` (idempotence via `client_ref`,
-utilisée par la feature `documents`) et le cache de référentiels
-(`cached_properties`, `cached_units`, `cached_tenants`, `cached_leases`,
-`cached_invoices`, schéma v4 avec migrations). **Le chiffrement SQLCipher
-n'est pas encore activé** — voir le commentaire dans
-`lib/core/db/app_database.dart` ; prévu à l'activation du mode offline
-complet (phase 5, `docs/02_architecture_technique.md` §10.9).
+avec `app_settings` (clé/valeur, dont le curseur de synchronisation),
+`outbox` (idempotence via `client_ref`, généralisée en phase 5 — type
+d'opération, `batch_ref`, dernier message d'erreur) et le cache de
+référentiels (`cached_properties`, `cached_units`, `cached_tenants`,
+`cached_leases`, `cached_invoices`, `cached_cash_receipts`,
+`cached_remittances`, schéma v5 avec migrations). **Chiffrement SQLCipher
+activé par défaut** depuis la phase 5 (`sqlcipher_flutter_libs`, clé de
+256 bits générée à la première ouverture et conservée dans
+`flutter_secure_storage` — jamais dans la base). Voir « Base locale
+chiffrée » et « Réinitialisation de la base locale » ci-dessous.
 
-## Ce qui reste (hors périmètre phase 1)
+## Base locale chiffrée (SQLCipher)
 
-- Chiffrement SQLCipher de la base locale (phase 5).
-- `SyncEngine` complet et rejeu générique de l'outbox (phase 5) — seul le
-  rejeu des photos de lot est câblé pour l'instant.
+- Chaque appareil génère un aléa de 256 bits (`DbEncryption._generateHexKey`,
+  `lib/core/db/app_database.dart`) à la première ouverture, conservé sous
+  la clé `immodesk.db_encryption_key_v1` dans `flutter_secure_storage`
+  (trousseau iOS / Keystore Android) et jamais écrit dans la base.
+- `NativeDatabase.createInBackground` ouvre le fichier avec
+  `PRAGMA key = "x'<clé hex>'";` puis `PRAGMA cipher_compatibility = 4;` ;
+  `sqlcipher_flutter_libs` fournit les bibliothèques natives SQLCipher (au
+  lieu du SQLite en clair) sur Android/iOS/macOS/Linux/Windows.
+- Si aucune clé n'est connue (première migration depuis une base en clair
+  des phases 0 à 4, ou perte de la clé) alors qu'un fichier existe déjà, il
+  est **supprimé** plutôt que migré, conformément au contrat : une nouvelle
+  clé est générée et un préchargement complet est nécessaire.
+
+### Réinitialisation de la base locale
+
+En cas de perte de la clé (désinstallation partielle, restauration d'une
+sauvegarde du trousseau sans celle de l'application, ou anomalie) :
+
+1. Écran « À propos / diagnostic » → « Réinitialiser la base locale »
+   (confirmation demandée). Cet appel supprime le fichier chiffré et la clé
+   (`DbEncryption.resetDatabaseAndKey`), puis force la recréation d'une
+   base vide avec une nouvelle clé au prochain accès.
+2. L'utilisateur relance ensuite un préchargement complet (« Précharger ma
+   tournée », même écran, ou automatiquement au prochain retour en ligne) :
+   `GET /v1/sync/pull` sans curseur renvoie le périmètre entier.
+3. L'`outbox` n'est **jamais** touchée par cette procédure : les
+   encaissements créés hors ligne mais non encore synchronisés restent en
+   base et seront rejoués normalement dès que la clé — donc la base — est
+   de nouveau lisible. Si la base elle-même est irrémédiablement
+   inaccessible (fichier corrompu), les écritures qu'elle contenait sont
+   perdues comme n'importe quel fichier local endommagé : c'est pourquoi la
+   synchronisation doit être déclenchée dès que possible en fin de tournée.
+
+## Ce qui reste (hors périmètre phase 5)
+
+- Exécution réelle en tâche de fond du `SyncEngine` (WorkManager / BGTask) :
+  la reprise au retour du réseau et la minuterie périodique
+  (`syncIntervalSeconds`) ne fonctionnent aujourd'hui que tant que
+  l'application est au premier plan (`SyncCoordinator`,
+  `lib/core/sync/sync_providers.dart`).
+- États des lieux, relevés de compteur et maintenance (`inspections`,
+  `meter_readings`, `maintenance_requests`) : hors périmètre du contrat de
+  phase 5 (« le plan cite ces entités, mais elles n'arrivent qu'en phase 8 »,
+  `docs/api/phase5-contract.md`, arbitrage 1).
+- Écran de préchargement de tournée dédié avec sélection explicite du
+  périmètre : le préchargement (phase 5) est déclenché depuis l'écran
+  diagnostic ; un écran de confirmation dédié en amont de la tournée reste
+  à faire.
 - Rattachement d'un locataire à un lot (aucun bail n'existe encore côté API
   en phase 1 ; voir `docs/api/phase1-contract.md`).
 - Pagination des listes immeubles/locataires (une seule page, `limit=100`,
   suffisante pour la consultation terrain de la phase 1).
 - Client Dart généré depuis `openapi.json` (actuellement, les appels HTTP
   sont écrits à la main contre les contrats `docs/api/phase0-contract.md`
-  et `docs/api/phase1-contract.md` ; à remplacer dès que l'OpenAPI de l'API
+  à `docs/api/phase5-contract.md` ; à remplacer dès que l'OpenAPI de l'API
   est publié).
 - Invitations et gestion des membres d'organisation (Epic 0.D, non couvert
   par les écrans mobiles selon `docs/04_plan_de_phases.md`).

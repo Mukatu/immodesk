@@ -58,7 +58,7 @@ final class EncaissementControllerProvider
 }
 
 String _$encaissementControllerHash() =>
-    r'5c2724437f727d0b2c89269196a96666a27a2ea4';
+    r'b11465d4c617bbbd0d02c3abad17681d644a6089';
 
 /// Un contrôleur par facture d'origine (`invoiceId` = facture depuis
 /// laquelle l'écran a été ouvert, dans « Ma tournée »).

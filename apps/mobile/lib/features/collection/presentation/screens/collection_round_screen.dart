@@ -164,7 +164,7 @@ class _InvoiceTile extends StatelessWidget {
         ],
       ),
       isThreeLine: false,
-      onTap: () => context.push(RoutePaths.collectionEncaissement(invoice.id)),
+      onTap: () => context.push(RoutePaths.paymentMethodChoice(invoice.id)),
     );
   }
 }

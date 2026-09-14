@@ -14,6 +14,17 @@ class ImagePickerService {
       imageQuality: 100,
     );
   }
+
+  /// Sélection d'un fichier image existant (galerie), utilisée pour les
+  /// preuves de paiement de la phase 4 (« photo ou fichier ») : l'avis
+  /// d'opération bancaire ou la capture d'écran Mobile Money sont souvent
+  /// déjà enregistrés sur l'appareil plutôt que photographiés sur place.
+  Future<XFile?> pickFromGallery() {
+    return ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 100,
+    );
+  }
 }
 
 @riverpod

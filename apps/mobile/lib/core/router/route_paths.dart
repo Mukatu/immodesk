@@ -43,4 +43,27 @@ abstract final class RoutePaths {
   static const String cashHome = '/cash';
   static const String cashRemittanceNew = '$cashHome/remittances/new';
   static const String cashRemittances = '$cashHome/remittances';
+
+  /// Paiements numériques de la phase 4 (`feature payments`) : choix du
+  /// mode de paiement depuis une facture de la tournée, puis déclaration
+  /// Mobile Money, déclaration de virement ou Mobile Money par agrégateur.
+  static const String paymentMethodChoicePattern =
+      '$collectionRound/payer/:invoiceId';
+  static String paymentMethodChoice(String invoiceId) =>
+      '$collectionRound/payer/$invoiceId';
+
+  static const String momoDeclarationPattern =
+      '$collectionRound/payer/:invoiceId/momo-declare';
+  static String momoDeclaration(String invoiceId) =>
+      '$collectionRound/payer/$invoiceId/momo-declare';
+
+  static const String bankTransferDeclarationPattern =
+      '$collectionRound/payer/:invoiceId/virement';
+  static String bankTransferDeclaration(String invoiceId) =>
+      '$collectionRound/payer/$invoiceId/virement';
+
+  static const String momoAggregatorPattern =
+      '$collectionRound/payer/:invoiceId/momo-agregateur';
+  static String momoAggregator(String invoiceId) =>
+      '$collectionRound/payer/$invoiceId/momo-agregateur';
 }

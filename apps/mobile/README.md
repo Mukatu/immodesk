@@ -26,6 +26,26 @@ gestionnaires indépendants.
   remises. L'encaissement reste exclu du hors ligne (message clair, l'outbox
   de collecte arrive en phase 5). Voir `docs/04_plan_de_phases.md` (§3.x) et
   `docs/api/phase3-contract.md`.
+- **Phase 4** : depuis une facture de la tournée, choix du mode de paiement
+  numérique (`feature payments`) selon les instructions de paiement de la
+  facture — Mobile Money déclaré, virement bancaire déclaré, et Mobile Money
+  par agrégateur si disponible (double verrou plateforme/organisation).
+  Déclaration Mobile Money (numéro de réception choisi parmi les comptes du
+  bailleur puis de l'organisation, opérateur, numéro payeur, référence de
+  transaction, montant, capture d'écran facultative) : message « en attente
+  de validation par l'agence » après envoi, sans jamais créer de paiement
+  côté mobile (arbitrage du contrat : seule la validation web le fait).
+  Déclaration de virement (montant, date, banque et nom du payeur, référence
+  de facture pré-remplie et copiable, preuve obligatoire par photo ou
+  fichier). Mobile Money par agrégateur : numéro payeur avec opérateur
+  détecté (06 MTN, 05 Airtel), devis affiché avant validation (montant,
+  frais, total débité), écran d'attente avec compte à rebours et
+  interrogation du statut toutes les 3 secondes, résultats succès (avec
+  quittance), échec (motif lisible) ou expiration (nouvelle tentative avec
+  un nouveau `clientRef`). Tous ces modes sont en ligne uniquement (message
+  « connexion requise », comme l'encaissement en espèces). Voir
+  `docs/04_plan_de_phases.md` (§4.6) et `docs/api/phase4-contract.md`
+  (section « Arbitrages »).
 
 ## Prérequis
 
@@ -91,7 +111,12 @@ flutter test
   (`test/features/leases/domain`), regroupement des factures dues par
   immeuble et aperçu d'imputation (plus ancienne facture d'abord) et calcul
   d'encours du démarcheur (`test/features/collection/domain`,
-  `test/features/cash/domain`).
+  `test/features/cash/domain`), détection de l'opérateur Mobile Money et
+  calcul du total affiché à partir du devis
+  (`test/features/payments/domain`) ; conservation du `clientRef` entre deux
+  tentatives de déclaration Mobile Money, testée directement au niveau du
+  contrôleur avec un `ProviderContainer`
+  (`test/features/payments/presentation/momo_declaration_client_ref_test.dart`).
 - Tests de widget (avec `dio` mocké via `mocktail` et une base Drift en
   mémoire, `AppDatabase.forTesting(NativeDatabase.memory())`) : parcours
   connexion (`test/features/auth/presentation`), liste des immeubles avec
@@ -103,8 +128,11 @@ flutter test
   regroupée par immeuble, encaissement (double appui ne déclenchant qu'un
   seul appel réseau, `clientRef` conservé après un échec), ma caisse et
   soumission d'une remise (`test/features/collection/presentation`,
-  `test/features/cash/presentation`).
-- **Total** : 93 tests, tous au vert (`flutter analyze` : 0 erreur).
+  `test/features/cash/presentation`), déclaration Mobile Money (double appui
+  ne déclenchant qu'un seul appel réseau), Mobile Money par agrégateur
+  (attente puis succès, attente puis expiration avec nouvelle tentative)
+  (`test/features/payments/presentation`).
+- **Total** : 106 tests, tous au vert (`flutter analyze` : 0 erreur, 0 info).
 
 ## Architecture
 
@@ -173,6 +201,18 @@ Clean Architecture par fonctionnalité (`lib/features/<feature>/{domain,data,pre
   montant déclaré, coupures optionnelles, soumission directe en
   `SUBMITTED`) et suivi des remises (statuts, écart constaté par l'agence
   à la vérification).
+- `lib/features/payments` : modes de paiement numériques de la phase 4,
+  ouverts depuis une facture de la tournée (écran de choix selon les
+  instructions de paiement de la facture). Déclaration Mobile Money et
+  déclaration de virement (preuve téléversée via le module `documents`
+  existant, `clientRef` ULID conservé entre deux tentatives, bouton
+  verrouillé dès le premier appui, comme l'encaissement). Mobile Money par
+  agrégateur : devis (`POST /payments/mobile-money/quote`), initiation
+  (`POST /payments/mobile-money/initiate`), écran d'attente interrogeant
+  `GET /payments/mobile-money/transactions/{id}` toutes les 3 secondes
+  (`MomoPollingCoordinator`, intervalle surchargeable en test), jamais de
+  confirmation sur la seule foi d'un webhook côté mobile non plus. Aucun
+  cache local : ces écritures sont en ligne uniquement (`PaymentsOfflineMessage`).
 - `lib/features/more` : onglet « Plus » (diagnostic, déconnexion, accès aux
   baux, à la tournée et à la caisse).
 - `lib/shared/widgets` : composants réutilisables (`MoneyXafText`,

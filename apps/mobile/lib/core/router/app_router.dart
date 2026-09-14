@@ -18,6 +18,10 @@ import '../../features/leases/presentation/screens/leases_list_screen.dart';
 import '../../features/more/presentation/screens/more_screen.dart';
 import '../../features/organizations/presentation/screens/organization_create_screen.dart';
 import '../../features/organizations/presentation/screens/organization_select_screen.dart';
+import '../../features/payments/presentation/screens/bank_transfer_declaration_screen.dart';
+import '../../features/payments/presentation/screens/momo_aggregator_screen.dart';
+import '../../features/payments/presentation/screens/momo_declaration_screen.dart';
+import '../../features/payments/presentation/screens/payment_method_choice_screen.dart';
 import '../../features/portfolio/presentation/screens/properties_list_screen.dart';
 import '../../features/portfolio/presentation/screens/property_detail_screen.dart';
 import '../../features/portfolio/presentation/screens/tenant_detail_screen.dart';
@@ -142,6 +146,30 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
                 path: RoutePaths.collectionConfirmationPattern,
                 builder: (context, state) => ConfirmationScreen(
                   result: state.extra! as CashReceiptResult,
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.paymentMethodChoicePattern,
+                builder: (context, state) => PaymentMethodChoiceScreen(
+                  invoiceId: state.pathParameters['invoiceId']!,
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.momoDeclarationPattern,
+                builder: (context, state) => MomoDeclarationScreen(
+                  invoiceId: state.pathParameters['invoiceId']!,
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.bankTransferDeclarationPattern,
+                builder: (context, state) => BankTransferDeclarationScreen(
+                  invoiceId: state.pathParameters['invoiceId']!,
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.momoAggregatorPattern,
+                builder: (context, state) => MomoAggregatorScreen(
+                  invoiceId: state.pathParameters['invoiceId']!,
                 ),
               ),
               GoRoute(

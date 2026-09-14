@@ -52,7 +52,7 @@ services:
       start_period: 5s
 
   minio:
-    image: minio/minio
+    image: quay.io/minio/minio
     container_name: immodesk_minio
     restart: unless-stopped
     environment:
@@ -72,7 +72,7 @@ services:
       start_period: 5s
 
   minio-init:
-    image: minio/mc
+    image: quay.io/minio/mc
     container_name: immodesk_minio_init
     depends_on:
       minio:

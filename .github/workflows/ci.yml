@@ -88,13 +88,13 @@ jobs:
       # commande `server /data`, que les services GitHub Actions ne permettent pas.
       - name: Start MinIO
         run: |
-          docker run -d --name minio -p 9000:9000             -e MINIO_ROOT_USER=immodesk -e MINIO_ROOT_PASSWORD=immodesk123             minio/minio:latest server /data
+          docker run -d --name minio -p 9000:9000             -e MINIO_ROOT_USER=immodesk -e MINIO_ROOT_PASSWORD=immodesk123             quay.io/minio/minio:latest server /data
           for i in $(seq 1 30); do
             if curl -sf http://localhost:9000/minio/health/live >/dev/null; then echo "MinIO prêt"; break; fi
             sleep 2
           done
           curl -sf http://localhost:9000/minio/health/live >/dev/null || { echo "MinIO indisponible"; docker logs minio; exit 1; }
-          docker run --rm --network host --entrypoint sh minio/mc:latest -c             "mc alias set local http://localhost:9000 immodesk immodesk123 && mc mb --ignore-existing local/immodesk"
+          docker run --rm --network host --entrypoint sh quay.io/minio/mc:latest -c             "mc alias set local http://localhost:9000 immodesk immodesk123 && mc mb --ignore-existing local/immodesk"
 
       # postgresql-client (psql) is preinstalled on GitHub's ubuntu-latest
       # runners, so no apt-get install step is needed here.

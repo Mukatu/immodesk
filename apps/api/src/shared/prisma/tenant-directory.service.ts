@@ -11,6 +11,12 @@ export interface MembershipRow {
   joinedAt: Date;
 }
 
+export interface LandlordLinkRow {
+  landlordId: string;
+  organizationId: string;
+  organizationName: string;
+}
+
 export interface InvitationLookupRow {
   id: string;
   organizationId: string;
@@ -120,6 +126,56 @@ export class TenantDirectoryService implements OnModuleInit, OnModuleDestroy {
       expiresAt: invitation.expires_at,
       organizationName: organization?.trade_name ?? organization?.legal_name ?? '',
     };
+  }
+
+  /**
+   * Organisations où `userId` est lié comme bailleur (`landlords.user_id`),
+   * toutes organisations confondues — portail bailleur (phase 7). Un même
+   * numéro de téléphone peut être invité par plusieurs agences ; le compte
+   * `users` reste unique, `landlords.user_id` porte le lien par organisation.
+   */
+  async listLandlordLinks(userId: string): Promise<LandlordLinkRow[]> {
+    const rows = await this.client.landlords.findMany({
+      where: { user_id: userId, deleted_at: null },
+      select: { id: true, organization_id: true },
+    });
+    if (rows.length === 0) return [];
+    const organizations = await this.client.organizations.findMany({
+      where: { id: { in: rows.map((r) => r.organization_id) } },
+      select: { id: true, trade_name: true, legal_name: true },
+    });
+    const names = new Map(organizations.map((o) => [o.id, o.trade_name ?? o.legal_name ?? '']));
+    return rows.map((r) => ({
+      landlordId: r.id,
+      organizationId: r.organization_id,
+      organizationName: names.get(r.organization_id) ?? '',
+    }));
+  }
+
+  /**
+   * Bailleurs non encore activés (`user_id IS NULL`) pour ce numéro de
+   * téléphone, toutes organisations confondues — portail bailleur : seule
+   * lecture qui autorise l'activation d'un compte AVANT authentification.
+   * Un même numéro peut être invité par plusieurs agences ; l'activation lie
+   * TOUTES les fiches en attente au même compte `users`, en une seule fois.
+   */
+  async findPendingLandlordsByPhone(phoneE164: string): Promise<LandlordLinkRow[]> {
+    const rows = await this.client.landlords.findMany({
+      where: { primary_phone: phoneE164, user_id: null, deleted_at: null },
+      select: { id: true, organization_id: true },
+      orderBy: { created_at: 'asc' },
+    });
+    if (rows.length === 0) return [];
+    const organizations = await this.client.organizations.findMany({
+      where: { id: { in: rows.map((r) => r.organization_id) } },
+      select: { id: true, trade_name: true, legal_name: true },
+    });
+    const names = new Map(organizations.map((o) => [o.id, o.trade_name ?? o.legal_name ?? '']));
+    return rows.map((r) => ({
+      landlordId: r.id,
+      organizationId: r.organization_id,
+      organizationName: names.get(r.organization_id) ?? '',
+    }));
   }
 
   /** Vrai si le slug est déjà pris (contrainte d'unicité globale). */

@@ -65,31 +65,41 @@ export class LandlordsService {
     userId: string,
     input: LandlordInput,
   ): Promise<LandlordView> {
+    return this.prisma.withTenant(organizationId, userId, (tx) =>
+      this.createInTx(tx, organizationId, userId, input),
+    );
+  }
+
+  /** Corps de la création, rejouable depuis une transaction déjà ouverte. */
+  async createInTx(
+    tx: TenantClient,
+    organizationId: string,
+    _userId: string,
+    input: LandlordInput,
+  ): Promise<LandlordView> {
     const partyType = input.partyType ?? 'INDIVIDUAL';
     assertPartyName({ ...input, partyType });
     const id = newId();
 
-    return this.prisma.withTenant(organizationId, userId, async (tx) => {
-      const created = (await tx.landlords.create({
-        data: {
-          id,
-          organization_id: organizationId,
-          party_type: partyType,
-          is_self: false,
-          ...this.toColumns(input, partyType),
-          primary_phone: normalizePartyPhone(input.primaryPhone ?? ''),
-        },
-      })) as unknown as LandlordRow;
+    const created = (await tx.landlords.create({
+      data: {
+        id,
+        organization_id: organizationId,
+        party_type: partyType,
+        is_self: false,
+        ...this.toColumns(input, partyType),
+        primary_phone: normalizePartyPhone(input.primaryPhone ?? ''),
+      },
+    })) as unknown as LandlordRow;
 
-      await audit(this.auditService, tx, {
-        action: 'CREATE',
-        operation: AUDIT_OPERATIONS.LANDLORD_CREATED,
-        entityType: 'landlords',
-        entityId: id,
-        newState: toJsonState(toLandlordView(created)),
-      });
-      return toLandlordView(created);
+    await audit(this.auditService, tx, {
+      action: 'CREATE',
+      operation: AUDIT_OPERATIONS.LANDLORD_CREATED,
+      entityType: 'landlords',
+      entityId: id,
+      newState: toJsonState(toLandlordView(created)),
     });
+    return toLandlordView(created);
   }
 
   async list(

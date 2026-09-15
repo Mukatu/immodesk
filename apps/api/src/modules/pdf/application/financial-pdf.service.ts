@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import type {
   CashReceiptDocumentModel,
   InvoiceDocumentModel,
+  OwnerStatementDocumentModel,
   ReceiptDocumentModel,
 } from '../domain/financial-documents';
 import {
   qrDataUrl,
   renderCashReceiptHtml,
   renderInvoiceHtml,
+  renderOwnerStatementHtml,
   renderReceiptHtml,
   type RenderedHtml,
 } from '../infrastructure/financial-renderer';
@@ -45,6 +47,13 @@ export class FinancialPdfService {
 
   async invoice(model: InvoiceDocumentModel, footer: string): Promise<RenderedDocument> {
     return this.toPdf(renderInvoiceHtml(model), footer);
+  }
+
+  async ownerStatement(
+    model: OwnerStatementDocumentModel,
+    footer: string,
+  ): Promise<RenderedDocument> {
+    return this.toPdf(renderOwnerStatementHtml(model), footer);
   }
 
   private async toPdf(rendered: RenderedHtml, footer: string): Promise<RenderedDocument> {

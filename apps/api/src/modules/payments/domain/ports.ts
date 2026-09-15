@@ -49,3 +49,19 @@ export interface CashReceiptCanceller {
     input: { organizationId: string; paymentId: string; reason: string },
   ): Promise<string[]>;
 }
+
+/**
+ * Port phase 7 : annule la ou les commissions accruées sur un paiement
+ * contre-passé (contrat, arbitrage n°3 — voir `commissions/application/
+ * commissions.service.ts`, méthode `cancelForPayment`). Facultatif comme
+ * `RECEIPT_ISSUER` / `CASH_RECEIPT_CANCELLER` : `payments` ne sait rien de
+ * `commissions`, qui n'existait pas avant la phase 7.
+ */
+export const COMMISSION_CANCELLER = Symbol('COMMISSION_CANCELLER');
+
+export interface CommissionCanceller {
+  cancelForPayment(
+    tx: TenantClient,
+    input: { organizationId: string; paymentId: string; reason: string },
+  ): Promise<void>;
+}

@@ -70,7 +70,9 @@ describe('Modèles et SMS', () => {
       expect(systemTemplate(code, 'WHATSAPP')?.providerTemplateName).toBeTruthy();
       expect(systemTemplate(code, 'SMS')).not.toBeNull();
     }
-    expect(SYSTEM_TEMPLATES).toHaveLength(20);
+    // Phase 7 : + LANDLORD_PORTAL_INVITE, OWNER_STATEMENT_READY,
+    // PAYOUT_BANK_DETAILS_MISSING (WhatsApp + SMS chacun) : 20 + 6 = 26.
+    expect(SYSTEM_TEMPLATES).toHaveLength(26);
   });
 
   it('translittère en GSM-7 et tient la quittance en deux segments', () => {

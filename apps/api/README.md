@@ -1,4 +1,4 @@
-# `@immodesk/api` — API Immodesk (phases 0 à 6)
+# `@immodesk/api` — API Immodesk (phases 0 à 7)
 
 Backend NestJS 11 de la plateforme Immodesk (gestion immobilière,
 Congo-Brazzaville). Monolithe modulaire en Clean Architecture, multi-tenant
@@ -48,6 +48,35 @@ pendant la coupure, conflits agrégés depuis `sync_batches.result` (aucune
 table dédiée) et résolubles en `APPLY` ou `DISCARD`, périmètre du
 démarcheur téléchargeable par `GET /v1/sync/pull` à curseur signé, et
 configuration mobile pilotée par variables d'environnement.
+
+Périmètre de la **phase 6** : rapprochement bancaire et chèques — import de
+relevés CSV/MT940 multi-banques, moteur de correspondance à score (exacte,
+suggérée au-delà d'un seuil configurable, manuelle, partielle), chèques reçus
+suivis jusqu'à leur compensation ou leur rejet avec alerte de retard, le tout
+sous la même suite d'isolation multi-tenant que les phases précédentes.
+
+Périmètre de la **phase 7** : gestion d'agence — mandats de gestion
+(`MDT-{AAAA}-{seq}`) au périmètre mono-bien ou portefeuille, avec contrôle
+applicatif garantissant qu'un bien ne dépend que d'un seul mandat actif ;
+dépenses saisies, soumises, validées ou rejetées, verrouillées dès
+rattachement à un relevé émis, et orientées vers une ligne de facture plutôt
+que vers le relevé du bailleur quand elles sont refacturables ; commissions
+calculées au taux du mandat sur les seuls paiements confirmés de la période
+(via les imputations vers les factures, jamais sur le facturé), TVA en ligne
+distincte, annulées par écriture miroir lors d'une contre-passation ; relevés
+de gérance (`REL-{AAAAMM}-{seq}`) générés par une campagne mensuelle
+idempotente (verrou consultatif par bailleur et période), lignes toujours
+positives (le sens porté par `is_debit`), solde négatif reporté au relevé
+suivant, machine à états (brouillon, émis, envoyé, reversé, annulé), PDF par
+le worker Puppeteer existant et envoi WhatsApp/SMS/e-mail selon le pipeline de
+messagerie ; reversements (`REV-{AAAAMM}-{seq}`) par virement ou Mobile Money,
+approbation séparée de l'exécution, échec motivé et nouvelle tentative sans
+recréer le reversement, refus documenté si les coordonnées bancaires du
+bailleur sont absentes ; portail bailleur en lecture seule, sans appartenance
+à une organisation, session dérivée de `landlords.user_id`, étanche entre
+bailleurs (404 jamais 403) ; et onboarding du gestionnaire indépendant en une
+seule transaction (organisation, bailleur, bien, mandat, commission par
+défaut de 10 %).
 
 ---
 
@@ -325,6 +354,18 @@ les restitue, valeurs par défaut du contrat (docs/api/phase5-contract.md).
 | `CHECK_ALERT_CRON_ENABLED`            | Active le cron d'alerte d'encaissement tardif (désactivé par défaut).                   |
 | `CHECK_ALERT_CRON_PATTERN`            | Expression cron du job d'alerte (`0 7 * * *` par défaut).                               |
 | `CHECK_ALERT_CRON_TIMEZONE`           | Fuseau horaire du cron d'alerte (`Africa/Brazzaville` par défaut).                      |
+
+### Gestion d'agence (phase 7)
+
+| Variable                              | Rôle                                                                                                                       |
+| :------------------------------------ | :------------------------------------------------------------------------------------------------------------------------- |
+| `AGENCY_STATEMENT_DEFAULT_PAYOUT_DAY` | Jour du mois par défaut de reversement au bailleur (10 par défaut, borné à 1-28).                                          |
+| `AGENCY_DEFAULT_COMMISSION_RATE_BPS`  | Taux de commission par défaut (1000 = 10 %), appliqué au mandat d'une organisation `INDEPENDENT_MANAGER` sans taux fourni. |
+| `AGENCY_COMMISSION_VAT_RATE_BPS`      | TVA par défaut sur la commission (1800 = 18 %).                                                                            |
+| `AGENCY_MONTHLY_CRON_ENABLED`         | Active le cron mensuel `agency-monthly` de génération des relevés de gérance.                                              |
+| `AGENCY_MONTHLY_CRON_PATTERN`         | Expression cron de la campagne mensuelle (`0 4 * * *` par défaut, idempotente donc rejouable).                             |
+| `AGENCY_MONTHLY_CRON_TIMEZONE`        | Fuseau horaire du cron mensuel (`Africa/Brazzaville` par défaut).                                                          |
+| `PORTAL_BASE_URL`                     | Base du lien d'activation du portail bailleur, envoyé par WhatsApp.                                                        |
 
 ---
 
@@ -897,6 +938,37 @@ correspondances déjà proposées. `bank-checks` reste indépendant des deux
 autres : un chèque déposé devient simplement une candidate ligne de relevé à
 rapprocher, comme n'importe quel paiement.
 
+### Les modules de la phase 7 : gestion d'agence
+
+| Module             | Responsabilité                                                                                                     |
+| :----------------- | :----------------------------------------------------------------------------------------------------------------- |
+| `mandates`         | `management_mandates`, cycle de vie, contrôle « un bien, un seul mandat actif », invitation du bailleur au portail |
+| `expenses`         | `expenses`, saisie, validation, verrouillage dès rattachement à un relevé émis                                     |
+| `commissions`      | `commissions`, calcul au taux du mandat sur les imputations de paiement confirmées, TVA distincte, écriture miroir |
+| `owner-statements` | `owner_statements` / `owner_statement_lines`, campagne mensuelle idempotente, machine à états, PDF, envoi          |
+| `owner-payouts`    | `owner_payouts`, approbation puis exécution par virement ou Mobile Money, échec motivé et nouvelle tentative       |
+| `landlord-portal`  | Session dérivée de `landlords.user_id`, sans rôle d'organisation, routes de consultation en lecture seule          |
+
+`commissions` lit `management_mandates` et `payment_allocations` directement
+(composition, pas de règle métier étrangère) mais reste seul propriétaire
+d'écriture de `commissions`, y compris pour sa contre-passation, exposée à
+`payments` par le port `COMMISSION_CANCELLER` (même famille que
+`RECEIPT_ISSUER` / `CASH_RECEIPT_CANCELLER` en phase 3). `owner-statements`
+orchestre `commissions` et lit `expenses` par le port `EXPENSE_READER`
+(`findEligibleForStatement`, `attachToStatement`, `detachFromStatement`) sans
+jamais écrire dans la table d'un autre module. `owner-payouts` referme le
+relevé (`OwnerStatementsService.markPaid`) et déclenche un décaissement
+Mobile Money par un port dédié de `mobile-money`
+(`MOMO_PAYOUT_INITIATOR`) — l'interface `MobileMoneyProvider` de la phase 4,
+conçue pour l'encaissement, y est réemployée faute d'API de décaissement chez
+les agrégateurs congolais actuels. `landlord-portal` ne dépend d'aucun de ces
+modules pour ses lectures : `management_mandates`, `owner_statements`,
+`owner_payouts`, `payment_allocations` et `receipts` y sont lus directement,
+par organisation, via la nouvelle lecture transverse
+`TenantDirectoryService.listLandlordLinks` (rôle d'administration,
+`DATABASE_ADMIN_URL`, même mécanique que `listActiveMemberships` en phase 0),
+puisqu'un bailleur peut être invité par plusieurs agences.
+
 ### Les quatre modules de la phase 2
 
 | Module      | Responsabilité                                                                                   |
@@ -1119,6 +1191,55 @@ transmission des signaux et expose une `HEALTHCHECK` sur `/v1/health`.
 ---
 
 ## 11. Écarts et limites connues
+
+### Phase 7
+
+- **Reversement par virement ou espèces : pas d'intégration bancaire réelle.**
+  L'exécution enregistre une référence externe et un justificatif déclarés
+  par l'appelant (`documents.id` déjà existant) et passe directement `PAID` ;
+  `owner_payouts` n'a pas de colonne dédiée à cette référence externe (schéma
+  figé, aucune migration en phase 7), elle est donc conservée dans `notes` et
+  intégralement dans `audit_logs`.
+- **Décaissement Mobile Money : réemploi de l'interface de collecte.**
+  `MobileMoneyProvider.initiate()` a été conçu en phase 4 pour pousser une
+  demande de paiement VERS un payeur, pas pour verser À un bénéficiaire ;
+  aucun agrégateur congolais n'expose aujourd'hui d'API de décaissement
+  dédiée. Le nouveau port `MOMO_PAYOUT_INITIATOR` (module `mobile-money`)
+  réemploie donc `initiate()` en y plaçant le bailleur bénéficiaire, avec une
+  ré-interrogation (`getStatus`) plutôt qu'une confirmation sur la seule foi
+  du retour synchrone — à remplacer par une vraie API de transfert dès qu'un
+  agrégateur en propose une.
+- **Mandat multi-biens : consolidation, pas sélection.** `management_mandates`
+  n'a qu'une colonne `property_id` (nullable, sans table de jonction) : un
+  mandat porte sur UN bien précis ou sur le portefeuille ENTIER du bailleur
+  (présent et futur), jamais sur un sous-ensemble choisi. Rattacher un second
+  bien à un mandat mono-bien le fait donc basculer portefeuille, avec
+  contrôle et audit dédiés — conforme au commentaire du DDL, plus restrictif
+  que ne le laisserait supposer `propertyIds: string[]` du contrat.
+- **Motif de suspension d'un mandat et de rejet d'une dépense : audit
+  seulement.** Ni `management_mandates` ni `expenses` ne portent de colonne
+  dédiée à ces motifs ; ils sont tracés dans `audit_logs.new_state`,
+  consultables par l'historique d'audit de l'entité, jamais dans `notes`
+  (réservée aux annotations libres).
+- **Portail bailleur : pagination cross-organisations en mémoire.** Un
+  bailleur invité par plusieurs agences voit ses données FUSIONNÉES depuis
+  autant de transactions RLS distinctes (une par organisation liée), triées
+  et tronquées en mémoire — pas un keyset SQL unique. Largement suffisant au
+  volume réel par bailleur, à revoir si un bailleur cumule un jour des
+  dizaines de mandats.
+- **Campagne mensuelle : bases de commission non `RATE_BPS_ON_RENT_COLLECTED`
+  couvertes de façon minimale.** Le contrat n'exige explicitement que la base
+  par défaut (taux sur l'encaissé) ; `RATE_BPS_ON_RENT_DUE` et les bases
+  forfaitaires sont signalées par une erreur explicite dans le rapport de
+  campagne plutôt que silencieusement ignorées, mais leur calcul complet
+  reste à finaliser.
+
+### Phase 6
+
+- **Aucune limite connue documentée séparément** : le rapprochement bancaire
+  et les chèques suivent les mêmes garanties que les phases précédentes
+  (isolation RLS prouvée, montants en `BIGINT`, aucune suppression physique
+  sur les tables financières).
 
 ### Phase 5
 

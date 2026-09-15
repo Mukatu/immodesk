@@ -189,6 +189,16 @@ export const configSchema = z
     CHECK_ALERT_CRON_PATTERN: z.string().default('0 7 * * *'),
     CHECK_ALERT_CRON_TIMEZONE: z.string().default('Africa/Brazzaville'),
 
+    // --- Gestion d'agence : mandats, relevés, reversements (phase 7) -----
+    AGENCY_STATEMENT_DEFAULT_PAYOUT_DAY: z.coerce.number().int().min(1).max(28).default(10),
+    AGENCY_DEFAULT_COMMISSION_RATE_BPS: z.coerce.number().int().min(0).max(10_000).default(1000),
+    AGENCY_COMMISSION_VAT_RATE_BPS: z.coerce.number().int().min(0).max(10_000).default(1800),
+    AGENCY_MONTHLY_CRON_ENABLED: booleanish.default(true),
+    AGENCY_MONTHLY_CRON_PATTERN: z.string().default('0 4 * * *'),
+    AGENCY_MONTHLY_CRON_TIMEZONE: z.string().default('Africa/Brazzaville'),
+    // Lien d'activation du portail bailleur envoyé par WhatsApp.
+    PORTAL_BASE_URL: z.string().url().default('https://portail.immodesk.cg'),
+
     // --- Observabilité ---------------------------------------------------
     SENTRY_DSN: z.string().optional(),
     SWAGGER_ENABLED: booleanish.default(true),

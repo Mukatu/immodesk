@@ -91,33 +91,43 @@ export class PropertiesService {
     userId: string,
     input: PropertyInput,
   ): Promise<PropertyView> {
+    return this.prisma.withTenant(organizationId, userId, (tx) =>
+      this.createInTx(tx, organizationId, userId, input),
+    );
+  }
+
+  /** Corps de la création, rejouable depuis une transaction déjà ouverte. */
+  async createInTx(
+    tx: TenantClient,
+    organizationId: string,
+    _userId: string,
+    input: PropertyInput,
+  ): Promise<PropertyView> {
     const id = newId();
-    return this.prisma.withTenant(organizationId, userId, async (tx) => {
-      await this.landlords.require(tx, input.landlordId ?? '');
-      await this.assertCodeFree(tx, trimOrNull(input.code), null);
+    await this.landlords.require(tx, input.landlordId ?? '');
+    await this.assertCodeFree(tx, trimOrNull(input.code), null);
 
-      const created = (await tx.properties.create({
-        data: {
-          id,
-          organization_id: organizationId,
-          landlord_id: input.landlordId as string,
-          name: (input.name ?? '').trim(),
-          address_line: (input.addressLine ?? '').trim(),
-          district: (input.district ?? '').trim(),
-          units_count: 0,
-          ...this.toColumns(input),
-        },
-      })) as unknown as PropertyRow;
+    const created = (await tx.properties.create({
+      data: {
+        id,
+        organization_id: organizationId,
+        landlord_id: input.landlordId as string,
+        name: (input.name ?? '').trim(),
+        address_line: (input.addressLine ?? '').trim(),
+        district: (input.district ?? '').trim(),
+        units_count: 0,
+        ...this.toColumns(input),
+      },
+    })) as unknown as PropertyRow;
 
-      await audit(this.auditService, tx, {
-        action: 'CREATE',
-        operation: AUDIT_OPERATIONS.PROPERTY_CREATED,
-        entityType: 'properties',
-        entityId: id,
-        newState: toJsonState(toPropertyView(created)),
-      });
-      return toPropertyView(created);
+    await audit(this.auditService, tx, {
+      action: 'CREATE',
+      operation: AUDIT_OPERATIONS.PROPERTY_CREATED,
+      entityType: 'properties',
+      entityId: id,
+      newState: toJsonState(toPropertyView(created)),
     });
+    return toPropertyView(created);
   }
 
   async list(

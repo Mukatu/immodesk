@@ -9,8 +9,10 @@ import { InvoiceLedgerService } from '../../billing/application/invoice-ledger.s
 import { NumberingService } from '../../numbering/application/numbering.service';
 import {
   CASH_RECEIPT_CANCELLER,
+  COMMISSION_CANCELLER,
   RECEIPT_ISSUER,
   type CashReceiptCanceller,
+  type CommissionCanceller,
   type ReceiptIssuer,
 } from '../domain/ports';
 import { PaymentsQueryService, type PaymentReader } from './payments-query.service';
@@ -45,6 +47,9 @@ export class ReversalService {
     @Optional()
     @Inject(CASH_RECEIPT_CANCELLER)
     private readonly cash: CashReceiptCanceller | null = null,
+    @Optional()
+    @Inject(COMMISSION_CANCELLER)
+    private readonly commissions: CommissionCanceller | null = null,
   ) {}
 
   /** Corps de la contre-passation, rejouable depuis une transaction déjà ouverte. */
@@ -175,6 +180,7 @@ export class ReversalService {
       reason,
     });
     await this.cash?.cancelForPayment(tx, { organizationId, paymentId, reason });
+    await this.commissions?.cancelForPayment(tx, { organizationId, paymentId, reason });
 
     await audit(this.auditService, tx, {
       action: 'STATE_TRANSITION',

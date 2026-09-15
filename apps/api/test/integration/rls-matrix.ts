@@ -92,6 +92,23 @@ export const TABLE_HINTS: Record<string, Record<string, unknown>> = {
   // reconciliation_matches_target_chk : num_nonnulls(...) >= 1, voir la cible
   // ajoutée dynamiquement ci-dessous (payment_id).
   reconciliation_matches: { matched_amount: { raw: '500' } },
+  // Phase 7 — management_mandates_commission_chk : un taux ou un montant
+  // forfaitaire est obligatoire (l'un des deux, jamais aucun).
+  management_mandates: { commission_rate_bps: { raw: '1000' } },
+  // commissions_period_chk (période strictement croissante) et
+  // commissions_value_chk (même règle que le mandat : taux ou forfait).
+  commissions: {
+    rate_bps: { raw: '1000' },
+    period_start: { raw: 'current_date' },
+    period_end: { raw: 'current_date + 30' },
+  },
+  // owner_statements_period_chk : période strictement croissante. Distincte
+  // de la période de l'ancre (current_date - 60 / - 31, voir createFixture)
+  // pour ne jamais heurter owner_statements_period_uk.
+  owner_statements: {
+    period_start: { raw: 'current_date' },
+    period_end: { raw: 'current_date + 30' },
+  },
 };
 
 /**
@@ -133,6 +150,12 @@ export const DYNAMIC_TABLE_HINTS: Record<string, (anchors: Anchors) => Record<st
   reconciliation_matches: (anchors) => ({
     statement_line_id: typed(anchors.known.get('bank_statement_lines'), 'uuid'),
     payment_id: typed(anchors.known.get('payments'), 'uuid'),
+  }),
+  // owner_statement_lines.statement_id : NOT NULL, sans ancre dédiée cette
+  // table serait sautée faute de cible — voir l'ancre `owner_statements`
+  // ajoutée à `createFixture` pour la phase 7.
+  owner_statement_lines: (anchors) => ({
+    statement_id: typed(anchors.known.get('owner_statements'), 'uuid'),
   }),
 };
 

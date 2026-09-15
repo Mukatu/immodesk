@@ -7,15 +7,21 @@ import { BankStatementsModule } from './modules/bank-statements/bank-statements.
 import { BankTransfersModule } from './modules/bank-transfers/bank-transfers.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { CashModule } from './modules/cash/cash.module';
+import { CommissionsModule } from './modules/commissions/commissions.module';
 import { DepositsModule } from './modules/deposits/deposits.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
 import { IdentityModule } from './modules/identity/identity.module';
+import { LandlordPortalModule } from './modules/landlord-portal/landlord-portal.module';
 import { LeasesModule } from './modules/leases/leases.module';
+import { MandatesModule } from './modules/mandates/mandates.module';
 import { MobileMoneyModule } from './modules/mobile-money/mobile-money.module';
 import { MobileSyncModule } from './modules/mobile-sync/mobile-sync.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { NumberingModule } from './modules/numbering/numbering.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
+import { OwnerPayoutsModule } from './modules/owner-payouts/owner-payouts.module';
+import { OwnerStatementsModule } from './modules/owner-statements/owner-statements.module';
 import { PartiesModule } from './modules/parties/parties.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { PdfModule } from './modules/pdf/pdf.module';
@@ -93,6 +99,24 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     BankChecksModule,
     BankStatementsModule,
     ReconciliationModule,
+    // Phase 7 — gestion d'agence. `mandates` publie MANDATE_LANDLORD_INVITER
+    // (repris plus tard par `landlord-portal`) et `expenses` publie
+    // EXPENSE_READER (repris par `owner-statements`) : deux modules
+    // `@Global()` de plus, sans import croisé entre eux. `commissions`
+    // publie COMMISSION_CANCELLER (repris par `payments`) et expose
+    // directement `CommissionsService` à `owner-statements`, qui l'injecte
+    // sans port `Symbol` (couplage assumé entre les deux, voir
+    // `owner-statements/application/owner-statements-campaign.service.ts`).
+    MandatesModule,
+    ExpensesModule,
+    CommissionsModule,
+    OwnerStatementsModule,
+    OwnerPayoutsModule,
+    // `landlord-portal` : activation par OTP et consultation (lecture seule)
+    // du compte du portail bailleur. Ne publie ni ne consomme aucun port —
+    // `LandlordPortalGuard` est appliqué directement sur `PortalController`
+    // (`@UseGuards`), jamais en `APP_GUARD` global.
+    LandlordPortalModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

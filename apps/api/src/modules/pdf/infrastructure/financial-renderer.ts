@@ -5,9 +5,11 @@ import { formatXaf } from '../../../shared/money/amount';
 import type {
   CashReceiptDocumentModel,
   InvoiceDocumentModel,
+  OwnerStatementDocumentModel,
   ReceiptDocumentModel,
 } from '../domain/financial-documents';
 import { CASH_RECEIPT_HTML_TEMPLATE, INVOICE_HTML_TEMPLATE } from './cash-invoice-html';
+import { OWNER_STATEMENT_HTML_TEMPLATE } from './owner-statement-html';
 import { RECEIPT_HTML_TEMPLATE } from './receipt-html';
 
 /**
@@ -24,6 +26,7 @@ hbs.registerHelper('xaf', (value: unknown) => formatXaf(toBigInt(value)));
 const receiptTemplate = hbs.compile(RECEIPT_HTML_TEMPLATE, { strict: false });
 const cashReceiptTemplate = hbs.compile(CASH_RECEIPT_HTML_TEMPLATE, { strict: false });
 const invoiceTemplate = hbs.compile(INVOICE_HTML_TEMPLATE, { strict: false });
+const ownerStatementTemplate = hbs.compile(OWNER_STATEMENT_HTML_TEMPLATE, { strict: false });
 
 export interface RenderedHtml {
   html: string;
@@ -57,6 +60,12 @@ export function renderCashReceiptHtml(model: CashReceiptDocumentModel): Rendered
 
 export function renderInvoiceHtml(model: InvoiceDocumentModel): RenderedHtml {
   return hashed(invoiceTemplate(model));
+}
+
+export function renderOwnerStatementHtml(model: OwnerStatementDocumentModel): RenderedHtml {
+  return hashed(
+    ownerStatementTemplate({ ...model, hasCarryForward: model.statement.carryForwardAmount > 0n }),
+  );
 }
 
 /**

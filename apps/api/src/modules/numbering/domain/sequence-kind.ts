@@ -25,6 +25,8 @@ export const SEQUENCE_KINDS = [
   'REVERSAL',
   'MOMO_DECLARED',
   'MOMO_AGGREGATOR',
+  // Phase 7 : mandats de gestion (docs/api/phase7-contract.md).
+  'MANDATE',
 ] as const;
 
 export type SequenceKind = (typeof SEQUENCE_KINDS)[number];
@@ -57,7 +59,12 @@ export const SEQUENCE_FORMATS: Readonly<Record<SequenceKind, SequenceFormat>> = 
   OWNER_STATEMENT: { prefix: 'REL', scope: 'MONTHLY', padding: 5 },
   REMITTANCE: { prefix: 'REM', scope: 'MONTHLY', padding: 5 },
   EXPENSE: { prefix: 'DEP', scope: 'MONTHLY', padding: 5 },
-  PAYOUT: { prefix: 'VER', scope: 'MONTHLY', padding: 5 },
+  // Reversement au bailleur (`owner_payouts.reference`, phase 7) :
+  // `REV-{YYYYMM}-{seq}` au contrat. Distinct de `REVERSAL` (contre-passation
+  // d'un paiement, phase 3), qui garde son propre compteur malgré le même
+  // préfixe visible : les deux séries ne partagent jamais de ligne `sequences`
+  // (clés `PAYOUT` et `REVERSAL` distinctes).
+  PAYOUT: { prefix: 'REV', scope: 'MONTHLY', padding: 5 },
   SUBSCRIPTION_INVOICE: { prefix: 'ABO', scope: 'MONTHLY', padding: 5 },
   PAYMENT: { prefix: 'PAY', scope: 'MONTHLY', padding: 5 },
   REVERSAL: { prefix: 'REV', scope: 'MONTHLY', padding: 5 },
@@ -65,6 +72,8 @@ export const SEQUENCE_FORMATS: Readonly<Record<SequenceKind, SequenceFormat>> = 
   // (MMD) et agrégateur (MMA) — deux séries distinctes, mêmes règles.
   MOMO_DECLARED: { prefix: 'MMD', scope: 'MONTHLY', padding: 5 },
   MOMO_AGGREGATOR: { prefix: 'MMA', scope: 'MONTHLY', padding: 5 },
+  // Mandat de gestion (`management_mandates.reference`) : `MDT-{YYYY}-{seq}`.
+  MANDATE: { prefix: 'MDT', scope: 'YEARLY', padding: 5 },
 };
 
 /**

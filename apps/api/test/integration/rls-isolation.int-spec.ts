@@ -110,6 +110,21 @@ const PHASE6_TENANT_TABLES = [
   'reconciliation_matches',
 ] as const;
 
+/**
+ * Tables de la phase 7 (gestion d'agence : mandats, dépenses, commissions,
+ * relevés de gérance, reversements). `landlords`, `properties`,
+ * `bank_accounts`, `payments`, `documents` sont déjà exigées depuis les
+ * phases 1, 3 et 6.
+ */
+const PHASE7_TENANT_TABLES = [
+  'management_mandates',
+  'expenses',
+  'commissions',
+  'owner_statements',
+  'owner_statement_lines',
+  'owner_payouts',
+] as const;
+
 /** Tables dont les déclencheurs refusent le DELETE (append-only ou colonnes verrouillées). */
 const GUARDED_TABLES = [
   'audit_logs',
@@ -398,6 +413,11 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
   it('couvre obligatoirement les 4 tables de la phase 6 (rapprochement bancaire et chèques)', () => {
     const missing = PHASE6_TENANT_TABLES.filter((t) => !covered.includes(t));
     expect({ missing, phase: 6 }).toEqual({ missing: [], phase: 6 });
+  });
+
+  it('couvre obligatoirement les 6 tables de la phase 7 (gestion d’agence)', () => {
+    const missing = PHASE7_TENANT_TABLES.filter((t) => !covered.includes(t));
+    expect({ missing, phase: 7 }).toEqual({ missing: [], phase: 7 });
   });
 
   it('vérifie que les tables d’authentification sont bien GLOBALES et hors RLS', async () => {
@@ -741,6 +761,25 @@ async function createFixture(admin: PrismaClient, label: string): Promise<Fixtur
   anchors.set('bank_accounts', bankAccountId);
   anchors.set('bank_statements', bankStatementId);
   anchors.set('bank_statement_lines', bankStatementLineId);
+
+  // --- Ancre de la phase 7 ----------------------------------------------
+  //
+  // `owner_statement_lines.statement_id` est NOT NULL : sans ancre dédiée,
+  // cette table serait sautée faute de cible pour sa FK. La période de
+  // l'ancre (mois passé) diffère de celle du hint de balayage
+  // (`current_date` / `current_date + 30`, voir rls-matrix.ts) pour ne
+  // jamais heurter `owner_statements_period_uk` (organization_id,
+  // landlord_id, property_id, period_start).
+  const ownerStatementId = uuidv7();
+  await admin.$executeRawUnsafe(
+    `INSERT INTO owner_statements (id, organization_id, landlord_id, statement_number, period_start, period_end)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4, current_date - 60, current_date - 31)`,
+    ownerStatementId,
+    organizationId,
+    landlordId,
+    `RLS-REL-${label}-${suffix}`,
+  );
+  anchors.set('owner_statements', ownerStatementId);
 
   return { organizationId, userIds, anchors, slug };
 }

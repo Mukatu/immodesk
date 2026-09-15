@@ -535,6 +535,114 @@ export const ERROR_CATALOG = {
     status: 500,
     message: "Contexte d'organisation absent : requête refusée.",
   },
+
+  // --- Domaine AGENCY (mandats, dépenses, commissions, relevés, reversements,
+  // portail bailleur, phase 7) --------------------------------------------
+  'AGENCY.MANDATE_NOT_FOUND': { status: 404, message: 'Mandat de gestion introuvable.' },
+  'AGENCY.PROPERTY_ALREADY_MANDATED': {
+    status: 409,
+    message: 'Ce bien dépend déjà d’un autre mandat actif.',
+  },
+  'AGENCY.MANDATE_INVALID_TRANSITION': {
+    status: 409,
+    message: 'Transition impossible pour ce mandat.',
+  },
+  'AGENCY.MANDATE_REASON_REQUIRED': {
+    status: 422,
+    message: 'Le motif est obligatoire pour cette action.',
+  },
+  'AGENCY.MANDATE_TERMINATION_DATE_REQUIRED': {
+    status: 422,
+    message: "La date d'effet de la résiliation est obligatoire.",
+  },
+  'AGENCY.MANDATE_PROPERTY_NOT_FOUND': { status: 404, message: 'Bien introuvable.' },
+  'AGENCY.MANDATE_COMMISSION_REQUIRED': {
+    status: 422,
+    message: 'Un taux de commission ou un montant forfaitaire est obligatoire.',
+  },
+
+  'AGENCY.EXPENSE_NOT_FOUND': { status: 404, message: 'Dépense introuvable.' },
+  'AGENCY.EXPENSE_LOCKED': {
+    status: 409,
+    message: 'Cette dépense est déjà rattachée à un relevé émis : elle n’est plus modifiable.',
+  },
+  'AGENCY.EXPENSE_INVALID_TRANSITION': {
+    status: 409,
+    message: 'Transition impossible pour cette dépense.',
+  },
+  'AGENCY.EXPENSE_REJECTION_REASON_REQUIRED': {
+    status: 422,
+    message: 'Le motif de rejet est obligatoire.',
+  },
+
+  'AGENCY.COMMISSION_NOT_FOUND': { status: 404, message: 'Commission introuvable.' },
+  'AGENCY.COMMISSION_BASIS_UNSUPPORTED': {
+    status: 422,
+    message: 'Cette base de calcul de commission n’est pas encore prise en charge par la campagne.',
+  },
+
+  'AGENCY.STATEMENT_NOT_FOUND': { status: 404, message: 'Relevé de gérance introuvable.' },
+  'AGENCY.STATEMENT_RUN_NOT_FOUND': { status: 404, message: 'Campagne de relevés introuvable.' },
+  'AGENCY.STATEMENT_PERIOD_ALREADY_GENERATED': {
+    status: 409,
+    message: 'Un relevé existe déjà pour ce bailleur et cette période.',
+  },
+  'AGENCY.STATEMENT_NOT_ISSUABLE': {
+    status: 409,
+    message: 'Seul un relevé au statut brouillon peut être validé.',
+  },
+  'AGENCY.STATEMENT_NOT_CANCELLABLE': {
+    status: 409,
+    message: 'Ce relevé ne peut plus être annulé.',
+  },
+  'AGENCY.STATEMENT_CANCEL_REASON_REQUIRED': {
+    status: 422,
+    message: "Le motif d'annulation est obligatoire.",
+  },
+  'AGENCY.STATEMENT_BALANCE_NOT_POSITIVE': {
+    status: 409,
+    message: 'Le solde net du relevé doit être strictement positif pour être reversé.',
+  },
+  'AGENCY.STATEMENT_PDF_UNAVAILABLE': {
+    status: 503,
+    message: 'Le PDF du relevé n’est pas encore disponible.',
+  },
+  'AGENCY.STATEMENT_INVALID_TRANSITION': {
+    status: 409,
+    message: 'Transition impossible pour ce relevé.',
+  },
+
+  'AGENCY.PAYOUT_NOT_FOUND': { status: 404, message: 'Reversement introuvable.' },
+  'AGENCY.PAYOUT_ALREADY_EXISTS': {
+    status: 409,
+    message: 'Ce relevé porte déjà un reversement non annulé.',
+  },
+  'AGENCY.PAYOUT_MISSING_BANK_DETAILS': {
+    status: 409,
+    message: 'Coordonnées de reversement du bailleur absentes ou incomplètes.',
+  },
+  'AGENCY.PAYOUT_INVALID_TRANSITION': {
+    status: 409,
+    message: 'Transition impossible pour ce reversement.',
+  },
+  'AGENCY.PAYOUT_FAILURE_REASON_REQUIRED': {
+    status: 422,
+    message: "Le motif d'échec est obligatoire.",
+  },
+
+  'AGENCY.PORTAL_READ_ONLY': {
+    status: 403,
+    message: 'Le portail bailleur ne permet aucune action d’écriture.',
+  },
+  'AGENCY.PORTAL_NOT_INVITED': {
+    status: 404,
+    message: 'Aucune invitation en cours pour ce numéro.',
+  },
+
+  'AGENCY.ONBOARDING_INVALID': {
+    status: 422,
+    message: 'Données d’inscription du gestionnaire indépendant invalides.',
+  },
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CATALOG;

@@ -91,6 +91,31 @@ export interface InvoiceDocumentModel {
   }>;
 }
 
+/**
+ * Modèle du relevé de gérance (phase 7, contrat § PDF et envoi). Les lignes
+ * sont déjà mises en forme par `OwnerStatementDocumentsService` — ce fichier
+ * ne recalcule rien, comme les autres modèles de ce domaine.
+ */
+export interface OwnerStatementDocumentModel {
+  organization: OrganizationBlock;
+  landlordName: string;
+  /** Nom du bien, ou libellé « Portefeuille complet » pour un mandat consolidé. */
+  propertyLabel: string;
+  statement: {
+    number: string;
+    issueDate: string;
+    period: string;
+    rentCollectedAmount: bigint;
+    chargesCollectedAmount: bigint;
+    commissionAmount: bigint;
+    commissionVatAmount: bigint;
+    expensesAmount: bigint;
+    carryForwardAmount: bigint;
+    netPayableAmount: bigint;
+  };
+  lines: Array<{ label: string; amount: bigint; isDebit: boolean }>;
+}
+
 /** Libellés français des modes de règlement imprimés sur les pièces. */
 export const PAYMENT_METHOD_LABELS: Readonly<Record<string, string>> = {
   CASH: 'Espèces',

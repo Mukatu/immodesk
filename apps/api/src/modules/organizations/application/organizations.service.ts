@@ -2,7 +2,7 @@ import { Inject, Injectable, Optional } from '@nestjs/common';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { newId } from '../../../shared/ids/uuid';
 import { normalizePhoneE164 } from '../../../shared/phone/e164';
-import { PrismaService } from '../../../shared/prisma/prisma.service';
+import { PrismaService, type TenantClient } from '../../../shared/prisma/prisma.service';
 import { TenantDirectoryService } from '../../../shared/prisma/tenant-directory.service';
 import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
@@ -92,95 +92,118 @@ export class OrganizationsService {
   ) {}
 
   /**
-   * Crée une organisation et son créateur comme OWNER, dans une seule
-   * transaction.
+   * Résout un slug unique à partir de la raison commerciale ou sociale.
+   * Lecture HORS transaction (via `TenantDirectoryService`, rôle
+   * d'administration) : à appeler AVANT d'ouvrir la transaction de création.
+   */
+  async resolveSlug(tradeNameOrLegalName: string): Promise<string> {
+    return resolveUniqueSlug(tradeNameOrLegalName, (candidate) =>
+      this.directory.isSlugTaken(candidate),
+    );
+  }
+
+  /**
+   * Corps de la création d'organisation, rejouable depuis une transaction
+   * déjà ouverte (ex. onboarding du gestionnaire indépendant, qui crée aussi
+   * un bailleur, un bien et un mandat dans la même transaction).
    *
    * Subtilité RLS : la policy de `organizations` est `id =
    * app.current_organization_id`. L'identifiant est donc généré côté
    * application (UUID v7) et positionné dans le contexte AVANT l'INSERT,
    * faute de quoi la clause `WITH CHECK` rejetterait la ligne.
    */
+  async createInTx(
+    tx: TenantClient,
+    organizationId: string,
+    userId: string,
+    input: CreateOrganizationInput & { slug: string },
+  ): Promise<OrganizationView> {
+    const contactPhone = normalizePhoneE164(input.contactPhone);
+    const organization = await tx.organizations.create({
+      data: {
+        id: organizationId,
+        type: input.type,
+        status: 'ACTIVE',
+        legal_name: input.legalName.trim(),
+        trade_name: input.tradeName?.trim() || null,
+        slug: input.slug,
+        contact_phone: contactPhone,
+        contact_email: input.contactEmail?.trim() || null,
+        district: input.district?.trim() || null,
+        city: input.city.trim(),
+        country_code: 'CG',
+        currency: 'XAF',
+      },
+      select: ORGANIZATION_SELECT,
+    });
+
+    // Paramétrage par défaut : échéance au 5, Africa/Brazzaville, XAF.
+    await tx.organization_settings.create({
+      data: { id: newId(), organization_id: organizationId },
+    });
+
+    const membership = await tx.organization_members.create({
+      data: {
+        id: newId(),
+        organization_id: organizationId,
+        user_id: userId,
+        role: 'OWNER',
+        status: 'ACTIVE',
+      },
+      select: { id: true },
+    });
+
+    await this.auditService.record(tx, {
+      organizationId,
+      action: 'CREATE',
+      operation: AUDIT_OPERATIONS.ORGANIZATION_CREATED,
+      entityType: 'organizations',
+      entityId: organizationId,
+      actorUserId: userId,
+      actorRole: 'OWNER',
+      newState: toJsonState({ type: input.type, legalName: input.legalName, slug: input.slug }),
+    });
+    await this.auditService.record(tx, {
+      organizationId,
+      action: 'CREATE',
+      operation: AUDIT_OPERATIONS.MEMBER_JOINED,
+      entityType: 'organization_members',
+      entityId: membership.id,
+      actorUserId: userId,
+      actorRole: 'OWNER',
+      newState: toJsonState({ userId, role: 'OWNER', reason: 'ORGANIZATION_CREATOR' }),
+    });
+
+    // Événement de domaine, émis DANS la transaction : un abonné en échec
+    // annule la création plutôt que de laisser une organisation à moitié
+    // provisionnée (cf. bailleur « self » du contrat de phase 1).
+    for (const listener of [...(this.lifecycleListeners ?? []), ...(this.setupListeners ?? [])]) {
+      await listener.onOrganizationCreated(tx, {
+        organizationId,
+        type: input.type,
+        legalName: input.legalName.trim(),
+        tradeName: input.tradeName?.trim() || null,
+        contactPhone,
+        city: input.city.trim(),
+        district: input.district?.trim() || null,
+        actorUserId: userId,
+      });
+    }
+
+    return toOrganizationView(organization);
+  }
+
+  /**
+   * Crée une organisation et son créateur comme OWNER, dans une seule
+   * transaction. Résout le slug hors transaction, puis délègue à
+   * `createInTx`.
+   */
   async create(userId: string, input: CreateOrganizationInput): Promise<OrganizationView> {
     const organizationId = newId();
-    const contactPhone = normalizePhoneE164(input.contactPhone);
-    const slug = await resolveUniqueSlug(input.tradeName || input.legalName, (candidate) =>
-      this.directory.isSlugTaken(candidate),
+    const slug = await this.resolveSlug(input.tradeName || input.legalName);
+    return this.prisma.withTenant(organizationId, userId, (tx) =>
+      this.createInTx(tx, organizationId, userId, { ...input, slug }),
     );
-
-    return this.prisma.withTenant(organizationId, userId, async (tx) => {
-      const organization = await tx.organizations.create({
-        data: {
-          id: organizationId,
-          type: input.type,
-          status: 'ACTIVE',
-          legal_name: input.legalName.trim(),
-          trade_name: input.tradeName?.trim() || null,
-          slug,
-          contact_phone: contactPhone,
-          contact_email: input.contactEmail?.trim() || null,
-          district: input.district?.trim() || null,
-          city: input.city.trim(),
-          country_code: 'CG',
-          currency: 'XAF',
-        },
-        select: ORGANIZATION_SELECT,
-      });
-
-      // Paramétrage par défaut : échéance au 5, Africa/Brazzaville, XAF.
-      await tx.organization_settings.create({
-        data: { id: newId(), organization_id: organizationId },
-      });
-
-      const membership = await tx.organization_members.create({
-        data: {
-          id: newId(),
-          organization_id: organizationId,
-          user_id: userId,
-          role: 'OWNER',
-          status: 'ACTIVE',
-        },
-        select: { id: true },
-      });
-
-      await this.auditService.record(tx, {
-        organizationId,
-        action: 'CREATE',
-        operation: AUDIT_OPERATIONS.ORGANIZATION_CREATED,
-        entityType: 'organizations',
-        entityId: organizationId,
-        actorUserId: userId,
-        actorRole: 'OWNER',
-        newState: toJsonState({ type: input.type, legalName: input.legalName, slug }),
-      });
-      await this.auditService.record(tx, {
-        organizationId,
-        action: 'CREATE',
-        operation: AUDIT_OPERATIONS.MEMBER_JOINED,
-        entityType: 'organization_members',
-        entityId: membership.id,
-        actorUserId: userId,
-        actorRole: 'OWNER',
-        newState: toJsonState({ userId, role: 'OWNER', reason: 'ORGANIZATION_CREATOR' }),
-      });
-
-      // Événement de domaine, émis DANS la transaction : un abonné en échec
-      // annule la création plutôt que de laisser une organisation à moitié
-      // provisionnée (cf. bailleur « self » du contrat de phase 1).
-      for (const listener of [...(this.lifecycleListeners ?? []), ...(this.setupListeners ?? [])]) {
-        await listener.onOrganizationCreated(tx, {
-          organizationId,
-          type: input.type,
-          legalName: input.legalName.trim(),
-          tradeName: input.tradeName?.trim() || null,
-          contactPhone,
-          city: input.city.trim(),
-          district: input.district?.trim() || null,
-          actorUserId: userId,
-        });
-      }
-
-      return toOrganizationView(organization);
-    });
   }
 
   /** Détail de l'organisation courante. */

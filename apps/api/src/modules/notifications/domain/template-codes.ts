@@ -16,6 +16,10 @@ export const MESSAGE_TEMPLATE_CODES = {
   // --- Phase 6 : chèques ------------------------------------------------
   BANK_CHECK_BOUNCED: 'BANK_CHECK_BOUNCED',
   BANK_CHECK_UNCLEARED: 'BANK_CHECK_UNCLEARED',
+  // --- Phase 7 : gestion d'agence, portail bailleur ----------------------
+  LANDLORD_PORTAL_INVITE: 'LANDLORD_PORTAL_INVITE',
+  OWNER_STATEMENT_READY: 'OWNER_STATEMENT_READY',
+  PAYOUT_BANK_DETAILS_MISSING: 'PAYOUT_BANK_DETAILS_MISSING',
 } as const;
 
 export type MessageTemplateCode =

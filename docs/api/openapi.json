@@ -1299,6 +1299,63 @@
         "tags": ["Organisations"]
       }
     },
+    "/v1/organizations/independent-manager/onboarding": {
+      "post": {
+        "description": "Crée en une seule transaction l'organisation `INDEPENDENT_MANAGER`, un bailleur, un bien et un mandat de gestion avec la commission par défaut (10 %). Parcours mobile-first visé à moins de dix minutes.",
+        "operationId": "OnboardingController_onboardIndependentManager",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IndependentManagerOnboardingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndependentManagerOnboardingResultDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Onboarding du gestionnaire indépendant",
+        "tags": ["Organisations"]
+      }
+    },
     "/v1/invitations/{token}": {
       "get": {
         "description": "Route publique : la connaissance du jeton (32 octets) vaut autorisation de lire l'entête de l'invitation. Aucune donnée métier de l'organisation n'est exposée.",
@@ -10380,6 +10437,2166 @@
         "summary": "Candidats de rapprochement pour une ligne, calcul à la demande",
         "tags": ["Suggestions de rapprochement"]
       }
+    },
+    "/v1/management-mandates": {
+      "post": {
+        "operationId": "MandatesController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MandateInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MandateDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PARTIES.LANDLORD_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer un mandat de gestion (statut initial DRAFT)",
+        "tags": ["Mandats de gestion"]
+      },
+      "get": {
+        "operationId": "MandatesController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["DRAFT", "ACTIVE", "SUSPENDED", "TERMINATED", "EXPIRED"]
+            }
+          },
+          {
+            "name": "landlordId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MandatePageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les mandats de gestion",
+        "tags": ["Mandats de gestion"]
+      }
+    },
+    "/v1/management-mandates/{id}": {
+      "get": {
+        "operationId": "MandatesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MandateDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "AGENCY.MANDATE_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fiche détaillée d’un mandat",
+        "tags": ["Mandats de gestion"]
+      },
+      "patch": {
+        "operationId": "MandatesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MandateUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MandateDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "AGENCY.MANDATE_INVALID_TRANSITION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier le périmètre ou la commission d’un mandat",
+        "tags": ["Mandats de gestion"]
+      }
+    },
+    "/v1/management-mandates/{id}/activate": {
+      "post": {
+        "operationId": "MandatesController_activate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MandateDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "AGENCY.PROPERTY_ALREADY_MANDATED, AGENCY.MANDATE_INVALID_TRANSITION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Activer un mandat DRAFT (contrôle « un bien, un mandat actif »)",
+        "tags": ["Mandats de gestion"]
+      }
+    },
+    "/v1/management-mandates/{id}/suspend": {
+      "post": {
+        "operationId": "MandatesController_suspend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuspendMandateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MandateDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "AGENCY.MANDATE_REASON_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Suspendre un mandat ACTIVE (motif obligatoire)",
+        "tags": ["Mandats de gestion"]
+      }
+    },
+    "/v1/management-mandates/{id}/terminate": {
+      "post": {
+        "operationId": "MandatesController_terminate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TerminateMandateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MandateDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "AGENCY.MANDATE_TERMINATION_DATE_REQUIRED, AGENCY.MANDATE_REASON_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Résilier un mandat ACTIVE ou SUSPENDED (date d’effet et motif obligatoires)",
+        "tags": ["Mandats de gestion"]
+      }
+    },
+    "/v1/management-mandates/{id}/properties": {
+      "post": {
+        "operationId": "MandatesController_attachProperties",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachPropertiesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MandateDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "AGENCY.PROPERTY_ALREADY_MANDATED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rattacher un ou plusieurs biens supplémentaires au mandat",
+        "tags": ["Mandats de gestion"]
+      }
+    },
+    "/v1/management-mandates/{id}/landlord-invitation": {
+      "post": {
+        "description": "Implémenté directement par `mandates` (voir `domain/ports.ts`, MANDATE_LANDLORD_INVITER) : l’activation par OTP et la création du compte `users` restent portées par `landlord-portal`.",
+        "operationId": "MandatesController_sendInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LandlordInvitationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Inviter le bailleur au portail (lien WhatsApp, repli SMS)",
+        "tags": ["Mandats de gestion"]
+      }
+    },
+    "/v1/expenses": {
+      "post": {
+        "operationId": "ExpensesController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpenseInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rejeu idempotent (`clientRef` connu).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Saisir une dépense (statut initial DRAFT)",
+        "tags": ["Dépenses"]
+      },
+      "get": {
+        "operationId": "ExpensesController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "SUBMITTED",
+                "APPROVED",
+                "PAID",
+                "REBILLED",
+                "REJECTED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "landlordId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpensePageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les dépenses",
+        "tags": ["Dépenses"]
+      }
+    },
+    "/v1/expenses/{id}": {
+      "patch": {
+        "operationId": "ExpensesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpenseUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "AGENCY.EXPENSE_LOCKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier une dépense DRAFT ou SUBMITTED, non rattachée à un relevé",
+        "tags": ["Dépenses"]
+      }
+    },
+    "/v1/expenses/{id}/submit": {
+      "post": {
+        "operationId": "ExpensesController_submit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Soumettre une dépense DRAFT à validation",
+        "tags": ["Dépenses"]
+      }
+    },
+    "/v1/expenses/{id}/approve": {
+      "post": {
+        "operationId": "ExpensesController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Valider une dépense SUBMITTED",
+        "tags": ["Dépenses"]
+      }
+    },
+    "/v1/expenses/{id}/reject": {
+      "post": {
+        "operationId": "ExpensesController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectExpenseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "AGENCY.EXPENSE_REJECTION_REASON_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rejeter une dépense SUBMITTED (motif obligatoire)",
+        "tags": ["Dépenses"]
+      }
+    },
+    "/v1/commissions": {
+      "get": {
+        "operationId": "CommissionsController_list",
+        "parameters": [
+          {
+            "name": "mandateId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "landlordId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "description": "AAAA-MM",
+            "schema": {
+              "example": "2026-08",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["PENDING", "ACCRUED", "INVOICED", "SETTLED", "CANCELLED"]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommissionPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les commissions, avec totaux sur l’ensemble filtré",
+        "tags": ["Commissions"]
+      }
+    },
+    "/v1/owner-statements/runs": {
+      "post": {
+        "description": "Même logique que le cron `agency-monthly`, pour l’organisation courante.",
+        "operationId": "OwnerStatementsController_startRun",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartOwnerStatementRunDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunStartedDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lancer la campagne mensuelle de relevés",
+        "tags": ["Relevés de gérance"]
+      }
+    },
+    "/v1/owner-statements/runs/{runId}": {
+      "get": {
+        "operationId": "OwnerStatementsController_getRun",
+        "parameters": [
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunStatusDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "AGENCY.STATEMENT_RUN_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rapport d’une campagne de relevés",
+        "tags": ["Relevés de gérance"]
+      }
+    },
+    "/v1/owner-statements": {
+      "get": {
+        "operationId": "OwnerStatementsController_list",
+        "parameters": [
+          {
+            "name": "landlordId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "mandateId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "description": "AAAA-MM",
+            "schema": {
+              "example": "2026-08",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["DRAFT", "ISSUED", "SENT", "PAID", "CANCELLED"]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les relevés de gérance",
+        "tags": ["Relevés de gérance"]
+      }
+    },
+    "/v1/owner-statements/{id}": {
+      "get": {
+        "operationId": "OwnerStatementsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "AGENCY.STATEMENT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fiche détaillée d’un relevé (avec ses lignes)",
+        "tags": ["Relevés de gérance"]
+      }
+    },
+    "/v1/owner-statements/{id}/issue": {
+      "post": {
+        "operationId": "OwnerStatementsController_issue",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "AGENCY.STATEMENT_NOT_ISSUABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Valider un relevé DRAFT (numéro figé, PDF et envoi en file)",
+        "tags": ["Relevés de gérance"]
+      }
+    },
+    "/v1/owner-statements/{id}/cancel": {
+      "post": {
+        "operationId": "OwnerStatementsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelStatementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "AGENCY.STATEMENT_NOT_CANCELLABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Annuler un relevé DRAFT ou ISSUED (motif obligatoire)",
+        "tags": ["Relevés de gérance"]
+      }
+    },
+    "/v1/owner-statements/{id}/pdf": {
+      "get": {
+        "operationId": "OwnerStatementsController_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdfDownloadDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AGENCY.STATEMENT_PDF_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "URL signée du PDF du relevé (généré à la demande au besoin)",
+        "tags": ["Relevés de gérance"]
+      }
+    },
+    "/v1/owner-payouts": {
+      "post": {
+        "operationId": "OwnerPayoutsController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePayoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "AGENCY.PAYOUT_ALREADY_EXISTS, AGENCY.PAYOUT_MISSING_BANK_DETAILS, AGENCY.STATEMENT_BALANCE_NOT_POSITIVE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer un reversement (statut initial PENDING) sur un relevé ISSUED ou SENT",
+        "tags": ["Reversements"]
+      },
+      "get": {
+        "operationId": "OwnerPayoutsController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["PENDING", "APPROVED", "PROCESSING", "PAID", "FAILED", "CANCELLED"]
+            }
+          },
+          {
+            "name": "landlordId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les reversements",
+        "tags": ["Reversements"]
+      }
+    },
+    "/v1/owner-payouts/{id}/approve": {
+      "post": {
+        "operationId": "OwnerPayoutsController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "AGENCY.PAYOUT_INVALID_TRANSITION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Valider un reversement PENDING (statut APPROVED)",
+        "tags": ["Reversements"]
+      }
+    },
+    "/v1/owner-payouts/{id}/execute": {
+      "post": {
+        "description": "Virement/chèque/espèces : enregistre la référence externe déclarée et passe directement PAID. Mobile Money : initie (ou ré-interroge) le décaissement via MOMO_PAYOUT_INITIATOR, PROCESSING puis PAID si résolu.",
+        "operationId": "OwnerPayoutsController_execute",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutePayoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "AGENCY.PAYOUT_INVALID_TRANSITION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Exécuter un reversement APPROVED (ou retenter un reversement FAILED)",
+        "tags": ["Reversements"]
+      }
+    },
+    "/v1/owner-payouts/{id}/fail": {
+      "post": {
+        "operationId": "OwnerPayoutsController_fail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailPayoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "AGENCY.PAYOUT_FAILURE_REASON_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Basculer un reversement en échec (motif obligatoire)",
+        "tags": ["Reversements"]
+      }
+    },
+    "/v1/portal/activation/otp/request": {
+      "post": {
+        "description": "Refuse 404 `AGENCY.PORTAL_NOT_INVITED` sans aucune fiche bailleur en attente pour ce numéro, toutes agences confondues ; sinon délègue à l'OTP générique (WhatsApp puis repli SMS).",
+        "operationId": "PortalActivationController_requestOtp",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalOtpRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOtpRequestResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "AGENCY.PORTAL_NOT_INVITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Demander un code d’activation du portail bailleur",
+        "tags": ["Portail bailleur — activation"]
+      }
+    },
+    "/v1/portal/activation/otp/verify": {
+      "post": {
+        "description": "Authentifie via l'OTP générique puis lie TOUTES les fiches bailleur en attente pour ce numéro (toutes agences confondues) au compte obtenu. Jetons génériques, identiques à `/v1/auth/otp/verify`.",
+        "operationId": "PortalActivationController_verifyOtp",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalOtpVerifyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalSessionDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "IAM.OTP_INVALID / IAM.OTP_EXPIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Vérifier le code et activer le portail bailleur",
+        "tags": ["Portail bailleur — activation"]
+      }
+    },
+    "/v1/portal/me": {
+      "get": {
+        "operationId": "PortalController_me",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalMeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fiche du bailleur authentifié et organisations liées",
+        "tags": ["Portail bailleur"]
+      }
+    },
+    "/v1/portal/statements": {
+      "get": {
+        "operationId": "PortalController_statements",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Curseur opaque signé, issu de `pageInfo.nextCursor`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Relevés de gérance du bailleur, toutes agences confondues",
+        "tags": ["Portail bailleur"]
+      }
+    },
+    "/v1/portal/statements/{id}/pdf": {
+      "get": {
+        "operationId": "PortalController_statementPdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadUrlDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "AGENCY.STATEMENT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AGENCY.STATEMENT_PDF_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "URL signée du PDF d’un relevé",
+        "tags": ["Portail bailleur"]
+      }
+    },
+    "/v1/portal/payouts": {
+      "get": {
+        "operationId": "PortalController_payouts",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Curseur opaque signé, issu de `pageInfo.nextCursor`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalPayoutPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reversements du bailleur",
+        "tags": ["Portail bailleur"]
+      }
+    },
+    "/v1/portal/collections": {
+      "get": {
+        "operationId": "PortalController_collections",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Curseur opaque signé, issu de `pageInfo.nextCursor`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalCollectionPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Encaissements confirmés du bailleur",
+        "tags": ["Portail bailleur"]
+      }
+    },
+    "/v1/portal/receipts": {
+      "get": {
+        "operationId": "PortalController_receipts",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Curseur opaque signé, issu de `pageInfo.nextCursor`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalReceiptPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Quittances du bailleur",
+        "tags": ["Portail bailleur"]
+      }
     }
   },
   "info": {
@@ -11497,6 +13714,812 @@
         },
         "required": ["phone", "role"]
       },
+      "OnboardingOrganizationDto": {
+        "type": "object",
+        "properties": {
+          "legalName": {
+            "type": "string",
+            "example": "Agence Mpila Immo SARL"
+          },
+          "tradeName": {
+            "type": "string",
+            "example": "Agence Mpila Immo"
+          },
+          "city": {
+            "type": "string",
+            "example": "Brazzaville"
+          },
+          "district": {
+            "type": "string",
+            "example": "Mpila"
+          },
+          "contactPhone": {
+            "type": "string",
+            "example": "+242066000001"
+          },
+          "contactEmail": {
+            "type": "string",
+            "example": "contact@mpila-immo.cg"
+          }
+        },
+        "required": ["legalName", "city", "contactPhone"]
+      },
+      "CreateLandlordDto": {
+        "type": "object",
+        "properties": {
+          "partyType": {
+            "type": "string",
+            "enum": ["INDIVIDUAL", "COMPANY"],
+            "default": "INDIVIDUAL"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Célestin"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Nkodia",
+            "description": "Obligatoire pour une personne physique (`PARTIES.NAME_REQUIRED`)."
+          },
+          "companyName": {
+            "type": "string",
+            "example": "SCI Les Manguiers",
+            "description": "Obligatoire pour une personne morale (`PARTIES.NAME_REQUIRED`)."
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "1972-04-18",
+            "format": "date"
+          },
+          "nationality": {
+            "type": "string",
+            "example": "CG",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "idDocumentType": {
+            "type": "string",
+            "enum": [
+              "CNI",
+              "PASSPORT",
+              "RESIDENCE_PERMIT",
+              "DRIVING_LICENSE",
+              "VOTER_CARD",
+              "RCCM",
+              "NIU",
+              "OTHER"
+            ]
+          },
+          "idDocumentNumber": {
+            "type": "string",
+            "example": "CG-1234567"
+          },
+          "idDocumentExpiry": {
+            "type": "string",
+            "format": "date"
+          },
+          "idDocumentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Pièce scannée dans `documents`."
+          },
+          "rccmNumber": {
+            "type": "string",
+            "example": "CG-BZV-01-2019-B12-00045"
+          },
+          "niuNumber": {
+            "type": "string",
+            "example": "M2019110000123"
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "example": "066123456",
+            "description": "Toute forme congolaise acceptée, normalisée en E.164 `+242…`."
+          },
+          "email": {
+            "type": "string",
+            "example": "celestin.nkodia@example.cg"
+          },
+          "addressLine": {
+            "type": "string",
+            "example": "15, rue Mbochis"
+          },
+          "district": {
+            "type": "string",
+            "example": "Moungali",
+            "description": "Quartier de Brazzaville."
+          },
+          "city": {
+            "type": "string",
+            "example": "Brazzaville",
+            "default": "Brazzaville"
+          },
+          "countryCode": {
+            "type": "string",
+            "example": "CG",
+            "default": "CG"
+          },
+          "defaultBankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "payoutMethod": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"],
+            "default": "MOBILE_MONEY"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "primaryPhone": {
+            "type": "string",
+            "example": "066123456",
+            "description": "Normalisé en E.164 `+242…`."
+          }
+        },
+        "required": ["primaryPhone"]
+      },
+      "OnboardingPropertyDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "RES-MPILA"
+          },
+          "propertyType": {
+            "type": "string",
+            "enum": [
+              "HOUSE",
+              "VILLA",
+              "APARTMENT_BUILDING",
+              "COMPOUND",
+              "COMMERCIAL_BUILDING",
+              "MIXED_USE",
+              "LAND",
+              "WAREHOUSE",
+              "OTHER"
+            ],
+            "default": "HOUSE"
+          },
+          "arrondissement": {
+            "type": "string",
+            "example": "3e arrondissement"
+          },
+          "landmark": {
+            "type": "string",
+            "example": "Derrière l'école Nganga Édouard",
+            "description": "Repère d'orientation : l'adressage postal local est peu fiable."
+          },
+          "city": {
+            "type": "string",
+            "default": "Brazzaville"
+          },
+          "countryCode": {
+            "type": "string",
+            "default": "CG"
+          },
+          "latitude": {
+            "type": "number",
+            "example": -4.2634
+          },
+          "longitude": {
+            "type": "number",
+            "example": 15.2429
+          },
+          "landTitleReference": {
+            "type": "string"
+          },
+          "parcelNumber": {
+            "type": "string"
+          },
+          "builtYear": {
+            "type": "number",
+            "example": 2014
+          },
+          "totalAreaSqm": {
+            "type": "number",
+            "example": 540.5
+          },
+          "floorsCount": {
+            "type": "number",
+            "example": 3
+          },
+          "hasWater": {
+            "type": "boolean",
+            "default": true
+          },
+          "hasElectricity": {
+            "type": "boolean",
+            "default": true
+          },
+          "hasBorehole": {
+            "type": "boolean",
+            "default": false
+          },
+          "caretakerName": {
+            "type": "string",
+            "example": "Papa Célestin"
+          },
+          "caretakerPhone": {
+            "type": "string",
+            "example": "066123456"
+          },
+          "coverDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Résidence Mpila"
+          },
+          "addressLine": {
+            "type": "string",
+            "example": "45, avenue de la Corniche"
+          },
+          "district": {
+            "type": "string",
+            "example": "Mpila",
+            "description": "Quartier — adressage principal au Congo."
+          }
+        },
+        "required": ["name", "addressLine", "district"]
+      },
+      "OnboardingMandateDto": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": ["FULL_MANAGEMENT", "RENT_COLLECTION_ONLY", "LETTING_ONLY"]
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "noticeDays": {
+            "type": "number",
+            "minimum": 0,
+            "default": 90
+          },
+          "autoRenew": {
+            "type": "boolean",
+            "default": true
+          },
+          "commissionBasis": {
+            "type": "string",
+            "enum": [
+              "RATE_BPS_ON_RENT_COLLECTED",
+              "RATE_BPS_ON_RENT_DUE",
+              "FLAT_AMOUNT_PER_MONTH",
+              "FLAT_AMOUNT_PER_LEASE"
+            ]
+          },
+          "commissionRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "commissionFlatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "lettingFeeRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "vatRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "payoutDay": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 28,
+            "default": 10
+          },
+          "payoutBankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "IndependentManagerOnboardingDto": {
+        "type": "object",
+        "properties": {
+          "organization": {
+            "$ref": "#/components/schemas/OnboardingOrganizationDto"
+          },
+          "landlord": {
+            "$ref": "#/components/schemas/CreateLandlordDto"
+          },
+          "property": {
+            "$ref": "#/components/schemas/OnboardingPropertyDto"
+          },
+          "mandate": {
+            "$ref": "#/components/schemas/OnboardingMandateDto"
+          }
+        },
+        "required": ["organization", "landlord", "property"]
+      },
+      "LandlordDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "SCI Les Manguiers"
+          },
+          "primaryPhone": {
+            "type": "string",
+            "example": "+242066123456"
+          },
+          "isSelf": {
+            "type": "boolean"
+          },
+          "partyType": {
+            "type": "string",
+            "enum": ["INDIVIDUAL", "COMPANY"]
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "companyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
+          },
+          "birthDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "nationality": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentExpiry": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDocumentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "rccmNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "niuNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "addressLine": {
+            "type": "string",
+            "nullable": true
+          },
+          "district": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "defaultBankAccountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "payoutMethod": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertiesCount": {
+            "type": "number",
+            "example": 3
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "primaryPhone",
+          "isSelf",
+          "partyType",
+          "firstName",
+          "lastName",
+          "companyName",
+          "gender",
+          "birthDate",
+          "nationality",
+          "idDocumentType",
+          "idDocumentNumber",
+          "idDocumentExpiry",
+          "idDocumentId",
+          "rccmNumber",
+          "niuNumber",
+          "secondaryPhone",
+          "email",
+          "addressLine",
+          "district",
+          "city",
+          "countryCode",
+          "defaultBankAccountId",
+          "payoutMethod",
+          "notes",
+          "propertiesCount",
+          "createdAt",
+          "updatedAt",
+          "deletedAt"
+        ]
+      },
+      "PropertyDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "propertyType": {
+            "type": "string",
+            "enum": [
+              "HOUSE",
+              "VILLA",
+              "APARTMENT_BUILDING",
+              "COMPOUND",
+              "COMMERCIAL_BUILDING",
+              "MIXED_USE",
+              "LAND",
+              "WAREHOUSE",
+              "OTHER"
+            ]
+          },
+          "addressLine": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "arrondissement": {
+            "type": "string",
+            "nullable": true
+          },
+          "landmark": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "landTitleReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "parcelNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "builtYear": {
+            "type": "number",
+            "nullable": true
+          },
+          "totalAreaSqm": {
+            "type": "number",
+            "nullable": true
+          },
+          "floorsCount": {
+            "type": "number",
+            "nullable": true
+          },
+          "unitsCount": {
+            "type": "number",
+            "example": 12
+          },
+          "hasWater": {
+            "type": "boolean"
+          },
+          "hasElectricity": {
+            "type": "boolean"
+          },
+          "hasBorehole": {
+            "type": "boolean"
+          },
+          "caretakerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "caretakerPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "coverDocumentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "landlordId",
+          "code",
+          "name",
+          "propertyType",
+          "addressLine",
+          "district",
+          "arrondissement",
+          "landmark",
+          "city",
+          "countryCode",
+          "latitude",
+          "longitude",
+          "landTitleReference",
+          "parcelNumber",
+          "builtYear",
+          "totalAreaSqm",
+          "floorsCount",
+          "unitsCount",
+          "hasWater",
+          "hasElectricity",
+          "hasBorehole",
+          "caretakerName",
+          "caretakerPhone",
+          "coverDocumentId",
+          "notes",
+          "createdAt",
+          "updatedAt",
+          "deletedAt"
+        ]
+      },
+      "MandateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "reference": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["FULL_MANAGEMENT", "RENT_COLLECTION_ONLY", "LETTING_ONLY"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "ACTIVE", "SUSPENDED", "TERMINATED", "EXPIRED"]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date"
+          },
+          "noticeDays": {
+            "type": "number"
+          },
+          "autoRenew": {
+            "type": "boolean"
+          },
+          "commissionBasis": {
+            "type": "string",
+            "enum": [
+              "RATE_BPS_ON_RENT_COLLECTED",
+              "RATE_BPS_ON_RENT_DUE",
+              "FLAT_AMOUNT_PER_MONTH",
+              "FLAT_AMOUNT_PER_LEASE"
+            ]
+          },
+          "commissionRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "nullable": true
+          },
+          "commissionFlatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "nullable": true
+          },
+          "lettingFeeRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "nullable": true
+          },
+          "vatRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "payoutDay": {
+            "type": "number"
+          },
+          "payoutBankAccountId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "signedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "terminatedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "terminationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "example": "XAF"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "landlordId",
+          "propertyIds",
+          "reference",
+          "scope",
+          "status",
+          "startDate",
+          "endDate",
+          "noticeDays",
+          "autoRenew",
+          "commissionBasis",
+          "commissionRateBps",
+          "commissionFlatAmount",
+          "lettingFeeRateBps",
+          "vatRateBps",
+          "payoutDay",
+          "payoutBankAccountId",
+          "notes",
+          "signedAt",
+          "terminatedAt",
+          "terminationReason",
+          "currency",
+          "createdAt"
+        ]
+      },
+      "IndependentManagerOnboardingResultDto": {
+        "type": "object",
+        "properties": {
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationDto"
+          },
+          "landlord": {
+            "$ref": "#/components/schemas/LandlordDto"
+          },
+          "property": {
+            "$ref": "#/components/schemas/PropertyDto"
+          },
+          "mandate": {
+            "$ref": "#/components/schemas/MandateDto"
+          }
+        },
+        "required": ["organization", "landlord", "property", "mandate"]
+      },
       "PublicInvitationDto": {
         "type": "object",
         "properties": {
@@ -11700,279 +14723,6 @@
             "maximum": 10080
           }
         }
-      },
-      "CreateLandlordDto": {
-        "type": "object",
-        "properties": {
-          "partyType": {
-            "type": "string",
-            "enum": ["INDIVIDUAL", "COMPANY"],
-            "default": "INDIVIDUAL"
-          },
-          "firstName": {
-            "type": "string",
-            "example": "Célestin"
-          },
-          "lastName": {
-            "type": "string",
-            "example": "Nkodia",
-            "description": "Obligatoire pour une personne physique (`PARTIES.NAME_REQUIRED`)."
-          },
-          "companyName": {
-            "type": "string",
-            "example": "SCI Les Manguiers",
-            "description": "Obligatoire pour une personne morale (`PARTIES.NAME_REQUIRED`)."
-          },
-          "gender": {
-            "type": "string",
-            "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
-          },
-          "birthDate": {
-            "type": "string",
-            "example": "1972-04-18",
-            "format": "date"
-          },
-          "nationality": {
-            "type": "string",
-            "example": "CG",
-            "minLength": 2,
-            "maxLength": 2
-          },
-          "idDocumentType": {
-            "type": "string",
-            "enum": [
-              "CNI",
-              "PASSPORT",
-              "RESIDENCE_PERMIT",
-              "DRIVING_LICENSE",
-              "VOTER_CARD",
-              "RCCM",
-              "NIU",
-              "OTHER"
-            ]
-          },
-          "idDocumentNumber": {
-            "type": "string",
-            "example": "CG-1234567"
-          },
-          "idDocumentExpiry": {
-            "type": "string",
-            "format": "date"
-          },
-          "idDocumentId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Pièce scannée dans `documents`."
-          },
-          "rccmNumber": {
-            "type": "string",
-            "example": "CG-BZV-01-2019-B12-00045"
-          },
-          "niuNumber": {
-            "type": "string",
-            "example": "M2019110000123"
-          },
-          "secondaryPhone": {
-            "type": "string",
-            "example": "066123456",
-            "description": "Toute forme congolaise acceptée, normalisée en E.164 `+242…`."
-          },
-          "email": {
-            "type": "string",
-            "example": "celestin.nkodia@example.cg"
-          },
-          "addressLine": {
-            "type": "string",
-            "example": "15, rue Mbochis"
-          },
-          "district": {
-            "type": "string",
-            "example": "Moungali",
-            "description": "Quartier de Brazzaville."
-          },
-          "city": {
-            "type": "string",
-            "example": "Brazzaville",
-            "default": "Brazzaville"
-          },
-          "countryCode": {
-            "type": "string",
-            "example": "CG",
-            "default": "CG"
-          },
-          "defaultBankAccountId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "payoutMethod": {
-            "type": "string",
-            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"],
-            "default": "MOBILE_MONEY"
-          },
-          "notes": {
-            "type": "string"
-          },
-          "primaryPhone": {
-            "type": "string",
-            "example": "066123456",
-            "description": "Normalisé en E.164 `+242…`."
-          }
-        },
-        "required": ["primaryPhone"]
-      },
-      "LandlordDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "displayName": {
-            "type": "string",
-            "example": "SCI Les Manguiers"
-          },
-          "primaryPhone": {
-            "type": "string",
-            "example": "+242066123456"
-          },
-          "isSelf": {
-            "type": "boolean"
-          },
-          "partyType": {
-            "type": "string",
-            "enum": ["INDIVIDUAL", "COMPANY"]
-          },
-          "firstName": {
-            "type": "string",
-            "nullable": true
-          },
-          "lastName": {
-            "type": "string",
-            "nullable": true
-          },
-          "companyName": {
-            "type": "string",
-            "nullable": true
-          },
-          "gender": {
-            "type": "string",
-            "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
-          },
-          "birthDate": {
-            "type": "string",
-            "nullable": true
-          },
-          "nationality": {
-            "type": "string",
-            "nullable": true
-          },
-          "idDocumentType": {
-            "type": "string",
-            "nullable": true
-          },
-          "idDocumentNumber": {
-            "type": "string",
-            "nullable": true
-          },
-          "idDocumentExpiry": {
-            "type": "string",
-            "nullable": true
-          },
-          "idDocumentId": {
-            "type": "string",
-            "nullable": true
-          },
-          "rccmNumber": {
-            "type": "string",
-            "nullable": true
-          },
-          "niuNumber": {
-            "type": "string",
-            "nullable": true
-          },
-          "secondaryPhone": {
-            "type": "string",
-            "nullable": true
-          },
-          "email": {
-            "type": "string",
-            "nullable": true
-          },
-          "addressLine": {
-            "type": "string",
-            "nullable": true
-          },
-          "district": {
-            "type": "string",
-            "nullable": true
-          },
-          "city": {
-            "type": "string"
-          },
-          "countryCode": {
-            "type": "string"
-          },
-          "defaultBankAccountId": {
-            "type": "string",
-            "nullable": true
-          },
-          "payoutMethod": {
-            "type": "string",
-            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
-          },
-          "notes": {
-            "type": "string",
-            "nullable": true
-          },
-          "propertiesCount": {
-            "type": "number",
-            "example": 3
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "deletedAt": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "displayName",
-          "primaryPhone",
-          "isSelf",
-          "partyType",
-          "firstName",
-          "lastName",
-          "companyName",
-          "gender",
-          "birthDate",
-          "nationality",
-          "idDocumentType",
-          "idDocumentNumber",
-          "idDocumentExpiry",
-          "idDocumentId",
-          "rccmNumber",
-          "niuNumber",
-          "secondaryPhone",
-          "email",
-          "addressLine",
-          "district",
-          "city",
-          "countryCode",
-          "defaultBankAccountId",
-          "payoutMethod",
-          "notes",
-          "propertiesCount",
-          "createdAt",
-          "updatedAt",
-          "deletedAt"
-        ]
       },
       "LandlordPageDto": {
         "type": "object",
@@ -13092,160 +15842,6 @@
           }
         },
         "required": ["landlordId", "name", "addressLine", "district"]
-      },
-      "PropertyDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "landlordId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "code": {
-            "type": "string",
-            "nullable": true
-          },
-          "name": {
-            "type": "string"
-          },
-          "propertyType": {
-            "type": "string",
-            "enum": [
-              "HOUSE",
-              "VILLA",
-              "APARTMENT_BUILDING",
-              "COMPOUND",
-              "COMMERCIAL_BUILDING",
-              "MIXED_USE",
-              "LAND",
-              "WAREHOUSE",
-              "OTHER"
-            ]
-          },
-          "addressLine": {
-            "type": "string"
-          },
-          "district": {
-            "type": "string"
-          },
-          "arrondissement": {
-            "type": "string",
-            "nullable": true
-          },
-          "landmark": {
-            "type": "string",
-            "nullable": true
-          },
-          "city": {
-            "type": "string"
-          },
-          "countryCode": {
-            "type": "string"
-          },
-          "latitude": {
-            "type": "number",
-            "nullable": true
-          },
-          "longitude": {
-            "type": "number",
-            "nullable": true
-          },
-          "landTitleReference": {
-            "type": "string",
-            "nullable": true
-          },
-          "parcelNumber": {
-            "type": "string",
-            "nullable": true
-          },
-          "builtYear": {
-            "type": "number",
-            "nullable": true
-          },
-          "totalAreaSqm": {
-            "type": "number",
-            "nullable": true
-          },
-          "floorsCount": {
-            "type": "number",
-            "nullable": true
-          },
-          "unitsCount": {
-            "type": "number",
-            "example": 12
-          },
-          "hasWater": {
-            "type": "boolean"
-          },
-          "hasElectricity": {
-            "type": "boolean"
-          },
-          "hasBorehole": {
-            "type": "boolean"
-          },
-          "caretakerName": {
-            "type": "string",
-            "nullable": true
-          },
-          "caretakerPhone": {
-            "type": "string",
-            "nullable": true
-          },
-          "coverDocumentId": {
-            "type": "string",
-            "nullable": true
-          },
-          "notes": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "deletedAt": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "landlordId",
-          "code",
-          "name",
-          "propertyType",
-          "addressLine",
-          "district",
-          "arrondissement",
-          "landmark",
-          "city",
-          "countryCode",
-          "latitude",
-          "longitude",
-          "landTitleReference",
-          "parcelNumber",
-          "builtYear",
-          "totalAreaSqm",
-          "floorsCount",
-          "unitsCount",
-          "hasWater",
-          "hasElectricity",
-          "hasBorehole",
-          "caretakerName",
-          "caretakerPhone",
-          "coverDocumentId",
-          "notes",
-          "createdAt",
-          "updatedAt",
-          "deletedAt"
-        ]
       },
       "LandlordSummaryDto": {
         "type": "object",
@@ -14759,12 +17355,10 @@
         "type": "object",
         "properties": {
           "downloadUrl": {
-            "type": "string",
-            "description": "URL signée valable 10 minutes."
+            "type": "string"
           },
           "expiresAt": {
-            "type": "string",
-            "format": "date-time"
+            "type": "string"
           }
         },
         "required": ["downloadUrl", "expiresAt"]
@@ -20036,6 +22630,1994 @@
           }
         },
         "required": ["reason"]
+      },
+      "MandateInputDto": {
+        "type": "object",
+        "properties": {
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["FULL_MANAGEMENT", "RENT_COLLECTION_ONLY", "LETTING_ONLY"]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "noticeDays": {
+            "type": "number",
+            "minimum": 0,
+            "default": 90
+          },
+          "autoRenew": {
+            "type": "boolean",
+            "default": true
+          },
+          "commissionBasis": {
+            "type": "string",
+            "enum": [
+              "RATE_BPS_ON_RENT_COLLECTED",
+              "RATE_BPS_ON_RENT_DUE",
+              "FLAT_AMOUNT_PER_MONTH",
+              "FLAT_AMOUNT_PER_LEASE"
+            ]
+          },
+          "commissionRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "commissionFlatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "lettingFeeRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "vatRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "payoutDay": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 28,
+            "default": 10
+          },
+          "payoutBankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": ["landlordId", "propertyIds", "startDate"]
+      },
+      "MandateLandlordRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isDiaspora": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "displayName", "isDiaspora"]
+      },
+      "MandateSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "ACTIVE", "SUSPENDED", "TERMINATED", "EXPIRED"]
+          },
+          "landlord": {
+            "$ref": "#/components/schemas/MandateLandlordRefDto"
+          },
+          "propertiesCount": {
+            "type": "number"
+          },
+          "commissionRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "landlord",
+          "propertiesCount",
+          "commissionRateBps",
+          "startDate",
+          "endDate"
+        ]
+      },
+      "MandatePageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MandateSummaryDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "MandateStatementRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "statementNumber": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "rentCollectedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "commissionAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "expensesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "carryForwardAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "netPayableAmount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "id",
+          "statementNumber",
+          "status",
+          "periodStart",
+          "periodEnd",
+          "rentCollectedAmount",
+          "commissionAmount",
+          "expensesAmount",
+          "carryForwardAmount",
+          "netPayableAmount"
+        ]
+      },
+      "LandlordPortalStatusDto": {
+        "type": "object",
+        "properties": {
+          "invited": {
+            "type": "boolean"
+          },
+          "invitedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "activated": {
+            "type": "boolean"
+          },
+          "userId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        },
+        "required": ["invited", "invitedAt", "activated", "userId"]
+      },
+      "MandateDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "reference": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["FULL_MANAGEMENT", "RENT_COLLECTION_ONLY", "LETTING_ONLY"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "ACTIVE", "SUSPENDED", "TERMINATED", "EXPIRED"]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date"
+          },
+          "noticeDays": {
+            "type": "number"
+          },
+          "autoRenew": {
+            "type": "boolean"
+          },
+          "commissionBasis": {
+            "type": "string",
+            "enum": [
+              "RATE_BPS_ON_RENT_COLLECTED",
+              "RATE_BPS_ON_RENT_DUE",
+              "FLAT_AMOUNT_PER_MONTH",
+              "FLAT_AMOUNT_PER_LEASE"
+            ]
+          },
+          "commissionRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "nullable": true
+          },
+          "commissionFlatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "nullable": true
+          },
+          "lettingFeeRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "nullable": true
+          },
+          "vatRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "payoutDay": {
+            "type": "number"
+          },
+          "payoutBankAccountId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "signedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "terminatedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "terminationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "example": "XAF"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "landlord": {
+            "$ref": "#/components/schemas/LandlordSummaryDto"
+          },
+          "properties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PropertySummaryDto"
+            }
+          },
+          "statements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MandateStatementRefDto"
+            }
+          },
+          "landlordPortal": {
+            "$ref": "#/components/schemas/LandlordPortalStatusDto"
+          }
+        },
+        "required": [
+          "id",
+          "landlordId",
+          "propertyIds",
+          "reference",
+          "scope",
+          "status",
+          "startDate",
+          "endDate",
+          "noticeDays",
+          "autoRenew",
+          "commissionBasis",
+          "commissionRateBps",
+          "commissionFlatAmount",
+          "lettingFeeRateBps",
+          "vatRateBps",
+          "payoutDay",
+          "payoutBankAccountId",
+          "notes",
+          "signedAt",
+          "terminatedAt",
+          "terminationReason",
+          "currency",
+          "createdAt",
+          "landlord",
+          "properties",
+          "statements",
+          "landlordPortal"
+        ]
+      },
+      "MandateUpdateDto": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": ["FULL_MANAGEMENT", "RENT_COLLECTION_ONLY", "LETTING_ONLY"]
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "noticeDays": {
+            "type": "number",
+            "minimum": 0
+          },
+          "autoRenew": {
+            "type": "boolean"
+          },
+          "commissionBasis": {
+            "type": "string",
+            "enum": [
+              "RATE_BPS_ON_RENT_COLLECTED",
+              "RATE_BPS_ON_RENT_DUE",
+              "FLAT_AMOUNT_PER_MONTH",
+              "FLAT_AMOUNT_PER_LEASE"
+            ]
+          },
+          "commissionRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "commissionFlatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "lettingFeeRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "vatRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "payoutDay": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 28
+          },
+          "payoutBankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "SuspendMandateDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Impayés répétés du bailleur envers le syndic."
+          }
+        },
+        "required": ["reason"]
+      },
+      "TerminateMandateDto": {
+        "type": "object",
+        "properties": {
+          "effectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Reprise en gestion directe par le bailleur."
+          }
+        },
+        "required": ["effectiveDate", "reason"]
+      },
+      "AttachPropertiesDto": {
+        "type": "object",
+        "properties": {
+          "propertyIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": ["propertyIds"]
+      },
+      "LandlordInvitationResponseDto": {
+        "type": "object",
+        "properties": {
+          "notificationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invitationStatus": {
+            "type": "string",
+            "example": "SENT"
+          }
+        },
+        "required": ["notificationId", "invitationStatus"]
+      },
+      "ExpenseInputDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "REPAIR",
+              "MAINTENANCE",
+              "PLUMBING",
+              "ELECTRICITY",
+              "CLEANING",
+              "SECURITY",
+              "UTILITY_BILL",
+              "TAX",
+              "INSURANCE",
+              "SYNDIC_FEE",
+              "LEGAL_FEE",
+              "TRAVEL",
+              "SUPPLIES",
+              "OTHER"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "example": "Réparation fuite salle de bain"
+          },
+          "description": {
+            "type": "string"
+          },
+          "supplierName": {
+            "type": "string",
+            "example": "Plomberie Malonga"
+          },
+          "supplierPhone": {
+            "type": "string"
+          },
+          "supplierNiu": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "vatRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "expenseDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "borneBy": {
+            "type": "string",
+            "enum": ["LANDLORD", "TENANT", "ORGANIZATION"],
+            "default": "LANDLORD"
+          },
+          "isRebillable": {
+            "type": "boolean",
+            "default": false
+          },
+          "isDeductibleFromRent": {
+            "type": "boolean",
+            "default": true
+          },
+          "invoiceDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientRef": {
+            "type": "string",
+            "description": "ULID généré par l’appareil : clé d’idempotence."
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": ["category", "label", "amount", "expenseDate"]
+      },
+      "ExpenseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "REPAIR",
+              "MAINTENANCE",
+              "PLUMBING",
+              "ELECTRICITY",
+              "CLEANING",
+              "SECURITY",
+              "UTILITY_BILL",
+              "TAX",
+              "INSURANCE",
+              "SYNDIC_FEE",
+              "LEGAL_FEE",
+              "TRAVEL",
+              "SUPPLIES",
+              "OTHER"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "supplierName": {
+            "type": "string",
+            "nullable": true
+          },
+          "supplierPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "supplierNiu": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "vatRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "expenseDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "borneBy": {
+            "type": "string",
+            "enum": ["LANDLORD", "TENANT", "ORGANIZATION"]
+          },
+          "isRebillable": {
+            "type": "boolean"
+          },
+          "isDeductibleFromRent": {
+            "type": "boolean"
+          },
+          "invoiceDocumentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "clientRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "SUBMITTED", "APPROVED", "PAID", "REBILLED", "REJECTED", "CANCELLED"]
+          },
+          "vatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "currency": {
+            "type": "string",
+            "example": "XAF"
+          },
+          "ownerStatementId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "approvedByUserId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "approvedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "propertyId",
+          "unitId",
+          "leaseId",
+          "landlordId",
+          "category",
+          "label",
+          "description",
+          "supplierName",
+          "supplierPhone",
+          "supplierNiu",
+          "amount",
+          "vatRateBps",
+          "expenseDate",
+          "borneBy",
+          "isRebillable",
+          "isDeductibleFromRent",
+          "invoiceDocumentId",
+          "clientRef",
+          "notes",
+          "reference",
+          "status",
+          "vatAmount",
+          "totalAmount",
+          "currency",
+          "ownerStatementId",
+          "approvedByUserId",
+          "approvedAt",
+          "createdAt"
+        ]
+      },
+      "ExpensePageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpenseDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "ExpenseUpdateDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "REPAIR",
+              "MAINTENANCE",
+              "PLUMBING",
+              "ELECTRICITY",
+              "CLEANING",
+              "SECURITY",
+              "UTILITY_BILL",
+              "TAX",
+              "INSURANCE",
+              "SYNDIC_FEE",
+              "LEGAL_FEE",
+              "TRAVEL",
+              "SUPPLIES",
+              "OTHER"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "supplierName": {
+            "type": "string"
+          },
+          "supplierPhone": {
+            "type": "string"
+          },
+          "supplierNiu": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "vatRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "expenseDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "borneBy": {
+            "type": "string",
+            "enum": ["LANDLORD", "TENANT", "ORGANIZATION"]
+          },
+          "isRebillable": {
+            "type": "boolean"
+          },
+          "isDeductibleFromRent": {
+            "type": "boolean"
+          },
+          "invoiceDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "RejectExpenseDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Facture non justifiée."
+          }
+        },
+        "required": ["reason"]
+      },
+      "CommissionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mandateId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "invoiceId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "paymentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING", "ACCRUED", "INVOICED", "SETTLED", "CANCELLED"]
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "RATE_BPS_ON_RENT_COLLECTED",
+              "RATE_BPS_ON_RENT_DUE",
+              "FLAT_AMOUNT_PER_MONTH",
+              "FLAT_AMOUNT_PER_LEASE"
+            ]
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "baseAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "rateBps": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "flatAmount": {
+            "type": "integer",
+            "nullable": true,
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "vatRateBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "vatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "currency": {
+            "type": "string",
+            "example": "XAF"
+          },
+          "ownerStatementId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "accruedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "settledAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "reversalOfId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "mandateId",
+          "landlordId",
+          "leaseId",
+          "propertyId",
+          "invoiceId",
+          "paymentId",
+          "status",
+          "basis",
+          "periodStart",
+          "periodEnd",
+          "baseAmount",
+          "rateBps",
+          "flatAmount",
+          "amount",
+          "vatRateBps",
+          "vatAmount",
+          "totalAmount",
+          "currency",
+          "ownerStatementId",
+          "accruedAt",
+          "settledAt",
+          "reversalOfId",
+          "notes"
+        ]
+      },
+      "CommissionTotalsDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "vatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 45000
+          }
+        },
+        "required": ["amount", "vatAmount", "totalAmount"]
+      },
+      "CommissionPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommissionDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/CommissionTotalsDto"
+          }
+        },
+        "required": ["items", "pageInfo", "totals"]
+      },
+      "StartOwnerStatementRunDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "example": "2026-08",
+            "description": "AAAA-MM ; par défaut le mois civil précédent."
+          }
+        }
+      },
+      "RunStartedDto": {
+        "type": "object",
+        "properties": {
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["runId"]
+      },
+      "RunErrorDto": {
+        "type": "object",
+        "properties": {
+          "mandateId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["mandateId", "reason"]
+      },
+      "RunStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["RUNNING", "DONE", "FAILED"]
+          },
+          "created": {
+            "type": "number"
+          },
+          "skipped": {
+            "type": "number"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunErrorDto"
+            }
+          }
+        },
+        "required": ["status", "created", "skipped", "errors"]
+      },
+      "LandlordRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "displayName"]
+      },
+      "PropertyRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"]
+      },
+      "StatementSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "statementNumber": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "ISSUED", "SENT", "PAID", "CANCELLED"]
+          },
+          "landlord": {
+            "$ref": "#/components/schemas/LandlordRefDto"
+          },
+          "property": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PropertyRefDto"
+              }
+            ]
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "rentCollectedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "commissionAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "expensesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "carryForwardAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000
+          },
+          "netPayableAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000
+          },
+          "issuedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "sentAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "settledAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "statementNumber",
+          "status",
+          "landlord",
+          "property",
+          "periodStart",
+          "periodEnd",
+          "rentCollectedAmount",
+          "commissionAmount",
+          "expensesAmount",
+          "carryForwardAmount",
+          "netPayableAmount",
+          "issuedAt",
+          "sentAt",
+          "settledAt"
+        ]
+      },
+      "StatementPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementSummaryDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "PayoutRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "netAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "reference", "status", "method", "amount", "netAmount", "paidAt"]
+      },
+      "StatementDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "statementNumber": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "ISSUED", "SENT", "PAID", "CANCELLED"]
+          },
+          "landlord": {
+            "$ref": "#/components/schemas/LandlordRefDto"
+          },
+          "property": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PropertyRefDto"
+              }
+            ]
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "rentCollectedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "commissionAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "expensesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "carryForwardAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000
+          },
+          "netPayableAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000
+          },
+          "issuedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "sentAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "settledAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "mandateId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "chargesCollectedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "commissionVatAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "depositsHeldAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "occupancyRateBps": {
+            "type": "number",
+            "nullable": true
+          },
+          "collectionRateBps": {
+            "type": "number",
+            "nullable": true
+          },
+          "documentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementLineDto"
+            }
+          },
+          "payout": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PayoutRefDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "statementNumber",
+          "status",
+          "landlord",
+          "property",
+          "periodStart",
+          "periodEnd",
+          "rentCollectedAmount",
+          "commissionAmount",
+          "expensesAmount",
+          "carryForwardAmount",
+          "netPayableAmount",
+          "issuedAt",
+          "sentAt",
+          "settledAt",
+          "mandateId",
+          "chargesCollectedAmount",
+          "commissionVatAmount",
+          "depositsHeldAmount",
+          "occupancyRateBps",
+          "collectionRateBps",
+          "documentId",
+          "lines",
+          "payout"
+        ]
+      },
+      "CancelStatementDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Erreur de périmètre, régénération demandée."
+          }
+        },
+        "required": ["reason"]
+      },
+      "PdfDownloadDto": {
+        "type": "object",
+        "properties": {
+          "downloadUrl": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["downloadUrl", "expiresAt"]
+      },
+      "CreatePayoutDto": {
+        "type": "object",
+        "properties": {
+          "statementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"],
+            "description": "Par défaut : `landlords.payout_method`."
+          },
+          "bankAccountId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Par défaut : `landlords.default_bank_account_id`."
+          },
+          "feeAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0,
+            "default": 0
+          },
+          "feeBearer": {
+            "type": "string",
+            "enum": ["TENANT", "ORGANIZATION", "LANDLORD", "SHARED"],
+            "default": "LANDLORD"
+          },
+          "scheduledDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "clientRef": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": ["statementId"]
+      },
+      "PayoutDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "statementId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING", "APPROVED", "PROCESSING", "PAID", "FAILED", "CANCELLED"]
+          },
+          "method": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "feeAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000,
+            "minimum": 0
+          },
+          "feeBearer": {
+            "type": "string",
+            "enum": ["TENANT", "ORGANIZATION", "LANDLORD", "SHARED"]
+          },
+          "netAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 450000
+          },
+          "bankAccountId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "momoTransactionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "scheduledDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date"
+          },
+          "approvedByUserId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "approvedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "failureReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "proofDocumentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "statementId",
+          "landlordId",
+          "status",
+          "method",
+          "amount",
+          "feeAmount",
+          "feeBearer",
+          "netAmount",
+          "bankAccountId",
+          "momoTransactionId",
+          "scheduledDate",
+          "approvedByUserId",
+          "approvedAt",
+          "paidAt",
+          "failureReason",
+          "proofDocumentId"
+        ]
+      },
+      "PayoutPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PayoutDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "ExecutePayoutDto": {
+        "type": "object",
+        "properties": {
+          "externalReference": {
+            "type": "string",
+            "description": "Virement/chèque/espèces : référence externe déclarée par l’appelant."
+          },
+          "proofDocumentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Un `documents.id` déjà existant (référence seule)."
+          }
+        }
+      },
+      "FailPayoutDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Solde Mobile Money insuffisant chez l’agrégateur."
+          }
+        },
+        "required": ["reason"]
+      },
+      "PortalOtpRequestDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "+242066000001",
+            "description": "Numéro de téléphone du bailleur invité, normalisé en E.164."
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["SMS", "WHATSAPP"],
+            "default": "WHATSAPP",
+            "description": "Canal tenté en premier, avec repli SMS automatique (identique à `/v1/auth/otp/request`)."
+          }
+        },
+        "required": ["phone"]
+      },
+      "PortalOtpRequestResponseDto": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["SMS", "WHATSAPP"]
+          },
+          "expiresInSeconds": {
+            "type": "number",
+            "example": 300
+          },
+          "resendAfterSeconds": {
+            "type": "number",
+            "example": 60
+          }
+        },
+        "required": ["requestId", "channel", "expiresInSeconds", "resendAfterSeconds"]
+      },
+      "PortalOtpVerifyDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "+242066000001"
+          },
+          "code": {
+            "type": "string",
+            "example": "123456",
+            "description": "Code à 6 chiffres reçu par WhatsApp ou SMS."
+          },
+          "deviceName": {
+            "type": "string",
+            "example": "iPhone 13 — Paris"
+          }
+        },
+        "required": ["phone", "code"]
+      },
+      "PortalSessionDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "expiresInSeconds": {
+            "type": "number",
+            "example": 900
+          }
+        },
+        "required": ["accessToken", "refreshToken", "expiresInSeconds"]
+      },
+      "PortalLandlordDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "primaryPhone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDiaspora": {
+            "type": "boolean"
+          },
+          "payoutMethod": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "displayName", "primaryPhone", "email", "isDiaspora", "payoutMethod"]
+      },
+      "PortalOrganizationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"]
+      },
+      "PortalMeDto": {
+        "type": "object",
+        "properties": {
+          "landlord": {
+            "$ref": "#/components/schemas/PortalLandlordDto"
+          },
+          "organizations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalOrganizationDto"
+            }
+          }
+        },
+        "required": ["landlord", "organizations"]
+      },
+      "PortalPayoutDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "netAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "reference", "status", "method", "amount", "netAmount", "paidAt"]
+      },
+      "PortalPayoutPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalPayoutDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "PortalTenantRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "displayName"]
+      },
+      "PortalUnitRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "code"]
+      },
+      "PortalCollectionDto": {
+        "type": "object",
+        "properties": {
+          "paymentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "method": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/PortalTenantRefDto"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/PortalUnitRefDto"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "paymentId",
+          "paymentDate",
+          "method",
+          "amount",
+          "tenant",
+          "unit",
+          "invoiceNumber"
+        ]
+      },
+      "PortalCollectionPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalCollectionDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "PortalReceiptDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receiptNumber": {
+            "type": "string"
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "documentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        },
+        "required": ["id", "receiptNumber", "issueDate", "amount", "status", "documentId"]
+      },
+      "PortalReceiptPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalReceiptDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
       }
     }
   }

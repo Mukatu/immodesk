@@ -27,6 +27,14 @@ import { syncHandlers } from './sync-handlers';
 import { bankStatementsHandlers, seedBankReconciliationDemoData } from './bank-statements-handlers';
 import { reconciliationHandlers } from './reconciliation-handlers';
 import { bankChecksHandlers } from './bank-checks-handlers';
+import { agencyHandlers } from './agency-handlers';
+import { portalHandlers } from './portal-handlers';
+import {
+  mandates,
+  nextMandateReference,
+  seedAgencyDemoData,
+  type MockMandate,
+} from './agency-seed';
 import { API_BASE } from './api-base';
 
 /**
@@ -85,9 +93,9 @@ interface MockInvitation {
   createdAt: string;
 }
 
-const users = new Map<string, MockUser>();
+export const users = new Map<string, MockUser>();
 export const organizations = new Map<string, MockOrganization>();
-const memberships: MockMembership[] = [];
+export const memberships: MockMembership[] = [];
 const invitations = new Map<string, MockInvitation>();
 const accessTokens = new Map<string, string>(); // token -> userId
 const refreshTokens = new Map<string, string>(); // token -> userId
@@ -159,7 +167,7 @@ export function nextId(prefix: string): string {
   return `${prefix}-${seq}`;
 }
 
-function findOrCreateUser(phone: string): MockUser {
+export function findOrCreateUser(phone: string): MockUser {
   const existing = [...users.values()].find((u) => u.phone === phone);
   if (existing) return existing;
   const user: MockUser = {
@@ -175,7 +183,7 @@ function findOrCreateUser(phone: string): MockUser {
   return user;
 }
 
-function issueTokens(userId: string) {
+export function issueTokens(userId: string) {
   const accessToken = nextId('access');
   const refreshToken = nextId('refresh');
   accessTokens.set(accessToken, userId);
@@ -183,7 +191,7 @@ function issueTokens(userId: string) {
   return { accessToken, refreshToken };
 }
 
-function userFromAuthHeader(request: Request): MockUser | null {
+export function userFromAuthHeader(request: Request): MockUser | null {
   const auth = request.headers.get('Authorization');
   if (!auth?.startsWith('Bearer ')) return null;
   const userId = accessTokens.get(auth.slice('Bearer '.length));
@@ -290,6 +298,8 @@ export interface MockLandlord {
   payoutMethod: PaymentMethod;
   notes?: string;
   isSelf: boolean;
+  /** Lié par le portail bailleur (phase 7) à l'activation de l'invitation, sinon absent. */
+  userId?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -870,6 +880,18 @@ seedPaymentsPhase4DemoData({
   nextId,
 });
 seedBankReconciliationDemoData(DEMO_ORG_ID);
+(function seedAgencyDemoDataIfPossible() {
+  const demoLandlord = [...landlords.values()].find((l) => l.organizationId === DEMO_ORG_ID);
+  const demoProperty = [...properties.values()].find((p) => p.organizationId === DEMO_ORG_ID);
+  if (demoLandlord && demoProperty) {
+    seedAgencyDemoData({
+      DEMO_ORG_ID,
+      nextId,
+      landlordId: demoLandlord.id,
+      propertyId: demoProperty.id,
+    });
+  }
+})();
 
 export function notFound(code: string, message = 'Introuvable.') {
   return HttpResponse.json({ code, message }, { status: 404 });
@@ -1977,4 +1999,128 @@ export const handlers = [
   ...bankStatementsHandlers,
   ...reconciliationHandlers,
   ...bankChecksHandlers,
+  ...agencyHandlers,
+  ...portalHandlers,
+
+  // Onboarding du gestionnaire indépendant (phase 7) : organisation + bailleur + bien +
+  // mandat en une transaction. Reste ici (et non dans agency-handlers.ts) car il a besoin
+  // des internes d'authentification (userFromAuthHeader, memberships) propres à ce fichier.
+  http.post(`${API_BASE}/organizations/independent-manager/onboarding`, async ({ request }) => {
+    const user = userFromAuthHeader(request);
+    if (!user) {
+      return HttpResponse.json(
+        { code: 'IAM.UNAUTHORIZED', message: 'Non authentifié.' },
+        { status: 401 },
+      );
+    }
+    const body = (await request.json()) as {
+      organizationLegalName: string;
+      organizationCity: string;
+      organizationContactPhone: string;
+      landlordFirstName: string;
+      landlordLastName: string;
+      landlordPhone: string;
+      propertyName: string;
+      propertyAddressLine: string;
+      propertyCity: string;
+      commissionRateBps?: number;
+    };
+    const now = new Date().toISOString();
+
+    const org: MockOrganization = {
+      id: nextId('org'),
+      type: 'INDEPENDENT_MANAGER',
+      legalName: body.organizationLegalName,
+      tradeName: null,
+      slug: body.organizationLegalName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      city: body.organizationCity,
+      district: null,
+      contactPhone: body.organizationContactPhone,
+      contactEmail: null,
+      logoUrl: null,
+      status: 'ACTIVE',
+      createdAt: now,
+    };
+    organizations.set(org.id, org);
+    memberships.push({
+      organizationId: org.id,
+      userId: user.id,
+      role: 'OWNER',
+      status: 'ACTIVE',
+      joinedAt: now,
+    });
+
+    const landlordPhone = normalizePhone(body.landlordPhone) ?? body.landlordPhone;
+    const landlord: MockLandlord = {
+      id: nextId('landlord'),
+      organizationId: org.id,
+      partyType: 'INDIVIDUAL',
+      firstName: body.landlordFirstName,
+      lastName: body.landlordLastName,
+      primaryPhone: landlordPhone,
+      city: body.propertyCity,
+      countryCode: 'CG',
+      payoutMethod: 'MOBILE_MONEY',
+      isSelf: false,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+    landlords.set(landlord.id, landlord);
+
+    const property: MockProperty = {
+      id: nextId('property'),
+      organizationId: org.id,
+      landlordId: landlord.id,
+      name: body.propertyName,
+      propertyType: 'HOUSE',
+      addressLine: body.propertyAddressLine,
+      district: '',
+      city: body.propertyCity,
+      countryCode: 'CG',
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+    properties.set(property.id, property);
+
+    const mandate: MockMandate = {
+      id: nextId('mandate'),
+      organizationId: org.id,
+      reference: nextMandateReference(now.slice(0, 4)),
+      landlordId: landlord.id,
+      propertyIds: [property.id],
+      scope: 'FULL_MANAGEMENT',
+      status: 'ACTIVE',
+      startDate: now.slice(0, 10),
+      endDate: null,
+      noticeDays: 90,
+      autoRenew: true,
+      commissionBasis: 'RATE_BPS_ON_RENT_COLLECTED',
+      commissionRateBps: body.commissionRateBps ?? 1000,
+      commissionFlatAmount: null,
+      lettingFeeRateBps: null,
+      vatRateBps: 1800,
+      payoutDay: 10,
+      payoutBankAccountId: null,
+      notes: null,
+      signedAt: now,
+      terminatedAt: null,
+      terminationReason: null,
+      invitedAt: null,
+      invitationToken: null,
+      createdAt: now,
+    };
+    mandates.set(mandate.id, mandate);
+
+    return HttpResponse.json(
+      {
+        organization: org,
+        landlord: landlordSummaryFor(landlord),
+        property: serializePropertySummary(property),
+        mandate: { ...mandate, currency: 'XAF' },
+      },
+      { status: 201 },
+    );
+  }),
 ];

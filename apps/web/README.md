@@ -258,9 +258,63 @@ déterministe 12 lignes : 6 rapprochées automatiquement (`EXACT`/`CONFIRMED`), 
 scores différents (88/79/76), 3 non rapprochées dont une de plus de 30 jours ; un chèque déposé
 depuis vingt jours illustre l'alerte de délai de compensation dans les données de démonstration.
 
+### Gestion d'agence, portail bailleur et onboarding du gestionnaire indépendant (phase 7)
+
+**Domaine** (`docs/api/phase7-contract.md`) : mandats de gestion (statuts, périmètre, commission
+par défaut 10 % sur loyer encaissé, TVA 18 %), dépenses (saisie, justificatif, validation, rejet
+motivé, refacturation au locataire exclue du relevé), commissions (une ligne par paiement
+`CONFIRMED`, jamais sur le facturé), campagne mensuelle et relevés de gérance (`DRAFT` → `ISSUED` →
+`SENT` → `PAID`, jamais de montant négatif sur une ligne, report du solde négatif en
+`CARRY_FORWARD`), reversements (`PENDING` → `APPROVED` → `PROCESSING` → `PAID`, échec motivé,
+nouvelle tentative sans recréer), portail bailleur en lecture seule et onboarding du gestionnaire
+indépendant. Les types `Statement*` du contrat sont repris sous `OwnerStatement*` côté web pour ne
+pas entrer en collision avec les types de relevé bancaire de la phase 6.
+
+**Écrans agence**, sous `/app/gerance` (sous-navigation locale `gerance/layout.tsx` entre
+Mandats/Dépenses/Commissions/Relevés/Reversements, entrée « Gérance » dans la navigation
+principale) : `/app/gerance/mandats` (liste filtrable par statut, fiche avec biens rattachés et
+relevés, création, activation, suspension motivée, résiliation avec date d'effet et motif,
+invitation du bailleur par WhatsApp avec statut de l'invitation) ; `/app/gerance/depenses` (saisie
+avec justificatif en deux temps, soumission, validation, rejet motivé, filtres par bien et statut,
+mention explicite qu'une dépense refacturable au locataire ne figure pas au relevé du bailleur) ;
+`/app/gerance/commissions` (cumul par mandat et par période) ; `/app/gerance/releves` (lancement de
+la campagne avec son rapport créés/ignorés/erreurs, liste, fiche détaillant les lignes en débit et
+crédit, émission, PDF, annulation motivée) ; `/app/gerance/reversements` (création sur un relevé
+émis au solde positif, approbation, exécution avec preuve obligatoire, échec motivé avec nouvelle
+tentative possible).
+
+**Portail bailleur**, sous `/portail`, en lecture seule (rôle dérivé `LANDLORD_PORTAL`, aucune
+appartenance à une organisation, session et jeton isolés de l'agence — voir
+`portal-auth-context.tsx`, `portal-client.ts`, cookie httpOnly `immodesk_portal_refresh_token`
+distinct de celui de l'agence) : `/portail/activer/[token]` (activation par code reçu sur le
+téléphone depuis le lien d'invitation), `/portail` (accueil : solde à percevoir, dernier relevé,
+dernier reversement, bandeau mode de reversement et délai pour un bailleur hors du Congo),
+`/portail/releves` (téléchargement), `/portail/reversements`, `/portail/encaissements`,
+`/portail/quittances`. Aucune action d'écriture, aucun lien vers `/app/**`.
+
+**Onboarding du gestionnaire indépendant**, `/onboarding/gestionnaire-independant` (choisi depuis
+`/onboarding/organisation` en sélectionnant le type d'organisation) : organisation, premier
+bailleur, premier immeuble et premier mandat (commission 10 % pré-remplie) créés en un seul appel,
+en moins de dix minutes.
+
+**Composants** : `MandateStatusBadge`, `ExpenseStatusBadge`, `StatementStatusBadge`,
+`PayoutStatusBadge`, `StatementLinesTable` (colonnes Débit/Crédit, jamais de montant négatif),
+`CommissionSummaryCard`, `DiasporaBadge`.
+
+**Hooks** : `use-mandates`, `use-expenses`, `use-commissions`, `use-owner-statements`,
+`use-owner-payouts`, `use-onboarding`, `use-portal` (client dédié `portal-client.ts`, jamais
+`X-Organization-Id`).
+
+**Mocks MSW** : `agency-handlers.ts`/`agency-seed.ts` (mandats, dépenses, commissions, campagne et
+relevés, reversements — la commission se calcule sur les allocations de paiements `CONFIRMED` vers
+des factures du périmètre du mandat, jamais sur le paiement brut), `portal-handlers.ts` (activation
+et routes `/portal/*`, le jeton d'invitation est l'identifiant du mandat lui-même, jamais exposé
+par la route `landlord-invitation` conformément au contrat). Un mandat de démonstration actif est
+semé sur le premier bailleur/bien de `DEMO_ORG_ID`.
+
 ## Tests
 
-- **Unitaires** (`pnpm test`, Vitest + Testing Library, **175 tests** répartis sur 37 fichiers) :
+- **Unitaires** (`pnpm test`, Vitest + Testing Library, **206 tests** répartis sur 44 fichiers) :
   formatage XAF (`MoneyXaf`), saisie téléphone congolaise (`PhoneInput`), affichage téléphone
   (`PhoneDisplay`), badge occupation (`OccupancyBadge`), validation taille et MIME de
   `DocumentUploader`, client API (`apiFetch`) incluant le rafraîchissement automatique de token et
@@ -276,7 +330,10 @@ depuis vingt jours illustre l'alerte de délai de compensation dans les données
   obligatoire à l'abandon (`ConflictResolutionDialog`), badges de rapprochement phase 6
   (`LineStateBadge`, `MatchTypeBadge`, `MatchStatusBadge`, `CheckStatusBadge`), jauge de confiance
   d'une suggestion (`ConfidenceScoreGauge`), rapport d'import lisible (`ImportReportPanel`), carte de
-  suggestion de rapprochement avec validation/rejet (`SuggestionCard`).
+  suggestion de rapprochement avec validation/rejet (`SuggestionCard`), badges de gestion d'agence
+  phase 7 (`MandateStatusBadge`, `ExpenseStatusBadge`, `StatementStatusBadge`, `PayoutStatusBadge`),
+  bailleur en diaspora (`DiasporaBadge`), cumul de commissions (`CommissionSummaryCard`), lignes de
+  relevé de gérance en débit/crédit sans jamais de montant négatif (`StatementLinesTable`).
 - **e2e** (`pnpm test:e2e`, Playwright) :
   - **Phase 0** (`e2e/login-onboarding-invitation.spec.ts`) : connexion OTP → création
     d'organisation → invitation, entièrement mocké via MSW.
@@ -299,6 +356,15 @@ depuis vingt jours illustre l'alerte de délai de compensation dans les données
   - **Phase 6** (`e2e/phase6-rapprochement-bancaire.spec.ts`) : import d'un relevé bancaire →
     validation d'une suggestion de rapprochement → rapprochement manuel d'une ligne non rapprochée
     avec un chèque déposé → dépôt puis compensation de ce chèque, entièrement mocké via MSW.
+  - **Phase 7 agence** (`e2e/phase7-gerance-agence.spec.ts`) : portefeuille minimal (bailleur,
+    compte bancaire, immeuble, lot, locataire, bail actif, facture payée intégralement au comptoir)
+    → mandat de gestion créé puis activé → campagne mensuelle produisant un relevé brouillon →
+    émission du relevé → création du reversement → approbation → exécution avec preuve, entièrement
+    mocké via MSW.
+  - **Phase 7 portail bailleur** (`e2e/phase7-portail-bailleur.spec.ts`) : invitation du bailleur
+    par WhatsApp depuis un mandat actif → activation du portail par code reçu sur le téléphone, dans
+    un contexte navigateur neuf (session isolée de l'agence) → vérification qu'aucune action
+    d'écriture ni aucun lien vers l'agence n'est proposé sur les cinq écrans du portail.
 
 Tous les scénarios e2e utilisent MSW (`src/mocks/handlers.ts`), interceptée côté serveur
 (`msw/node`, activé dans `instrumentation.ts` quand `E2E_MOCK=1`). Les appels directs du navigateur

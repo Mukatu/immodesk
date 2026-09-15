@@ -7,20 +7,28 @@ import type {
   BankStatementStatus,
   CashReceiptStatus,
   CheckStatus,
+  CommissionBasis,
+  CommissionStatus,
   ContactChannelType,
   CreditStatus,
   DeclarationStatus,
   DepositMovementType,
   DepositStatus,
   DocumentKind,
+  ExpenseBearer,
+  ExpenseCategory,
+  ExpenseStatus,
   Gender,
   IdDocumentType,
   InvoiceLineType,
   InvoiceStatus,
+  LandlordInvitationStatus,
   LeaseDocumentKind,
   LeasePartyRole,
   LeaseStatus,
   LineState,
+  MandateScope,
+  MandateStatus,
   MatchStatus,
   MatchType,
   MessageStatus,
@@ -30,7 +38,10 @@ import type {
   MomoProvider,
   MomoStatus,
   NotificationChannel,
+  OwnerStatementLineType,
+  OwnerStatementStatus,
   PartyType,
+  PayoutStatus,
   PaymentMethod,
   PaymentStatus,
   PenaltyBasis,
@@ -459,6 +470,105 @@ export const RECONCILIATION_TARGET_TYPE_LABELS: Record<ReconciliationTargetType,
   DECLARATION: 'Déclaration de virement',
   CHECK: 'Chèque',
   REMITTANCE: 'Remise de caisse',
+};
+
+// ---- Phase 7 : gestion d'agence ----
+
+export const MANDATE_STATUS_LABELS: Record<MandateStatus, string> = {
+  DRAFT: 'Brouillon',
+  ACTIVE: 'Actif',
+  SUSPENDED: 'Suspendu',
+  TERMINATED: 'Résilié',
+  EXPIRED: 'Expiré',
+};
+
+export const MANDATE_SCOPE_LABELS: Record<MandateScope, string> = {
+  FULL_MANAGEMENT: 'Gestion complète',
+  RENT_COLLECTION_ONLY: 'Encaissement seul',
+  LETTING_ONLY: 'Mise en location seule',
+};
+
+export const COMMISSION_BASIS_LABELS: Record<CommissionBasis, string> = {
+  RATE_BPS_ON_RENT_COLLECTED: 'Taux sur loyer encaissé',
+  RATE_BPS_ON_RENT_DUE: 'Taux sur loyer facturé',
+  FLAT_AMOUNT_PER_MONTH: 'Forfait par mois',
+  FLAT_AMOUNT_PER_LEASE: 'Forfait par bail',
+};
+
+export const COMMISSION_STATUS_LABELS: Record<CommissionStatus, string> = {
+  PENDING: 'En attente',
+  ACCRUED: 'Constatée',
+  INVOICED: 'Facturée',
+  SETTLED: 'Réglée',
+  CANCELLED: 'Annulée',
+};
+
+export const EXPENSE_STATUS_LABELS: Record<ExpenseStatus, string> = {
+  DRAFT: 'Brouillon',
+  SUBMITTED: 'Soumise',
+  APPROVED: 'Validée',
+  PAID: 'Payée',
+  REBILLED: 'Refacturée',
+  REJECTED: 'Rejetée',
+  CANCELLED: 'Annulée',
+};
+
+export const EXPENSE_BEARER_LABELS: Record<ExpenseBearer, string> = {
+  LANDLORD: 'Bailleur',
+  TENANT: 'Locataire',
+  ORGANIZATION: 'Agence',
+};
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  REPAIR: 'Réparation',
+  MAINTENANCE: 'Entretien',
+  PLUMBING: 'Plomberie',
+  ELECTRICITY: 'Électricité',
+  CLEANING: 'Nettoyage',
+  SECURITY: 'Sécurité',
+  UTILITY_BILL: 'Facture eau/électricité',
+  TAX: 'Taxe',
+  INSURANCE: 'Assurance',
+  SYNDIC_FEE: 'Charges de syndic',
+  LEGAL_FEE: 'Frais juridiques',
+  TRAVEL: 'Déplacement',
+  SUPPLIES: 'Fournitures',
+  OTHER: 'Autre',
+};
+
+export const OWNER_STATEMENT_STATUS_LABELS: Record<OwnerStatementStatus, string> = {
+  DRAFT: 'Brouillon',
+  ISSUED: 'Émis',
+  SENT: 'Envoyé au bailleur',
+  PAID: 'Reversé',
+  CANCELLED: 'Annulé',
+};
+
+export const OWNER_STATEMENT_LINE_TYPE_LABELS: Record<OwnerStatementLineType, string> = {
+  RENT_COLLECTED: 'Loyer encaissé',
+  CHARGE_COLLECTED: 'Charges encaissées',
+  COMMISSION: 'Commission de gestion',
+  EXPENSE: 'Dépense',
+  VAT: 'TVA sur commission',
+  DEPOSIT_HELD: 'Dépôt de garantie conservé',
+  CARRY_FORWARD: 'Report du solde précédent',
+  ADJUSTMENT: 'Régularisation',
+  OTHER: 'Autre',
+};
+
+export const PAYOUT_STATUS_LABELS: Record<PayoutStatus, string> = {
+  PENDING: 'En attente',
+  APPROVED: 'Approuvé',
+  PROCESSING: 'En cours',
+  PAID: 'Reversé',
+  FAILED: 'Échec',
+  CANCELLED: 'Annulé',
+};
+
+export const LANDLORD_INVITATION_STATUS_LABELS: Record<LandlordInvitationStatus, string> = {
+  NOT_INVITED: 'Non invité',
+  INVITED: 'Invitation envoyée',
+  ACTIVATED: 'Portail activé',
 };
 
 /** Convertit un Record de libellés en options `{ value, label }` (ex. pour un Select). */

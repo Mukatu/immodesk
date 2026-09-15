@@ -289,7 +289,16 @@ export type DocumentKind =
   | 'OTHER';
 
 export type RelatedEntityType =
-  'landlord' | 'tenant' | 'guarantor' | 'property' | 'unit' | 'organization' | 'lease';
+  | 'landlord'
+  | 'tenant'
+  | 'guarantor'
+  | 'property'
+  | 'unit'
+  | 'organization'
+  | 'lease'
+  // Phase 7 : justificatif de dépense, preuve de reversement.
+  | 'expense'
+  | 'payout';
 
 // ---- Tiers : bailleurs ----
 
@@ -1936,4 +1945,400 @@ export interface ReconciliationSettings {
   checkClearingAlertDays: number;
   /** Défaut 0. */
   bounceFeeAmount: number;
+}
+
+/**
+ * Types du contrat d'API — Phase 7 (gestion d'agence, relevés de gérance, portail bailleur).
+ * Recopiés depuis docs/api/phase7-contract.md. Les relevés de gérance sont préfixés
+ * `OwnerStatement*` (et non `Statement*` comme le contrat) pour ne pas entrer en collision
+ * avec les types `StatementSummary`/`StatementDetail`/`StatementLine` du relevé bancaire
+ * importé en phase 6 : mêmes champs que le contrat, nom seulement adapté à ce fichier.
+ */
+
+export type MandateStatus = 'DRAFT' | 'ACTIVE' | 'SUSPENDED' | 'TERMINATED' | 'EXPIRED';
+export type MandateScope = 'FULL_MANAGEMENT' | 'RENT_COLLECTION_ONLY' | 'LETTING_ONLY';
+
+export type CommissionBasis =
+  | 'RATE_BPS_ON_RENT_COLLECTED'
+  | 'RATE_BPS_ON_RENT_DUE'
+  | 'FLAT_AMOUNT_PER_MONTH'
+  | 'FLAT_AMOUNT_PER_LEASE';
+export type CommissionStatus = 'PENDING' | 'ACCRUED' | 'INVOICED' | 'SETTLED' | 'CANCELLED';
+
+export type ExpenseStatus =
+  'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PAID' | 'REBILLED' | 'REJECTED' | 'CANCELLED';
+export type ExpenseBearer = 'LANDLORD' | 'TENANT' | 'ORGANIZATION';
+export type ExpenseCategory =
+  | 'REPAIR'
+  | 'MAINTENANCE'
+  | 'PLUMBING'
+  | 'ELECTRICITY'
+  | 'CLEANING'
+  | 'SECURITY'
+  | 'UTILITY_BILL'
+  | 'TAX'
+  | 'INSURANCE'
+  | 'SYNDIC_FEE'
+  | 'LEGAL_FEE'
+  | 'TRAVEL'
+  | 'SUPPLIES'
+  | 'OTHER';
+
+/** `StatementStatus` du contrat. Ni VALIDATED ni APPROVED : « valider » = ISSUED. */
+export type OwnerStatementStatus = 'DRAFT' | 'ISSUED' | 'SENT' | 'PAID' | 'CANCELLED';
+export type OwnerStatementLineType =
+  | 'RENT_COLLECTED'
+  | 'CHARGE_COLLECTED'
+  | 'COMMISSION'
+  | 'EXPENSE'
+  | 'VAT'
+  | 'DEPOSIT_HELD'
+  | 'CARRY_FORWARD'
+  | 'ADJUSTMENT'
+  | 'OTHER';
+
+export type PayoutStatus = 'PENDING' | 'APPROVED' | 'PROCESSING' | 'PAID' | 'FAILED' | 'CANCELLED';
+
+/** Statut d'invitation dérivé côté web depuis `MandateDetail.landlordPortal` (pas une valeur DDL). */
+export type LandlordInvitationStatus = 'NOT_INVITED' | 'INVITED' | 'ACTIVATED';
+
+// ---- Mandats de gestion ----
+
+export interface MandateInput {
+  landlordId: string;
+  propertyIds: string[];
+  scope?: MandateScope;
+  startDate: string;
+  endDate?: string;
+  noticeDays?: number;
+  autoRenew?: boolean;
+  commissionBasis?: CommissionBasis;
+  commissionRateBps?: number;
+  commissionFlatAmount?: number;
+  lettingFeeRateBps?: number;
+  vatRateBps?: number;
+  payoutDay?: number;
+  payoutBankAccountId?: string;
+  notes?: string;
+}
+
+export interface Mandate extends MandateInput {
+  id: string;
+  reference: string;
+  status: MandateStatus;
+  signedAt: string | null;
+  terminatedAt: string | null;
+  terminationReason: string | null;
+  currency: 'XAF';
+  createdAt: string;
+}
+
+export interface MandateSummary {
+  id: string;
+  reference: string;
+  status: MandateStatus;
+  landlord: { id: string; displayName: string; isDiaspora: boolean };
+  propertiesCount: number;
+  commissionRateBps: number | null;
+  startDate: string;
+  endDate: string | null;
+}
+
+export interface MandateLandlordPortalInfo {
+  invited: boolean;
+  invitedAt: string | null;
+  activated: boolean;
+  userId: string | null;
+}
+
+export interface MandateDetail extends Mandate {
+  landlord: LandlordSummary;
+  properties: PropertySummary[];
+  statements: OwnerStatementSummary[];
+  landlordPortal: MandateLandlordPortalInfo;
+}
+
+export interface SuspendMandateBody {
+  reason: string;
+}
+
+export interface TerminateMandateBody {
+  effectiveDate: string;
+  reason: string;
+}
+
+export interface AddMandatePropertiesBody {
+  propertyIds: string[];
+}
+
+export interface LandlordInvitationResponse {
+  notificationId: string;
+  invitationStatus: LandlordInvitationStatus;
+}
+
+// ---- Dépenses ----
+
+export interface ExpenseInput {
+  propertyId?: string;
+  unitId?: string;
+  leaseId?: string;
+  landlordId?: string;
+  category: ExpenseCategory;
+  label: string;
+  description?: string;
+  supplierName?: string;
+  supplierPhone?: string;
+  supplierNiu?: string;
+  amount: number;
+  vatRateBps?: number;
+  expenseDate: string;
+  borneBy?: ExpenseBearer;
+  isRebillable?: boolean;
+  isDeductibleFromRent?: boolean;
+  invoiceDocumentId?: string;
+  clientRef?: string;
+  notes?: string;
+}
+
+export interface Expense extends ExpenseInput {
+  id: string;
+  reference: string;
+  status: ExpenseStatus;
+  vatAmount: number;
+  totalAmount: number;
+  currency: 'XAF';
+  ownerStatementId: string | null;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  rejectionReason?: string | null;
+  property: { id: string; name: string } | null;
+  landlord: { id: string; displayName: string } | null;
+  createdAt: string;
+}
+
+export interface RejectExpenseBody {
+  reason: string;
+}
+
+// ---- Commissions ----
+
+export interface Commission {
+  id: string;
+  mandateId: string | null;
+  landlordId: string;
+  landlord: { id: string; displayName: string };
+  leaseId: string | null;
+  paymentId: string | null;
+  status: CommissionStatus;
+  basis: CommissionBasis;
+  periodStart: string;
+  periodEnd: string;
+  baseAmount: number;
+  rateBps: number | null;
+  amount: number;
+  vatAmount: number;
+  totalAmount: number;
+  ownerStatementId: string | null;
+  reversalOfId: string | null;
+}
+
+export interface CommissionTotals {
+  count: number;
+  baseAmount: number;
+  amount: number;
+  vatAmount: number;
+  totalAmount: number;
+}
+
+export interface CommissionListResponse {
+  items: Commission[];
+  pageInfo: PageInfo;
+  totals: CommissionTotals;
+}
+
+// ---- Campagne et relevés de gérance ----
+
+export interface OwnerStatementRunResponse {
+  runId: string;
+}
+
+export interface OwnerStatementRunError {
+  landlordId?: string;
+  propertyId?: string;
+  reason: string;
+}
+
+export interface OwnerStatementRunStatus {
+  status: 'RUNNING' | 'DONE' | 'FAILED';
+  created: number;
+  skipped: number;
+  errors: OwnerStatementRunError[];
+}
+
+export interface OwnerStatementSummary {
+  id: string;
+  statementNumber: string;
+  status: OwnerStatementStatus;
+  landlord: { id: string; displayName: string };
+  property: { id: string; name: string } | null;
+  periodStart: string;
+  periodEnd: string;
+  rentCollectedAmount: number;
+  commissionAmount: number;
+  expensesAmount: number;
+  carryForwardAmount: number;
+  netPayableAmount: number;
+  issuedAt: string | null;
+  sentAt: string | null;
+  settledAt: string | null;
+}
+
+export interface OwnerStatementLine {
+  id: string;
+  lineType: OwnerStatementLineType;
+  label: string;
+  amount: number;
+  isDebit: boolean;
+  position: number;
+  propertyId: string | null;
+  unitId: string | null;
+  leaseId: string | null;
+  tenantId: string | null;
+  invoiceId: string | null;
+  paymentId: string | null;
+  expenseId: string | null;
+  commissionId: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+}
+
+export interface OwnerStatementDetail extends OwnerStatementSummary {
+  mandateId: string | null;
+  chargesCollectedAmount: number;
+  commissionVatAmount: number;
+  depositsHeldAmount: number;
+  occupancyRateBps: number | null;
+  collectionRateBps: number | null;
+  documentId: string | null;
+  lines: OwnerStatementLine[];
+  payout: Payout | null;
+}
+
+export interface CancelOwnerStatementBody {
+  reason: string;
+}
+
+// ---- Reversements ----
+
+export interface CreatePayoutBody {
+  statementId: string;
+}
+
+export interface FailPayoutBody {
+  reason: string;
+}
+
+export interface ExecutePayoutBody {
+  proofDocumentId: string;
+  externalReference?: string;
+  momoTransactionId?: string;
+}
+
+export interface Payout {
+  id: string;
+  reference: string;
+  statementId: string | null;
+  landlordId: string;
+  landlord: { id: string; displayName: string };
+  status: PayoutStatus;
+  method: PaymentMethod;
+  amount: number;
+  feeAmount: number;
+  feeBearer: FeeBearer;
+  netAmount: number;
+  bankAccountId: string | null;
+  momoTransactionId: string | null;
+  scheduledDate: string | null;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  paidAt: string | null;
+  failureReason: string | null;
+  proofDocumentId: string | null;
+  createdAt: string;
+}
+
+export interface CollectionView {
+  paymentId: string;
+  paymentDate: string;
+  method: PaymentMethod;
+  amount: number;
+  tenant: { id: string; displayName: string };
+  unit: { id: string; code: string };
+  invoiceNumber: string | null;
+}
+
+// ---- Onboarding du gestionnaire indépendant ----
+
+export interface OnboardingIndependentManagerInput {
+  organizationLegalName: string;
+  organizationCity: string;
+  organizationContactPhone: string;
+  landlordFirstName: string;
+  landlordLastName: string;
+  landlordPhone: string;
+  propertyName: string;
+  propertyAddressLine: string;
+  propertyCity: string;
+  commissionRateBps?: number;
+}
+
+export interface OnboardingIndependentManagerResult {
+  organization: Organization;
+  landlord: LandlordSummary;
+  property: PropertySummary;
+  mandate: Mandate;
+}
+
+// ---- Portail bailleur ----
+
+export interface PortalLandlord {
+  id: string;
+  displayName: string;
+  primaryPhone: string;
+  email: string | null;
+  countryCode: string;
+  isDiaspora: boolean;
+  payoutMethod: PaymentMethod;
+}
+
+export interface PortalOrganizationRef {
+  id: string;
+  name: string;
+}
+
+export interface PortalMeResponse {
+  landlord: PortalLandlord;
+  organizations: PortalOrganizationRef[];
+}
+
+export interface PortalActivationRequestBody {
+  invitationToken: string;
+}
+
+export interface PortalActivationRequestResponse {
+  phoneMasked: string;
+  requestId: string;
+  resendAfterSeconds: number;
+}
+
+export interface PortalActivationVerifyBody {
+  invitationToken: string;
+  code: string;
+}
+
+export interface PortalActivationVerifyResponse {
+  accessToken: string;
+  refreshToken: string;
+  landlord: PortalLandlord;
+  organizations: PortalOrganizationRef[];
 }

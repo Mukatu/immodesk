@@ -96,6 +96,12 @@ export default function OnboardingOrganisationPage() {
     ];
     const valid = await form.trigger(fieldsByStep[stepIndex]);
     if (!valid) return;
+    // Le gestionnaire indépendant suit un parcours dédié, plus court (organisation +
+    // premier bailleur + premier immeuble + premier mandat en un seul appel).
+    if (stepIndex === 0 && form.getValues('type') === 'INDEPENDENT_MANAGER') {
+      router.push('/onboarding/gestionnaire-independant');
+      return;
+    }
     if (stepIndex < STEP_LABELS.length - 1) {
       setStepIndex((s) => s + 1);
     } else {

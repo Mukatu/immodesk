@@ -22,7 +22,8 @@ Complète les contrats des phases 0 à 5 (mêmes conventions). Tables : `bank_st
 
 ## Import de relevés
 
-- **Interface** `BankStatementAdapter` : `detect(file): boolean`, `parse(file): CanonicalStatement`. Une seule forme canonique en sortie, quelle que soit la banque.
+- **Le fichier ne transite jamais dans le corps de la requête.** L'API plafonne le JSON à 1 Mo et n'accepte aucun envoi multipart. L'import prend donc un `documentId` déjà téléversé par les routes existantes `/v1/documents/upload-url` puis `/v1/documents`, comme toute autre pièce jointe. Deux prérequis techniques en découlent : autoriser les types `text/csv`, `application/vnd.ms-excel` et `text/plain` dans le module documents, et ajouter au port de stockage une lecture d'octets, aujourd'hui absente, sans laquelle l'adaptateur ne peut pas lire le fichier.
+- **Interface** `BankStatementAdapter` : `detect(bytes, fileName): boolean`, `parse(bytes, fileName): CanonicalStatement`. Une seule forme canonique en sortie, quelle que soit la banque.
 
 ```ts
 interface CanonicalStatementLine {
@@ -57,6 +58,7 @@ interface CanonicalStatement {
 - **Contrôle d'intégrité** : `openingBalance + Σ crédits − Σ débits = closingBalance`. En cas d'écart, l'import est refusé **en bloc**, aucune ligne n'est créée : 422 `BANK.STATEMENT_BALANCE_MISMATCH` avec l'écart constaté.
 - **Doublon** : l'empreinte SHA-256 du fichier est stockée dans `file_checksum_sha256` ; un même fichier réimporté sur le même compte renvoie 409 `BANK.STATEMENT_ALREADY_IMPORTED` avec l'identifiant du relevé existant, sans rien créer.
 - **Devise** : une ligne dans une devise autre que XAF est refusée à l'import du relevé entier : 422 `BANK.STATEMENT_CURRENCY_UNSUPPORTED`.
+- **Période** : la base impose `period_start < period_end` de façon stricte, donc un relevé d'une seule journée est refusé. Le contrôler en amont et renvoyer 422 `BANK.STATEMENT_PERIOD_INVALID`, plutôt que de laisser remonter une erreur SQL.
 - **Rapport d'import** : `{ statementId, linesAccepted, linesIgnored, linesInError: { lineNumber, reason }[], autoMatched, suggested }`. Le fichier d'origine est conservé dans `documents` et rattaché au relevé.
 - **Abandon d'un import erroné** : `POST /v1/bank-statements/{id}/discard` n'est accepté que si aucune ligne n'est rapprochée en `CONFIRMED`, sinon 409 `BANK.STATEMENT_HAS_MATCHES`. Comme l'énumération ne comporte aucun statut d'abandon, l'effet est le suivant : toutes les lignes passent `is_ignored = true` avec un motif, le relevé reste dans son statut d'analyse, et l'API expose le champ dérivé `isDiscarded` à vrai (toutes les lignes ignorées, aucune rapprochée). Aucune ligne n'est supprimée.
 
@@ -71,6 +73,8 @@ Il ne traite que les lignes **au crédit** et non ignorées. Les débits sont co
 | **Manuel**  | Aucun critère automatique                                                                                                                                                                                                                                                                                               | La ligne reste `UNMATCHED` et part dans la file de traitement manuel        |
 
 **Calcul du score**, sur 100 points : montant identique 50 points, écart inférieur ou égal à 2 % 35 points, au-delà 0 et le candidat est écarté ; proximité de date 20 points à moins de 3 jours, 10 points à moins de 10 jours ; similarité entre le nom du payeur et celui du locataire 20 points au maximum, calculée en application sur les libellés normalisés (majuscules, accents retirés, ponctuation et mentions bancaires courantes supprimées) ; existence d'une déclaration de virement en attente pour le même montant 10 points. Les critères retenus sont enregistrés dans `match_criteria` afin qu'un gestionnaire comprenne pourquoi une suggestion lui est proposée.
+
+**Une cible et une seule.** La base tolère plusieurs clés étrangères renseignées sur un même rapprochement (`num_nonnulls(...) >= 1`) ; l'application en exige exactement une et refuse le reste par 422 `BANK.MATCH_TARGET_REQUIRED`.
 
 **Cibles possibles** d'un rapprochement (la table porte quatre colonnes de clé étrangère distinctes, `payment_id`, `declaration_id`, `bank_check_id` et `remittance_id` ; `targetType` et `targetId` sont déduits à la lecture, rien n'est stocké en double) : un `payment` (virement ou chèque déjà confirmé), une `bank_transfer_declarations` en attente, un `bank_checks` déposé, une `cash_remittances` déposée en banque. Une ligne peut être rapprochée de plusieurs cibles et une cible de plusieurs lignes : les rapprochements partiels portent `match_type PARTIAL` ou `SPLIT`, et la somme des `matched_amount` confirmés ne peut jamais dépasser ni le montant de la ligne, ni celui de la cible (409 `BANK.OVER_MATCHED`).
 
@@ -227,6 +231,9 @@ interface ReconciliationMatch {
   reversalOfId: string | null;
   createdAt: string;
 }
+// `invoiceId` n'est pas stocké sur le chèque : la table ne comporte pas cette colonne. Il sert
+// à imputer le paiement créé à la réception ; en lecture, `invoice` est dérivé des allocations
+// de ce paiement.
 interface BankCheckInput {
   tenantId: string;
   leaseId?: string;

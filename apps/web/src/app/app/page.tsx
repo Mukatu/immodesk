@@ -9,6 +9,7 @@ import {
   ClipboardList,
   DoorOpen,
   FileText,
+  Landmark,
   Percent,
   RefreshCw,
   Settings,
@@ -39,6 +40,7 @@ import { useLeases } from '@/lib/api/hooks/use-leases';
 import { useDepositsSummary } from '@/lib/api/hooks/use-deposits';
 import { useBillingDashboard } from '@/lib/api/hooks/use-billing-dashboard';
 import { useSyncConflicts } from '@/lib/api/hooks/use-sync-conflicts';
+import { useReconciliationDashboard } from '@/lib/api/hooks/use-reconciliation-dashboard';
 import { PAYMENT_METHOD_LABELS } from '@/lib/enum-labels';
 import { formatXaf } from '@/lib/money';
 
@@ -131,6 +133,7 @@ export default function DashboardPage() {
   const activeLeasesQuery = useLeases({ status: 'ACTIVE', limit: DASHBOARD_PAGE_LIMIT });
   const depositsSummaryQuery = useDepositsSummary();
   const pendingConflictsQuery = useSyncConflicts({ resolved: false, limit: DASHBOARD_PAGE_LIMIT });
+  const reconciliationDashboardQuery = useReconciliationDashboard();
 
   const properties = propertiesQuery.data?.items ?? [];
   const propertiesValue = formatApproxCount(
@@ -331,6 +334,47 @@ export default function DashboardPage() {
             </div>
           </>
         ) : null}
+      </section>
+
+      <section aria-labelledby="rapprochement-titre" className="space-y-4">
+        <h2 id="rapprochement-titre" className="text-lg font-semibold">
+          Rapprochement bancaire
+        </h2>
+        <Card>
+          <CardHeader className="pb-2">
+            <Landmark className="mb-2 size-5 text-primary" aria-hidden="true" />
+            <CardDescription>Lignes de relevé non rapprochées</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {reconciliationDashboardQuery.isLoading ? (
+              <Skeleton className="h-16 w-full" />
+            ) : reconciliationDashboardQuery.data ? (
+              <>
+                <p className="text-3xl font-semibold">
+                  {reconciliationDashboardQuery.data.unmatchedCount}{' '}
+                  <span className="text-base font-normal text-muted-foreground">
+                    ligne
+                    {reconciliationDashboardQuery.data.unmatchedCount > 1 ? 's' : ''} non rapprochée
+                    {reconciliationDashboardQuery.data.unmatchedCount > 1 ? 's' : ''}
+                  </span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Montant concerné :{' '}
+                  <MoneyXaf amount={reconciliationDashboardQuery.data.unmatchedAmount} /> · la plus
+                  ancienne date de {reconciliationDashboardQuery.data.oldestUnmatchedDays} jour
+                  {reconciliationDashboardQuery.data.oldestUnmatchedDays > 1 ? 's' : ''} · taux de
+                  rapprochement global{' '}
+                  {Math.round(reconciliationDashboardQuery.data.matchedRatioBps / 100)} %
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Aucune donnée disponible.</p>
+            )}
+            <Button asChild variant="link" size="sm" className="h-auto px-0">
+              <Link href="/app/banque/rapprochement">Ouvrir le rapprochement</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </section>
 
       <section aria-labelledby="apercu-titre" className="space-y-4">

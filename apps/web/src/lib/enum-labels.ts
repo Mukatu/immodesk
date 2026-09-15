@@ -4,7 +4,9 @@
  */
 import type {
   BankAccountHolderType,
+  BankStatementStatus,
   CashReceiptStatus,
+  CheckStatus,
   ContactChannelType,
   CreditStatus,
   DeclarationStatus,
@@ -18,6 +20,9 @@ import type {
   LeaseDocumentKind,
   LeasePartyRole,
   LeaseStatus,
+  LineState,
+  MatchStatus,
+  MatchType,
   MessageStatus,
   MomoAggregatorProvider,
   MomoChannel,
@@ -31,8 +36,10 @@ import type {
   PenaltyBasis,
   PropertyType,
   ReceiptStatus,
+  ReconciliationTargetType,
   RemittanceStatus,
   RentPeriod,
+  StatementFormat,
   SyncBatchStatus,
   SyncOperationOutcome,
   SyncOperationType,
@@ -390,6 +397,68 @@ export const SYNC_OPERATION_OUTCOME_LABELS: Record<SyncOperationOutcome, string>
 export const SYNC_OPERATION_TYPE_LABELS: Record<SyncOperationType, string> = {
   CASH_RECEIPT: 'Encaissement espèces',
   DOCUMENT: 'Pièce jointe',
+};
+
+/**
+ * Libellés fr-CG des énumérations du contrat d'API (phase 6 : rapprochement
+ * bancaire et chèques), pour affichage sans jamais exposer les codes
+ * techniques au gestionnaire.
+ */
+export const STATEMENT_FORMAT_LABELS: Record<StatementFormat, string> = {
+  CSV: 'CSV',
+  MT940: 'MT940',
+  CAMT053: 'CAMT.053',
+  OFX: 'OFX',
+  XLSX: 'Excel',
+  PDF_OCR: 'PDF (OCR)',
+};
+
+export const BANK_STATEMENT_STATUS_LABELS: Record<BankStatementStatus, string> = {
+  UPLOADED: 'Importé',
+  PARSING: 'Analyse en cours',
+  PARSED: 'Analysé',
+  RECONCILING: 'Rapprochement en cours',
+  RECONCILED: 'Rapprochement terminé',
+  FAILED: 'Échec',
+};
+
+export const LINE_STATE_LABELS: Record<LineState, string> = {
+  UNMATCHED: 'Non rapprochée',
+  SUGGESTED: 'Suggestion à valider',
+  PARTIALLY_MATCHED: 'Partiellement rapprochée',
+  MATCHED: 'Rapprochée',
+  IGNORED: 'Ignorée',
+};
+
+export const MATCH_TYPE_LABELS: Record<MatchType, string> = {
+  EXACT: 'Exact',
+  SUGGESTED: 'Suggéré',
+  MANUAL: 'Manuel',
+  PARTIAL: 'Partiel',
+  SPLIT: 'Scindé',
+};
+
+export const MATCH_STATUS_LABELS: Record<MatchStatus, string> = {
+  PROPOSED: 'Suggéré',
+  CONFIRMED: 'Confirmé',
+  REJECTED: 'Rejeté',
+  REVERSED: 'Annulé',
+};
+
+export const CHECK_STATUS_LABELS: Record<CheckStatus, string> = {
+  RECEIVED: 'Reçu',
+  DEPOSITED: 'Déposé',
+  CLEARED: 'Compensé',
+  BOUNCED: 'Rejeté (impayé)',
+  CANCELLED: 'Annulé',
+  RETURNED: 'Rendu au tireur',
+};
+
+export const RECONCILIATION_TARGET_TYPE_LABELS: Record<ReconciliationTargetType, string> = {
+  PAYMENT: 'Paiement',
+  DECLARATION: 'Déclaration de virement',
+  CHECK: 'Chèque',
+  REMITTANCE: 'Remise de caisse',
 };
 
 /** Convertit un Record de libellés en options `{ value, label }` (ex. pour un Select). */

@@ -137,6 +137,15 @@ export default function ParametresPage() {
             Mobile Money déclaré, Mobile Money agrégateur et virement bancaire.
           </p>
         </Link>
+        <Link
+          href="/app/parametres/rapprochement"
+          className="rounded-md border border-border p-4 hover:bg-accent"
+        >
+          <p className="font-medium">Rapprochement bancaire</p>
+          <p className="text-sm text-muted-foreground">
+            Seuil de suggestion, tolérances, confirmation automatique et frais de rejet de chèque.
+          </p>
+        </Link>
         {isOwner ? (
           <Link
             href="/app/parametres/webhooks"

@@ -218,9 +218,49 @@ annulée de l'organisation dès qu'elle en compte une (bascule automatiquement �
 rejouer le scénario), ce qui fonctionne aussi bien pour les données de démonstration que pour une
 organisation e2e fraîchement créée.
 
+### Rapprochement bancaire et chèques (phase 6)
+
+**Domaine** : import de relevés bancaires (`docs/api/phase6-contract.md`), moteur de rapprochement à
+trois niveaux (exact, suggéré, manuel) entre les lignes de relevé et les paiements, déclarations de
+virement, chèques ou remises de caisse, cycle de vie complet du chèque. Le fichier du relevé ne
+transite jamais dans le corps de la requête d'import : il est d'abord téléversé comme un document
+classique (`DocumentUploader`, nature `BANK_STATEMENT`), puis l'import référence ce document par
+`documentId`. L'état d'une ligne (`LineState`) est dérivé (jamais persisté) : `UNMATCHED`,
+`SUGGESTED`, `PARTIALLY_MATCHED`, `MATCHED`, `IGNORED`. Un chèque suit `RECEIVED` → `DEPOSITED` →
+`CLEARED`, avec les branches `BOUNCED`, `CANCELLED`, `RETURNED` — jamais `REGISTERED`/`REJECTED`
+(anciennes valeurs du plan de phases, remplacées par le contrat).
+
+**Écrans** : `/app/banque/releves` (sélection du compte, import avec détection ou choix du format,
+rapport d'import lisible, liste des relevés avec période/soldes/taux de rapprochement) et
+`/app/banque/releves/[id]` (détail, lignes filtrables par état, abandon d'un import erroné avec son
+avertissement) ; `/app/banque/rapprochement` (file des lignes non rapprochées et suggérées tous
+relevés confondus, filtres compte/ancienneté/montant, mise en évidence des lignes de plus de 30
+jours, suggestions avec score et critères détaillés, validation/rejet en un geste, recherche
+manuelle par locataire puis par paiement/déclaration/chèque/remise, annulation d'un rapprochement
+avec motif obligatoire et avertissement de réouverture de facture) ; `/app/banque/cheques` (saisie,
+liste filtrable par statut, mise en évidence des chèques déposés depuis plus de quinze jours,
+actions dépôt/compensation/rejet motivé/annulation/restitution, bandeau sur les conséquences d'un
+rejet) ; `/app/parametres/rapprochement` (seuil de suggestion, fenêtre de dates, tolérance de
+montant, confirmation automatique des rapprochements exacts, délai d'alerte des chèques, frais de
+rejet). Tuile « Rapprochement bancaire » sur le tableau de bord général, entrée dans la navigation
+principale, sous-navigation locale entre Relevés/Rapprochement/Chèques (`banque/layout.tsx`).
+
+**Composants** : `LineStateBadge`, `MatchTypeBadge`, `MatchStatusBadge`, `CheckStatusBadge`,
+`ConfidenceScoreGauge`, `ImportReportPanel`, `SuggestionCard`.
+
+**Hooks** : `use-bank-statements`, `use-bank-statement-lines`, `use-reconciliation-matches`,
+`use-reconciliation-dashboard`, `use-bank-checks`, `use-bank-statement-adapters`,
+`use-reconciliation-settings`.
+
+**Mocks MSW** : `bank-statements-handlers.ts`, `reconciliation-handlers.ts`,
+`bank-checks-handlers.ts`, `bank-reconciliation-seed.ts`. Tout import de relevé génère de façon
+déterministe 12 lignes : 6 rapprochées automatiquement (`EXACT`/`CONFIRMED`), 3 suggérées avec des
+scores différents (88/79/76), 3 non rapprochées dont une de plus de 30 jours ; un chèque déposé
+depuis vingt jours illustre l'alerte de délai de compensation dans les données de démonstration.
+
 ## Tests
 
-- **Unitaires** (`pnpm test`, Vitest + Testing Library, **143 tests** répartis sur 30 fichiers) :
+- **Unitaires** (`pnpm test`, Vitest + Testing Library, **175 tests** répartis sur 37 fichiers) :
   formatage XAF (`MoneyXaf`), saisie téléphone congolaise (`PhoneInput`), affichage téléphone
   (`PhoneDisplay`), badge occupation (`OccupancyBadge`), validation taille et MIME de
   `DocumentUploader`, client API (`apiFetch`) incluant le rafraîchissement automatique de token et
@@ -233,7 +273,10 @@ organisation e2e fraîchement créée.
   `WebhookStatusBadge`, `OperatorBadge`), bloc instructions de paiement, écran d'attente Mobile Money,
   badges de statut phase 5 (`SyncBatchStatusBadge`, `SyncOutcomeBadge`), fraîcheur de synchronisation
   d'un appareil (`DeviceFreshnessIndicator`), résolution d'un conflit en deux choix avec motif
-  obligatoire à l'abandon (`ConflictResolutionDialog`).
+  obligatoire à l'abandon (`ConflictResolutionDialog`), badges de rapprochement phase 6
+  (`LineStateBadge`, `MatchTypeBadge`, `MatchStatusBadge`, `CheckStatusBadge`), jauge de confiance
+  d'une suggestion (`ConfidenceScoreGauge`), rapport d'import lisible (`ImportReportPanel`), carte de
+  suggestion de rapprochement avec validation/rejet (`SuggestionCard`).
 - **e2e** (`pnpm test:e2e`, Playwright) :
   - **Phase 0** (`e2e/login-onboarding-invitation.spec.ts`) : connexion OTP → création
     d'organisation → invitation, entièrement mocké via MSW.
@@ -253,6 +296,9 @@ organisation e2e fraîchement créée.
     ouverture d'un conflit (facture annulée pendant l'absence de connexion) → résolution en
     appliquant sur une autre facture → disparition du conflit de la liste des conflits non résolus,
     entièrement mocké via MSW.
+  - **Phase 6** (`e2e/phase6-rapprochement-bancaire.spec.ts`) : import d'un relevé bancaire →
+    validation d'une suggestion de rapprochement → rapprochement manuel d'une ligne non rapprochée
+    avec un chèque déposé → dépôt puis compensation de ce chèque, entièrement mocké via MSW.
 
 Tous les scénarios e2e utilisent MSW (`src/mocks/handlers.ts`), interceptée côté serveur
 (`msw/node`, activé dans `instrumentation.ts` quand `E2E_MOCK=1`). Les appels directs du navigateur

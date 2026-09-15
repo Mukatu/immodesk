@@ -24,6 +24,9 @@ import { mobileMoneyHandlers } from './mobile-money-handlers';
 import { bankTransferHandlers } from './bank-transfer-handlers';
 import { webhookEventsHandlers } from './webhook-events-handlers';
 import { syncHandlers } from './sync-handlers';
+import { bankStatementsHandlers, seedBankReconciliationDemoData } from './bank-statements-handlers';
+import { reconciliationHandlers } from './reconciliation-handlers';
+import { bankChecksHandlers } from './bank-checks-handlers';
 import { API_BASE } from './api-base';
 
 /**
@@ -866,6 +869,7 @@ seedPaymentsPhase4DemoData({
   DEMO_ORG_ID,
   nextId,
 });
+seedBankReconciliationDemoData(DEMO_ORG_ID);
 
 export function notFound(code: string, message = 'Introuvable.') {
   return HttpResponse.json({ code, message }, { status: 404 });
@@ -1818,6 +1822,11 @@ export const handlers = [
       'image/webp',
       'image/heic',
       'application/pdf',
+      // Phase 6 (docs/api/phase6-contract.md, correctif import par document) :
+      // le relevé bancaire est téléversé comme un document classique.
+      'text/csv',
+      'application/vnd.ms-excel',
+      'text/plain',
     ];
     if (!allowedMimeTypes.includes(body.mimeType)) {
       return HttpResponse.json(
@@ -1825,7 +1834,12 @@ export const handlers = [
         { status: 415 },
       );
     }
-    const maxSizeBytes = body.mimeType === 'application/pdf' ? 25 * 1024 * 1024 : 15 * 1024 * 1024;
+    const STATEMENT_MIME_TYPES = ['text/csv', 'application/vnd.ms-excel', 'text/plain'];
+    const maxSizeBytes = STATEMENT_MIME_TYPES.includes(body.mimeType)
+      ? 10 * 1024 * 1024
+      : body.mimeType === 'application/pdf'
+        ? 25 * 1024 * 1024
+        : 15 * 1024 * 1024;
     if (body.sizeBytes > maxSizeBytes) {
       return HttpResponse.json(
         {
@@ -1960,4 +1974,7 @@ export const handlers = [
   ...bankTransferHandlers,
   ...webhookEventsHandlers,
   ...syncHandlers,
+  ...bankStatementsHandlers,
+  ...reconciliationHandlers,
+  ...bankChecksHandlers,
 ];

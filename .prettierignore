@@ -6,3 +6,5 @@ coverage
 pnpm-lock.yaml
 apps/mobile
 docs/schema
+apps/web/playwright-report
+apps/web/test-results

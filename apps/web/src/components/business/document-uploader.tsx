@@ -32,15 +32,20 @@ const MAX_PDF_SIZE_BYTES = 25 * 1024 * 1024;
 const GENERIC_UPLOAD_ERROR = "Échec de l'envoi. Veuillez réessayer.";
 
 /** Valide un fichier avant envoi : type MIME autorisé et taille selon le contrat API. */
-export function validateDocumentFile(file: {
-  name: string;
-  type: string;
-  size: number;
-}): string | null {
-  if (!ALLOWED_MIME_TYPES.includes(file.type as (typeof ALLOWED_MIME_TYPES)[number])) {
+export function validateDocumentFile(
+  file: {
+    name: string;
+    type: string;
+    size: number;
+  },
+  acceptedMimeTypes: readonly string[] = ALLOWED_MIME_TYPES,
+  maxSizeBytes?: number,
+): string | null {
+  if (!acceptedMimeTypes.includes(file.type)) {
     return 'Format de fichier non pris en charge (jpeg, png, webp, heic ou pdf uniquement).';
   }
-  const maxSize = file.type === 'application/pdf' ? MAX_PDF_SIZE_BYTES : MAX_IMAGE_SIZE_BYTES;
+  const maxSize =
+    maxSizeBytes ?? (file.type === 'application/pdf' ? MAX_PDF_SIZE_BYTES : MAX_IMAGE_SIZE_BYTES);
   if (file.size > maxSize) {
     return 'Fichier trop volumineux (maximum 15 Mo pour une image, 25 Mo pour un PDF).';
   }
@@ -86,6 +91,8 @@ export interface DocumentUploaderProps {
   relatedEntityId: string;
   kind: DocumentKind;
   onUploaded?: (doc: Document) => void;
+  acceptedMimeTypes?: readonly string[];
+  maxSizeBytes?: number;
 }
 
 type UploadState = 'idle' | 'uploading' | 'error';
@@ -95,6 +102,8 @@ export function DocumentUploader({
   relatedEntityId,
   kind,
   onUploaded,
+  acceptedMimeTypes = ALLOWED_MIME_TYPES,
+  maxSizeBytes,
 }: DocumentUploaderProps) {
   const inputId = useId();
   const [state, setState] = useState<UploadState>('idle');
@@ -127,7 +136,7 @@ export function DocumentUploader({
   }
 
   async function handleFile(file: File) {
-    const validationError = validateDocumentFile(file);
+    const validationError = validateDocumentFile(file, acceptedMimeTypes, maxSizeBytes);
     if (validationError) {
       setPreviewFile(null);
       setError(validationError);
@@ -185,6 +194,13 @@ export function DocumentUploader({
   }
 
   const isUploading = state === 'uploading';
+  const isDefaultAccept = acceptedMimeTypes === ALLOWED_MIME_TYPES && maxSizeBytes === undefined;
+  const acceptAttr = acceptedMimeTypes.join(',');
+  const helpText = isDefaultAccept
+    ? 'jpeg, png, webp, heic ou pdf — 15 Mo max (25 Mo pour un pdf)'
+    : `Formats acceptés : ${acceptedMimeTypes.join(', ')}${
+        maxSizeBytes !== undefined ? ` — ${formatFileSize(maxSizeBytes)} max` : ''
+      }`;
 
   return (
     <div className="space-y-3">
@@ -204,7 +220,7 @@ export function DocumentUploader({
           id={inputId}
           type="file"
           className="sr-only"
-          accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+          accept={acceptAttr}
           onChange={handleInputChange}
           disabled={isUploading}
         />
@@ -219,9 +235,7 @@ export function DocumentUploader({
           <span className="text-sm font-medium text-foreground">
             Glissez-déposez un fichier ou cliquez pour choisir
           </span>
-          <span className="text-xs text-muted-foreground">
-            jpeg, png, webp, heic ou pdf — 15 Mo max (25 Mo pour un pdf)
-          </span>
+          <span className="text-xs text-muted-foreground">{helpText}</span>
         </label>
       </div>
 

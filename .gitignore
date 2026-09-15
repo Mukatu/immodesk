@@ -26,3 +26,7 @@ apps/mobile/android/local.properties
 
 # Brouillon initial conservé hors dépôt
 output_Prompts_Developpement_SaaS_Immobilier.md
+
+# Artefacts Playwright
+apps/web/playwright-report/
+apps/web/test-results/

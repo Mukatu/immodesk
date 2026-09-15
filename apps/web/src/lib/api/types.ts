@@ -200,6 +200,15 @@ export const ApiErrorCode = {
   ACCOUNT_DUPLICATE: 'BANKING.ACCOUNT_DUPLICATE',
   FILE_TOO_LARGE: 'DOCUMENTS.FILE_TOO_LARGE',
   MIME_NOT_ALLOWED: 'DOCUMENTS.MIME_NOT_ALLOWED',
+  STATEMENT_ALREADY_IMPORTED: 'BANK.STATEMENT_ALREADY_IMPORTED',
+  STATEMENT_FORMAT_UNKNOWN: 'BANK.STATEMENT_FORMAT_UNKNOWN',
+  STATEMENT_BALANCE_MISMATCH: 'BANK.STATEMENT_BALANCE_MISMATCH',
+  STATEMENT_CURRENCY_UNSUPPORTED: 'BANK.STATEMENT_CURRENCY_UNSUPPORTED',
+  STATEMENT_HAS_MATCHES: 'BANK.STATEMENT_HAS_MATCHES',
+  OVER_MATCHED: 'BANK.OVER_MATCHED',
+  CHECK_ALREADY_REGISTERED: 'BANK.CHECK_ALREADY_REGISTERED',
+  STATEMENT_PERIOD_INVALID: 'BANK.STATEMENT_PERIOD_INVALID',
+  MATCH_TARGET_REQUIRED: 'BANK.MATCH_TARGET_REQUIRED',
 } as const;
 
 /**
@@ -1670,4 +1679,261 @@ export interface MobileConfig {
   syncIntervalSeconds: number;
   maxOperationsPerBatch: number;
   offlineWritesEnabled: boolean;
+}
+
+/**
+ * Types du contrat d'API — Phase 6 (rapprochement bancaire et chèques).
+ * Recopiés depuis docs/api/phase6-contract.md. Ne pas diverger du contrat
+ * sans mettre à jour ce fichier et le document source.
+ */
+
+// ---- Énumérations ----
+
+export type StatementFormat = 'CSV' | 'MT940' | 'CAMT053' | 'OFX' | 'XLSX' | 'PDF_OCR';
+
+export type BankStatementStatus =
+  'UPLOADED' | 'PARSING' | 'PARSED' | 'RECONCILING' | 'RECONCILED' | 'FAILED';
+
+export type StatementLineDirection = 'CREDIT' | 'DEBIT';
+
+/** Champ dérivé exposé en lecture sur `StatementLine.state` : pas de colonne persistée. */
+export type LineState = 'UNMATCHED' | 'SUGGESTED' | 'PARTIALLY_MATCHED' | 'MATCHED' | 'IGNORED';
+
+export type MatchType = 'EXACT' | 'SUGGESTED' | 'MANUAL' | 'PARTIAL' | 'SPLIT';
+
+export type MatchStatus = 'PROPOSED' | 'CONFIRMED' | 'REJECTED' | 'REVERSED';
+
+export type ReconciliationTargetType = 'PAYMENT' | 'DECLARATION' | 'CHECK' | 'REMITTANCE';
+
+/**
+ * Cycle de vie d'un chèque : RECEIVED → DEPOSITED → CLEARED, avec branches
+ * BOUNCED, CANCELLED, RETURNED. Ne pas réutiliser REGISTERED ni REJECTED
+ * (anciennes valeurs du plan de phases, remplacées par ce contrat).
+ */
+export type CheckStatus =
+  'RECEIVED' | 'DEPOSITED' | 'CLEARED' | 'BOUNCED' | 'CANCELLED' | 'RETURNED';
+
+// ---- Relevés bancaires ----
+
+export interface StatementSummary {
+  id: string;
+  bankAccountId: string;
+  format: StatementFormat;
+  status: BankStatementStatus;
+  isDiscarded: boolean;
+  statementReference: string | null;
+  periodStart: string;
+  periodEnd: string;
+  openingBalance: number;
+  closingBalance: number;
+  linesCount: number;
+  matchedLinesCount: number;
+  totalCreditAmount: number;
+  totalDebitAmount: number;
+  importedAt: string;
+  importedByUserId: string | null;
+}
+
+export interface ImportReport {
+  statementId: string;
+  linesAccepted: number;
+  linesIgnored: number;
+  linesInError: { lineNumber: number; reason: string }[];
+  autoMatched: number;
+  suggested: number;
+}
+
+export interface StatementDetail extends StatementSummary {
+  documentId: string | null;
+  fileChecksumSha256: string | null;
+  parsedAt: string | null;
+  reconciledAt: string | null;
+  parseError: string | null;
+  report: ImportReport | null;
+}
+
+/** `POST /v1/bank-statements/{id}/reconcile` : relance le rapprochement automatique. */
+export interface ReconcileRunResult {
+  matched: number;
+  suggested: number;
+  unmatched: number;
+}
+
+/** `GET /v1/bank-statement-adapters` : formats de relevé pris en charge par l'import. */
+export interface BankStatementAdapterInfo {
+  code: string;
+  label: string;
+  format: StatementFormat;
+  sampleAvailable: boolean;
+}
+
+// ---- Lignes de relevé ----
+
+export interface StatementLine {
+  id: string;
+  statementId: string;
+  bankAccountId: string;
+  lineNumber: number;
+  direction: StatementLineDirection;
+  operationDate: string;
+  valueDate: string | null;
+  amount: number;
+  matchedAmount: number;
+  state: LineState;
+  label: string;
+  normalizedLabel: string | null;
+  counterpartyName: string | null;
+  bankReference: string | null;
+  endToEndReference: string | null;
+  isIgnored: boolean;
+  ignoreReason: string | null;
+  matches: ReconciliationMatch[];
+  ageDays: number;
+}
+
+export interface PatchStatementLineBody {
+  isIgnored?: boolean;
+  ignoreReason?: string;
+}
+
+export interface MatchSuggestion {
+  targetType: ReconciliationTargetType;
+  targetId: string;
+  label: string;
+  amount: number;
+  date: string;
+  confidenceScore: number;
+  criteria: Record<string, unknown>;
+  tenant: { id: string; displayName: string } | null;
+  invoice: { id: string; invoiceNumber: string | null } | null;
+}
+
+// ---- Rapprochement ----
+
+export interface ReconciliationMatch {
+  id: string;
+  statementLineId: string;
+  targetType: ReconciliationTargetType;
+  targetId: string;
+  matchType: MatchType;
+  status: MatchStatus;
+  matchedAmount: number;
+  confidenceScore: number;
+  matchCriteria: Record<string, unknown>;
+  matchedByUserId: string | null;
+  confirmedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  reversedAt: string | null;
+  reversalOfId: string | null;
+  createdAt: string;
+}
+
+export interface CreateReconciliationMatchBody {
+  statementLineId: string;
+  targetType: ReconciliationTargetType;
+  targetId: string;
+  matchedAmount: number;
+}
+
+export interface RejectReconciliationMatchBody {
+  reason: string;
+}
+
+export interface ReverseReconciliationMatchBody {
+  reason: string;
+}
+
+/** `POST /v1/reconciliation-matches/{id}/reverse` : pas de suppression, écriture miroir. */
+export interface ReverseMatchResult {
+  reversed: ReconciliationMatch;
+  mirror: ReconciliationMatch;
+}
+
+// ---- Chèques ----
+
+export interface BankCheckInput {
+  tenantId: string;
+  leaseId?: string;
+  invoiceId?: string;
+  checkNumber: string;
+  drawerName: string;
+  drawerBankCode: string;
+  drawerBankName: string;
+  drawerAccountNumber?: string;
+  amount: number;
+  issueDate: string;
+  receivedAt?: string;
+  imageDocumentId?: string;
+  notes?: string;
+}
+
+export interface BankCheck extends BankCheckInput {
+  id: string;
+  status: CheckStatus;
+  paymentId: string | null;
+  depositDate: string | null;
+  depositBankAccountId: string | null;
+  clearingDate: string | null;
+  bouncedAt: string | null;
+  bounceReason: string | null;
+  bounceFeeAmount: number;
+  receivedByUserId: string | null;
+  ageDays: number;
+}
+
+export interface BankCheckDetail extends BankCheck {
+  tenant: { id: string; displayName: string } | null;
+  invoice: { id: string; invoiceNumber: string | null } | null;
+  matches: ReconciliationMatch[];
+}
+
+export interface DepositBankCheckBody {
+  depositDate: string;
+  depositBankAccountId: string;
+}
+
+export interface ClearBankCheckBody {
+  clearingDate?: string;
+}
+
+export interface BounceBankCheckBody {
+  reason: string;
+  bounceFeeAmount?: number;
+}
+
+// ---- Tableau de bord ----
+
+export interface ReconciliationDashboardAccountRow {
+  bankAccountId: string;
+  bankAccountLabel: string;
+  unmatchedCount: number;
+  unmatchedAmount: number;
+  oldestUnmatchedDays: number;
+  matchedRatioBps: number;
+}
+
+export interface ReconciliationDashboard {
+  unmatchedCount: number;
+  unmatchedAmount: number;
+  oldestUnmatchedDays: number;
+  matchedRatioBps: number;
+  byAccount: ReconciliationDashboardAccountRow[];
+}
+
+// ---- Paramètres de rapprochement ----
+
+export interface ReconciliationSettings {
+  /** Défaut 75, entre 50 et 95. */
+  suggestionThreshold: number;
+  /** Défaut 15. */
+  dateWindowDays: number;
+  /** Défaut 2. */
+  amountTolerancePercent: number;
+  /** Défaut true. */
+  autoConfirmExact: boolean;
+  /** Défaut 15 jours ouvrés. */
+  checkClearingAlertDays: number;
+  /** Défaut 0. */
+  bounceFeeAmount: number;
 }

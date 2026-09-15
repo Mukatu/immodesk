@@ -68,6 +68,23 @@ gestionnaires indépendants.
   `COLLECTOR` ne voit que sa tournée, ses reçus et sa caisse (onglets
   Immeubles/Locataires et liste des baux masqués). Voir
   `docs/04_plan_de_phases.md` (§5.x) et `docs/api/phase5-contract.md`.
+- **Phase 7** : espace bailleur en lecture seule (`feature
+  landlord_portal`) — après connexion par code, un compte rattaché à un
+  `landlord` (rôle dérivé `LANDLORD_PORTAL`, sans appartenance à
+  `organization_members`) est aiguillé vers un espace distinct de celui de
+  l'agence : accueil (solde à percevoir, dernier relevé, dernier
+  reversement, bandeau diaspora avec mode de reversement et délai estimé),
+  relevés de gérance (téléchargement du PDF et partage), reversements
+  perçus, encaissements confirmés et quittances. Aucune action d'écriture
+  n'y est jamais proposée, et toute réponse de refus de l'API est affichée
+  en français. Onboarding du gestionnaire indépendant (`feature
+  onboarding`) : quatre écrans brefs (organisation, premier bailleur,
+  premier immeuble, premier mandat avec la commission de 10 % pré-remplie),
+  un seul appel réseau final
+  (`POST /organizations/independent-manager/onboarding`). Invitation du
+  bailleur depuis la fiche du mandat (`feature mandates`) : envoi par
+  WhatsApp et statut affiché (non invité / envoyée / activée). Voir
+  `docs/04_plan_de_phases.md` (§7.x) et `docs/api/phase7-contract.md`.
 
 ## Prérequis
 
@@ -171,7 +188,19 @@ flutter test
   écran Outbox (liste, détail, nouvelle tentative, explication d'un
   conflit sans bouton de relance)
   (`test/features/sync/presentation/outbox_screen_test.dart`).
-- **Total** : 130 tests, tous au vert (`flutter analyze` : 0 erreur, 0 info).
+- Tests unitaires (phase 7) : mapping JSON des relevés de gérance, de leurs
+  lignes et des reversements, calcul du solde affiché en accueil bailleur
+  (`outstandingBalance`, report — jamais d'appel de fonds sur un solde
+  négatif) et détection d'un bailleur hors du Congo
+  (`test/features/landlord_portal/domain`).
+- Tests de widget (phase 7, avec `dio` mocké) : espace bailleur sans aucune
+  action d'écriture (accueil, bandeau diaspora,
+  `test/features/landlord_portal/presentation`), invitation du bailleur
+  depuis la fiche du mandat avec statut envoyée/activée
+  (`test/features/mandates/presentation`), parcours d'onboarding du
+  gestionnaire indépendant en quatre écrans se terminant par un seul appel
+  réseau (`test/features/onboarding/presentation`).
+- **Total** : 157 tests, tous au vert (`flutter analyze` : 0 erreur, 0 info).
 
 ## Architecture
 
@@ -268,6 +297,31 @@ Clean Architecture par fonctionnalité (`lib/features/<feature>/{domain,data,pre
   permanent (nombre d'éléments en attente/en cours, couleur d'alerte si un
   échec ou un conflit existe) affiché dans l'onglet « Plus » et sur l'onglet
   bas correspondant.
+- `lib/features/landlord_portal` (phase 7) : espace bailleur, distinct de
+  l'espace agence (`LandlordBottomNavShell`, atteint via `/bailleur` depuis
+  `SplashScreen`/`OtpVerificationScreen` lorsque `GET /v1/portal/me`
+  répond, c'est-à-dire lorsque la liste des organisations de l'utilisateur
+  est vide et que le compte est rattaché à un `landlord`). Toutes les
+  routes sont en lecture seule (`LandlordPortalRepository` ne porte aucune
+  méthode d'écriture) : accueil, relevés de gérance (téléchargement/partage
+  du PDF via `GET /portal/statements/{id}/pdf`), reversements,
+  encaissements confirmés et quittances (URL de téléchargement déjà
+  signée). Aucun `X-Organization-Id` sur ces routes (rôle dérivé
+  `LANDLORD_PORTAL`, sans appartenance à `organization_members`).
+- `lib/features/mandates` (phase 7) : fiche mandat minimale (référence,
+  statut, commission, bailleur) et invitation du bailleur par WhatsApp
+  (`POST /management-mandates/{id}/landlord-invitation`), avec statut
+  affiché (non invité / envoyée / activée) dérivé de
+  `MandateDetail.landlordPortal`. Périmètre volontairement restreint à ce
+  besoin mobile ; la liste et la création des mandats restent des écrans
+  web.
+- `lib/features/onboarding` (phase 7) : parcours du gestionnaire
+  indépendant en quatre écrans brefs (`ManagerOnboardingScreen`),
+  atteignable depuis l'écran de sélection d'organisation lorsque
+  l'utilisateur n'appartient à aucune organisation. Un seul appel réseau à
+  la validation (`POST /organizations/independent-manager/onboarding`),
+  transaction unique côté API ; redirige vers la fiche du mandat créé pour
+  enchaîner directement sur l'invitation du bailleur.
 - `lib/features/more` : onglet « Plus » (diagnostic, déconnexion, accès à
   la tournée, à la caisse et à la file d'attente Outbox). L'accès aux baux
   est masqué en mode démarcheur restreint (voir ci-dessous).
@@ -358,3 +412,13 @@ sauvegarde du trousseau sans celle de l'application, ou anomalie) :
   est publié).
 - Invitations et gestion des membres d'organisation (Epic 0.D, non couvert
   par les écrans mobiles selon `docs/04_plan_de_phases.md`).
+- Gestion complète des mandats (liste, création, modification, suspension,
+  résiliation), des dépenses et des commissions, et détail d'un relevé de
+  gérance avec ses lignes côté agence : hors périmètre de ce lot mobile
+  (`docs/api/phase7-contract.md`), qui couvre uniquement le portail
+  bailleur en lecture seule, l'onboarding du gestionnaire indépendant et
+  l'invitation depuis la fiche du mandat. Ces écrans restent web.
+- Le mandat créé par l'onboarding est activé par défaut côté API
+  (contrat : statut initial `DRAFT`, activation explicite) ; aucun écran
+  mobile d'activation n'existe encore, l'invitation du bailleur reste donc
+  possible dès la création dans ce lot.

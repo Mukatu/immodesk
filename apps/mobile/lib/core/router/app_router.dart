@@ -13,9 +13,18 @@ import '../../features/collection/presentation/screens/confirmation_screen.dart'
 import '../../features/collection/presentation/screens/encaissement_screen.dart';
 import '../../features/diagnostics/presentation/screens/diagnostics_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/landlord_portal/presentation/screens/landlord_collections_screen.dart';
+import '../../features/landlord_portal/presentation/screens/landlord_home_screen.dart';
+import '../../features/landlord_portal/presentation/screens/landlord_more_screen.dart';
+import '../../features/landlord_portal/presentation/screens/landlord_payouts_screen.dart';
+import '../../features/landlord_portal/presentation/screens/landlord_receipts_screen.dart';
+import '../../features/landlord_portal/presentation/screens/landlord_statements_screen.dart';
+import '../../features/landlord_portal/presentation/widgets/landlord_bottom_nav_shell.dart';
 import '../../features/leases/presentation/screens/lease_detail_screen.dart';
 import '../../features/leases/presentation/screens/leases_list_screen.dart';
+import '../../features/mandates/presentation/screens/mandate_detail_screen.dart';
 import '../../features/more/presentation/screens/more_screen.dart';
+import '../../features/onboarding/presentation/screens/manager_onboarding_screen.dart';
 import '../../features/organizations/presentation/screens/organization_create_screen.dart';
 import '../../features/organizations/presentation/screens/organization_select_screen.dart';
 import '../../features/payments/presentation/screens/bank_transfer_declaration_screen.dart';
@@ -66,6 +75,64 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.diagnostics,
         builder: (context, state) => const DiagnosticsScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.managerOnboarding,
+        builder: (context, state) => const ManagerOnboardingScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.mandateDetailPattern,
+        builder: (context, state) =>
+            MandateDetailScreen(mandateId: state.pathParameters['id']!),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            LandlordBottomNavShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RoutePaths.landlordHome,
+                builder: (context, state) => const LandlordHomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RoutePaths.landlordStatements,
+                builder: (context, state) => const LandlordStatementsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RoutePaths.landlordPayouts,
+                builder: (context, state) => const LandlordPayoutsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RoutePaths.landlordMore,
+                builder: (context, state) => const LandlordMoreScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'encaissements',
+                    builder: (context, state) =>
+                        const LandlordCollectionsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'quittances',
+                    builder: (context, state) => const LandlordReceiptsScreen(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

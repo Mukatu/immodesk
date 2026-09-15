@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
+import '../../../landlord_portal/presentation/controllers/landlord_portal_profile_controller.dart';
 import '../../../organizations/presentation/controllers/selected_organization_controller.dart';
 import '../controllers/auth_session_controller.dart';
 
@@ -36,6 +37,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       return;
     }
 
+    // Un compte bailleur (`LANDLORD_PORTAL`) ne porte aucune appartenance à
+    // `organization_members` : la liste des organisations est donc vide.
+    // On ne tente `GET /v1/portal/me` que dans ce cas, pour ne pas ajouter
+    // d'appel réseau superflu à chaque connexion agence.
+    if (session.organizations.isEmpty) {
+      final portal = await ref.read(
+        landlordPortalProfileControllerProvider.future,
+      );
+      if (!mounted) return;
+      if (portal != null) {
+        context.go(RoutePaths.landlordHome);
+        return;
+      }
+    }
+
     final String? selectedOrgId = await ref.read(
       selectedOrganizationControllerProvider.future,
     );
@@ -43,9 +59,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     final bool hasValidSelection =
         selectedOrgId != null &&
-        session.organizations.any(
-          (m) => m.organization.id == selectedOrgId,
-        );
+        session.organizations.any((m) => m.organization.id == selectedOrgId);
 
     context.go(
       hasValidSelection ? RoutePaths.home : RoutePaths.organizationSelect,

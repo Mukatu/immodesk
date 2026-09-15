@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/network/dio_provider.dart';
+import '../../../landlord_portal/presentation/controllers/landlord_portal_profile_controller.dart';
 import '../../../organizations/domain/entities/organization_membership.dart';
 import '../../../organizations/presentation/controllers/selected_organization_controller.dart';
 import '../../data/auth_providers.dart';
@@ -95,6 +96,7 @@ class AuthSessionController extends _$AuthSessionController {
   Future<void> logout() async {
     await ref.read(authRepositoryProvider).logout();
     await ref.read(selectedOrganizationControllerProvider.notifier).clear();
+    ref.invalidate(landlordPortalProfileControllerProvider);
     state = const AsyncData<AuthSessionState>(AuthSessionState());
   }
 }

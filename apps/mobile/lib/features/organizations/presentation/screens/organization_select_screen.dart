@@ -19,8 +19,9 @@ class OrganizationSelectScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<OrganizationMembership>> membershipsAsync = ref
-        .watch(organizationsControllerProvider);
+    final AsyncValue<List<OrganizationMembership>> membershipsAsync = ref.watch(
+      organizationsControllerProvider,
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Choisir une organisation')),
@@ -33,9 +34,23 @@ class OrganizationSelectScreen extends ConsumerWidget {
               title: 'Aucune organisation',
               message: 'Créez votre première organisation pour commencer.',
               icon: Icons.apartment_outlined,
-              action: FilledButton(
-                onPressed: () => context.push(RoutePaths.organizationCreate),
-                child: const Text('Créer une organisation'),
+              action: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FilledButton(
+                    onPressed: () =>
+                        context.push(RoutePaths.organizationCreate),
+                    child: const Text('Créer une organisation'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    key: const ValueKey('start-manager-onboarding-button'),
+                    onPressed: () => context.push(RoutePaths.managerOnboarding),
+                    child: const Text(
+                      'Démarrer comme gestionnaire indépendant (10 min)',
+                    ),
+                  ),
+                ],
               ),
             );
           }

@@ -73,4 +73,21 @@ abstract final class RoutePaths {
       '$collectionRound/payer/:invoiceId/momo-agregateur';
   static String momoAggregator(String invoiceId) =>
       '$collectionRound/payer/$invoiceId/momo-agregateur';
+
+  /// Espace bailleur (`feature landlord_portal`, phase 7) : distinct de
+  /// l'espace agence, atteint après connexion par code lorsque le compte
+  /// est rattaché à un `landlord` (`GET /v1/portal/me`).
+  static const String landlordHome = '/bailleur';
+  static const String landlordStatements = '/bailleur/releves';
+  static const String landlordPayouts = '/bailleur/reversements';
+  static const String landlordMore = '/bailleur/plus';
+  static const String landlordCollections = '/bailleur/plus/encaissements';
+  static const String landlordReceipts = '/bailleur/plus/quittances';
+
+  /// Onboarding du gestionnaire indépendant (`feature onboarding`, phase 7).
+  static const String managerOnboarding = '/onboarding/gestionnaire';
+
+  /// Fiche mandat (`feature mandates`, phase 7) : invitation du bailleur.
+  static const String mandateDetailPattern = '/mandats/:id';
+  static String mandateDetail(String id) => '/mandats/$id';
 }

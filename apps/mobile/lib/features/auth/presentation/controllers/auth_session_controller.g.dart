@@ -52,7 +52,7 @@ final class AuthSessionControllerProvider
 }
 
 String _$authSessionControllerHash() =>
-    r'e933540fe03e5cf0f67e4cbdc81018b4cba020e0';
+    r'7b957d55add5484014c505f3efd9256de2a614f4';
 
 /// Session applicative : utilisateur courant et organisations dont il est
 /// membre. Tente une restauration silencieuse au démarrage à partir du

@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../shared/widgets/otp_field.dart';
+import '../../../landlord_portal/presentation/controllers/landlord_portal_profile_controller.dart';
 import '../../domain/otp_state_machine.dart';
+import '../controllers/auth_session_controller.dart';
 import '../controllers/otp_login_controller.dart';
 
 /// Deuxième écran du parcours de connexion : saisie du code à 6 chiffres,
@@ -19,8 +21,7 @@ class OtpVerificationScreen extends ConsumerStatefulWidget {
       _OtpVerificationScreenState();
 }
 
-class _OtpVerificationScreenState
-    extends ConsumerState<OtpVerificationScreen> {
+class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   String _code = '';
 
   @override
@@ -32,7 +33,7 @@ class _OtpVerificationScreenState
           next.phase == OtpPhase.verified &&
           previous?.phase != OtpPhase.verified;
       if (justVerified) {
-        context.go(RoutePaths.organizationSelect);
+        _routeAfterLogin();
       }
     });
 
@@ -99,5 +100,24 @@ class _OtpVerificationScreenState
     if (code.length == 6) {
       ref.read(otpLoginControllerProvider.notifier).verifyCode(code);
     }
+  }
+
+  /// Un compte bailleur (`LANDLORD_PORTAL`) ne porte aucune appartenance à
+  /// `organization_members` : on ne tente `GET /v1/portal/me` que si la
+  /// liste des organisations vient de se révéler vide, afin de ne pas
+  /// ajouter d'appel réseau superflu à une connexion agence classique.
+  Future<void> _routeAfterLogin() async {
+    final session = ref.read(authSessionControllerProvider).value;
+    if (session != null && session.organizations.isEmpty) {
+      final portal = await ref.read(
+        landlordPortalProfileControllerProvider.future,
+      );
+      if (!mounted) return;
+      if (portal != null) {
+        context.go(RoutePaths.landlordHome);
+        return;
+      }
+    }
+    if (mounted) context.go(RoutePaths.organizationSelect);
   }
 }

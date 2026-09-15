@@ -417,6 +417,88 @@ export const ERROR_CATALOG = {
     message: 'Le motif est obligatoire lorsque le montant validé diffère du montant déclaré.',
   },
 
+  // --- Phase 6 : relevés bancaires ---------------------------------------
+  'BANK.STATEMENT_NOT_FOUND': { status: 404, message: 'Relevé bancaire introuvable.' },
+  'BANK.STATEMENT_LINE_NOT_FOUND': { status: 404, message: 'Ligne de relevé introuvable.' },
+  'BANK.STATEMENT_FORMAT_UNKNOWN': {
+    status: 422,
+    message: 'Format de relevé non reconnu : aucun adaptateur ne sait lire ce fichier.',
+  },
+  'BANK.STATEMENT_PARSE_FAILED': { status: 422, message: "Le relevé n'a pas pu être analysé." },
+  'BANK.STATEMENT_BALANCE_MISMATCH': {
+    status: 422,
+    message:
+      'Relevé déséquilibré : le solde de clôture ne correspond pas aux mouvements. Import refusé.',
+  },
+  'BANK.STATEMENT_CURRENCY_UNSUPPORTED': {
+    status: 422,
+    message: 'Seule la devise XAF est acceptée sur un relevé.',
+  },
+  'BANK.STATEMENT_ALREADY_IMPORTED': {
+    status: 409,
+    message: 'Ce fichier a déjà été importé sur ce compte bancaire.',
+  },
+  'BANK.STATEMENT_EMPTY': { status: 422, message: 'Le relevé ne contient aucune écriture.' },
+  'BANK.STATEMENT_PERIOD_INVALID': {
+    status: 422,
+    message: 'La période du relevé est invalide : la date de début doit précéder la date de fin.',
+  },
+  'BANK.STATEMENT_FILE_TOO_LARGE': { status: 413, message: 'Fichier de relevé trop volumineux.' },
+  'BANK.STATEMENT_HAS_MATCHES': {
+    status: 409,
+    message: "Ce relevé porte des rapprochements confirmés : l'abandon est impossible.",
+  },
+  'BANK.STATEMENT_ALREADY_DISCARDED': { status: 409, message: 'Ce relevé a déjà été abandonné.' },
+  'BANK.STATEMENT_ACCOUNT_MISMATCH': {
+    status: 422,
+    message: "Le document fourni n'appartient pas à ce compte bancaire.",
+  },
+
+  // --- Phase 6 : rapprochement -------------------------------------------
+  'BANK.MATCH_NOT_FOUND': { status: 404, message: 'Rapprochement introuvable.' },
+  'BANK.MATCH_TARGET_REQUIRED': {
+    status: 422,
+    message: 'Un rapprochement porte exactement une cible.',
+  },
+  'BANK.MATCH_TARGET_INVALID': {
+    status: 422,
+    message: "La cible n'est pas dans un état permettant le rapprochement.",
+  },
+  'BANK.MATCH_INVALID_TRANSITION': {
+    status: 409,
+    message: 'Transition de rapprochement impossible.',
+  },
+  'BANK.MATCH_ALREADY_CONFIRMED': { status: 409, message: 'Ce rapprochement est déjà confirmé.' },
+  'BANK.MATCH_REASON_REQUIRED': { status: 422, message: 'Le motif est obligatoire.' },
+  'BANK.OVER_MATCHED': {
+    status: 409,
+    message: 'Le total rapproché dépasse le montant de la ligne ou celui de la cible.',
+  },
+  'BANK.LINE_IGNORED': {
+    status: 409,
+    message: 'Cette ligne est ignorée : elle ne peut pas être rapprochée.',
+  },
+
+  // --- Phase 6 : chèques --------------------------------------------------
+  'BANK.CHECK_NOT_FOUND': { status: 404, message: 'Chèque introuvable.' },
+  'BANK.CHECK_ALREADY_REGISTERED': {
+    status: 409,
+    message: 'Ce chèque est déjà enregistré pour cette banque.',
+  },
+  'BANK.CHECK_INVALID_TRANSITION': {
+    status: 409,
+    message: 'Transition impossible pour ce chèque.',
+  },
+  'BANK.CHECK_REASON_REQUIRED': { status: 422, message: 'Le motif est obligatoire.' },
+  'BANK.CHECK_DEPOSIT_ACCOUNT_INVALID': {
+    status: 422,
+    message: 'Compte de dépôt invalide ou inactif.',
+  },
+  'BANK.CHECK_DATES_INVALID': {
+    status: 422,
+    message: "La date de dépôt ne peut pas précéder la date d'émission.",
+  },
+
   // --- Domaine SYNC (synchronisation mobile par lots, phase 5) ----------
   'SYNC.BATCH_IN_PROGRESS': {
     status: 409,

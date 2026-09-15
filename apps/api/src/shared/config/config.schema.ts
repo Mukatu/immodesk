@@ -180,6 +180,15 @@ export const configSchema = z
     MOBILE_MAX_OPERATIONS_PER_BATCH: z.coerce.number().int().positive().default(50),
     MOBILE_OFFLINE_WRITES_ENABLED: booleanish.default(true),
 
+    // --- Rapprochement bancaire (phase 6) --------------------------------
+    RECONCILIATION_SUGGESTION_THRESHOLD: z.coerce.number().int().min(50).max(95).default(75),
+    RECONCILIATION_DATE_WINDOW_DAYS: z.coerce.number().int().positive().default(15),
+    BANK_STATEMENT_MAX_BYTES: z.coerce.number().int().positive().default(10_485_760),
+    CHECK_CLEARING_ALERT_DAYS: z.coerce.number().int().positive().default(15),
+    CHECK_ALERT_CRON_ENABLED: booleanish.default(false),
+    CHECK_ALERT_CRON_PATTERN: z.string().default('0 7 * * *'),
+    CHECK_ALERT_CRON_TIMEZONE: z.string().default('Africa/Brazzaville'),
+
     // --- Observabilité ---------------------------------------------------
     SENTRY_DSN: z.string().optional(),
     SWAGGER_ENABLED: booleanish.default(true),

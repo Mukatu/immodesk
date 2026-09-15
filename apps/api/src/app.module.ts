@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditModule } from './modules/audit/audit.module';
+import { BankChecksModule } from './modules/bank-checks/bank-checks.module';
 import { BankingModule } from './modules/banking/banking.module';
+import { BankStatementsModule } from './modules/bank-statements/bank-statements.module';
 import { BankTransfersModule } from './modules/bank-transfers/bank-transfers.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { CashModule } from './modules/cash/cash.module';
@@ -20,6 +22,7 @@ import { PdfModule } from './modules/pdf/pdf.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
+import { ReconciliationModule } from './modules/reconciliation/reconciliation.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { IdempotencyInterceptor } from './modules/platform/presentation/idempotency.interceptor';
 import { JwtAuthGuard } from './shared/auth/jwt-auth.guard';
@@ -82,6 +85,14 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     // et `documents` (tous deux `@Global()`) via ses gestionnaires
     // d'opération, sans import de module.
     MobileSyncModule,
+    // Phase 6 — rapprochement bancaire et chèques. `bank-statements` ne connaît
+    // pas `reconciliation` : il déclenche le moteur par le port
+    // RECONCILIATION_ENGINE, que `reconciliation` publie en `@Global()`. Le
+    // rejet d'un chèque ne touche jamais un rapprochement, ce qui garde le
+    // graphe acyclique.
+    BankChecksModule,
+    BankStatementsModule,
+    ReconciliationModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

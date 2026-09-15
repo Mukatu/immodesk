@@ -1,7 +1,7 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { newId } from '../../../shared/ids/uuid';
-import { PrismaService } from '../../../shared/prisma/prisma.service';
+import { PrismaService, type TenantClient } from '../../../shared/prisma/prisma.service';
 import { businessToday } from '../../../shared/time/business-date';
 import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
@@ -47,150 +47,168 @@ export class ReversalService {
     private readonly cash: CashReceiptCanceller | null = null,
   ) {}
 
+  /** Corps de la contre-passation, rejouable depuis une transaction déjà ouverte. */
+  async reverseInTx(
+    tx: TenantClient,
+    organizationId: string,
+    reader: PaymentReader,
+    paymentId: string,
+    reason: string,
+  ): Promise<{ originalId: string; reversalId: string; reopenedInvoiceIds: string[] }> {
+    const today = businessToday();
+    const original = await this.queries.lock(tx, paymentId);
+    const mirrorExists = await tx.payments.findFirst({
+      where: { reversal_of_id: paymentId },
+      select: { id: true },
+    });
+    if (mirrorExists || original.status === 'REVERSED') {
+      throw new DomainError('PAYMENTS.ALREADY_REVERSED', { paymentId });
+    }
+    if (original.status !== 'CONFIRMED' || original.direction !== 'INBOUND') {
+      throw new DomainError('PAYMENTS.INVALID_TRANSITION', {
+        status: original.status,
+        to: 'REVERSED',
+      });
+    }
+
+    const credits = await tx.$queryRawUnsafe<
+      Array<{ id: string; used_amount: bigint; status: string }>
+    >(
+      `SELECT id, used_amount, status::text AS status FROM tenant_credits
+        WHERE source_payment_id = $1::uuid FOR UPDATE`,
+      paymentId,
+    );
+    if (credits.some((c) => c.used_amount > 0n)) {
+      throw new DomainError('PAYMENTS.CREDIT_ALREADY_USED', { paymentId });
+    }
+
+    const { number } = await this.numbering.nextNumber(tx, organizationId, 'REVERSAL', today);
+    const reversalId = newId();
+    await tx.payments.create({
+      data: {
+        id: reversalId,
+        organization_id: organizationId,
+        tenant_id: original.tenant_id,
+        lease_id: original.lease_id,
+        landlord_id: original.landlord_id,
+        direction: 'OUTBOUND',
+        method: original.method as never,
+        status: 'REVERSED',
+        reference: number,
+        amount: original.amount,
+        net_amount: original.amount,
+        allocated_amount: original.amount,
+        unallocated_amount: 0n,
+        payment_date: today,
+        received_by_user_id: reader.userId,
+        reversed_at: new Date(),
+        reversal_of_id: original.id,
+        reversal_reason: reason,
+      },
+    });
+
+    const toReverse = await tx.$queryRawUnsafe<AllocationToReverse[]>(
+      `SELECT pa.id, pa.invoice_id, pa.tenant_credit_id, pa.amount
+         FROM payment_allocations pa
+        WHERE pa.payment_id = $1::uuid AND NOT pa.is_reversal
+          AND NOT EXISTS (SELECT 1 FROM payment_allocations r WHERE r.reversal_of_id = pa.id)
+        ORDER BY pa.allocation_order, pa.id`,
+      paymentId,
+    );
+    const invoiceIds = toReverse.filter((a) => a.invoice_id).map((a) => a.invoice_id as string);
+    const invoices = new Map((await this.ledger.lockByIds(tx, invoiceIds)).map((i) => [i.id, i]));
+    const reopened: string[] = [];
+
+    for (const allocation of toReverse) {
+      await tx.payment_allocations.create({
+        data: {
+          id: newId(),
+          organization_id: organizationId,
+          payment_id: reversalId,
+          invoice_id: allocation.invoice_id,
+          tenant_credit_id: allocation.tenant_credit_id,
+          amount: allocation.amount,
+          allocation_date: today,
+          is_reversal: true,
+          reversal_of_id: allocation.id,
+          created_by_user_id: reader.userId,
+        },
+      });
+      if (allocation.invoice_id) {
+        const current = invoices.get(allocation.invoice_id);
+        if (!current) continue;
+        const updated = await this.ledger.revertAmount(
+          tx,
+          current,
+          allocation.amount,
+          today,
+          reversalId,
+        );
+        invoices.set(updated.id, updated);
+        if (updated.status !== 'PAID') reopened.push(updated.id);
+      }
+    }
+
+    for (const credit of credits) {
+      await tx.$executeRawUnsafe(
+        `UPDATE tenant_credits
+            SET status = 'REFUNDED', remaining_amount = 0, refunded_at = now(),
+                reason = concat_ws(' — ', reason, $2::text), updated_at = now()
+          WHERE id = $1::uuid`,
+        credit.id,
+        `Contre-passation ${number}`,
+      );
+      await audit(this.auditService, tx, {
+        action: 'STATE_TRANSITION',
+        operation: AUDIT_OPERATIONS.TENANT_CREDIT_REFUNDED,
+        entityType: 'tenant_credits',
+        entityId: credit.id,
+        previousState: toJsonState({ status: credit.status }),
+        newState: toJsonState({ status: 'REFUNDED', reversalId }),
+      });
+    }
+
+    await this.receipts?.cancelForReversal(tx, {
+      organizationId,
+      paymentId,
+      invoiceIds: [...new Set(reopened)],
+      reason,
+    });
+    await this.cash?.cancelForPayment(tx, { organizationId, paymentId, reason });
+
+    await audit(this.auditService, tx, {
+      action: 'STATE_TRANSITION',
+      operation: AUDIT_OPERATIONS.PAYMENT_REVERSED,
+      entityType: 'payments',
+      entityId: paymentId,
+      previousState: toJsonState({ status: original.status }),
+      newState: toJsonState({
+        reversalId,
+        reversalReference: number,
+        reason,
+        invoices: reopened,
+      }),
+    });
+
+    return { originalId: paymentId, reversalId, reopenedInvoiceIds: reopened };
+  }
+
   async reverse(
     organizationId: string,
     reader: PaymentReader,
     paymentId: string,
     reason: string,
   ): Promise<{ original: PaymentDetailView; reversal: PaymentDetailView }> {
-    const today = businessToday();
     return this.prisma.withTenant(organizationId, reader.userId, async (tx) => {
-      const original = await this.queries.lock(tx, paymentId);
-      const mirrorExists = await tx.payments.findFirst({
-        where: { reversal_of_id: paymentId },
-        select: { id: true },
-      });
-      if (mirrorExists || original.status === 'REVERSED') {
-        throw new DomainError('PAYMENTS.ALREADY_REVERSED', { paymentId });
-      }
-      if (original.status !== 'CONFIRMED' || original.direction !== 'INBOUND') {
-        throw new DomainError('PAYMENTS.INVALID_TRANSITION', {
-          status: original.status,
-          to: 'REVERSED',
-        });
-      }
-
-      const credits = await tx.$queryRawUnsafe<
-        Array<{ id: string; used_amount: bigint; status: string }>
-      >(
-        `SELECT id, used_amount, status::text AS status FROM tenant_credits
-          WHERE source_payment_id = $1::uuid FOR UPDATE`,
-        paymentId,
-      );
-      if (credits.some((c) => c.used_amount > 0n)) {
-        throw new DomainError('PAYMENTS.CREDIT_ALREADY_USED', { paymentId });
-      }
-
-      const { number } = await this.numbering.nextNumber(tx, organizationId, 'REVERSAL', today);
-      const reversalId = newId();
-      await tx.payments.create({
-        data: {
-          id: reversalId,
-          organization_id: organizationId,
-          tenant_id: original.tenant_id,
-          lease_id: original.lease_id,
-          landlord_id: original.landlord_id,
-          direction: 'OUTBOUND',
-          method: original.method as never,
-          status: 'REVERSED',
-          reference: number,
-          amount: original.amount,
-          net_amount: original.amount,
-          allocated_amount: original.amount,
-          unallocated_amount: 0n,
-          payment_date: today,
-          received_by_user_id: reader.userId,
-          reversed_at: new Date(),
-          reversal_of_id: original.id,
-          reversal_reason: reason,
-        },
-      });
-
-      const toReverse = await tx.$queryRawUnsafe<AllocationToReverse[]>(
-        `SELECT pa.id, pa.invoice_id, pa.tenant_credit_id, pa.amount
-           FROM payment_allocations pa
-          WHERE pa.payment_id = $1::uuid AND NOT pa.is_reversal
-            AND NOT EXISTS (SELECT 1 FROM payment_allocations r WHERE r.reversal_of_id = pa.id)
-          ORDER BY pa.allocation_order, pa.id`,
-        paymentId,
-      );
-      const invoiceIds = toReverse.filter((a) => a.invoice_id).map((a) => a.invoice_id as string);
-      const invoices = new Map((await this.ledger.lockByIds(tx, invoiceIds)).map((i) => [i.id, i]));
-      const reopened: string[] = [];
-
-      for (const allocation of toReverse) {
-        await tx.payment_allocations.create({
-          data: {
-            id: newId(),
-            organization_id: organizationId,
-            payment_id: reversalId,
-            invoice_id: allocation.invoice_id,
-            tenant_credit_id: allocation.tenant_credit_id,
-            amount: allocation.amount,
-            allocation_date: today,
-            is_reversal: true,
-            reversal_of_id: allocation.id,
-            created_by_user_id: reader.userId,
-          },
-        });
-        if (allocation.invoice_id) {
-          const current = invoices.get(allocation.invoice_id);
-          if (!current) continue;
-          const updated = await this.ledger.revertAmount(
-            tx,
-            current,
-            allocation.amount,
-            today,
-            reversalId,
-          );
-          invoices.set(updated.id, updated);
-          if (updated.status !== 'PAID') reopened.push(updated.id);
-        }
-      }
-
-      for (const credit of credits) {
-        await tx.$executeRawUnsafe(
-          `UPDATE tenant_credits
-              SET status = 'REFUNDED', remaining_amount = 0, refunded_at = now(),
-                  reason = concat_ws(' — ', reason, $2::text), updated_at = now()
-            WHERE id = $1::uuid`,
-          credit.id,
-          `Contre-passation ${number}`,
-        );
-        await audit(this.auditService, tx, {
-          action: 'STATE_TRANSITION',
-          operation: AUDIT_OPERATIONS.TENANT_CREDIT_REFUNDED,
-          entityType: 'tenant_credits',
-          entityId: credit.id,
-          previousState: toJsonState({ status: credit.status }),
-          newState: toJsonState({ status: 'REFUNDED', reversalId }),
-        });
-      }
-
-      await this.receipts?.cancelForReversal(tx, {
+      const { originalId, reversalId } = await this.reverseInTx(
+        tx,
         organizationId,
+        reader,
         paymentId,
-        invoiceIds: [...new Set(reopened)],
         reason,
-      });
-      await this.cash?.cancelForPayment(tx, { organizationId, paymentId, reason });
-
-      await audit(this.auditService, tx, {
-        action: 'STATE_TRANSITION',
-        operation: AUDIT_OPERATIONS.PAYMENT_REVERSED,
-        entityType: 'payments',
-        entityId: paymentId,
-        previousState: toJsonState({ status: original.status }),
-        newState: toJsonState({
-          reversalId,
-          reversalReference: number,
-          reason,
-          invoices: reopened,
-        }),
-      });
-
+      );
       return {
-        original: await this.queries.detailIn(tx, paymentId),
+        original: await this.queries.detailIn(tx, originalId),
         reversal: await this.queries.detailIn(tx, reversalId),
       };
     });

@@ -11,6 +11,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { seedBilling } from './seed-billing';
 import { seedLeases } from './seed-leases';
 import { seedPhase4 } from './seed-phase4';
+import { seedPhase6 } from './seed-phase6';
 import { seedPortfolio } from './seed-portfolio';
 
 const prisma = new PrismaClient({
@@ -56,6 +57,9 @@ async function main(): Promise<void> {
   await upsertAggregatorFlag();
   const phase4 = await seedPhase4(prisma, organizationId);
 
+  // --- Phase 6 : relevé bancaire, rapprochement, chèque en attente -------
+  const phase6 = await seedPhase6(prisma, organizationId);
+
   console.info('Seed Immodesk — terminé.');
   console.info(`  Organisation : Agence Mpila Immo (${organizationId})`);
   console.info(`  OWNER        : ${OWNER_PHONE}`);
@@ -86,6 +90,11 @@ async function main(): Promise<void> {
   console.info(
     `  Virement     : ${phase4.bankTransferDeclarations} déclaration SUBMITTED en attente`,
   );
+  console.info(
+    `  Relevé BGFI  : ${phase6.bankStatements} relevé RECONCILING, ${phase6.statementLines} lignes ` +
+      `(${phase6.exactMatches} EXACT/CONFIRMED, ${phase6.suggestedMatches} SUGGESTED/PROPOSED, 1 UNMATCHED)`,
+  );
+  console.info(`  Chèque       : ${phase6.bankChecks} chèque DEPOSITED depuis 30 jours (alerte)`);
   console.info('  Connexion    : POST /v1/auth/otp/request puis /v1/auth/otp/verify');
   console.info('                 avec OTP_DEV_CODE (000000 par défaut) en développement.');
 }

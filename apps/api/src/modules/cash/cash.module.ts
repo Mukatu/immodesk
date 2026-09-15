@@ -26,6 +26,11 @@ import { CashRemittancesController } from './presentation/cash-remittances.contr
     RemittancesService,
     { provide: CASH_RECEIPT_CANCELLER, useExisting: CashReceiptsService },
   ],
-  exports: [CashReceiptsService, CashReceiptsQueryService, CASH_RECEIPT_CANCELLER],
+  exports: [
+    CashReceiptsService,
+    CashReceiptsQueryService,
+    RemittancesService,
+    CASH_RECEIPT_CANCELLER,
+  ],
 })
 export class CashModule {}

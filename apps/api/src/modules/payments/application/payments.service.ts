@@ -216,6 +216,52 @@ export class PaymentsService {
     return { payment: await this.queries.lock(tx, id), receiptIds };
   }
 
+  /** Corps de la transition CONFIRMED, rejouable depuis une transaction déjà ouverte. */
+  async confirmInTx(
+    tx: TenantClient,
+    organizationId: string,
+    reader: PaymentReader,
+    id: string,
+    input: { valueDate?: Date; note?: string },
+  ): Promise<{ id: string; receiptIds: string[] }> {
+    const payment = await this.queries.lock(tx, id);
+    assertPaymentTransition(payment.status as PaymentStatus, 'CONFIRMED');
+    await tx.$executeRawUnsafe(
+      `UPDATE payments
+          SET status = 'CONFIRMED', confirmed_at = now(), confirmed_by_user_id = $2::uuid,
+              value_date = coalesce($3::date, value_date),
+              notes = CASE WHEN $4::text IS NULL THEN notes ELSE concat_ws(E'\\n', notes, $4::text) END,
+              updated_at = now()
+        WHERE id = $1::uuid`,
+      id,
+      reader.userId,
+      input.valueDate ? input.valueDate.toISOString().slice(0, 10) : null,
+      input.note ?? null,
+    );
+    await audit(this.auditService, tx, {
+      action: 'STATE_TRANSITION',
+      operation: AUDIT_OPERATIONS.PAYMENT_CONFIRMED,
+      entityType: 'payments',
+      entityId: id,
+      previousState: toJsonState({ status: payment.status }),
+      newState: toJsonState({ status: 'CONFIRMED' }),
+    });
+    const mode = modeOf(await this.intentOf(tx, id));
+    if (!mode) return { id, receiptIds: [] };
+    const confirmed = await this.queries.lock(tx, id);
+    return {
+      id,
+      receiptIds: await this.allocateAndQuit(
+        tx,
+        organizationId,
+        confirmed,
+        mode,
+        true,
+        reader.userId,
+      ),
+    };
+  }
+
   /** PENDING_VERIFICATION → CONFIRMED, puis imputation demandée à la création. */
   async confirm(
     organizationId: string,
@@ -223,44 +269,34 @@ export class PaymentsService {
     id: string,
     input: { valueDate?: Date; note?: string },
   ): Promise<PaymentDetailView> {
-    return this.transition(organizationId, reader, async (tx) => {
-      const payment = await this.queries.lock(tx, id);
-      assertPaymentTransition(payment.status as PaymentStatus, 'CONFIRMED');
-      await tx.$executeRawUnsafe(
-        `UPDATE payments
-            SET status = 'CONFIRMED', confirmed_at = now(), confirmed_by_user_id = $2::uuid,
-                value_date = coalesce($3::date, value_date),
-                notes = CASE WHEN $4::text IS NULL THEN notes ELSE concat_ws(E'\\n', notes, $4::text) END,
-                updated_at = now()
-          WHERE id = $1::uuid`,
-        id,
-        reader.userId,
-        input.valueDate ? input.valueDate.toISOString().slice(0, 10) : null,
-        input.note ?? null,
-      );
-      await audit(this.auditService, tx, {
-        action: 'STATE_TRANSITION',
-        operation: AUDIT_OPERATIONS.PAYMENT_CONFIRMED,
-        entityType: 'payments',
-        entityId: id,
-        previousState: toJsonState({ status: payment.status }),
-        newState: toJsonState({ status: 'CONFIRMED' }),
-      });
-      const mode = modeOf(await this.intentOf(tx, id));
-      if (!mode) return { id, receiptIds: [] };
-      const confirmed = await this.queries.lock(tx, id);
-      return {
-        id,
-        receiptIds: await this.allocateAndQuit(
-          tx,
-          organizationId,
-          confirmed,
-          mode,
-          true,
-          reader.userId,
-        ),
-      };
+    return this.transition(organizationId, reader, (tx) =>
+      this.confirmInTx(tx, organizationId, reader, id, input),
+    );
+  }
+
+  /** Corps de la transition REJECTED, rejouable depuis une transaction déjà ouverte. */
+  async rejectInTx(
+    tx: TenantClient,
+    id: string,
+    reason: string,
+  ): Promise<{ id: string; receiptIds: string[] }> {
+    const payment = await this.queries.lock(tx, id);
+    assertPaymentTransition(payment.status as PaymentStatus, 'REJECTED');
+    await tx.$executeRawUnsafe(
+      `UPDATE payments SET status = 'REJECTED', rejected_at = now(), rejection_reason = $2, updated_at = now()
+        WHERE id = $1::uuid`,
+      id,
+      reason,
+    );
+    await audit(this.auditService, tx, {
+      action: 'STATE_TRANSITION',
+      operation: AUDIT_OPERATIONS.PAYMENT_REJECTED,
+      entityType: 'payments',
+      entityId: id,
+      previousState: toJsonState({ status: payment.status }),
+      newState: toJsonState({ status: 'REJECTED', reason }),
     });
+    return { id, receiptIds: [] };
   }
 
   async reject(
@@ -269,25 +305,37 @@ export class PaymentsService {
     id: string,
     reason: string,
   ): Promise<PaymentDetailView> {
-    return this.transition(organizationId, reader, async (tx) => {
-      const payment = await this.queries.lock(tx, id);
-      assertPaymentTransition(payment.status as PaymentStatus, 'REJECTED');
-      await tx.$executeRawUnsafe(
-        `UPDATE payments SET status = 'REJECTED', rejected_at = now(), rejection_reason = $2, updated_at = now()
-          WHERE id = $1::uuid`,
-        id,
-        reason,
-      );
-      await audit(this.auditService, tx, {
-        action: 'STATE_TRANSITION',
-        operation: AUDIT_OPERATIONS.PAYMENT_REJECTED,
-        entityType: 'payments',
-        entityId: id,
-        previousState: toJsonState({ status: payment.status }),
-        newState: toJsonState({ status: 'REJECTED', reason }),
-      });
-      return { id, receiptIds: [] };
+    return this.transition(organizationId, reader, (tx) => this.rejectInTx(tx, id, reason));
+  }
+
+  /**
+   * Corps de la transition CANCELLED (chèque rendu au tireur ou annulé avant
+   * dépôt, docs/api/phase6-contract.md § « Chèques »), rejouable depuis une
+   * transaction déjà ouverte. Aucune imputation n'existe encore à ce stade
+   * (le paiement est encore `PENDING_VERIFICATION`).
+   */
+  async cancelInTx(
+    tx: TenantClient,
+    id: string,
+    reason: string,
+  ): Promise<{ id: string; receiptIds: string[] }> {
+    const payment = await this.queries.lock(tx, id);
+    assertPaymentTransition(payment.status as PaymentStatus, 'CANCELLED');
+    await tx.$executeRawUnsafe(
+      `UPDATE payments SET status = 'CANCELLED', rejected_at = now(), rejection_reason = $2, updated_at = now()
+        WHERE id = $1::uuid`,
+      id,
+      reason,
+    );
+    await audit(this.auditService, tx, {
+      action: 'STATE_TRANSITION',
+      operation: AUDIT_OPERATIONS.PAYMENT_CANCELLED,
+      entityType: 'payments',
+      entityId: id,
+      previousState: toJsonState({ status: payment.status }),
+      newState: toJsonState({ status: 'CANCELLED', reason }),
     });
+    return { id, receiptIds: [] };
   }
 
   /** Imputation manuelle d'un paiement confirmé : le reste demeure disponible. */

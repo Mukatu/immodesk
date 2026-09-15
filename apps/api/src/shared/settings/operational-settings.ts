@@ -58,11 +58,22 @@ export interface PaymentMethodsSettings {
   pendingExpiryMinutes: number;
 }
 
+/** `settings_json.reconciliation` (phase 6, rapprochement bancaire/chèques). */
+export interface ReconciliationSettings {
+  suggestionThreshold: number;
+  dateWindowDays: number;
+  amountTolerancePercent: number;
+  autoConfirmExact: boolean;
+  checkClearingAlertDays: number;
+  bounceFeeAmount: number;
+}
+
 export interface OperationalSettings {
   billing: BillingSettings;
   cash: CashSettings;
   messaging: MessagingSettings;
   paymentMethods: PaymentMethodsSettings;
+  reconciliation: ReconciliationSettings;
 }
 
 export type OperationalSettingsPatch = {
@@ -75,6 +86,7 @@ export type OperationalSettingsPatch = {
     bankTransfer?: Partial<BankTransferSettings>;
     pendingExpiryMinutes?: number;
   };
+  reconciliation?: Partial<ReconciliationSettings>;
 };
 
 export const DEFAULT_OPERATIONAL_SETTINGS: Readonly<OperationalSettings> =
@@ -108,6 +120,14 @@ export const DEFAULT_OPERATIONAL_SETTINGS: Readonly<OperationalSettings> =
       bankTransfer: { enabled: true, confirmOnApproval: true },
       pendingExpiryMinutes: 120,
     },
+    reconciliation: {
+      suggestionThreshold: 75,
+      dateWindowDays: 15,
+      amountTolerancePercent: 2,
+      autoConfirmExact: true,
+      checkClearingAlertDays: 15,
+      bounceFeeAmount: 0,
+    },
   });
 
 const CHANNELS: readonly MessagingChannel[] = ['WHATSAPP', 'SMS'];
@@ -126,6 +146,18 @@ function int(value: unknown, fallback: number, min: number, max: number): number
 
 function bool(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function num(value: unknown, fallback: number, min: number, max: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
+    ? value
+    : fallback;
+}
+
+/** Comme `int`, mais borne (clamp) une valeur hors intervalle au lieu de la rejeter. */
+function clampInt(value: unknown, fallback: number, min: number, max: number): number {
+  if (typeof value !== 'number' || !Number.isInteger(value)) return fallback;
+  return Math.min(max, Math.max(min, value));
 }
 
 function channels(value: unknown, fallback: MessagingChannel[]): MessagingChannel[] {
@@ -165,6 +197,19 @@ function readPaymentMethods(root: Record<string, unknown>): PaymentMethodsSettin
       confirmOnApproval: bool(transfer.confirmOnApproval, d.bankTransfer.confirmOnApproval),
     },
     pendingExpiryMinutes: int(section.pendingExpiryMinutes, d.pendingExpiryMinutes, 5, 10_080),
+  };
+}
+
+function readReconciliation(root: Record<string, unknown>): ReconciliationSettings {
+  const section = asObject(root.reconciliation);
+  const d = DEFAULT_OPERATIONAL_SETTINGS.reconciliation;
+  return {
+    suggestionThreshold: clampInt(section.suggestionThreshold, d.suggestionThreshold, 50, 95),
+    dateWindowDays: int(section.dateWindowDays, d.dateWindowDays, 0, 365),
+    amountTolerancePercent: num(section.amountTolerancePercent, d.amountTolerancePercent, 0, 100),
+    autoConfirmExact: bool(section.autoConfirmExact, d.autoConfirmExact),
+    checkClearingAlertDays: int(section.checkClearingAlertDays, d.checkClearingAlertDays, 0, 365),
+    bounceFeeAmount: int(section.bounceFeeAmount, d.bounceFeeAmount, 0, Number.MAX_SAFE_INTEGER),
   };
 }
 
@@ -215,6 +260,7 @@ export function readOperationalSettings(
       sendInvoiceIssued: bool(messaging.sendInvoiceIssued, d.messaging.sendInvoiceIssued),
     },
     paymentMethods: readPaymentMethods(root),
+    reconciliation: readReconciliation(root),
   };
 }
 
@@ -250,6 +296,15 @@ export function mergeOperationalSettings(
       bankTransfer: { ...current.paymentMethods.bankTransfer, ...pm.bankTransfer },
       pendingExpiryMinutes: pm.pendingExpiryMinutes ?? current.paymentMethods.pendingExpiryMinutes,
     };
+  }
+  const reconciliation = patch.reconciliation;
+  if (reconciliation) {
+    const defined = Object.fromEntries(
+      Object.entries(reconciliation).filter(([, value]) => value !== undefined),
+    );
+    const merged = { ...current.reconciliation, ...defined };
+    merged.suggestionThreshold = Math.min(95, Math.max(50, merged.suggestionThreshold));
+    root.reconciliation = merged;
   }
   return root;
 }

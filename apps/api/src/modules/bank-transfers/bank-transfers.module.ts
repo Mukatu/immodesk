@@ -20,6 +20,6 @@ import { PaymentInstructionsController } from './presentation/payment-instructio
     BankTransferQueryService,
     PaymentInstructionsService,
   ],
-  exports: [BankTransferQueryService],
+  exports: [BankTransferDeclarationsService, BankTransferQueryService],
 })
 export class BankTransfersModule {}

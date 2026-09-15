@@ -7,6 +7,7 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsUUID,
   Max,
@@ -88,11 +89,49 @@ export class UpdateMessagingSettingsDto {
   @ApiPropertyOptional() @IsOptional() @IsBoolean() sendInvoiceIssued?: boolean;
 }
 
+/** Paramètres de rapprochement bancaire/chèques (`settings_json.reconciliation`, phase 6). */
+export class ReconciliationSettingsDto {
+  @ApiProperty({ example: 75, minimum: 50, maximum: 95 }) suggestionThreshold!: number;
+  @ApiProperty({ example: 15 }) dateWindowDays!: number;
+  @ApiProperty({ example: 2 }) amountTolerancePercent!: number;
+  @ApiProperty({ example: true }) autoConfirmExact!: boolean;
+  @ApiProperty({ example: 15 }) checkClearingAlertDays!: number;
+  @ApiProperty({ example: 0 }) bounceFeeAmount!: number;
+}
+
+export class UpdateReconciliationSettingsDto {
+  @ApiPropertyOptional({ minimum: 50, maximum: 95 })
+  @IsOptional()
+  @IsInt()
+  @Min(50)
+  @Max(95)
+  suggestionThreshold?: number;
+
+  @ApiPropertyOptional({ minimum: 0 }) @IsOptional() @IsInt() @Min(0) dateWindowDays?: number;
+
+  @ApiPropertyOptional({ minimum: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  amountTolerancePercent?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() autoConfirmExact?: boolean;
+
+  @ApiPropertyOptional({ minimum: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  checkClearingAlertDays?: number;
+
+  @ApiPropertyOptional({ minimum: 0 }) @IsOptional() @IsInt() @Min(0) bounceFeeAmount?: number;
+}
+
 /** Classes imbriquées exposées pour `@ValidateNested`. */
 export const NESTED_SETTINGS_TYPES = {
   billing: () => UpdateBillingSettingsDto,
   cash: () => UpdateCashSettingsDto,
   messaging: () => UpdateMessagingSettingsDto,
+  reconciliation: () => UpdateReconciliationSettingsDto,
 };
 
 const AGGREGATOR_PROVIDERS = ['SIMULATOR', 'CINETPAY'] as const;

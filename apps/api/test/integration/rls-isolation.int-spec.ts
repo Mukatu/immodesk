@@ -94,6 +94,22 @@ const PHASE4_TENANT_TABLES = ['mobile_money_transactions', 'bank_transfer_declar
  */
 const PHASE5_TENANT_TABLES = ['sync_batches'] as const;
 
+/**
+ * Tables de la phase 6 (rapprochement bancaire et chèques). `bank_accounts`
+ * est déjà exigée depuis la phase 1 ; `payments` et `cash_remittances` depuis
+ * la phase 3. `bank_statement_lines` et `reconciliation_matches` exigent en
+ * plus des ancres dédiées (`bank_statements`, `bank_statement_lines`), créées
+ * dans `createFixture`, faute de quoi leurs clés étrangères NOT NULL
+ * (`statement_id`, `bank_account_id`, `statement_line_id`) ne pourraient
+ * jamais être satisfaites génériquement.
+ */
+const PHASE6_TENANT_TABLES = [
+  'bank_statements',
+  'bank_statement_lines',
+  'bank_checks',
+  'reconciliation_matches',
+] as const;
+
 /** Tables dont les déclencheurs refusent le DELETE (append-only ou colonnes verrouillées). */
 const GUARDED_TABLES = [
   'audit_logs',
@@ -377,6 +393,11 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
   it('couvre obligatoirement la table de la phase 5 (synchronisation mobile par lots)', () => {
     const missing = PHASE5_TENANT_TABLES.filter((t) => !covered.includes(t));
     expect({ missing, phase: 5 }).toEqual({ missing: [], phase: 5 });
+  });
+
+  it('couvre obligatoirement les 4 tables de la phase 6 (rapprochement bancaire et chèques)', () => {
+    const missing = PHASE6_TENANT_TABLES.filter((t) => !covered.includes(t));
+    expect({ missing, phase: 6 }).toEqual({ missing: [], phase: 6 });
   });
 
   it('vérifie que les tables d’authentification sont bien GLOBALES et hors RLS', async () => {
@@ -676,6 +697,50 @@ async function createFixture(admin: PrismaClient, label: string): Promise<Fixtur
   anchors.set('payments', paymentId);
   anchors.set('cash_receipts', cashReceiptId);
   anchors.set('cash_remittances', remittanceId);
+
+  // --- Ancres de la phase 6 ---------------------------------------------
+  //
+  // `bank_statement_lines.statement_id`/`bank_account_id` et
+  // `reconciliation_matches.statement_line_id` sont NOT NULL : sans ancre
+  // dédiée, ces tables seraient sautées faute de cible pour leur FK. La ligne
+  // d'ancrage porte `line_number = 0`, distinct du `1` utilisé par le hint de
+  // balayage sur ce même relevé, pour ne pas heurter `bank_statement_lines_uk`.
+  const bankAccountId = uuidv7();
+  const bankStatementId = uuidv7();
+  const bankStatementLineId = uuidv7();
+
+  await admin.$executeRawUnsafe(
+    `INSERT INTO bank_accounts (id, organization_id, label, bank_code, bank_name, account_holder_name, account_number)
+     VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7)`,
+    bankAccountId,
+    organizationId,
+    `Compte RLS ${label}`,
+    'BGFI',
+    'BGFI Bank',
+    `Organisation RLS ${label}`,
+    `${suffix}0001`,
+  );
+  await admin.$executeRawUnsafe(
+    `INSERT INTO bank_statements (id, organization_id, bank_account_id, period_start, period_end)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, current_date - 60, current_date - 31)`,
+    bankStatementId,
+    organizationId,
+    bankAccountId,
+  );
+  await admin.$executeRawUnsafe(
+    `INSERT INTO bank_statement_lines
+       (id, organization_id, statement_id, bank_account_id, line_number, direction, operation_date, amount, label)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 0, 'CREDIT', current_date - 45, 1000, $5)`,
+    bankStatementLineId,
+    organizationId,
+    bankStatementId,
+    bankAccountId,
+    `Ligne d'ancrage RLS ${label}`,
+  );
+
+  anchors.set('bank_accounts', bankAccountId);
+  anchors.set('bank_statements', bankStatementId);
+  anchors.set('bank_statement_lines', bankStatementLineId);
 
   return { organizationId, userIds, anchors, slug };
 }

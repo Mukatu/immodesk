@@ -106,6 +106,31 @@ export class S3ObjectStorage implements ObjectStorage, OnModuleDestroy {
     }
   }
 
+  /** Relit intégralement le corps d'un objet (import de relevé bancaire). */
+  async getObject(objectKey: string): Promise<Buffer> {
+    try {
+      const response = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: objectKey }),
+      );
+      const body = response.Body as AsyncIterable<Uint8Array> | undefined;
+      if (!body) {
+        throw new DomainError('DOCUMENTS.OBJECT_MISSING', { objectKey });
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of body) {
+        chunks.push(Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    } catch (error) {
+      if (error instanceof DomainError) throw error;
+      if (isNotFound(error)) {
+        throw new DomainError('DOCUMENTS.OBJECT_MISSING', { objectKey });
+      }
+      this.logger.error(`GET ${objectKey} en échec : ${(error as Error).message}`);
+      throw new DomainError('DOCUMENTS.STORAGE_UNAVAILABLE', { objectKey });
+    }
+  }
+
   async deleteObject(objectKey: string): Promise<void> {
     try {
       await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: objectKey }));

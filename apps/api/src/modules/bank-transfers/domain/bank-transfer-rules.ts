@@ -12,15 +12,15 @@ export type DeclarationStatus = (typeof DECLARATION_STATUSES)[number];
 
 /**
  * Machine à états d'une déclaration de virement (contrat phase 4, § « Virement
- * déclaré »). `MATCHED` est réservé au rapprochement de la phase 6 : aucun
- * chemin de la phase 4 n'y mène.
+ * déclaré »). `MATCHED` est atteint par le rapprochement de la phase 6, qui
+ * peut ensuite approuver, rejeter ou annuler la déclaration rapprochée.
  */
 export const DECLARATION_TRANSITIONS: Readonly<
   Record<DeclarationStatus, readonly DeclarationStatus[]>
 > = {
-  SUBMITTED: ['UNDER_REVIEW', 'APPROVED', 'REJECTED', 'CANCELLED'],
-  UNDER_REVIEW: ['APPROVED', 'REJECTED', 'CANCELLED'],
-  MATCHED: [],
+  SUBMITTED: ['UNDER_REVIEW', 'MATCHED', 'APPROVED', 'REJECTED', 'CANCELLED'],
+  UNDER_REVIEW: ['MATCHED', 'APPROVED', 'REJECTED', 'CANCELLED'],
+  MATCHED: ['APPROVED', 'REJECTED', 'CANCELLED'],
   APPROVED: [],
   REJECTED: [],
   CANCELLED: [],

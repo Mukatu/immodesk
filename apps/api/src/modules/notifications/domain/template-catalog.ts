@@ -165,6 +165,42 @@ export const SYSTEM_TEMPLATES: readonly SystemTemplate[] = [
     providerTemplateLang: null,
     variables: ['amount', 'reason'],
   },
+  {
+    code: MESSAGE_TEMPLATE_CODES.BANK_CHECK_BOUNCED,
+    channel: 'WHATSAPP',
+    name: 'Chèque impayé',
+    body: 'Le chèque {{checkNumber}} de {{amount}} a été rejeté par la banque : {{reason}}.',
+    providerTemplateName: 'bank_check_bounced_fr',
+    providerTemplateLang: 'fr',
+    variables: ['checkNumber', 'amount', 'reason'],
+  },
+  {
+    code: MESSAGE_TEMPLATE_CODES.BANK_CHECK_BOUNCED,
+    channel: 'SMS',
+    name: 'Chèque impayé (SMS)',
+    body: 'Cheque {{checkNumber}} de {{amount}} rejete : {{reason}}.',
+    providerTemplateName: null,
+    providerTemplateLang: null,
+    variables: ['checkNumber', 'amount', 'reason'],
+  },
+  {
+    code: MESSAGE_TEMPLATE_CODES.BANK_CHECK_UNCLEARED,
+    channel: 'WHATSAPP',
+    name: 'Chèque en attente de compensation',
+    body: 'Le chèque {{checkNumber}} de {{amount}}, déposé le {{depositDate}}, attend toujours sa compensation.',
+    providerTemplateName: 'bank_check_uncleared_fr',
+    providerTemplateLang: 'fr',
+    variables: ['checkNumber', 'amount', 'depositDate'],
+  },
+  {
+    code: MESSAGE_TEMPLATE_CODES.BANK_CHECK_UNCLEARED,
+    channel: 'SMS',
+    name: 'Chèque en attente de compensation (SMS)',
+    body: 'Cheque {{checkNumber}} de {{amount}} depose le {{depositDate}} : compensation toujours en attente.',
+    providerTemplateName: null,
+    providerTemplateLang: null,
+    variables: ['checkNumber', 'amount', 'depositDate'],
+  },
 ];
 
 export function systemTemplate(code: string, channel: string): SystemTemplate | null {

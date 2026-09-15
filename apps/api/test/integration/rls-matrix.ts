@@ -63,6 +63,35 @@ export const TABLE_HINTS: Record<string, Record<string, unknown>> = {
   },
   // penalty_rules_value_chk : un taux OU un montant forfaitaire.
   penalty_rules: { rate_bps: { raw: '500' } },
+  // Phase 6 — bank_statements_period_chk : période strictement croissante.
+  bank_statements: {
+    period_start: { raw: "'2025-01-01'::date" },
+    period_end: { raw: "'2025-01-31'::date" },
+  },
+  // bank_statement_lines : la colonne `direction` figure dans un index
+  // partiel (CREDIT non rapproché) ; les autres valeurs sont explicitées par
+  // lisibilité même si le générateur générique les aurait satisfaites seul.
+  bank_statement_lines: {
+    line_number: 1,
+    direction: { raw: "'CREDIT'::statement_line_direction" },
+    operation_date: { raw: 'current_date' },
+    amount: { raw: '1000' },
+    label: 'Ligne RLS',
+  },
+  // bank_checks_number_uk : UNIQUE (organization_id, drawer_bank_code,
+  // check_number). `check_number` est généré en SQL (gen_random_uuid()) pour
+  // rester unique à chaque insertion malgré un `drawer_bank_code` constant.
+  bank_checks: {
+    check_number: { raw: 'gen_random_uuid()::text' },
+    drawer_name: 'Tireur RLS',
+    drawer_bank_code: 'BGFI',
+    drawer_bank_name: 'BGFI Bank RLS',
+    amount: { raw: '1000' },
+    issue_date: { raw: 'current_date' },
+  },
+  // reconciliation_matches_target_chk : num_nonnulls(...) >= 1, voir la cible
+  // ajoutée dynamiquement ci-dessous (payment_id).
+  reconciliation_matches: { matched_amount: { raw: '500' } },
 };
 
 /**
@@ -86,6 +115,24 @@ export const DYNAMIC_TABLE_HINTS: Record<string, (anchors: Anchors) => Record<st
   // avoir) — la facture d'ancrage de la même organisation.
   payment_allocations: (anchors) => ({
     invoice_id: typed(anchors.known.get('rent_invoices'), 'uuid'),
+  }),
+  // bank_statements_bank_account_id : NOT NULL, ancré sur le compte bancaire
+  // créé pour l'organisation dans `createFixture`.
+  bank_statements: (anchors) => ({
+    bank_account_id: typed(anchors.known.get('bank_accounts'), 'uuid'),
+  }),
+  // bank_statement_lines : `statement_id` et `bank_account_id` sont NOT
+  // NULL et doivent référencer des ancres de la MÊME organisation.
+  bank_statement_lines: (anchors) => ({
+    statement_id: typed(anchors.known.get('bank_statements'), 'uuid'),
+    bank_account_id: typed(anchors.known.get('bank_accounts'), 'uuid'),
+  }),
+  // reconciliation_matches_target_chk : num_nonnulls(payment_id,
+  // declaration_id, bank_check_id, remittance_id) >= 1 — `payment_id` suffit,
+  // l'ancre `payments` existe déjà depuis la phase 3.
+  reconciliation_matches: (anchors) => ({
+    statement_line_id: typed(anchors.known.get('bank_statement_lines'), 'uuid'),
+    payment_id: typed(anchors.known.get('payments'), 'uuid'),
   }),
 };
 

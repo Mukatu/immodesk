@@ -449,6 +449,30 @@ export class DocumentsService {
   }
 
   /**
+   * Relit les octets d'un document de l'organisation courante (import de
+   * relevé bancaire). RLS garantit que le document appartient à
+   * l'organisation de `tx` ; sans fiche, l'import n'a rien à lire.
+   */
+  async readContent(
+    tx: TenantClient,
+    documentId: string,
+  ): Promise<{ buffer: Buffer; fileName: string; mimeType: string; sizeBytes: number }> {
+    const found = (await tx.documents.findFirst({
+      where: { id: documentId, deleted_at: null },
+      select: { object_key: true, file_name: true, mime_type: true, size_bytes: true },
+    })) as { object_key: string; file_name: string; mime_type: string; size_bytes: bigint } | null;
+    if (!found) throw new DomainError('DOCUMENTS.NOT_FOUND', { documentId });
+
+    const buffer = await this.storage.getObject(found.object_key);
+    return {
+      buffer,
+      fileName: found.file_name,
+      mimeType: found.mime_type,
+      sizeBytes: toJsonAmount(found.size_bytes),
+    };
+  }
+
+  /**
    * Suppression LOGIQUE : la fiche est marquée, l'objet reste en place.
    * `DocumentPurgeService` le détruira après le délai de rétractation.
    */

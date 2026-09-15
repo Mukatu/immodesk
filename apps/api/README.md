@@ -1,4 +1,4 @@
-# `@immodesk/api` — API Immodesk (phases 0 à 5)
+# `@immodesk/api` — API Immodesk (phases 0 à 6)
 
 Backend NestJS 11 de la plateforme Immodesk (gestion immobilière,
 Congo-Brazzaville). Monolithe modulaire en Clean Architecture, multi-tenant
@@ -314,6 +314,18 @@ documentation marchande », et à valider avant toute activation en production.
 Toutes surchargeables sans recompiler l'application : `GET /v1/mobile/config`
 les restitue, valeurs par défaut du contrat (docs/api/phase5-contract.md).
 
+### Rapprochement bancaire (phase 6)
+
+| Variable                              | Rôle                                                                                    |
+| :------------------------------------ | :-------------------------------------------------------------------------------------- |
+| `RECONCILIATION_SUGGESTION_THRESHOLD` | Score minimal (0-100, défaut 75) au-delà duquel une correspondance devient `SUGGESTED`. |
+| `RECONCILIATION_DATE_WINDOW_DAYS`     | Fenêtre de dates (défaut 15 j) explorée par le moteur autour de la date de la ligne.    |
+| `BANK_STATEMENT_MAX_BYTES`            | Taille maximale d'un fichier de relevé importé (10 Mo par défaut).                      |
+| `CHECK_CLEARING_ALERT_DAYS`           | Délai (défaut 15 j) au-delà duquel un chèque déposé non compensé déclenche une alerte.  |
+| `CHECK_ALERT_CRON_ENABLED`            | Active le cron d'alerte d'encaissement tardif (désactivé par défaut).                   |
+| `CHECK_ALERT_CRON_PATTERN`            | Expression cron du job d'alerte (`0 7 * * *` par défaut).                               |
+| `CHECK_ALERT_CRON_TIMEZONE`           | Fuseau horaire du cron d'alerte (`Africa/Brazzaville` par défaut).                      |
+
 ---
 
 ## 3. Base de données et migrations
@@ -436,6 +448,16 @@ Facturation de la phase 3 (`prisma/seed-billing.ts`) :
 - la facture du **mois précédent de A1**, RÉGLÉE par Mobile Money, avec sa
   **quittance ÉMISE** (`QUI-{YYYYMM}-00001`, jeton de vérification publique) ;
 - une **remise SOUMISE** (`REM-{YYYYMM}-00001`) regroupant le reçu de caisse.
+
+Rapprochement bancaire de la phase 6 (`prisma/seed-phase6.ts`) :
+
+- un **relevé bancaire importé** sur le compte BGFI de l'agence, avec trois
+  lignes représentatives : une ligne **EXACT auto-confirmée** (correspondance
+  parfaite avec un paiement existant), une ligne **SUGGESTED en attente**
+  (score au-dessus du seuil, à confirmer manuellement) et une ligne
+  **UNMATCHED** (aucune correspondance trouvée) ;
+- un **chèque déposé depuis longtemps**, non compensé, pour illustrer l'alerte
+  d'encaissement tardif (`CHECK_CLEARING_ALERT_DAYS`).
 
 Relancer le seed ne crée rien de plus (factures retrouvées par bail et
 période, paiements par `client_ref`).
@@ -752,7 +774,10 @@ src/
     ├── mobile-money/        # mobile_money_transactions, déclaré et agrégateur
     ├── webhooks/            # webhook_events, réception signée, rejeu
     ├── bank-transfers/      # bank_transfer_declarations
-    └── mobile-sync/         # sync_batches, registre d'opérations, pull, conflits, config mobile
+    ├── mobile-sync/         # sync_batches, registre d'opérations, pull, conflits, config mobile
+    ├── bank-statements/     # bank_statements, bank_statement_lines, import et adaptateurs de relevés
+    ├── reconciliation/      # reconciliation_matches, moteur de suggestion, tableau de bord
+    └── bank-checks/         # bank_checks, cycle de vie du chèque, alerte d'encaissement tardif
 ```
 
 ### Les modules de la phase 3
@@ -856,6 +881,21 @@ listable via `GET /v1/sync/conflicts?resolved=true` (recherche par
 containment JSONB sur `result`, pas sur ce compteur) et conserve son
 historique — `resolution`, `resolvedAt`, `resolutionReason` — dans l'élément
 d'origine, sans jamais changer son `outcome` d'origine (`CONFLICT`).
+
+### Les modules de la phase 6 : rapprochement bancaire
+
+| Module            | Responsabilité                                                                                                              |
+| :---------------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| `bank-statements` | Import de relevés bancaires (adaptateurs par format), lignes de relevé, contrôle de solde, recherche et filtrage des lignes |
+| `reconciliation`  | Moteur de suggestion de rapprochement (score de correspondance), confirmation / rejet / réversion, tableau de bord          |
+| `bank-checks`     | Cycle de vie du chèque (émis, déposé, compensé, rejeté, annulé), alerte cron sur encaissement tardif                        |
+
+`reconciliation` lit les lignes de relevé exposées par `bank-statements` et
+les rapproche des paiements et chèques existants ; `bank-statements` importe
+à son tour `reconciliation-views` pour afficher, sur chaque ligne, ses
+correspondances déjà proposées. `bank-checks` reste indépendant des deux
+autres : un chèque déposé devient simplement une candidate ligne de relevé à
+rapprocher, comme n'importe quel paiement.
 
 ### Les quatre modules de la phase 2
 

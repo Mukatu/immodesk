@@ -69,7 +69,7 @@ export interface OrganizationSettingsView extends OperationalSettings {
 
 /** Correctif des paramètres : champs de la phase 0 et sections opérationnelles. */
 export type OrganizationSettingsPatch = Partial<
-  Omit<OrganizationSettingsView, 'billing' | 'cash' | 'messaging'>
+  Omit<OrganizationSettingsView, 'billing' | 'cash' | 'messaging' | 'reconciliation'>
 > &
   OperationalSettingsPatch;
 
@@ -257,8 +257,15 @@ export class OrganizationsService {
 
       // Sections opérationnelles (phase 3) : fusion dans `settings_json`,
       // sans jamais effacer les autres clés (gabarit de contrat notamment).
-      const operational = { billing: input.billing, cash: input.cash, messaging: input.messaging };
-      const touchesOperational = Boolean(input.billing || input.cash || input.messaging);
+      const operational = {
+        billing: input.billing,
+        cash: input.cash,
+        messaging: input.messaging,
+        reconciliation: input.reconciliation,
+      };
+      const touchesOperational = Boolean(
+        input.billing || input.cash || input.messaging || input.reconciliation,
+      );
       const penaltyRuleId = input.billing?.defaultPenaltyRuleId;
       if (penaltyRuleId) {
         const rule = await tx.penalty_rules.findFirst({

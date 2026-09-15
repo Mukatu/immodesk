@@ -287,33 +287,65 @@ export class RemittancesService {
     );
   }
 
+  /**
+   * Corps métier du dépôt (verrou, vérification de transition, mise à jour,
+   * audit), exécutable dans une transaction déjà ouverte par un appelant
+   * (ex. rapprochement phase 6). Rappel : une remise `DEPOSITED` n'a aucun
+   * effet sur les factures.
+   */
+  async depositInTx(
+    tx: TenantClient,
+    organizationId: string,
+    reader: PaymentReader,
+    id: string,
+    input: { bankAccountId: string; depositedAt: Date; depositSlipDocumentId?: string | null },
+  ): Promise<{ remittanceId: string }> {
+    void organizationId;
+    void reader;
+    const rows = await tx.$queryRawUnsafe<RemittanceRow[]>(
+      `SELECT * FROM cash_remittances WHERE id = $1::uuid FOR UPDATE`,
+      id,
+    );
+    const remittance = rows[0];
+    if (!remittance) throw new DomainError('CASH.REMITTANCE_NOT_FOUND', { remittanceId: id });
+    assertRemittanceTransition(remittance.status as RemittanceStatus, 'DEPOSITED');
+
+    const account = await tx.bank_accounts.findFirst({
+      where: { id: input.bankAccountId },
+      select: { id: true },
+    });
+    if (!account)
+      throw new DomainError('BANKING.ACCOUNT_NOT_FOUND', { bankAccountId: input.bankAccountId });
+    await tx.$executeRawUnsafe(
+      `UPDATE cash_remittances
+          SET status = 'DEPOSITED', deposited_at = $2::timestamptz, deposit_bank_account_id = $3::uuid,
+              deposit_slip_document_id = $4::uuid, updated_at = now()
+        WHERE id = $1::uuid`,
+      id,
+      input.depositedAt.toISOString(),
+      input.bankAccountId,
+      input.depositSlipDocumentId ?? null,
+    );
+    await audit(this.auditService, tx, {
+      action: 'STATE_TRANSITION',
+      operation: AUDIT_OPERATIONS.REMITTANCE_DEPOSITED,
+      entityType: 'cash_remittances',
+      entityId: id,
+      previousState: toJsonState({ status: remittance.status }),
+      newState: toJsonState({ status: 'DEPOSITED', bankAccountId: input.bankAccountId }),
+    });
+    return { remittanceId: id };
+  }
+
   async deposit(
     organizationId: string,
     reader: PaymentReader,
     id: string,
     input: { bankAccountId: string; depositedAt: Date; depositSlipDocumentId?: string | null },
   ): Promise<RemittanceDetailView> {
-    return this.transition(organizationId, reader, id, 'DEPOSITED', false, async (tx) => {
-      const account = await tx.bank_accounts.findFirst({
-        where: { id: input.bankAccountId },
-        select: { id: true },
-      });
-      if (!account)
-        throw new DomainError('BANKING.ACCOUNT_NOT_FOUND', { bankAccountId: input.bankAccountId });
-      await tx.$executeRawUnsafe(
-        `UPDATE cash_remittances
-            SET status = 'DEPOSITED', deposited_at = $2::timestamptz, deposit_bank_account_id = $3::uuid,
-                deposit_slip_document_id = $4::uuid, updated_at = now()
-          WHERE id = $1::uuid`,
-        id,
-        input.depositedAt.toISOString(),
-        input.bankAccountId,
-        input.depositSlipDocumentId ?? null,
-      );
-      return {
-        operation: AUDIT_OPERATIONS.REMITTANCE_DEPOSITED,
-        state: { bankAccountId: input.bankAccountId },
-      };
+    return this.prisma.withTenant(organizationId, reader.userId, async (tx) => {
+      await this.depositInTx(tx, organizationId, reader, id, input);
+      return this.detailIn(tx, id);
     });
   }
 

@@ -3502,7 +3502,9 @@
                 "property",
                 "unit",
                 "organization",
-                "lease"
+                "lease",
+                "bank_statement",
+                "bank_check"
               ]
             }
           },
@@ -9281,6 +9283,1103 @@
         "summary": "Paramètres mobiles applicables sans recompiler l’application",
         "tags": ["Synchronisation mobile"]
       }
+    },
+    "/v1/bank-checks": {
+      "post": {
+        "operationId": "BankChecksController_receive",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCheckReceiveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enregistrer un chèque reçu",
+        "tags": ["Chèques"]
+      },
+      "get": {
+        "operationId": "BankChecksController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["RECEIVED", "DEPOSITED", "CLEARED", "BOUNCED", "CANCELLED", "RETURNED"]
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "dueBefore",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "File des chèques",
+        "tags": ["Chèques"]
+      }
+    },
+    "/v1/bank-checks/{id}": {
+      "get": {
+        "operationId": "BankChecksController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d'un chèque",
+        "tags": ["Chèques"]
+      }
+    },
+    "/v1/bank-checks/{id}/deposit": {
+      "post": {
+        "operationId": "BankChecksController_deposit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCheckDepositDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remettre le chèque en banque",
+        "tags": ["Chèques"]
+      }
+    },
+    "/v1/bank-checks/{id}/clear": {
+      "post": {
+        "operationId": "BankChecksController_clear",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCheckClearDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Constater la compensation du chèque",
+        "tags": ["Chèques"]
+      }
+    },
+    "/v1/bank-checks/{id}/bounce": {
+      "post": {
+        "operationId": "BankChecksController_bounce",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCheckBounceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Déclarer le chèque impayé",
+        "tags": ["Chèques"]
+      }
+    },
+    "/v1/bank-checks/{id}/cancel": {
+      "post": {
+        "operationId": "BankChecksController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCheckReasonOptionalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Annuler le chèque avant dépôt",
+        "tags": ["Chèques"]
+      }
+    },
+    "/v1/bank-checks/{id}/return": {
+      "post": {
+        "operationId": "BankChecksController_returnToDrawer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCheckReasonOptionalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rendre le chèque au tireur",
+        "tags": ["Chèques"]
+      }
+    },
+    "/v1/bank-accounts/{bankAccountId}/statements/import": {
+      "post": {
+        "operationId": "BankAccountStatementsController_import",
+        "parameters": [
+          {
+            "name": "bankAccountId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportStatementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Importer un relevé bancaire (CSV ou MT940)",
+        "tags": ["Relevés bancaires"]
+      }
+    },
+    "/v1/bank-accounts/{bankAccountId}/statements": {
+      "get": {
+        "operationId": "BankAccountStatementsController_list",
+        "parameters": [
+          {
+            "name": "bankAccountId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les relevés importés d'un compte bancaire",
+        "tags": ["Relevés bancaires"]
+      }
+    },
+    "/v1/bank-statements/{id}": {
+      "get": {
+        "operationId": "BankStatementsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d'un relevé bancaire",
+        "tags": ["Relevés bancaires"]
+      }
+    },
+    "/v1/bank-statements/{id}/discard": {
+      "post": {
+        "operationId": "BankStatementsController_discard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscardStatementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Abandonner un import erroné",
+        "tags": ["Relevés bancaires"]
+      }
+    },
+    "/v1/bank-statements/{id}/reconcile": {
+      "post": {
+        "operationId": "BankStatementsController_reconcile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rejouer le rapprochement sur les lignes non traitées",
+        "tags": ["Relevés bancaires"]
+      }
+    },
+    "/v1/bank-statements/{id}/lines": {
+      "get": {
+        "operationId": "BankStatementsController_listLines",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["UNMATCHED", "SUGGESTED", "PARTIALLY_MATCHED", "MATCHED", "IGNORED"]
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lignes d'un relevé (filtrable par état)",
+        "tags": ["Relevés bancaires"]
+      }
+    },
+    "/v1/bank-statement-lines": {
+      "get": {
+        "operationId": "BankStatementLinesController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["UNMATCHED", "SUGGESTED", "PARTIALLY_MATCHED", "MATCHED", "IGNORED"]
+            }
+          },
+          {
+            "name": "bankAccountId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "olderThanDays",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "minAmount",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "maxAmount",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "File globale des lignes de relevé, tous comptes confondus",
+        "tags": ["Lignes de relevé"]
+      }
+    },
+    "/v1/bank-statement-lines/{id}": {
+      "patch": {
+        "operationId": "BankStatementLinesController_patch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchStatementLineDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ignorer ou restaurer une ligne de relevé",
+        "tags": ["Lignes de relevé"]
+      }
+    },
+    "/v1/bank-statement-adapters": {
+      "get": {
+        "operationId": "BankStatementAdaptersController_list",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les adaptateurs de relevés bancaires livrés",
+        "tags": ["Adaptateurs de relevés"]
+      }
+    },
+    "/v1/reconciliation-matches": {
+      "post": {
+        "description": "Naît directement `CONFIRMED` (`match_type MANUAL`, `confidence_score 100`) : les effets complets sur la cible, la ligne et le relevé sont appliqués tout de suite.",
+        "operationId": "ReconciliationMatchesController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "409": {
+            "description": "BANK.OVER_MATCHED, BANK.LINE_IGNORED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "BANK.MATCH_TARGET_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rapprocher manuellement une ligne de relevé et une cible",
+        "tags": ["Rapprochement bancaire"]
+      }
+    },
+    "/v1/reconciliation-matches/{id}/confirm": {
+      "post": {
+        "operationId": "ReconciliationMatchesController_confirm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "409": {
+            "description": "BANK.MATCH_ALREADY_CONFIRMED, BANK.OVER_MATCHED, BANK.LINE_IGNORED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirmer un rapprochement suggéré",
+        "tags": ["Rapprochement bancaire"]
+      }
+    },
+    "/v1/reconciliation-matches/{id}/reject": {
+      "post": {
+        "operationId": "ReconciliationMatchesController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rejeter un rapprochement suggéré (motif obligatoire)",
+        "tags": ["Rapprochement bancaire"]
+      }
+    },
+    "/v1/reconciliation-matches/{id}/reverse": {
+      "post": {
+        "description": "Écriture miroir `REVERSED`, ligne libérée, paiement contre-passé s’il avait été confirmé par ce rapprochement (facture rouverte `ISSUED`/`OVERDUE`).",
+        "operationId": "ReconciliationMatchesController_reverse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Annuler un rapprochement confirmé",
+        "tags": ["Rapprochement bancaire"]
+      }
+    },
+    "/v1/reconciliation/dashboard": {
+      "get": {
+        "operationId": "ReconciliationDashboardController_get",
+        "parameters": [
+          {
+            "name": "bankAccountId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tableau de bord du rapprochement bancaire",
+        "tags": ["Rapprochement bancaire"]
+      }
+    },
+    "/v1/bank-statement-lines/{id}/suggestions": {
+      "get": {
+        "operationId": "LineSuggestionsController_suggestions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Candidats de rapprochement pour une ligne, calcul à la demande",
+        "tags": ["Suggestions de rapprochement"]
+      }
     }
   },
   "info": {
@@ -10053,6 +11152,45 @@
         },
         "required": ["receiptChannelOrder", "sendCashReceiptToTenant", "sendInvoiceIssued"]
       },
+      "ReconciliationSettingsDto": {
+        "type": "object",
+        "properties": {
+          "suggestionThreshold": {
+            "type": "number",
+            "example": 75,
+            "minimum": 50,
+            "maximum": 95
+          },
+          "dateWindowDays": {
+            "type": "number",
+            "example": 15
+          },
+          "amountTolerancePercent": {
+            "type": "number",
+            "example": 2
+          },
+          "autoConfirmExact": {
+            "type": "boolean",
+            "example": true
+          },
+          "checkClearingAlertDays": {
+            "type": "number",
+            "example": 15
+          },
+          "bounceFeeAmount": {
+            "type": "number",
+            "example": 0
+          }
+        },
+        "required": [
+          "suggestionThreshold",
+          "dateWindowDays",
+          "amountTolerancePercent",
+          "autoConfirmExact",
+          "checkClearingAlertDays",
+          "bounceFeeAmount"
+        ]
+      },
       "OrganizationSettingsDto": {
         "type": "object",
         "properties": {
@@ -10093,6 +11231,9 @@
           },
           "messaging": {
             "$ref": "#/components/schemas/MessagingSettingsDto"
+          },
+          "reconciliation": {
+            "$ref": "#/components/schemas/ReconciliationSettingsDto"
           }
         },
         "required": [
@@ -10105,7 +11246,8 @@
           "smsEnabled",
           "billing",
           "cash",
-          "messaging"
+          "messaging",
+          "reconciliation"
         ]
       },
       "UpdateBillingSettingsDto": {
@@ -10163,6 +11305,35 @@
           }
         }
       },
+      "UpdateReconciliationSettingsDto": {
+        "type": "object",
+        "properties": {
+          "suggestionThreshold": {
+            "type": "number",
+            "minimum": 50,
+            "maximum": 95
+          },
+          "dateWindowDays": {
+            "type": "number",
+            "minimum": 0
+          },
+          "amountTolerancePercent": {
+            "type": "number",
+            "minimum": 0
+          },
+          "autoConfirmExact": {
+            "type": "boolean"
+          },
+          "checkClearingAlertDays": {
+            "type": "number",
+            "minimum": 0
+          },
+          "bounceFeeAmount": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
       "UpdateOrganizationSettingsDto": {
         "type": "object",
         "properties": {
@@ -10198,6 +11369,9 @@
           },
           "messaging": {
             "$ref": "#/components/schemas/UpdateMessagingSettingsDto"
+          },
+          "reconciliation": {
+            "$ref": "#/components/schemas/UpdateReconciliationSettingsDto"
           }
         }
       },
@@ -13312,7 +14486,10 @@
               "image/webp",
               "image/heic",
               "image/heif",
-              "application/pdf"
+              "application/pdf",
+              "text/csv",
+              "text/plain",
+              "application/vnd.ms-excel"
             ],
             "example": "image/jpeg",
             "description": "Hors liste : 415 `DOCUMENTS.MIME_NOT_ALLOWED`."
@@ -13349,7 +14526,17 @@
           },
           "relatedEntityType": {
             "type": "string",
-            "enum": ["landlord", "tenant", "guarantor", "property", "unit", "organization", "lease"]
+            "enum": [
+              "landlord",
+              "tenant",
+              "guarantor",
+              "property",
+              "unit",
+              "organization",
+              "lease",
+              "bank_statement",
+              "bank_check"
+            ]
           },
           "relatedEntityId": {
             "type": "string",
@@ -13399,7 +14586,10 @@
               "image/webp",
               "image/heic",
               "image/heif",
-              "application/pdf"
+              "application/pdf",
+              "text/csv",
+              "text/plain",
+              "application/vnd.ms-excel"
             ]
           },
           "sizeBytes": {
@@ -13431,7 +14621,17 @@
           },
           "relatedEntityType": {
             "type": "string",
-            "enum": ["landlord", "tenant", "guarantor", "property", "unit", "organization", "lease"]
+            "enum": [
+              "landlord",
+              "tenant",
+              "guarantor",
+              "property",
+              "unit",
+              "organization",
+              "lease",
+              "bank_statement",
+              "bank_check"
+            ]
           },
           "relatedEntityId": {
             "type": "string",
@@ -18655,6 +19855,187 @@
           "maxOperationsPerBatch",
           "offlineWritesEnabled"
         ]
+      },
+      "BankCheckReceiveDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "checkNumber": {
+            "type": "string",
+            "example": "0012345"
+          },
+          "drawerName": {
+            "type": "string",
+            "example": "Jean Mabiala"
+          },
+          "drawerBankCode": {
+            "type": "string",
+            "example": "BGFI"
+          },
+          "drawerBankName": {
+            "type": "string",
+            "example": "BGFIBank Congo"
+          },
+          "drawerAccountNumber": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 150000
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "imageDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "checkNumber",
+          "drawerName",
+          "drawerBankCode",
+          "drawerBankName",
+          "amount",
+          "issueDate"
+        ]
+      },
+      "BankCheckDepositDto": {
+        "type": "object",
+        "properties": {
+          "depositBankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "depositDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": ["depositBankAccountId"]
+      },
+      "BankCheckClearDto": {
+        "type": "object",
+        "properties": {
+          "clearingDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "BankCheckBounceDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "feeAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 150000
+          }
+        }
+      },
+      "BankCheckReasonOptionalDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportStatementDto": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["CSV", "MT940"]
+          }
+        },
+        "required": ["documentId"]
+      },
+      "DiscardStatementDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "PatchStatementLineDto": {
+        "type": "object",
+        "properties": {
+          "isIgnored": {
+            "type": "boolean"
+          },
+          "ignoreReason": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateMatchDto": {
+        "type": "object",
+        "properties": {
+          "statementLineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetType": {
+            "type": "string",
+            "enum": ["PAYMENT", "DECLARATION", "CHECK", "REMITTANCE"]
+          },
+          "targetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "matchedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 150000
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["statementLineId", "targetType", "targetId", "matchedAmount"]
+      },
+      "MatchReasonDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Virement d’un autre locataire"
+          }
+        },
+        "required": ["reason"]
       }
     }
   }

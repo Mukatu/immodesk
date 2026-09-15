@@ -17,13 +17,10 @@ describe('Machine à états d’une déclaration de virement', () => {
     expect(() => assertDeclarationTransition('UNDER_REVIEW', 'SUBMITTED')).toThrow(DomainError);
   });
 
-  it('MATCHED est réservé à la phase 6 : aucune transition n’y mène ni n’en part', () => {
-    expect(DECLARATION_TRANSITIONS.MATCHED).toEqual([]);
-    for (const from of Object.keys(
-      DECLARATION_TRANSITIONS,
-    ) as (keyof typeof DECLARATION_TRANSITIONS)[]) {
-      expect(DECLARATION_TRANSITIONS[from]).not.toContain('MATCHED');
-    }
+  it('MATCHED est atteignable depuis SUBMITTED et UNDER_REVIEW (rapprochement phase 6)', () => {
+    expect(DECLARATION_TRANSITIONS.SUBMITTED).toContain('MATCHED');
+    expect(DECLARATION_TRANSITIONS.UNDER_REVIEW).toContain('MATCHED');
+    expect(DECLARATION_TRANSITIONS.MATCHED).toEqual(['APPROVED', 'REJECTED', 'CANCELLED']);
   });
 
   it('APPROVED, REJECTED et CANCELLED sont terminaux', () => {

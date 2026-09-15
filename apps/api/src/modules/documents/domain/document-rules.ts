@@ -32,6 +32,9 @@ export const RELATED_ENTITY_TYPES = [
   'organization',
   // Phase 2 : contrat de bail engendré ou contrat signé scanné.
   'lease',
+  // Phase 6 : import de relevé bancaire CSV/MT940 et photo de chèque.
+  'bank_statement',
+  'bank_check',
 ] as const;
 export type RelatedEntityType = (typeof RELATED_ENTITY_TYPES)[number];
 
@@ -52,10 +55,17 @@ export const ALLOWED_MIME_TYPES: Readonly<Record<string, number>> = {
   'image/heic': 15 * MEGABYTE,
   'image/heif': 15 * MEGABYTE,
   'application/pdf': 25 * MEGABYTE,
+  // Phase 6 : relevé bancaire CSV ou MT940 (texte brut) — 10 Mo couvre
+  // largement un relevé mensuel, même avec plusieurs comptes concaténés.
+  'text/csv': 10 * MEGABYTE,
+  'text/plain': 10 * MEGABYTE,
+  // Certaines banques exportent leur CSV avec ce type MIME hérité d'Excel.
+  'application/vnd.ms-excel': 10 * MEGABYTE,
 };
 
 export const MAX_IMAGE_BYTES = 15 * MEGABYTE;
 export const MAX_PDF_BYTES = 25 * MEGABYTE;
+export const MAX_BANK_STATEMENT_BYTES = 10 * MEGABYTE;
 
 /** Durée de validité des URL signées : 10 minutes (contrat de phase 1). */
 export const SIGNED_URL_TTL_SECONDS = 600;
@@ -68,6 +78,9 @@ const EXTENSIONS: Readonly<Record<string, string>> = {
   'image/heic': 'heic',
   'image/heif': 'heif',
   'application/pdf': 'pdf',
+  'text/csv': 'csv',
+  'text/plain': 'txt',
+  'application/vnd.ms-excel': 'csv',
 };
 
 /**

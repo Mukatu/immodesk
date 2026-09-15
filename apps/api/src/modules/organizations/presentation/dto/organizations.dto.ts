@@ -18,10 +18,12 @@ import {
   BillingSettingsDto,
   CashSettingsDto,
   MessagingSettingsDto,
+  ReconciliationSettingsDto,
   Type,
   UpdateBillingSettingsDto,
   UpdateCashSettingsDto,
   UpdateMessagingSettingsDto,
+  UpdateReconciliationSettingsDto,
 } from './operational-settings.dto';
 import { OrganizationDto } from '../../../identity/presentation/dto/auth.dto';
 
@@ -86,6 +88,7 @@ export class OrganizationSettingsDto {
   @ApiProperty({ type: BillingSettingsDto }) billing!: BillingSettingsDto;
   @ApiProperty({ type: CashSettingsDto }) cash!: CashSettingsDto;
   @ApiProperty({ type: MessagingSettingsDto }) messaging!: MessagingSettingsDto;
+  @ApiProperty({ type: ReconciliationSettingsDto }) reconciliation!: ReconciliationSettingsDto;
 }
 
 export class UpdateOrganizationSettingsDto {
@@ -135,6 +138,12 @@ export class UpdateOrganizationSettingsDto {
   @ValidateNested()
   @Type(() => UpdateMessagingSettingsDto)
   messaging?: UpdateMessagingSettingsDto;
+
+  @ApiPropertyOptional({ type: UpdateReconciliationSettingsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateReconciliationSettingsDto)
+  reconciliation?: UpdateReconciliationSettingsDto;
 }
 
 export class MemberUserDto {

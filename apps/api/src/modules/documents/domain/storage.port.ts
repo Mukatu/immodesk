@@ -51,6 +51,14 @@ export interface ObjectStorage {
   deleteObject(objectKey: string): Promise<void>;
 
   /**
+   * Relit intégralement le contenu d'un objet (import de relevé bancaire
+   * CSV/MT940). Contrairement à `createDownloadUrl`, l'octet transite par le
+   * processus API : réservé aux fichiers dont la taille reste raisonnable
+   * (plafond appliqué en amont par `document-rules`).
+   */
+  getObject(objectKey: string): Promise<Buffer>;
+
+  /**
    * Dépose un objet produit PAR L'API elle-même (contrat PDF, quittance).
    *
    * Les pièces jointes du terrain ne passent jamais par l'API — elles partent

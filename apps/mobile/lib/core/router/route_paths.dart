@@ -90,4 +90,26 @@ abstract final class RoutePaths {
   /// Fiche mandat (`feature mandates`, phase 7) : invitation du bailleur.
   static const String mandateDetailPattern = '/mandats/:id';
   static String mandateDetail(String id) => '/mandats/$id';
+
+  /// États des lieux (`feature inspections`, phase 8) : sélection du lot
+  /// (depuis la tournée mise en cache), saisie pièce par pièce, signature.
+  static const String inspectionLotPicker = '/terrain/etat-des-lieux';
+  static const String inspectionSetup = '$inspectionLotPicker/nouveau';
+  static const String inspectionRooms = '$inspectionLotPicker/pieces';
+  static const String inspectionSignature = '$inspectionLotPicker/signature';
+
+  /// Compteurs et relevés (`feature meters`, phase 8).
+  static const String meterLotPicker = '/terrain/compteurs';
+  static const String meterSelection = '$meterLotPicker/liste';
+  static const String meterReading = '$meterLotPicker/releve';
+
+  /// Maintenance (`feature maintenance`, phase 8) : demandes affectées au
+  /// démarcheur.
+  static const String maintenanceList = '/terrain/maintenance';
+  static const String maintenanceDetailPattern = '$maintenanceList/:id';
+  static String maintenanceDetail(String id) => '$maintenanceList/$id';
+  static const String maintenanceUpdatePattern =
+      '$maintenanceList/:id/mise-a-jour';
+  static String maintenanceUpdate(String id) =>
+      '$maintenanceList/$id/mise-a-jour';
 }

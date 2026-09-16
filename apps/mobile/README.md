@@ -85,6 +85,24 @@ gestionnaires indépendants.
   bailleur depuis la fiche du mandat (`feature mandates`) : envoi par
   WhatsApp et statut affiché (non invité / envoyée / activée). Voir
   `docs/04_plan_de_phases.md` (§7.x) et `docs/api/phase7-contract.md`.
+- **Phase 8** : trois écritures de terrain supplémentaires, hors ligne dès
+  le premier jour comme l'encaissement (`feature inspections`, `feature
+  meters`, `feature maintenance`). Lot choisi depuis les baux de la tournée
+  mise en cache (`LeasePickerScreen`, `shared/widgets`), donc accessible en
+  mode démarcheur restreint. États des lieux : navigation pièce par pièce,
+  six niveaux d'état réels du contrat (neuf, bon état, état d'usage,
+  mauvais état, dégradé, manquant), photo par poste obligatoire dès
+  `POOR`/`DAMAGED`/`MISSING` (signature refusée sinon, message explicite),
+  récapitulatif puis double signature tactile (locataire, absent
+  possible avec motif obligatoire ; représentant de l'agence, toujours
+  requis). Compteurs : sélection du compteur du lot (liste en ligne, non
+  mise en cache), saisie de l'index avec aperçu de consommation, photo du
+  cadran facultative, décision explicite sur un index régressif (passage
+  par zéro confirmé `rolloverApplied` ou correction de la saisie — jamais
+  d'enregistrement automatique). Maintenance : liste des demandes affectées
+  au démarcheur connecté, détail avec historique, ajout d'une mise à jour
+  (commentaire, changement de statut, photo). Voir `docs/04_plan_de_phases.md`
+  (§8.6, mobile) et `docs/api/phase8-contract.md`.
 
 ## Prérequis
 
@@ -200,7 +218,28 @@ flutter test
   (`test/features/mandates/presentation`), parcours d'onboarding du
   gestionnaire indépendant en quatre écrans se terminant par un seul appel
   réseau (`test/features/onboarding/presentation`).
-- **Total** : 157 tests, tous au vert (`flutter analyze` : 0 erreur, 0 info).
+- Tests unitaires (phase 8) : détection d'un index de compteur régressif et
+  calcul de consommation, y compris passage par zéro
+  (`test/features/meters/domain/meter_reading_math_test.dart`), règle de
+  photo obligatoire selon l'état constaté d'un poste d'état des lieux
+  (`test/features/inspections/domain/inspection_validation_test.dart`),
+  construction du dépôt hors ligne d'un état des lieux (signatures et
+  photos par poste résolues via des chemins génériques,
+  `test/features/inspections/domain/inspection_offline_plan_test.dart`),
+  résolution générique d'un `documentId` de pièce jointe dans un payload
+  imbriqué (`test/core/sync/document_field_paths_test.dart`), mapping JSON
+  des demandes de maintenance et de leur historique
+  (`test/features/maintenance/domain/maintenance_mapping_test.dart`).
+- Tests de widget (phase 8, `dio` mocké, base Drift en mémoire, E/S réelles
+  isolées via `tester.runAsync`) : parcours complet d'un état des lieux
+  avec double signature, refus de signature pour une photo manquante sur un
+  poste dégradé (`test/features/inspections/presentation`), relevé de
+  compteur avec décision explicite sur un index régressif (passage par zéro
+  confirmé puis mise en attente hors ligne,
+  `test/features/meters/presentation/meter_reading_screen_test.dart`), mise
+  à jour d'une demande de maintenance avec changement de statut versée à
+  l'outbox (`test/features/maintenance/presentation`).
+- **Total** : 183 tests, tous au vert (`flutter analyze` : 0 erreur, 0 info).
 
 ## Architecture
 
@@ -322,12 +361,40 @@ Clean Architecture par fonctionnalité (`lib/features/<feature>/{domain,data,pre
   la validation (`POST /organizations/independent-manager/onboarding`),
   transaction unique côté API ; redirige vers la fiche du mandat créé pour
   enchaîner directement sur l'invitation du bailleur.
+- `lib/features/inspections` (phase 8) : état des lieux capturé pièce par
+  pièce en mémoire locale (`InspectionDraft`, six niveaux d'état réels du
+  contrat, photo par poste compressée comme les autres photos de
+  l'application), récapitulatif puis double signature tactile
+  (`package:signature`, comme l'encaissement). Soumis d'un bloc à la
+  signature : en ligne, séquence réelle création/postes/photos/signature
+  (`InspectionsRepositoryImpl`) ; hors ligne, une unique opération
+  `INSPECTION_SUBMIT` dans l'outbox généralisée, ses pièces jointes
+  (signatures, photos par poste) résolues via des chemins génériques
+  (`lib/core/sync/document_field_paths.dart`, généralisation du mécanisme
+  `paperReceiptDocumentId` de la phase 5). Signature refusée avec message
+  explicite si un poste `POOR`/`DAMAGED`/`MISSING` n'a pas de photo.
+- `lib/features/meters` (phase 8) : sélection d'un compteur du lot (liste en
+  ligne), saisie de l'index avec aperçu de consommation
+  (`lib/features/meters/domain/meter_reading_math.dart`), photo du cadran
+  facultative. Un index inférieur au précédent exige une décision explicite
+  (dialogue passage par zéro / correction de la saisie) avant tout envoi —
+  jamais d'enregistrement automatique. Relevé envoyé en ligne
+  (`POST /meters/{id}/readings`) ou mis en attente hors ligne
+  (`METER_READING`, outbox généralisée).
+- `lib/features/maintenance` (phase 8) : demandes affectées au démarcheur
+  connecté, détail avec historique complet, ajout d'une mise à jour
+  (commentaire, changement de statut parmi ceux ouverts au démarcheur,
+  photo). Mise à jour envoyée en ligne
+  (`POST /maintenance-requests/{id}/updates`) ou mise en attente hors ligne
+  (`MAINTENANCE_UPDATE`).
 - `lib/features/more` : onglet « Plus » (diagnostic, déconnexion, accès à
   la tournée, à la caisse et à la file d'attente Outbox). L'accès aux baux
   est masqué en mode démarcheur restreint (voir ci-dessous).
 - `lib/shared/widgets` : composants réutilisables (`MoneyXafText`,
   `PhoneField`, `OtpField`, `StatusBadge`, `EmptyState`,
-  `OfflineDataBanner`, `AppBottomNavShell`).
+  `OfflineDataBanner`, `AppBottomNavShell`, et depuis la phase 8
+  `LeasePickerScreen` — sélection d'un lot via les baux de la tournée mise
+  en cache, partagée par les états des lieux et les relevés de compteur).
 
 Navigation par onglets bas (`StatefulShellRoute.indexedStack` de
 `go_router`) : Accueil / Immeubles / Locataires / Plus pour les rôles
@@ -394,10 +461,14 @@ sauvegarde du trousseau sans celle de l'application, ou anomalie) :
   (`syncIntervalSeconds`) ne fonctionnent aujourd'hui que tant que
   l'application est au premier plan (`SyncCoordinator`,
   `lib/core/sync/sync_providers.dart`).
-- États des lieux, relevés de compteur et maintenance (`inspections`,
-  `meter_readings`, `maintenance_requests`) : hors périmètre du contrat de
-  phase 5 (« le plan cite ces entités, mais elles n'arrivent qu'en phase 8 »,
-  `docs/api/phase5-contract.md`, arbitrage 1).
+- États des lieux, compteurs et maintenance (phase 8) : livrés pour les
+  écritures de terrain (voir plus haut), mais la liste des compteurs d'un
+  lot et celle des demandes de maintenance ne sont pas mises en cache
+  localement (contrairement au portefeuille et à la tournée) — elles
+  exigent une connexion, seul l'envoi du relevé ou de la mise à jour
+  fonctionne hors ligne. Comparaison entrée/sortie, retenue sur dépôt et
+  campagne de refacturation des charges restent des écrans web
+  (`docs/api/phase8-contract.md`).
 - Écran de préchargement de tournée dédié avec sélection explicite du
   périmètre : le préchargement (phase 5) est déclenché depuis l'écran
   diagnostic ; un écran de confirmation dédié en amont de la tournée reste

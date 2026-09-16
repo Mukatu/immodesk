@@ -21,6 +21,9 @@ class OutboxRepository {
   static const List<String> _syncEngineOperations = [
     'CASH_RECEIPT',
     'DOCUMENT',
+    'INSPECTION_SUBMIT',
+    'METER_READING',
+    'MAINTENANCE_UPDATE',
   ];
 
   /// Ajoute une opération à l'outbox, dans l'état `PENDING`. Retourne le

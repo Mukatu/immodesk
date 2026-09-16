@@ -13,6 +13,9 @@ import '../../features/collection/presentation/screens/confirmation_screen.dart'
 import '../../features/collection/presentation/screens/encaissement_screen.dart';
 import '../../features/diagnostics/presentation/screens/diagnostics_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/inspections/presentation/screens/inspection_room_screen.dart';
+import '../../features/inspections/presentation/screens/inspection_setup_screen.dart';
+import '../../features/inspections/presentation/screens/inspection_signature_screen.dart';
 import '../../features/landlord_portal/presentation/screens/landlord_collections_screen.dart';
 import '../../features/landlord_portal/presentation/screens/landlord_home_screen.dart';
 import '../../features/landlord_portal/presentation/screens/landlord_more_screen.dart';
@@ -20,9 +23,16 @@ import '../../features/landlord_portal/presentation/screens/landlord_payouts_scr
 import '../../features/landlord_portal/presentation/screens/landlord_receipts_screen.dart';
 import '../../features/landlord_portal/presentation/screens/landlord_statements_screen.dart';
 import '../../features/landlord_portal/presentation/widgets/landlord_bottom_nav_shell.dart';
+import '../../features/leases/domain/entities/lease_summary.dart';
 import '../../features/leases/presentation/screens/lease_detail_screen.dart';
 import '../../features/leases/presentation/screens/leases_list_screen.dart';
 import '../../features/mandates/presentation/screens/mandate_detail_screen.dart';
+import '../../features/maintenance/presentation/screens/maintenance_detail_screen.dart';
+import '../../features/maintenance/presentation/screens/maintenance_list_screen.dart';
+import '../../features/maintenance/presentation/screens/maintenance_update_screen.dart';
+import '../../features/meters/domain/entities/meter.dart';
+import '../../features/meters/presentation/screens/meter_reading_screen.dart';
+import '../../features/meters/presentation/screens/meter_selection_screen.dart';
 import '../../features/more/presentation/screens/more_screen.dart';
 import '../../features/onboarding/presentation/screens/manager_onboarding_screen.dart';
 import '../../features/organizations/presentation/screens/organization_create_screen.dart';
@@ -38,6 +48,7 @@ import '../../features/portfolio/presentation/screens/tenants_list_screen.dart';
 import '../../features/portfolio/presentation/screens/unit_detail_screen.dart';
 import '../../features/sync/presentation/screens/outbox_screen.dart';
 import '../../shared/widgets/app_bottom_nav_shell.dart';
+import '../../shared/widgets/lease_picker_screen.dart';
 import 'route_paths.dart';
 
 /// Navigation `go_router`. La logique de redirection (connecté / bon
@@ -255,6 +266,59 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: RoutePaths.outbox,
                 builder: (context, state) => const OutboxScreen(),
+              ),
+              GoRoute(
+                path: RoutePaths.inspectionLotPicker,
+                builder: (context, state) => LeasePickerScreen(
+                  title: 'État des lieux — choisir un lot',
+                  destinationPath: (_) => RoutePaths.inspectionSetup,
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.inspectionSetup,
+                builder: (context, state) =>
+                    InspectionSetupScreen(lease: state.extra! as LeaseSummary),
+              ),
+              GoRoute(
+                path: RoutePaths.inspectionRooms,
+                builder: (context, state) => const InspectionRoomScreen(),
+              ),
+              GoRoute(
+                path: RoutePaths.inspectionSignature,
+                builder: (context, state) => const InspectionSignatureScreen(),
+              ),
+              GoRoute(
+                path: RoutePaths.meterLotPicker,
+                builder: (context, state) => LeasePickerScreen(
+                  title: 'Relever un compteur — choisir un lot',
+                  destinationPath: (_) => RoutePaths.meterSelection,
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.meterSelection,
+                builder: (context, state) => MeterSelectionScreen(
+                  unitId: (state.extra! as LeaseSummary).unit.id,
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.meterReading,
+                builder: (context, state) =>
+                    MeterReadingScreen(meter: state.extra! as Meter),
+              ),
+              GoRoute(
+                path: RoutePaths.maintenanceList,
+                builder: (context, state) => const MaintenanceListScreen(),
+              ),
+              GoRoute(
+                path: RoutePaths.maintenanceDetailPattern,
+                builder: (context, state) =>
+                    MaintenanceDetailScreen(id: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: RoutePaths.maintenanceUpdatePattern,
+                builder: (context, state) => MaintenanceUpdateScreen(
+                  requestId: state.pathParameters['id']!,
+                ),
               ),
             ],
           ),

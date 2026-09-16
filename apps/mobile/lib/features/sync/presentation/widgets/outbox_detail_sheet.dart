@@ -33,12 +33,13 @@ class _OutboxDetailSheetState extends ConsumerState<OutboxDetailSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              row.operation == 'CASH_RECEIPT'
-                  ? 'Encaissement en attente'
-                  : 'Pièce jointe en attente',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text(switch (row.operation) {
+              'CASH_RECEIPT' => 'Encaissement en attente',
+              'INSPECTION_SUBMIT' => 'État des lieux en attente',
+              'METER_READING' => 'Relevé de compteur en attente',
+              'MAINTENANCE_UPDATE' => 'Mise à jour de maintenance en attente',
+              _ => 'Pièce jointe en attente',
+            }, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 4),
             Text('Référence locale : ${row.clientRef}'),
             const SizedBox(height: 12),

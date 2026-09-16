@@ -5,7 +5,23 @@
 /// `SyncEngine`.
 enum OutboxOperationType {
   cashReceipt('CASH_RECEIPT'),
-  document('DOCUMENT');
+  document('DOCUMENT'),
+
+  /// Phase 8 : dépôt d'un état des lieux complet (postes, photos et double
+  /// signature) en une seule opération, traitée atomiquement côté serveur —
+  /// il n'existe aucune route en ligne unique équivalente (création, postes,
+  /// photos et signature sont des routes distinctes), donc l'écriture de
+  /// terrain est bâtie localement puis soumise d'un bloc, comme le prescrit
+  /// `docs/api/phase5-contract.md` (« ajouter un type ne doit modifier ni la
+  /// route, ni le format d'enveloppe, ni le moteur de rejeu »).
+  inspectionSubmit('INSPECTION_SUBMIT'),
+
+  /// Phase 8 : relevé de compteur (`POST /v1/meters/{id}/readings`).
+  meterReading('METER_READING'),
+
+  /// Phase 8 : mise à jour d'une demande de maintenance
+  /// (`POST /v1/maintenance-requests/{id}/updates`).
+  maintenanceUpdate('MAINTENANCE_UPDATE');
 
   const OutboxOperationType(this.apiValue);
 

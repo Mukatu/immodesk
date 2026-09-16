@@ -80,6 +80,9 @@ class _OutboxTile extends ConsumerWidget {
   String get _typeLabel => switch (row.operation) {
     'CASH_RECEIPT' => 'Encaissement espèces',
     'DOCUMENT' => 'Pièce jointe (photo/signature)',
+    'INSPECTION_SUBMIT' => 'État des lieux',
+    'METER_READING' => 'Relevé de compteur',
+    'MAINTENANCE_UPDATE' => 'Mise à jour de maintenance',
     _ => row.operation,
   };
 

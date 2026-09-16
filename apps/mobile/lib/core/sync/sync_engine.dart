@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../db/app_database.dart';
 import '../network/api_exception.dart';
+import 'document_field_paths.dart';
 import 'mobile_config.dart';
 import 'outbox_ordering.dart';
 import 'outbox_repository.dart';
@@ -90,7 +91,16 @@ class SyncEngine {
           row.clientRef,
         )) {
           await outbox.patchPayload(dependent.clientRef, (payload) {
-            payload['paperReceiptDocumentId'] = documentId;
+            final Map<String, dynamic>? fieldPaths =
+                payload['_documentFieldPaths'] as Map<String, dynamic>?;
+            final String? path = fieldPaths?[row.clientRef] as String?;
+            if (path != null) {
+              setDocumentFieldPath(payload, path, documentId);
+            } else {
+              // Compatibilité `CASH_RECEIPT` (phase 5) : un seul champ
+              // possible, sans déclaration de chemin.
+              payload['paperReceiptDocumentId'] = documentId;
+            }
             return payload;
           });
         }
@@ -172,17 +182,21 @@ class SyncEngine {
       deviceId: deviceId,
       devicePlatform: Platform.isIOS ? 'ios' : 'android',
       appVersion: appVersion,
-      operations: ordered
-          .map(
-            (row) => SyncOperation(
-              clientRef: row.clientRef,
-              type: OutboxOperationType.fromApiValue(row.operation),
-              clientCreatedAt: row.createdAt.toIso8601String(),
-              dependsOn: outbox.dependsOnOf(row),
-              payload: jsonDecode(row.payload),
-            ),
-          )
-          .toList(),
+      operations: ordered.map((row) {
+        // `_documentFieldPaths` n'est qu'une note interne de résolution
+        // (voir `document_field_paths.dart`) : elle ne fait pas partie du
+        // contrat et n'est jamais envoyée au serveur.
+        final Map<String, dynamic> payload =
+            jsonDecode(row.payload) as Map<String, dynamic>;
+        payload.remove('_documentFieldPaths');
+        return SyncOperation(
+          clientRef: row.clientRef,
+          type: OutboxOperationType.fromApiValue(row.operation),
+          clientCreatedAt: row.createdAt.toIso8601String(),
+          dependsOn: outbox.dependsOnOf(row),
+          payload: payload,
+        );
+      }).toList(),
     );
   }
 

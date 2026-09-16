@@ -56,6 +56,27 @@ class MoreScreen extends ConsumerWidget {
           ),
           const Divider(height: 1),
           ListTile(
+            key: const ValueKey('more-inspections-tile'),
+            leading: const Icon(Icons.fact_check_outlined),
+            title: const Text('États des lieux'),
+            onTap: () => context.push(RoutePaths.inspectionLotPicker),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            key: const ValueKey('more-meters-tile'),
+            leading: const Icon(Icons.speed_outlined),
+            title: const Text('Relever un compteur'),
+            onTap: () => context.push(RoutePaths.meterLotPicker),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            key: const ValueKey('more-maintenance-tile'),
+            leading: const Icon(Icons.build_outlined),
+            title: const Text('Mes demandes de maintenance'),
+            onTap: () => context.push(RoutePaths.maintenanceList),
+          ),
+          const Divider(height: 1),
+          ListTile(
             key: const ValueKey('more-outbox-tile'),
             leading: Badge(
               key: const ValueKey('outbox-badge'),

@@ -51,6 +51,8 @@ export interface OrganizationSettings {
   billing: BillingSettings;
   cash: CashSettings;
   messaging: MessagingSettings;
+  /** Ajouté en phase 8 : optionnel pour ne pas casser les usages existants. */
+  facilities?: FacilitiesSettings;
 }
 
 export interface Member {
@@ -209,6 +211,14 @@ export const ApiErrorCode = {
   CHECK_ALREADY_REGISTERED: 'BANK.CHECK_ALREADY_REGISTERED',
   STATEMENT_PERIOD_INVALID: 'BANK.STATEMENT_PERIOD_INVALID',
   MATCH_TARGET_REQUIRED: 'BANK.MATCH_TARGET_REQUIRED',
+  // Phase 8 : états des lieux, compteurs et charges, maintenance.
+  METERS_INDEX_REGRESSION: 'METERS.INDEX_REGRESSION',
+  METERS_READING_DUPLICATE_DATE: 'METERS.READING_DUPLICATE_DATE',
+  METERS_SERIAL_TAKEN: 'METERS.SERIAL_TAKEN',
+  INSPECTIONS_LOCKED: 'INSPECTIONS.LOCKED',
+  INSPECTIONS_PHOTO_REQUIRED: 'INSPECTIONS.PHOTO_REQUIRED',
+  INSPECTIONS_DEDUCTION_ALREADY_APPLIED: 'INSPECTIONS.DEDUCTION_ALREADY_APPLIED',
+  DEPOSITS_INSUFFICIENT_BALANCE: 'DEPOSITS.INSUFFICIENT_BALANCE',
 } as const;
 
 /**
@@ -2341,4 +2351,452 @@ export interface PortalActivationVerifyResponse {
   refreshToken: string;
   landlord: PortalLandlord;
   organizations: PortalOrganizationRef[];
+}
+
+/**
+ * Types du contrat d'API — Phase 8 (états des lieux, compteurs et charges,
+ * maintenance). Recopiés depuis docs/api/phase8-contract.md. Ne pas diverger
+ * du contrat sans mettre à jour ce fichier et le document source.
+ */
+
+// ---- Énumérations ----
+
+export type InspectionType = 'MOVE_IN' | 'MOVE_OUT' | 'PERIODIC' | 'CONTRADICTORY';
+
+export type InspectionStatus =
+  'DRAFT' | 'IN_PROGRESS' | 'PENDING_SIGNATURE' | 'SIGNED' | 'DISPUTED' | 'CANCELLED';
+
+/**
+ * Six niveaux (et non les cinq du plan de phases initial) : neuf, bon état,
+ * état d'usage, mauvais état, dégradé, manquant.
+ */
+export type InspectionCondition = 'NEW' | 'GOOD' | 'FAIR' | 'POOR' | 'DAMAGED' | 'MISSING';
+
+export type InspectionComparisonRowStatus =
+  'UNCHANGED' | 'DEGRADED' | 'IMPROVED' | 'ADDED' | 'MISSING';
+
+/**
+ * Noms actuels des fournisseurs congolais (E2C, LCDE) : le plan de phases citait
+ * SNE et SNDE, anciennes appellations absentes du schéma.
+ */
+export type MeterType =
+  'ELECTRICITY_E2C' | 'WATER_LCDE' | 'GAS' | 'PRIVATE_SUBMETER' | 'SOLAR' | 'OTHER';
+
+export type TariffBasis =
+  'PER_UNIT_CONSUMED' | 'FLAT_MONTHLY' | 'PER_OCCUPANT' | 'PER_SQUARE_METER' | 'SHARED_PRORATA';
+
+export type MaintenanceStatus =
+  | 'OPEN'
+  | 'ACKNOWLEDGED'
+  | 'ASSIGNED'
+  | 'IN_PROGRESS'
+  | 'ON_HOLD'
+  | 'RESOLVED'
+  | 'CLOSED'
+  | 'REJECTED';
+
+export type MaintenancePriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
+export type MaintenanceReporter = 'TENANT' | 'LANDLORD' | 'COLLECTOR' | 'MANAGER' | 'INSPECTION';
+
+/**
+ * `invoice_line_type` produit par la refacturation de charges : jamais une
+ * valeur inventée en dehors de ces deux-là (rappel du contrat phase 8).
+ */
+export type UtilityInvoiceLineType = 'WATER_CHARGE' | 'ELECTRICITY_CHARGE';
+
+// ---- Paramètres d'organisation (organization_settings.settings_json.facilities) ----
+
+export interface FacilitiesSettings {
+  /** Défaut false : facturer le forfait du tarif si aucun relevé sur la période. */
+  utilityFallbackFlat: boolean;
+  /** Défaut 3 : jour du mois de la campagne de charges, avant la facturation du 5. */
+  utilityRunDayOfMonth: number;
+  /** Défaut POOR. */
+  inspectionPhotoRequiredFrom: 'POOR' | 'DAMAGED';
+  maintenanceSlaHours: { URGENT: number; HIGH: number; NORMAL: number; LOW: number };
+  /** Défaut false : la conversion état des lieux → maintenance reste une proposition. */
+  autoCreateMaintenanceFromInspection: boolean;
+}
+
+// ---- États des lieux ----
+
+export interface InspectionInput {
+  unitId: string;
+  leaseId?: string;
+  tenantId?: string;
+  inspectionType: InspectionType;
+  scheduledAt?: string;
+  tenantPresent?: boolean;
+  landlordPresent?: boolean;
+  keysHandedCount?: number;
+  notes?: string;
+  clientRef?: string;
+}
+
+export interface Inspection extends InspectionInput {
+  id: string;
+  /** `EDL-{YYYYMM}-{seq}`. */
+  reference: string;
+  status: InspectionStatus;
+  propertyId: string;
+  overallCondition: InspectionCondition | null;
+  totalDamageAmount: number;
+  performedAt: string | null;
+  performedByUserId: string | null;
+  tenantSignedAt: string | null;
+  agentSignedAt: string | null;
+  reportDocumentId: string | null;
+  disputeReason: string | null;
+}
+
+/**
+ * Forme de résumé pour `GET /v1/inspections` : non détaillée par le contrat
+ * (qui ne définit qu'`Inspection`/`InspectionDetail`) ; construite ici sur le
+ * même principe que les autres `*Summary` du client (LeaseSummary, etc.).
+ */
+export interface InspectionSummary {
+  id: string;
+  reference: string;
+  status: InspectionStatus;
+  inspectionType: InspectionType;
+  unit: { id: string; code: string };
+  property: { id: string; name: string };
+  tenant: { id: string; displayName: string } | null;
+  scheduledAt: string | null;
+  performedAt: string | null;
+  overallCondition: InspectionCondition | null;
+  totalDamageAmount: number;
+}
+
+export interface InspectionItemInput {
+  roomLabel: string;
+  elementLabel: string;
+  elementCategory?: string;
+  condition: InspectionCondition;
+  quantity?: number;
+  isDamaged?: boolean;
+  damageDescription?: string;
+  repairAmount?: number;
+  /** Réutilise les valeurs d'`ExpenseBearer` (phase 7), identiques ici. */
+  chargedTo?: ExpenseBearer;
+  position?: number;
+}
+
+export interface InspectionItem extends InspectionItemInput {
+  id: string;
+  inspectionId: string;
+  photos: InspectionPhoto[];
+  /** Extension web : évite un second appel pour griser l'action côté écran. */
+  hasDepositDeduction?: boolean;
+  hasMaintenanceRequest?: boolean;
+}
+
+export interface InspectionPhoto {
+  id: string;
+  inspectionItemId: string | null;
+  documentId: string;
+  caption: string | null;
+  takenAt: string | null;
+  checksumSha256: string | null;
+  position: number;
+}
+
+export interface InspectionDetail extends Inspection {
+  unit: Unit;
+  property: PropertySummary;
+  tenant: { id: string; displayName: string } | null;
+  items: InspectionItem[];
+}
+
+export interface InspectionPatchBody extends Partial<
+  Omit<InspectionInput, 'unitId' | 'inspectionType'>
+> {
+  scheduledAt?: string;
+}
+
+export interface AddInspectionPhotoBody {
+  documentId: string;
+  caption?: string;
+  takenAt?: string;
+  checksumSha256?: string;
+  position?: number;
+}
+
+/**
+ * Si le locataire est absent, `tenantPresent: false` et `absenceReason`
+ * deviennent obligatoires ; le statut passe alors en `PENDING_SIGNATURE`
+ * plutôt que `SIGNED` (delai de grâce de 15 jours avant clôture manuelle).
+ */
+export interface SignInspectionBody {
+  tenantSignatureDataUrl?: string;
+  agentSignatureDataUrl: string;
+  tenantPresent?: boolean;
+  absenceReason?: string;
+}
+
+export interface DisputeInspectionBody {
+  reason: string;
+}
+
+export interface InspectionComparisonRow {
+  roomLabel: string;
+  elementLabel: string;
+  entryCondition: InspectionCondition | null;
+  exitCondition: InspectionCondition | null;
+  degradationLevels: number;
+  suggestedDeductionAmount: number;
+  entryPhotos: string[];
+  exitPhotos: string[];
+  status: InspectionComparisonRowStatus;
+}
+
+export interface InspectionComparison {
+  unitId: string;
+  moveIn: InspectionSummary | null;
+  moveOut: InspectionSummary | null;
+  rows: InspectionComparisonRow[];
+  totalSuggestedDeduction: number;
+}
+
+export interface DepositDeductionBody {
+  amount: number;
+  reason?: string;
+  /** Motif obligatoire pour outrepasser l'exclusivité retenue/maintenance (arbitrage 5). */
+  managerOverrideReason?: string;
+}
+
+export interface ConvertToMaintenanceRequestBody {
+  priority?: MaintenancePriority;
+  estimatedAmount?: number;
+  chargedTo?: ExpenseBearer;
+  /** Motif obligatoire pour outrepasser l'exclusivité retenue/maintenance (arbitrage 5). */
+  managerOverrideReason?: string;
+}
+
+export interface InspectionPdfResponse {
+  downloadUrl: string;
+  expiresAt: string;
+}
+
+// ---- Compteurs et relevés ----
+
+export interface MeterInput {
+  propertyId: string;
+  unitId?: string;
+  meterType: MeterType;
+  serialNumber: string;
+  subscriberNumber?: string;
+  providerName?: string;
+  /** Un compteur prépayé n'est jamais relevé pour refacturation (charge forfaitaire). */
+  isPrepaid?: boolean;
+  isShared?: boolean;
+  sharedRatioBps?: number;
+  measurementUnit?: string;
+  digitsCount?: number;
+  initialIndex?: number;
+  tariffId?: string;
+  installedAt?: string;
+}
+
+export interface Meter extends MeterInput {
+  id: string;
+  isActive: boolean;
+  lastReading: { readingDate: string; currentIndex: number } | null;
+}
+
+export interface MeterReadingInput {
+  readingDate: string;
+  currentIndex: number;
+  periodStart?: string;
+  periodEnd?: string;
+  /** Passage par zéro du compteur : sinon 422 METERS.INDEX_REGRESSION sous l'index précédent. */
+  rolloverApplied?: boolean;
+  /** Un relevé estimé n'est jamais facturé tant qu'un MANAGER ne l'a pas confirmé. */
+  isEstimated?: boolean;
+  photoDocumentId?: string;
+  notes?: string;
+  /** Idempotence : deux appels avec le même `clientRef` ne créent qu'un relevé. */
+  clientRef: string;
+}
+
+export interface MeterReading extends MeterReadingInput {
+  id: string;
+  meterId: string;
+  unitId: string | null;
+  leaseId: string | null;
+  /** Calculés côté serveur, jamais fournis par l'appelant. */
+  previousIndex: number;
+  consumption: number;
+  tariffId: string | null;
+  unitPriceAmount: number;
+  computedAmount: number;
+  /** Idempotence de la refacturation : ignoré par toute campagne déjà passée. */
+  isInvoiced: boolean;
+  invoiceLineId: string | null;
+  recordedByUserId: string | null;
+}
+
+export interface ConsumptionPoint {
+  readingDate: string;
+  consumption: number;
+  computedAmount: number;
+}
+
+/** `GET /v1/meters/{id}/readings` : pagination + série de consommation pour le graphe. */
+export interface MeterReadingsResponse extends Paginated<MeterReading> {
+  consumptionSeries: ConsumptionPoint[];
+}
+
+export interface ConfirmMeterReadingBody {
+  isEstimated: false;
+  notes?: string;
+}
+
+// ---- Grilles tarifaires ----
+
+export interface UtilityTariffInput {
+  /** Absent : grille globale à l'organisation. */
+  propertyId?: string;
+  meterType: MeterType;
+  basis?: TariffBasis;
+  label: string;
+  unitPriceAmount?: number;
+  flatAmount?: number;
+  standingChargeAmount?: number;
+  minimumAmount?: number;
+  measurementUnit?: string;
+  invoiceLineType?: UtilityInvoiceLineType;
+  effectiveFrom: string;
+  effectiveTo?: string;
+}
+
+export interface UtilityTariff extends UtilityTariffInput {
+  id: string;
+  isActive: boolean;
+  currency: 'XAF';
+}
+
+// ---- Campagne de refacturation ----
+
+export interface UtilityRunInput {
+  periodStart: string;
+  periodEnd: string;
+  meterType?: MeterType;
+  propertyId?: string;
+  dryRun?: boolean;
+}
+
+export interface UtilityRunLaunchResponse {
+  runId: string;
+}
+
+export type UtilityRunStatus = 'RUNNING' | 'DONE' | 'FAILED';
+
+export interface UtilityRunSkippedEntry {
+  unitId: string;
+  propertyId: string;
+  reason: string;
+}
+
+export interface UtilityRunErrorEntry {
+  meterId?: string;
+  unitId?: string;
+  reason: string;
+}
+
+export interface UtilityRunReport {
+  runId: string;
+  status: UtilityRunStatus;
+  created: number;
+  skipped: UtilityRunSkippedEntry[];
+  errors: UtilityRunErrorEntry[];
+}
+
+// ---- Maintenance ----
+
+export interface MaintenanceInput {
+  propertyId: string;
+  unitId?: string;
+  leaseId?: string;
+  tenantId?: string;
+  priority?: MaintenancePriority;
+  reporterType?: MaintenanceReporter;
+  category?: ExpenseCategory;
+  title: string;
+  description: string;
+  locationDetail?: string;
+  estimatedAmount?: number;
+  chargedTo?: ExpenseBearer;
+  /** Renseigné par la conversion d'un poste d'état des lieux. */
+  inspectionId?: string;
+  clientRef?: string;
+}
+
+export interface MaintenanceSummary {
+  id: string;
+  /** `MNT-{YYYYMM}-{seq}`. */
+  reference: string;
+  status: MaintenanceStatus;
+  priority: MaintenancePriority;
+  title: string;
+  property: { id: string; name: string };
+  unit: { id: string; code: string } | null;
+  reportedAt: string;
+  slaDueAt: string | null;
+  isOverdue: boolean;
+  assignedToUserId: string | null;
+  ageHours: number;
+}
+
+export interface MaintenanceUpdateInput {
+  newStatus?: MaintenanceStatus;
+  message?: string;
+  photoDocumentId?: string;
+  amountDelta?: number;
+  isVisibleToTenant?: boolean;
+  expenseId?: string;
+  clientRef?: string;
+}
+
+export interface MaintenanceUpdate extends MaintenanceUpdateInput {
+  id: string;
+  requestId: string;
+  authorUserId: string | null;
+  authorLabel: string | null;
+  previousStatus: MaintenanceStatus | null;
+  occurredAt: string;
+}
+
+/**
+ * `chargedTo` typé `string` (et non `ExpenseBearer`) : reprise à l'identique
+ * du contrat, qui diverge ici de `MaintenanceInput.chargedTo`.
+ */
+export interface MaintenanceDetail extends MaintenanceSummary {
+  description: string;
+  locationDetail: string | null;
+  category: ExpenseCategory;
+  reporterType: MaintenanceReporter;
+  estimatedAmount: number;
+  actualAmount: number;
+  chargedTo: string;
+  landlordApproved: boolean;
+  inspectionId: string | null;
+  rejectionReason: string | null;
+  updates: MaintenanceUpdate[];
+}
+
+export interface AssignMaintenanceRequestBody {
+  assignedToUserId: string;
+  message?: string;
+}
+
+export interface ResolveMaintenanceRequestBody {
+  message?: string;
+  actualAmount?: number;
+  photoDocumentId?: string;
+}
+
+export interface RejectMaintenanceRequestBody {
+  reason: string;
 }

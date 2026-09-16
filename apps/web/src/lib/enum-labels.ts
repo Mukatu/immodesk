@@ -20,6 +20,9 @@ import type {
   ExpenseStatus,
   Gender,
   IdDocumentType,
+  InspectionCondition,
+  InspectionStatus,
+  InspectionType,
   InvoiceLineType,
   InvoiceStatus,
   LandlordInvitationStatus,
@@ -27,11 +30,15 @@ import type {
   LeasePartyRole,
   LeaseStatus,
   LineState,
+  MaintenancePriority,
+  MaintenanceReporter,
+  MaintenanceStatus,
   MandateScope,
   MandateStatus,
   MatchStatus,
   MatchType,
   MessageStatus,
+  MeterType,
   MomoAggregatorProvider,
   MomoChannel,
   MomoFeeBearer,
@@ -54,6 +61,7 @@ import type {
   SyncBatchStatus,
   SyncOperationOutcome,
   SyncOperationType,
+  TariffBasis,
   UnitStatus,
   UnitType,
   WebhookSource,
@@ -569,6 +577,79 @@ export const LANDLORD_INVITATION_STATUS_LABELS: Record<LandlordInvitationStatus,
   NOT_INVITED: 'Non invité',
   INVITED: 'Invitation envoyée',
   ACTIVATED: 'Portail activé',
+};
+
+/**
+ * Libellés fr-CG des énumérations du contrat d'API (phase 8 : états des lieux,
+ * compteurs et charges, maintenance), pour affichage sans jamais exposer les
+ * codes techniques au démarcheur ni au gestionnaire.
+ */
+export const INSPECTION_TYPE_LABELS: Record<InspectionType, string> = {
+  MOVE_IN: "État des lieux d'entrée",
+  MOVE_OUT: 'État des lieux de sortie',
+  PERIODIC: 'État des lieux périodique',
+  CONTRADICTORY: 'État des lieux contradictoire',
+};
+
+export const INSPECTION_STATUS_LABELS: Record<InspectionStatus, string> = {
+  DRAFT: 'Brouillon',
+  IN_PROGRESS: 'En cours',
+  PENDING_SIGNATURE: 'En attente de signature',
+  SIGNED: 'Signé',
+  DISPUTED: 'Contesté',
+  CANCELLED: 'Annulé',
+};
+
+export const INSPECTION_CONDITION_LABELS: Record<InspectionCondition, string> = {
+  NEW: 'Neuf',
+  GOOD: 'Bon état',
+  FAIR: "État d'usage",
+  POOR: 'Mauvais état',
+  DAMAGED: 'Dégradé',
+  MISSING: 'Manquant',
+};
+
+export const METER_TYPE_LABELS: Record<MeterType, string> = {
+  ELECTRICITY_E2C: 'Électricité (E2C)',
+  WATER_LCDE: 'Eau (LCDE)',
+  GAS: 'Gaz',
+  PRIVATE_SUBMETER: 'Sous-compteur privé',
+  SOLAR: 'Solaire',
+  OTHER: 'Autre',
+};
+
+export const TARIFF_BASIS_LABELS: Record<TariffBasis, string> = {
+  PER_UNIT_CONSUMED: 'Au volume consommé',
+  FLAT_MONTHLY: 'Forfait mensuel',
+  PER_OCCUPANT: 'Par occupant',
+  PER_SQUARE_METER: 'Au mètre carré',
+  SHARED_PRORATA: 'Quote-part partagée',
+};
+
+export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
+  OPEN: 'Signalée',
+  ACKNOWLEDGED: 'Prise en compte',
+  ASSIGNED: 'Affectée',
+  IN_PROGRESS: 'En intervention',
+  ON_HOLD: 'En suspens',
+  RESOLVED: 'Résolue',
+  CLOSED: 'Clôturée',
+  REJECTED: 'Refusée',
+};
+
+export const MAINTENANCE_PRIORITY_LABELS: Record<MaintenancePriority, string> = {
+  LOW: 'Faible',
+  NORMAL: 'Normale',
+  HIGH: 'Haute',
+  URGENT: 'Urgente',
+};
+
+export const MAINTENANCE_REPORTER_LABELS: Record<MaintenanceReporter, string> = {
+  TENANT: 'Locataire',
+  LANDLORD: 'Bailleur',
+  COLLECTOR: 'Démarcheur',
+  MANAGER: 'Gestionnaire',
+  INSPECTION: 'État des lieux',
 };
 
 /** Convertit un Record de libellés en options `{ value, label }` (ex. pour un Select). */

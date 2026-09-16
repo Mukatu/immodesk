@@ -35,6 +35,9 @@ import {
   seedAgencyDemoData,
   type MockMandate,
 } from './agency-seed';
+import { inspectionHandlers } from './inspections-handlers';
+import { metersHandlers, utilityRunsHandlers, utilityTariffsHandlers } from './facilities-handlers';
+import { maintenanceHandlers } from './maintenance-handlers';
 import { API_BASE } from './api-base';
 
 /**
@@ -2001,6 +2004,11 @@ export const handlers = [
   ...bankChecksHandlers,
   ...agencyHandlers,
   ...portalHandlers,
+  ...inspectionHandlers,
+  ...metersHandlers,
+  ...utilityTariffsHandlers,
+  ...utilityRunsHandlers,
+  ...maintenanceHandlers,
 
   // Onboarding du gestionnaire indépendant (phase 7) : organisation + bailleur + bien +
   // mandat en une transaction. Reste ici (et non dans agency-handlers.ts) car il a besoin

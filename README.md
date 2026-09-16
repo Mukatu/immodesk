@@ -24,4 +24,8 @@ Le dossier de cadrage complet est dans [docs/](docs/00_README.md) : lettre de ca
 3. `pnpm db:up` pour PostgreSQL 16, Redis et MinIO.
 4. `pnpm dev`
 
+Pour visualiser les écrans sans monter toute la pile, avec des données simulées, voir le
+[guide de démarrage local](docs/07_guide_de_demarrage_local.md). Il couvre aussi la charte
+graphique, les comptes de démonstration et le lancement de l'application mobile.
+
 Voir le README de chaque application pour les détails.

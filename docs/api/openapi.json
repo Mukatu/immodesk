@@ -3561,7 +3561,12 @@
                 "organization",
                 "lease",
                 "bank_statement",
-                "bank_check"
+                "bank_check",
+                "inspection",
+                "inspection_item",
+                "meter_reading",
+                "maintenance_request",
+                "maintenance_update"
               ]
             }
           },
@@ -12597,6 +12602,1777 @@
         "summary": "Quittances du bailleur",
         "tags": ["Portail bailleur"]
       }
+    },
+    "/v1/meters": {
+      "post": {
+        "operationId": "MetersController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeterInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeterDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer un compteur",
+        "tags": ["Compteurs"]
+      },
+      "get": {
+        "operationId": "MetersController_list",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "unitId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "meterType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["ELECTRICITY_E2C", "WATER_LCDE", "GAS", "PRIVATE_SUBMETER", "SOLAR", "OTHER"]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeterPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les compteurs",
+        "tags": ["Compteurs"]
+      }
+    },
+    "/v1/meters/{id}": {
+      "get": {
+        "operationId": "MetersController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeterDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d'un compteur",
+        "tags": ["Compteurs"]
+      },
+      "patch": {
+        "operationId": "MetersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeterUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeterDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier un compteur",
+        "tags": ["Compteurs"]
+      }
+    },
+    "/v1/meters/{id}/readings": {
+      "post": {
+        "operationId": "MetersController_createReading",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeterReadingInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeterReadingDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "METERS.READING_DUPLICATE_DATE"
+          },
+          "422": {
+            "description": "METERS.INDEX_REGRESSION"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enregistrer un relevé (index précédent et consommation calculés par le serveur)",
+        "tags": ["Compteurs"]
+      },
+      "get": {
+        "operationId": "MetersController_listReadings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeterReadingPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Historique des relevés d'un compteur",
+        "tags": ["Compteurs"]
+      }
+    },
+    "/v1/meter-readings/{id}": {
+      "patch": {
+        "operationId": "MeterReadingsController_confirm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeterReadingDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirmer un relevé estimé, avant facturation",
+        "tags": ["Compteurs"]
+      }
+    },
+    "/v1/utility-tariffs": {
+      "get": {
+        "operationId": "UtilityTariffsController_list",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "meterType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["ELECTRICITY_E2C", "WATER_LCDE", "GAS", "PRIVATE_SUBMETER", "SOLAR", "OTHER"]
+            }
+          },
+          {
+            "name": "activeOnly",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UtilityTariffDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les grilles tarifaires actives et historiques",
+        "tags": ["Grilles tarifaires"]
+      },
+      "post": {
+        "operationId": "UtilityTariffsController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UtilityTariffInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UtilityTariffDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer une grille tarifaire",
+        "tags": ["Grilles tarifaires"]
+      }
+    },
+    "/v1/utility-tariffs/{id}": {
+      "patch": {
+        "operationId": "UtilityTariffsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UtilityTariffUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UtilityTariffDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier une grille tarifaire",
+        "tags": ["Grilles tarifaires"]
+      }
+    },
+    "/v1/billing/utility-runs": {
+      "post": {
+        "operationId": "UtilityRunsController_run",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UtilityRunInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UtilityRunAcceptedDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Déclencher la campagne de refacturation des charges",
+        "tags": ["Refacturation des charges"]
+      }
+    },
+    "/v1/billing/utility-runs/{runId}": {
+      "get": {
+        "operationId": "UtilityRunsController_status",
+        "parameters": [
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UtilityRunStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Résultat d'une campagne (lignes créées, ignorées, erreurs)",
+        "tags": ["Refacturation des charges"]
+      }
+    },
+    "/v1/maintenance-requests": {
+      "post": {
+        "operationId": "MaintenanceController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceCreateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer une demande de maintenance",
+        "tags": ["Maintenance"]
+      },
+      "get": {
+        "operationId": "MaintenanceController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "ACKNOWLEDGED",
+                "ASSIGNED",
+                "IN_PROGRESS",
+                "ON_HOLD",
+                "RESOLVED",
+                "CLOSED",
+                "REJECTED"
+              ]
+            }
+          },
+          {
+            "name": "priority",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["LOW", "NORMAL", "HIGH", "URGENT"]
+            }
+          },
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "assignedToUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "overdueOnly",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les demandes (COLLECTOR : celles qui lui sont affectées)",
+        "tags": ["Maintenance"]
+      }
+    },
+    "/v1/maintenance-requests/{id}": {
+      "get": {
+        "operationId": "MaintenanceController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d'une demande et de ses mises à jour",
+        "tags": ["Maintenance"]
+      }
+    },
+    "/v1/maintenance-requests/{id}/acknowledge": {
+      "post": {
+        "operationId": "MaintenanceController_acknowledge",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Prise en compte (OPEN → ACKNOWLEDGED)",
+        "tags": ["Maintenance"]
+      }
+    },
+    "/v1/maintenance-requests/{id}/assign": {
+      "post": {
+        "operationId": "MaintenanceController_assign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceAssignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Affectation à un démarcheur",
+        "tags": ["Maintenance"]
+      }
+    },
+    "/v1/maintenance-requests/{id}/updates": {
+      "post": {
+        "operationId": "MaintenanceController_addUpdate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceUpdateInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ajouter une mise à jour (statut, commentaire, photo)",
+        "tags": ["Maintenance"]
+      }
+    },
+    "/v1/maintenance-requests/{id}/resolve": {
+      "post": {
+        "operationId": "MaintenanceController_resolve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Résolution de l'intervention",
+        "tags": ["Maintenance"]
+      }
+    },
+    "/v1/maintenance-requests/{id}/close": {
+      "post": {
+        "operationId": "MaintenanceController_close",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Clôture de la demande",
+        "tags": ["Maintenance"]
+      }
+    },
+    "/v1/maintenance-requests/{id}/reject": {
+      "post": {
+        "operationId": "MaintenanceController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceRejectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refus motivé",
+        "tags": ["Maintenance"]
+      }
+    },
+    "/v1/inspections": {
+      "post": {
+        "operationId": "InspectionsController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectionCreateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer un état des lieux (DRAFT)",
+        "tags": ["États des lieux"]
+      },
+      "get": {
+        "operationId": "InspectionsController_list",
+        "parameters": [
+          {
+            "name": "unitId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "leaseId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["MOVE_IN", "MOVE_OUT", "PERIODIC", "CONTRADICTORY"]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "IN_PROGRESS",
+                "PENDING_SIGNATURE",
+                "SIGNED",
+                "DISPUTED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les états des lieux",
+        "tags": ["États des lieux"]
+      }
+    },
+    "/v1/inspections/{id}": {
+      "get": {
+        "operationId": "InspectionsController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d'un état des lieux et de ses postes",
+        "tags": ["États des lieux"]
+      },
+      "patch": {
+        "operationId": "InspectionsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectionUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "409": {
+            "description": "INSPECTIONS.LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier un état des lieux non verrouillé",
+        "tags": ["États des lieux"]
+      }
+    },
+    "/v1/inspections/{id}/items": {
+      "post": {
+        "operationId": "InspectionsController_addItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectionItemInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ajouter un poste constaté",
+        "tags": ["États des lieux"]
+      }
+    },
+    "/v1/inspections/{id}/items/{itemId}": {
+      "patch": {
+        "operationId": "InspectionsController_updateItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectionItemUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier un poste",
+        "tags": ["États des lieux"]
+      },
+      "delete": {
+        "operationId": "InspectionsController_deleteItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Supprimer un poste",
+        "tags": ["États des lieux"]
+      }
+    },
+    "/v1/inspections/{id}/items/{itemId}/photos": {
+      "post": {
+        "operationId": "InspectionsController_addPhoto",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectionPhotoInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Attacher une photo à un poste",
+        "tags": ["États des lieux"]
+      }
+    },
+    "/v1/inspections/{id}/sign": {
+      "post": {
+        "operationId": "InspectionsController_sign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "422": {
+            "description": "INSPECTIONS.PHOTO_REQUIRED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enregistrer les signatures et verrouiller",
+        "tags": ["États des lieux"]
+      }
+    },
+    "/v1/inspections/{id}/dispute": {
+      "post": {
+        "operationId": "InspectionsController_dispute",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisputeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Contester (motif obligatoire)",
+        "tags": ["États des lieux"]
+      }
+    },
+    "/v1/inspections/{id}/cancel": {
+      "post": {
+        "operationId": "InspectionsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Annuler",
+        "tags": ["États des lieux"]
+      }
+    },
+    "/v1/inspections/{id}/pdf": {
+      "get": {
+        "operationId": "InspectionsController_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "URL signée du rapport PDF",
+        "tags": ["États des lieux"]
+      }
+    },
+    "/v1/units/{id}/inspections/compare": {
+      "get": {
+        "operationId": "InspectionsController_compare",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Comparaison entrée/sortie poste par poste",
+        "tags": ["États des lieux"]
+      }
+    },
+    "/v1/inspections/{id}/items/{itemId}/deposit-deduction": {
+      "post": {
+        "operationId": "InspectionsController_depositDeduction",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepositDeductionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "409": {
+            "description": "INSPECTIONS.DEDUCTION_ALREADY_APPLIED, DEPOSITS.INSUFFICIENT_BALANCE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retenue sur dépôt de garantie",
+        "tags": ["États des lieux"]
+      }
+    },
+    "/v1/inspections/{id}/items/{itemId}/maintenance-request": {
+      "post": {
+        "operationId": "InspectionsController_convertToMaintenance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceConversionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Convertir un poste en demande de maintenance",
+        "tags": ["États des lieux"]
+      }
     }
   },
   "info": {
@@ -13408,6 +15184,62 @@
           "bounceFeeAmount"
         ]
       },
+      "MaintenanceSlaHoursDto": {
+        "type": "object",
+        "properties": {
+          "URGENT": {
+            "type": "number",
+            "example": 4
+          },
+          "HIGH": {
+            "type": "number",
+            "example": 24
+          },
+          "NORMAL": {
+            "type": "number",
+            "example": 120
+          },
+          "LOW": {
+            "type": "number",
+            "example": 360
+          }
+        },
+        "required": ["URGENT", "HIGH", "NORMAL", "LOW"]
+      },
+      "FacilitiesSettingsDto": {
+        "type": "object",
+        "properties": {
+          "utilityFallbackFlat": {
+            "type": "boolean",
+            "example": false
+          },
+          "utilityRunDayOfMonth": {
+            "type": "number",
+            "example": 3,
+            "minimum": 1,
+            "maximum": 28
+          },
+          "inspectionPhotoRequiredFrom": {
+            "type": "string",
+            "enum": ["POOR", "DAMAGED"],
+            "example": "POOR"
+          },
+          "maintenanceSlaHours": {
+            "$ref": "#/components/schemas/MaintenanceSlaHoursDto"
+          },
+          "autoCreateMaintenanceFromInspection": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "utilityFallbackFlat",
+          "utilityRunDayOfMonth",
+          "inspectionPhotoRequiredFrom",
+          "maintenanceSlaHours",
+          "autoCreateMaintenanceFromInspection"
+        ]
+      },
       "OrganizationSettingsDto": {
         "type": "object",
         "properties": {
@@ -13451,6 +15283,9 @@
           },
           "reconciliation": {
             "$ref": "#/components/schemas/ReconciliationSettingsDto"
+          },
+          "facilities": {
+            "$ref": "#/components/schemas/FacilitiesSettingsDto"
           }
         },
         "required": [
@@ -13464,7 +15299,8 @@
           "billing",
           "cash",
           "messaging",
-          "reconciliation"
+          "reconciliation",
+          "facilities"
         ]
       },
       "UpdateBillingSettingsDto": {
@@ -13551,6 +15387,54 @@
           }
         }
       },
+      "UpdateMaintenanceSlaHoursDto": {
+        "type": "object",
+        "properties": {
+          "URGENT": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 8760
+          },
+          "HIGH": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 8760
+          },
+          "NORMAL": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 8760
+          },
+          "LOW": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 8760
+          }
+        }
+      },
+      "UpdateFacilitiesSettingsDto": {
+        "type": "object",
+        "properties": {
+          "utilityFallbackFlat": {
+            "type": "boolean"
+          },
+          "utilityRunDayOfMonth": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 28
+          },
+          "inspectionPhotoRequiredFrom": {
+            "type": "string",
+            "enum": ["POOR", "DAMAGED"]
+          },
+          "maintenanceSlaHours": {
+            "$ref": "#/components/schemas/UpdateMaintenanceSlaHoursDto"
+          },
+          "autoCreateMaintenanceFromInspection": {
+            "type": "boolean"
+          }
+        }
+      },
       "UpdateOrganizationSettingsDto": {
         "type": "object",
         "properties": {
@@ -13589,6 +15473,9 @@
           },
           "reconciliation": {
             "$ref": "#/components/schemas/UpdateReconciliationSettingsDto"
+          },
+          "facilities": {
+            "$ref": "#/components/schemas/UpdateFacilitiesSettingsDto"
           }
         }
       },
@@ -17131,7 +19018,12 @@
               "organization",
               "lease",
               "bank_statement",
-              "bank_check"
+              "bank_check",
+              "inspection",
+              "inspection_item",
+              "meter_reading",
+              "maintenance_request",
+              "maintenance_update"
             ]
           },
           "relatedEntityId": {
@@ -17226,7 +19118,12 @@
               "organization",
               "lease",
               "bank_statement",
-              "bank_check"
+              "bank_check",
+              "inspection",
+              "inspection_item",
+              "meter_reading",
+              "maintenance_request",
+              "maintenance_update"
             ]
           },
           "relatedEntityId": {
@@ -17355,10 +19252,12 @@
         "type": "object",
         "properties": {
           "downloadUrl": {
-            "type": "string"
+            "type": "string",
+            "description": "URL signée valable 10 minutes."
           },
           "expiresAt": {
-            "type": "string"
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": ["downloadUrl", "expiresAt"]
@@ -21922,7 +23821,13 @@
           },
           "type": {
             "type": "string",
-            "enum": ["CASH_RECEIPT", "DOCUMENT"]
+            "enum": [
+              "CASH_RECEIPT",
+              "DOCUMENT",
+              "INSPECTION",
+              "METER_READING",
+              "MAINTENANCE_UPDATE"
+            ]
           },
           "clientCreatedAt": {
             "type": "string",
@@ -24618,6 +26523,949 @@
           }
         },
         "required": ["items", "pageInfo"]
+      },
+      "MeterInputDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "meterType": {
+            "type": "string",
+            "enum": ["ELECTRICITY_E2C", "WATER_LCDE", "GAS", "PRIVATE_SUBMETER", "SOLAR", "OTHER"]
+          },
+          "serialNumber": {
+            "type": "string",
+            "example": "E2C-00458123"
+          },
+          "subscriberNumber": {
+            "type": "string"
+          },
+          "providerName": {
+            "type": "string"
+          },
+          "isPrepaid": {
+            "type": "boolean",
+            "default": false
+          },
+          "isShared": {
+            "type": "boolean",
+            "default": false
+          },
+          "sharedRatioBps": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "measurementUnit": {
+            "type": "string",
+            "default": "kWh"
+          },
+          "digitsCount": {
+            "type": "number",
+            "default": 6,
+            "minimum": 3,
+            "maximum": 10
+          },
+          "initialIndex": {
+            "type": "number",
+            "default": 0
+          },
+          "tariffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "installedAt": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": ["propertyId", "meterType", "serialNumber"]
+      },
+      "MeterDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "meterType": {
+            "type": "string",
+            "enum": ["ELECTRICITY_E2C", "WATER_LCDE", "GAS", "PRIVATE_SUBMETER", "SOLAR", "OTHER"]
+          },
+          "serialNumber": {
+            "type": "string",
+            "example": "E2C-00458123"
+          },
+          "subscriberNumber": {
+            "type": "string"
+          },
+          "providerName": {
+            "type": "string"
+          },
+          "isPrepaid": {
+            "type": "boolean",
+            "default": false
+          },
+          "isShared": {
+            "type": "boolean",
+            "default": false
+          },
+          "sharedRatioBps": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "measurementUnit": {
+            "type": "string",
+            "default": "kWh"
+          },
+          "digitsCount": {
+            "type": "number",
+            "default": 6,
+            "minimum": 3,
+            "maximum": 10
+          },
+          "initialIndex": {
+            "type": "number",
+            "default": 0
+          },
+          "tariffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "installedAt": {
+            "type": "string",
+            "format": "date"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "lastReading": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": ["propertyId", "meterType", "serialNumber", "id", "isActive", "lastReading"]
+      },
+      "MeterPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeterDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "MeterUpdateDto": {
+        "type": "object",
+        "properties": {
+          "unitId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "subscriberNumber": {
+            "type": "string"
+          },
+          "providerName": {
+            "type": "string"
+          },
+          "isPrepaid": {
+            "type": "boolean"
+          },
+          "isShared": {
+            "type": "boolean"
+          },
+          "sharedRatioBps": {
+            "type": "number"
+          },
+          "tariffId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MeterReadingInputDto": {
+        "type": "object",
+        "properties": {
+          "readingDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "currentIndex": {
+            "type": "number",
+            "example": 1258.5
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "rolloverApplied": {
+            "type": "boolean",
+            "default": false
+          },
+          "isEstimated": {
+            "type": "boolean",
+            "default": false
+          },
+          "photoDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "clientRef": {
+            "type": "string"
+          }
+        },
+        "required": ["readingDate", "currentIndex", "clientRef"]
+      },
+      "MeterReadingDto": {
+        "type": "object",
+        "properties": {
+          "readingDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "currentIndex": {
+            "type": "number",
+            "example": 1258.5
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "rolloverApplied": {
+            "type": "boolean",
+            "default": false
+          },
+          "isEstimated": {
+            "type": "boolean",
+            "default": false
+          },
+          "photoDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "clientRef": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "meterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "nullable": true
+          },
+          "leaseId": {
+            "type": "string",
+            "nullable": true
+          },
+          "previousIndex": {
+            "type": "number"
+          },
+          "consumption": {
+            "type": "number"
+          },
+          "tariffId": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitPriceAmount": {
+            "type": "number"
+          },
+          "computedAmount": {
+            "type": "number"
+          },
+          "isInvoiced": {
+            "type": "boolean"
+          },
+          "invoiceLineId": {
+            "type": "string",
+            "nullable": true
+          },
+          "recordedByUserId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "readingDate",
+          "currentIndex",
+          "clientRef",
+          "id",
+          "meterId",
+          "unitId",
+          "leaseId",
+          "previousIndex",
+          "consumption",
+          "tariffId",
+          "unitPriceAmount",
+          "computedAmount",
+          "isInvoiced",
+          "invoiceLineId",
+          "recordedByUserId"
+        ]
+      },
+      "MeterReadingPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeterReadingDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          },
+          "consumptionSeries": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": ["items", "pageInfo", "consumptionSeries"]
+      },
+      "UtilityTariffDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "meterType": {
+            "type": "string",
+            "enum": ["ELECTRICITY_E2C", "WATER_LCDE", "GAS", "PRIVATE_SUBMETER", "SOLAR", "OTHER"]
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "PER_UNIT_CONSUMED",
+              "FLAT_MONTHLY",
+              "PER_OCCUPANT",
+              "PER_SQUARE_METER",
+              "SHARED_PRORATA"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "example": "Eau LCDE — tarif résidentiel"
+          },
+          "unitPriceAmount": {
+            "type": "number",
+            "default": 0
+          },
+          "flatAmount": {
+            "type": "number",
+            "default": 0
+          },
+          "standingChargeAmount": {
+            "type": "number",
+            "default": 0
+          },
+          "minimumAmount": {
+            "type": "number",
+            "default": 0
+          },
+          "measurementUnit": {
+            "type": "string",
+            "default": "kWh"
+          },
+          "invoiceLineType": {
+            "type": "string",
+            "enum": ["WATER_CHARGE", "ELECTRICITY_CHARGE"]
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "effectiveTo": {
+            "type": "string",
+            "format": "date"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["XAF"]
+          }
+        },
+        "required": ["meterType", "label", "effectiveFrom", "id", "isActive", "currency"]
+      },
+      "UtilityTariffInputDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "meterType": {
+            "type": "string",
+            "enum": ["ELECTRICITY_E2C", "WATER_LCDE", "GAS", "PRIVATE_SUBMETER", "SOLAR", "OTHER"]
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "PER_UNIT_CONSUMED",
+              "FLAT_MONTHLY",
+              "PER_OCCUPANT",
+              "PER_SQUARE_METER",
+              "SHARED_PRORATA"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "example": "Eau LCDE — tarif résidentiel"
+          },
+          "unitPriceAmount": {
+            "type": "number",
+            "default": 0
+          },
+          "flatAmount": {
+            "type": "number",
+            "default": 0
+          },
+          "standingChargeAmount": {
+            "type": "number",
+            "default": 0
+          },
+          "minimumAmount": {
+            "type": "number",
+            "default": 0
+          },
+          "measurementUnit": {
+            "type": "string",
+            "default": "kWh"
+          },
+          "invoiceLineType": {
+            "type": "string",
+            "enum": ["WATER_CHARGE", "ELECTRICITY_CHARGE"]
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "effectiveTo": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": ["meterType", "label", "effectiveFrom"]
+      },
+      "UtilityTariffUpdateDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "unitPriceAmount": {
+            "type": "number"
+          },
+          "flatAmount": {
+            "type": "number"
+          },
+          "standingChargeAmount": {
+            "type": "number"
+          },
+          "minimumAmount": {
+            "type": "number"
+          },
+          "effectiveTo": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UtilityRunInputDto": {
+        "type": "object",
+        "properties": {
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "UtilityRunAcceptedDto": {
+        "type": "object",
+        "properties": {
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["runId"]
+      },
+      "SkippedLotDto": {
+        "type": "object",
+        "properties": {
+          "meterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["meterId", "unitId", "reason"]
+      },
+      "UtilityRunStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "created": {
+            "type": "number"
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkippedLotDto"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": ["status", "created", "skipped", "errors"]
+      },
+      "MaintenanceCreateDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["LOW", "NORMAL", "HIGH", "URGENT"],
+            "default": "NORMAL"
+          },
+          "reporterType": {
+            "type": "string",
+            "enum": ["TENANT", "LANDLORD", "COLLECTOR", "MANAGER", "INSPECTION"],
+            "default": "MANAGER"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "REPAIR",
+              "MAINTENANCE",
+              "PLUMBING",
+              "ELECTRICITY",
+              "CLEANING",
+              "SECURITY",
+              "UTILITY_BILL",
+              "TAX",
+              "INSURANCE",
+              "SYNDIC_FEE",
+              "LEGAL_FEE",
+              "TRAVEL",
+              "SUPPLIES",
+              "OTHER"
+            ],
+            "default": "REPAIR"
+          },
+          "title": {
+            "type": "string",
+            "example": "Fuite robinetterie cuisine"
+          },
+          "description": {
+            "type": "string"
+          },
+          "locationDetail": {
+            "type": "string"
+          },
+          "estimatedAmount": {
+            "type": "number",
+            "default": 0
+          },
+          "chargedTo": {
+            "type": "string",
+            "enum": ["LANDLORD", "TENANT", "ORGANIZATION"],
+            "default": "LANDLORD"
+          },
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientRef": {
+            "type": "string"
+          }
+        },
+        "required": ["propertyId", "title", "description"]
+      },
+      "MaintenanceAssignDto": {
+        "type": "object",
+        "properties": {
+          "assignedToUserId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["assignedToUserId"]
+      },
+      "MaintenanceUpdateInputDto": {
+        "type": "object",
+        "properties": {
+          "newStatus": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "ACKNOWLEDGED",
+              "ASSIGNED",
+              "IN_PROGRESS",
+              "ON_HOLD",
+              "RESOLVED",
+              "CLOSED",
+              "REJECTED"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "photoDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amountDelta": {
+            "type": "number",
+            "default": 0
+          },
+          "isVisibleToTenant": {
+            "type": "boolean",
+            "default": true
+          },
+          "expenseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientRef": {
+            "type": "string"
+          }
+        }
+      },
+      "MaintenanceRejectDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Hors du périmètre de l'agence"
+          }
+        },
+        "required": ["reason"]
+      },
+      "InspectionCreateDto": {
+        "type": "object",
+        "properties": {
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inspectionType": {
+            "type": "string",
+            "enum": ["MOVE_IN", "MOVE_OUT", "PERIODIC", "CONTRADICTORY"]
+          },
+          "scheduledAt": {
+            "type": "string"
+          },
+          "tenantPresent": {
+            "type": "boolean",
+            "default": true
+          },
+          "landlordPresent": {
+            "type": "boolean",
+            "default": false
+          },
+          "keysHandedCount": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "clientRef": {
+            "type": "string"
+          }
+        },
+        "required": ["unitId", "inspectionType"]
+      },
+      "InspectionUpdateDto": {
+        "type": "object",
+        "properties": {
+          "scheduledAt": {
+            "type": "string"
+          },
+          "tenantPresent": {
+            "type": "boolean"
+          },
+          "landlordPresent": {
+            "type": "boolean"
+          },
+          "keysHandedCount": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "InspectionItemInputDto": {
+        "type": "object",
+        "properties": {
+          "roomLabel": {
+            "type": "string",
+            "example": "Salon"
+          },
+          "elementLabel": {
+            "type": "string",
+            "example": "Peinture murale"
+          },
+          "elementCategory": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string",
+            "enum": ["NEW", "GOOD", "FAIR", "POOR", "DAMAGED", "MISSING"]
+          },
+          "quantity": {
+            "type": "number",
+            "default": 1
+          },
+          "isDamaged": {
+            "type": "boolean"
+          },
+          "damageDescription": {
+            "type": "string"
+          },
+          "repairAmount": {
+            "type": "number",
+            "default": 0
+          },
+          "chargedTo": {
+            "type": "string",
+            "enum": ["LANDLORD", "TENANT", "ORGANIZATION"],
+            "default": "TENANT"
+          },
+          "position": {
+            "type": "number"
+          }
+        },
+        "required": ["roomLabel", "elementLabel", "condition"]
+      },
+      "InspectionItemUpdateDto": {
+        "type": "object",
+        "properties": {
+          "roomLabel": {
+            "type": "string",
+            "example": "Salon"
+          },
+          "elementLabel": {
+            "type": "string",
+            "example": "Peinture murale"
+          },
+          "elementCategory": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string",
+            "enum": ["NEW", "GOOD", "FAIR", "POOR", "DAMAGED", "MISSING"]
+          },
+          "quantity": {
+            "type": "number",
+            "default": 1
+          },
+          "isDamaged": {
+            "type": "boolean"
+          },
+          "damageDescription": {
+            "type": "string"
+          },
+          "repairAmount": {
+            "type": "number",
+            "default": 0
+          },
+          "chargedTo": {
+            "type": "string",
+            "enum": ["LANDLORD", "TENANT", "ORGANIZATION"],
+            "default": "TENANT"
+          },
+          "position": {
+            "type": "number"
+          }
+        },
+        "required": ["roomLabel", "elementLabel", "condition"]
+      },
+      "InspectionPhotoInputDto": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Document déjà téléversé via /documents"
+          },
+          "caption": {
+            "type": "string"
+          },
+          "takenAt": {
+            "type": "string"
+          },
+          "checksumSha256": {
+            "type": "string"
+          },
+          "position": {
+            "type": "number"
+          },
+          "clientRef": {
+            "type": "string"
+          }
+        },
+        "required": ["documentId"]
+      },
+      "SignInputDto": {
+        "type": "object",
+        "properties": {
+          "tenantPresent": {
+            "type": "boolean",
+            "default": true
+          },
+          "absenceReason": {
+            "type": "string"
+          },
+          "tenantSignatureDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "agentSignatureDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "DisputeDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["reason"]
+      },
+      "DepositDeductionDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "managerOverride": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MaintenanceConversionDto": {
+        "type": "object",
+        "properties": {
+          "managerOverride": {
+            "type": "boolean"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["LOW", "NORMAL", "HIGH", "URGENT"]
+          },
+          "reporterType": {
+            "type": "string",
+            "enum": ["TENANT", "LANDLORD", "COLLECTOR", "MANAGER", "INSPECTION"]
+          }
+        }
       }
     }
   }

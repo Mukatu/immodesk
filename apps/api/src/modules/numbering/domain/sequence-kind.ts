@@ -27,6 +27,9 @@ export const SEQUENCE_KINDS = [
   'MOMO_AGGREGATOR',
   // Phase 7 : mandats de gestion (docs/api/phase7-contract.md).
   'MANDATE',
+  // Phase 8 : états des lieux et demandes de maintenance (docs/api/phase8-contract.md).
+  'INSPECTION',
+  'MAINTENANCE',
 ] as const;
 
 export type SequenceKind = (typeof SEQUENCE_KINDS)[number];
@@ -74,6 +77,10 @@ export const SEQUENCE_FORMATS: Readonly<Record<SequenceKind, SequenceFormat>> = 
   MOMO_AGGREGATOR: { prefix: 'MMA', scope: 'MONTHLY', padding: 5 },
   // Mandat de gestion (`management_mandates.reference`) : `MDT-{YYYY}-{seq}`.
   MANDATE: { prefix: 'MDT', scope: 'YEARLY', padding: 5 },
+  // État des lieux (`inspections.reference`) : `EDL-{YYYYMM}-{seq}`.
+  INSPECTION: { prefix: 'EDL', scope: 'MONTHLY', padding: 5 },
+  // Demande de maintenance (`maintenance_requests.reference`) : `MNT-{YYYYMM}-{seq}`.
+  MAINTENANCE: { prefix: 'MNT', scope: 'MONTHLY', padding: 5 },
 };
 
 /**

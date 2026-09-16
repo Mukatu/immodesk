@@ -35,6 +35,12 @@ export const RELATED_ENTITY_TYPES = [
   // Phase 6 : import de relevé bancaire CSV/MT940 et photo de chèque.
   'bank_statement',
   'bank_check',
+  // Phase 8 : états des lieux, compteurs et maintenance.
+  'inspection',
+  'inspection_item',
+  'meter_reading',
+  'maintenance_request',
+  'maintenance_update',
 ] as const;
 export type RelatedEntityType = (typeof RELATED_ENTITY_TYPES)[number];
 

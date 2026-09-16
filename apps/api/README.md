@@ -1,4 +1,4 @@
-# `@immodesk/api` — API Immodesk (phases 0 à 7)
+# `@immodesk/api` — API Immodesk (phases 0 à 8)
 
 Backend NestJS 11 de la plateforme Immodesk (gestion immobilière,
 Congo-Brazzaville). Monolithe modulaire en Clean Architecture, multi-tenant
@@ -77,6 +77,33 @@ bailleur sont absentes ; portail bailleur en lecture seule, sans appartenance
 bailleurs (404 jamais 403) ; et onboarding du gestionnaire indépendant en une
 seule transaction (organisation, bailleur, bien, mandat, commission par
 défaut de 10 %).
+
+Périmètre de la **phase 8** : états des lieux, compteurs & charges,
+maintenance — états des lieux (`EDL-{AAAAMM}-{seq}`) pièce par pièce avec
+photos, signature locataire/agence figeant définitivement le constat
+(409 `INSPECTIONS.LOCKED`), absence du locataire avec délai de grâce de
+15 jours avant clôture par un `MANAGER`, comparaison entrée/sortie appariée
+par pièce et élément, retenue sur dépôt tracée dans le libellé du mouvement
+(faute de colonne dédiée dans `deposit_movements`) et refusée en double,
+conversion exclusive d'un poste en demande de maintenance ; compteurs et
+relevés (`meters`, `meter_readings`) dont le serveur calcule seul l'index
+précédent et la consommation, passage par zéro explicite
+(`rolloverApplied`), refus d'un index régressif non confirmé
+(422 `METERS.INDEX_REGRESSION`), relevé estimé jamais facturé avant
+confirmation d'un `MANAGER` ; grilles tarifaires versionnées par date
+d'effet couvrant les cinq bases de calcul du contrat, campagne de
+refacturation idempotente (`POST /billing/utility-runs`) créant des lignes
+`WATER_CHARGE`/`ELECTRICITY_CHARGE` liées à leur relevé source, sans table
+dédiée (rapport conservé dans `audit_logs`, même principe que
+`sync_batches.result` en phase 5) ; maintenance à huit statuts avec délai
+cible calculé selon la gravité, historique horodaté avec photo et
+visibilité locataire ; et extension du protocole de synchronisation de la
+phase 5 à trois nouveaux types d'opération (`INSPECTION`, `METER_READING`,
+`MAINTENANCE_UPDATE`) par simple enregistrement de gestionnaires
+supplémentaires — route, enveloppe et moteur de rejeu inchangés, comme
+promis par le contrat de la phase 5, à la nuance près que `MAINTENANCE_UPDATE`
+n'a qu'une idempotence applicative (`maintenance_updates` ne porte aucune
+contrainte d'unicité sur `client_ref`).
 
 ---
 
@@ -366,6 +393,22 @@ les restitue, valeurs par défaut du contrat (docs/api/phase5-contract.md).
 | `AGENCY_MONTHLY_CRON_PATTERN`         | Expression cron de la campagne mensuelle (`0 4 * * *` par défaut, idempotente donc rejouable).                             |
 | `AGENCY_MONTHLY_CRON_TIMEZONE`        | Fuseau horaire du cron mensuel (`Africa/Brazzaville` par défaut).                                                          |
 | `PORTAL_BASE_URL`                     | Base du lien d'activation du portail bailleur, envoyé par WhatsApp.                                                        |
+
+### États des lieux, compteurs, charges, maintenance (phase 8)
+
+| Variable                          | Rôle                                                                                                  |
+| :-------------------------------- | :---------------------------------------------------------------------------------------------------- |
+| `UTILITY_RUN_DAY_OF_MONTH`        | Jour du mois indicatif de la campagne de refacturation (3 par défaut), avant la facturation du 5.     |
+| `MAINTENANCE_SLA_URGENT_HOURS`    | Délai cible en heures pour une demande `URGENT` (4 par défaut).                                       |
+| `MAINTENANCE_SLA_HIGH_HOURS`      | Délai cible en heures pour une demande `HIGH` (24 par défaut).                                        |
+| `MAINTENANCE_SLA_NORMAL_DAYS`     | Délai cible en jours ouvrés pour une demande `NORMAL` (5 par défaut, hors variables du contrat).      |
+| `MAINTENANCE_SLA_LOW_DAYS`        | Délai cible en jours pour une demande `LOW` (15 par défaut, hors variables du contrat).               |
+| `INSPECTION_SIGNATURE_GRACE_DAYS` | Délai de grâce (15 j) avant qu'un `MANAGER` puisse clore un état des lieux en l'absence du locataire. |
+
+Ces valeurs par défaut sont aussi celles de `facilities.maintenanceSlaHours`
+et `facilities.inspectionPhotoRequiredFrom` dans
+`organization_settings.settings_json` (`PATCH /v1/organizations/{id}/settings`),
+qui priment une fois une organisation configurée.
 
 ---
 
@@ -1191,6 +1234,49 @@ transmission des signaux et expose une `HEALTHCHECK` sur `/v1/health`.
 ---
 
 ## 11. Écarts et limites connues
+
+### Phase 8
+
+- **Campagne de refacturation : sans table dédiée, exécutée dans la requête.**
+  Le DDL de la phase 8 (liste fermée) ne porte aucune table `utility_runs`.
+  `POST /v1/billing/utility-runs` traite donc la campagne intégralement dans
+  l'appel HTTP (une transaction par compteur) et écrit UN SEUL enregistrement
+  `audit_logs` (`entityType: 'utility_runs'`, `entityId: runId`) portant le
+  rapport complet ; `GET .../{runId}` relit cette écriture — même principe que
+  `sync_batches.result` pour les conflits de synchronisation en phase 5.
+  Conséquence assumée : la réponse `202` ne l'est que par convention, le
+  travail étant déjà terminé quand elle part (mesuré : ~200 lots en moins de
+  8 secondes en local, largement sous un délai de requête HTTP raisonnable).
+- **Retenue sur dépôt et conversion en maintenance : traçabilité par
+  marqueur textuel, pas par colonne.** `deposit_movements` ne porte pas
+  l'identifiant du poste d'origine (arbitrage 4 du contrat), et
+  `maintenance_requests` non plus. Le contrôle « pas de retenue ni de
+  conversion en double pour le même poste » repose donc sur un marqueur
+  `(poste {itemId})` inséré dans le libellé du mouvement / la description de
+  la demande, relu par un `LIKE` applicatif — robuste en usage normal
+  (un seul agent traite un poste à la fois), mais sans la garantie d'une
+  contrainte SQL.
+- **`MAINTENANCE_UPDATE` (synchronisation) : idempotence applicative
+  seulement.** `meter_readings` et `inspections` portent chacun une
+  contrainte d'unicité `(organization_id, client_ref)`, ce qui rend les
+  gestionnaires `METER_READING` et `INSPECTION` idempotents au niveau base.
+  `maintenance_updates` n'en porte aucune (DDL fermé de la phase 8) : le
+  gestionnaire `MAINTENANCE_UPDATE` vérifie l'absence de doublon par une
+  lecture préalable dans la transaction, ce qui protège des rejeux normaux
+  mais pas d'une vraie course concurrente sur le même appareil.
+- **`POST /inspections/{id}/items/{itemId}/deposit-deduction` renvoie le
+  dépôt complet, pas la seule ligne créée.** Le contrat type la réponse
+  `DepositMovement` ; l'implémentation renvoie `DepositDetailView` (le
+  dépôt et tous ses mouvements), réutilisant tel quel
+  `DepositsService.recordMovement` de la phase 2 plutôt que d'extraire un
+  mapping dédié — plus d'information, forme différente de celle du contrat.
+- **Occupants et surface : paramètres fournis, pas dérivés du bien.** Le
+  moteur de valorisation (`PER_OCCUPANT`, `PER_SQUARE_METER`) est testé et
+  correct sur ses formules, mais la campagne de refacturation ne résout
+  aujourd'hui que la base `PER_UNIT_CONSUMED` et `SHARED_PRORATA` (et le
+  forfait `FLAT_MONTHLY`) : `units` n'a pas de colonne de surface fiable ni
+  de décompte d'occupants exploités automatiquement. Brancher ces deux bases
+  sur la campagne réelle reste à faire.
 
 ### Phase 7
 

@@ -69,7 +69,7 @@ export interface OrganizationSettingsView extends OperationalSettings {
 
 /** Correctif des paramètres : champs de la phase 0 et sections opérationnelles. */
 export type OrganizationSettingsPatch = Partial<
-  Omit<OrganizationSettingsView, 'billing' | 'cash' | 'messaging' | 'reconciliation'>
+  Omit<OrganizationSettingsView, 'billing' | 'cash' | 'messaging' | 'reconciliation' | 'facilities'>
 > &
   OperationalSettingsPatch;
 
@@ -285,9 +285,10 @@ export class OrganizationsService {
         cash: input.cash,
         messaging: input.messaging,
         reconciliation: input.reconciliation,
+        facilities: input.facilities,
       };
       const touchesOperational = Boolean(
-        input.billing || input.cash || input.messaging || input.reconciliation,
+        input.billing || input.cash || input.messaging || input.reconciliation || input.facilities,
       );
       const penaltyRuleId = input.billing?.defaultPenaltyRuleId;
       if (penaltyRuleId) {

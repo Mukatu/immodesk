@@ -17,11 +17,13 @@ import { MEMBER_ROLES } from '../../../../shared/tenant/roles';
 import {
   BillingSettingsDto,
   CashSettingsDto,
+  FacilitiesSettingsDto,
   MessagingSettingsDto,
   ReconciliationSettingsDto,
   Type,
   UpdateBillingSettingsDto,
   UpdateCashSettingsDto,
+  UpdateFacilitiesSettingsDto,
   UpdateMessagingSettingsDto,
   UpdateReconciliationSettingsDto,
 } from './operational-settings.dto';
@@ -89,6 +91,7 @@ export class OrganizationSettingsDto {
   @ApiProperty({ type: CashSettingsDto }) cash!: CashSettingsDto;
   @ApiProperty({ type: MessagingSettingsDto }) messaging!: MessagingSettingsDto;
   @ApiProperty({ type: ReconciliationSettingsDto }) reconciliation!: ReconciliationSettingsDto;
+  @ApiProperty({ type: FacilitiesSettingsDto }) facilities!: FacilitiesSettingsDto;
 }
 
 export class UpdateOrganizationSettingsDto {
@@ -144,6 +147,12 @@ export class UpdateOrganizationSettingsDto {
   @ValidateNested()
   @Type(() => UpdateReconciliationSettingsDto)
   reconciliation?: UpdateReconciliationSettingsDto;
+
+  @ApiPropertyOptional({ type: UpdateFacilitiesSettingsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateFacilitiesSettingsDto)
+  facilities?: UpdateFacilitiesSettingsDto;
 }
 
 export class MemberUserDto {

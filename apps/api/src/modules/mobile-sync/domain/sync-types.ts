@@ -3,13 +3,24 @@ import type { MemberRole } from '../../../shared/tenant/tenant-context';
 /**
  * Enveloppe de synchronisation (docs/api/phase5-contract.md).
  *
- * Le protocole est générique : la phase 5 enregistre deux gestionnaires
- * (`CASH_RECEIPT`, `DOCUMENT`). La phase 8 en ajoutera d'autres sans toucher
- * ni à cette enveloppe, ni au moteur de rejeu (`SyncBatchesService`).
+ * Le protocole est générique : la phase 5 a enregistré deux gestionnaires
+ * (`CASH_RECEIPT`, `DOCUMENT`). La phase 8 en ajoute trois de plus
+ * (`INSPECTION`, `METER_READING`, `MAINTENANCE_UPDATE`) SANS toucher à cette
+ * enveloppe ni au moteur de rejeu (`SyncBatchesService`, `SyncBatchApplier`) :
+ * seule cette union de types s'allonge, et un nouveau gestionnaire s'ajoute
+ * au registre (`SYNC_OPERATION_HANDLERS`). Le contrat de la phase 5 tient
+ * donc sa promesse — voir le compte rendu de la phase 8 pour le constat.
  */
-export type SyncOperationType = 'CASH_RECEIPT' | 'DOCUMENT';
+export type SyncOperationType =
+  'CASH_RECEIPT' | 'DOCUMENT' | 'INSPECTION' | 'METER_READING' | 'MAINTENANCE_UPDATE';
 
-export const SYNC_OPERATION_TYPES: readonly SyncOperationType[] = ['CASH_RECEIPT', 'DOCUMENT'];
+export const SYNC_OPERATION_TYPES: readonly SyncOperationType[] = [
+  'CASH_RECEIPT',
+  'DOCUMENT',
+  'INSPECTION',
+  'METER_READING',
+  'MAINTENANCE_UPDATE',
+];
 
 export interface SyncOperationInput {
   clientRef: string;

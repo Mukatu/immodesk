@@ -68,12 +68,34 @@ export interface ReconciliationSettings {
   bounceFeeAmount: number;
 }
 
+/**
+ * `settings_json.facilities` (phase 8, docs/api/phase8-contract.md § « Paramètres
+ * d'organisation »). `maintenanceSlaHours.NORMAL` et `.LOW` sont en HEURES ici
+ * (24 × jours) pour uniformiser la lecture ; le contrat les exprime en jours
+ * ouvrés/calendaires à la saisie, convertis à l'écriture.
+ */
+export interface MaintenanceSlaHours {
+  URGENT: number;
+  HIGH: number;
+  NORMAL: number;
+  LOW: number;
+}
+
+export interface FacilitiesSettings {
+  utilityFallbackFlat: boolean;
+  utilityRunDayOfMonth: number;
+  inspectionPhotoRequiredFrom: 'POOR' | 'DAMAGED';
+  maintenanceSlaHours: MaintenanceSlaHours;
+  autoCreateMaintenanceFromInspection: boolean;
+}
+
 export interface OperationalSettings {
   billing: BillingSettings;
   cash: CashSettings;
   messaging: MessagingSettings;
   paymentMethods: PaymentMethodsSettings;
   reconciliation: ReconciliationSettings;
+  facilities: FacilitiesSettings;
 }
 
 export type OperationalSettingsPatch = {
@@ -87,6 +109,9 @@ export type OperationalSettingsPatch = {
     pendingExpiryMinutes?: number;
   };
   reconciliation?: Partial<ReconciliationSettings>;
+  facilities?: Partial<Omit<FacilitiesSettings, 'maintenanceSlaHours'>> & {
+    maintenanceSlaHours?: Partial<MaintenanceSlaHours>;
+  };
 };
 
 export const DEFAULT_OPERATIONAL_SETTINGS: Readonly<OperationalSettings> =
@@ -127,6 +152,13 @@ export const DEFAULT_OPERATIONAL_SETTINGS: Readonly<OperationalSettings> =
       autoConfirmExact: true,
       checkClearingAlertDays: 15,
       bounceFeeAmount: 0,
+    },
+    facilities: {
+      utilityFallbackFlat: false,
+      utilityRunDayOfMonth: 3,
+      inspectionPhotoRequiredFrom: 'POOR',
+      maintenanceSlaHours: { URGENT: 4, HIGH: 24, NORMAL: 120, LOW: 360 },
+      autoCreateMaintenanceFromInspection: false,
     },
   });
 
@@ -213,6 +245,36 @@ function readReconciliation(root: Record<string, unknown>): ReconciliationSettin
   };
 }
 
+const PHOTO_REQUIRED_FROM: readonly FacilitiesSettings['inspectionPhotoRequiredFrom'][] = [
+  'POOR',
+  'DAMAGED',
+];
+
+function readFacilities(root: Record<string, unknown>): FacilitiesSettings {
+  const section = asObject(root.facilities);
+  const sla = asObject(section.maintenanceSlaHours);
+  const d = DEFAULT_OPERATIONAL_SETTINGS.facilities;
+  return {
+    utilityFallbackFlat: bool(section.utilityFallbackFlat, d.utilityFallbackFlat),
+    utilityRunDayOfMonth: int(section.utilityRunDayOfMonth, d.utilityRunDayOfMonth, 1, 28),
+    inspectionPhotoRequiredFrom: oneOf(
+      section.inspectionPhotoRequiredFrom,
+      PHOTO_REQUIRED_FROM,
+      d.inspectionPhotoRequiredFrom,
+    ),
+    maintenanceSlaHours: {
+      URGENT: int(sla.URGENT, d.maintenanceSlaHours.URGENT, 1, 8760),
+      HIGH: int(sla.HIGH, d.maintenanceSlaHours.HIGH, 1, 8760),
+      NORMAL: int(sla.NORMAL, d.maintenanceSlaHours.NORMAL, 1, 8760),
+      LOW: int(sla.LOW, d.maintenanceSlaHours.LOW, 1, 8760),
+    },
+    autoCreateMaintenanceFromInspection: bool(
+      section.autoCreateMaintenanceFromInspection,
+      d.autoCreateMaintenanceFromInspection,
+    ),
+  };
+}
+
 /**
  * Lit les paramètres opérationnels. `defaultPenaltyRuleId` vient de la
  * colonne `default_penalty_rule_id` quand elle est fournie : la clé
@@ -261,6 +323,7 @@ export function readOperationalSettings(
     },
     paymentMethods: readPaymentMethods(root),
     reconciliation: readReconciliation(root),
+    facilities: readFacilities(root),
   };
 }
 
@@ -305,6 +368,18 @@ export function mergeOperationalSettings(
     const merged = { ...current.reconciliation, ...defined };
     merged.suggestionThreshold = Math.min(95, Math.max(50, merged.suggestionThreshold));
     root.reconciliation = merged;
+  }
+  const facilities = patch.facilities;
+  if (facilities) {
+    const { maintenanceSlaHours, ...rest } = facilities;
+    const defined = Object.fromEntries(
+      Object.entries(rest).filter(([, value]) => value !== undefined),
+    );
+    root.facilities = {
+      ...current.facilities,
+      ...defined,
+      maintenanceSlaHours: { ...current.facilities.maintenanceSlaHours, ...maintenanceSlaHours },
+    };
   }
   return root;
 }

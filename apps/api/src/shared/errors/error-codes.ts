@@ -643,6 +643,100 @@ export const ERROR_CATALOG = {
     status: 422,
     message: 'Données d’inscription du gestionnaire indépendant invalides.',
   },
+
+  // --- Domaine INSPECTIONS (états des lieux, phase 8) -------------------
+  'INSPECTIONS.NOT_FOUND': { status: 404, message: 'État des lieux introuvable.' },
+  'INSPECTIONS.ITEM_NOT_FOUND': { status: 404, message: 'Poste introuvable.' },
+  'INSPECTIONS.LOCKED': {
+    status: 409,
+    message: 'Cet état des lieux est signé : aucune modification n’est plus possible.',
+  },
+  'INSPECTIONS.INVALID_TRANSITION': { status: 409, message: 'Transition impossible.' },
+  'INSPECTIONS.PHOTO_REQUIRED': {
+    status: 422,
+    message: 'Une photo est obligatoire pour un poste en mauvais état, dégradé ou manquant.',
+  },
+  'INSPECTIONS.TENANT_ABSENCE_REASON_REQUIRED': {
+    status: 422,
+    message: "Le motif d'absence du locataire est obligatoire.",
+  },
+  'INSPECTIONS.DISPUTE_REASON_REQUIRED': {
+    status: 422,
+    message: 'Le motif de contestation est obligatoire.',
+  },
+  'INSPECTIONS.SIGNATURE_GRACE_NOT_ELAPSED': {
+    status: 409,
+    message: 'Le délai de grâce d’absence du locataire n’est pas encore écoulé.',
+  },
+  'INSPECTIONS.DEDUCTION_ALREADY_APPLIED': {
+    status: 409,
+    message: 'Une retenue a déjà été appliquée pour ce poste.',
+  },
+  'INSPECTIONS.MAINTENANCE_ALREADY_CREATED': {
+    status: 409,
+    message: 'Une demande de maintenance a déjà été créée pour ce poste.',
+  },
+  'INSPECTIONS.NO_DEPOSIT': {
+    status: 409,
+    message: 'Ce bail ne porte aucun dépôt de garantie.',
+  },
+  'INSPECTIONS.REPORT_NOT_READY': {
+    status: 503,
+    message: 'Le rapport de l’état des lieux n’est pas encore disponible.',
+  },
+
+  // --- Domaine METERS (compteurs et relevés, phase 8) -------------------
+  'METERS.NOT_FOUND': { status: 404, message: 'Compteur introuvable.' },
+  'METERS.SERIAL_TAKEN': {
+    status: 409,
+    message: 'Ce numéro de série est déjà utilisé par un autre compteur.',
+  },
+  'METERS.READING_NOT_FOUND': { status: 404, message: 'Relevé introuvable.' },
+  'METERS.READING_DUPLICATE_DATE': {
+    status: 409,
+    message: 'Un relevé existe déjà à cette date pour ce compteur.',
+  },
+  'METERS.INDEX_REGRESSION': {
+    status: 422,
+    message:
+      'Cet index est inférieur au précédent : confirmez un passage par zéro (rolloverApplied) ou corrigez la saisie.',
+  },
+  'METERS.PREPAID_NOT_READABLE': {
+    status: 409,
+    message: 'Un compteur prépayé n’est jamais relevé pour refacturation.',
+  },
+  'METERS.READING_ALREADY_CONFIRMED': {
+    status: 409,
+    message: 'Ce relevé est déjà confirmé.',
+  },
+  'METERS.READING_ALREADY_INVOICED': {
+    status: 409,
+    message: 'Ce relevé est déjà facturé et ne peut plus être modifié.',
+  },
+
+  // --- Domaine UTILITIES (grilles tarifaires et refacturation, phase 8) --
+  'UTILITIES.TARIFF_NOT_FOUND': { status: 404, message: 'Grille tarifaire introuvable.' },
+  'UTILITIES.TARIFF_PERIOD_INVALID': {
+    status: 422,
+    message: 'La date de fin doit être postérieure à la date d’effet.',
+  },
+  'UTILITIES.NO_TARIFF_APPLICABLE': {
+    status: 422,
+    message: 'Aucune grille tarifaire applicable à ce relevé.',
+  },
+  'UTILITIES.RUN_NOT_FOUND': { status: 404, message: 'Campagne de refacturation introuvable.' },
+
+  // --- Domaine MAINTENANCE (demandes de maintenance, phase 8) -----------
+  'MAINTENANCE.NOT_FOUND': { status: 404, message: 'Demande de maintenance introuvable.' },
+  'MAINTENANCE.INVALID_TRANSITION': { status: 409, message: 'Transition impossible.' },
+  'MAINTENANCE.REJECTION_REASON_REQUIRED': {
+    status: 422,
+    message: 'Le motif de refus est obligatoire.',
+  },
+  'MAINTENANCE.ALREADY_ASSIGNED': {
+    status: 409,
+    message: 'Cette demande est déjà affectée.',
+  },
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CATALOG;

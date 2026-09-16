@@ -3,6 +3,9 @@ import { SYNC_OPERATION_HANDLERS } from './domain/operation-handler';
 import { SyncOperationRegistry } from './domain/operation-registry';
 import { CashReceiptOperationHandler } from './application/cash-receipt-operation.handler';
 import { DocumentOperationHandler } from './application/document-operation.handler';
+import { InspectionOperationHandler } from './application/inspection-operation.handler';
+import { MaintenanceUpdateOperationHandler } from './application/maintenance-update-operation.handler';
+import { MeterReadingOperationHandler } from './application/meter-reading-operation.handler';
 import { MobileConfigService } from './application/mobile-config.service';
 import { SyncBatchApplier } from './application/sync-batch-applier';
 import { SyncBatchFinalizer } from './application/sync-batch-finalizer';
@@ -24,13 +27,22 @@ import { SyncPullController } from './presentation/sync-pull.controller';
  * conflits agrégés depuis `sync_batches.result` et configuration mobile.
  *
  * Le registre `SyncOperationRegistry` est alimenté par le provider
- * multi-valué `SYNC_OPERATION_HANDLERS` : la phase 8 ajoute un type
- * d'opération en enregistrant un nouveau gestionnaire dans ce tableau, sans
- * toucher ni à la route, ni au tri par dépendances, ni au moteur de rejeu
- * (docs/api/phase5-contract.md, arbitrage 1).
+ * multi-valué `SYNC_OPERATION_HANDLERS` : la phase 8 ajoute TROIS types
+ * d'opération (`INSPECTION`, `METER_READING`, `MAINTENANCE_UPDATE`) en
+ * enregistrant trois nouveaux gestionnaires dans ce tableau, sans toucher ni
+ * à la route (`POST /v1/sync/batches`), ni au format d'enveloppe
+ * (`sync-types.ts` ne fait qu'allonger l'union `SyncOperationType`), ni au
+ * tri par dépendances, ni au moteur de rejeu (`SyncBatchApplier`,
+ * `SyncBatchFinalizer`) — le contrat de la phase 5 tient sa promesse
+ * (arbitrage 1). Seule nuance, documentée dans
+ * `maintenance-update-operation.handler.ts` : l'idempotence de
+ * `MAINTENANCE_UPDATE` n'est qu'applicative, `maintenance_updates` ne portant
+ * aucune contrainte d'unicité sur `client_ref` dans le DDL fermé de la
+ * phase 8.
  *
- * `cash`, `documents` et `audit` sont `@Global()` : leurs services sont
- * injectables ici sans import de module, comme `payments` dans `cash`.
+ * `cash`, `documents`, `audit`, `inspections`, `meters` et `maintenance` sont
+ * `@Global()` : leurs services sont injectables ici sans import de module,
+ * comme `payments` dans `cash`.
  */
 @Module({
   controllers: [
@@ -43,13 +55,25 @@ import { SyncPullController } from './presentation/sync-pull.controller';
   providers: [
     CashReceiptOperationHandler,
     DocumentOperationHandler,
+    InspectionOperationHandler,
+    MeterReadingOperationHandler,
+    MaintenanceUpdateOperationHandler,
     {
       provide: SYNC_OPERATION_HANDLERS,
-      useFactory: (cash: CashReceiptOperationHandler, document: DocumentOperationHandler) => [
-        cash,
-        document,
+      useFactory: (
+        cash: CashReceiptOperationHandler,
+        document: DocumentOperationHandler,
+        inspection: InspectionOperationHandler,
+        meterReading: MeterReadingOperationHandler,
+        maintenanceUpdate: MaintenanceUpdateOperationHandler,
+      ) => [cash, document, inspection, meterReading, maintenanceUpdate],
+      inject: [
+        CashReceiptOperationHandler,
+        DocumentOperationHandler,
+        InspectionOperationHandler,
+        MeterReadingOperationHandler,
+        MaintenanceUpdateOperationHandler,
       ],
-      inject: [CashReceiptOperationHandler, DocumentOperationHandler],
     },
     SyncOperationRegistry,
     SyncBatchApplier,

@@ -28,6 +28,8 @@ export interface NewInvoiceLine {
   periodStart?: Date | null;
   periodEnd?: Date | null;
   penaltyRuleId?: string | null;
+  /** Relevé source d'une charge d'eau/électricité (phase 8) : traçabilité et idempotence. */
+  meterReadingId?: string | null;
 }
 
 export interface NewInvoiceInput {
@@ -193,8 +195,12 @@ export class InvoiceWriterService {
     return rows[0];
   }
 
-  /** Ajoute une ligne en fin de facture (saisie en brouillon, pénalité du cron). */
-  async appendLine(tx: TenantClient, invoice: InvoiceRow, line: NewInvoiceLine): Promise<string> {
+  /** Ajoute une ligne en fin de facture (saisie en brouillon, pénalité du cron, charge). */
+  async appendLine(
+    tx: TenantClient,
+    invoice: Pick<InvoiceRow, 'id' | 'organization_id'>,
+    line: NewInvoiceLine,
+  ): Promise<string> {
     const last = await tx.$queryRawUnsafe<Array<{ max: number | null }>>(
       `SELECT max(position)::int AS max FROM invoice_lines WHERE invoice_id = $1::uuid`,
       invoice.id,
@@ -283,6 +289,7 @@ export class InvoiceWriterService {
       penalty_rule_id: line.penaltyRuleId ?? null,
       period_start: line.periodStart ?? null,
       period_end: line.periodEnd ?? null,
+      meter_reading_id: line.meterReadingId ?? null,
       position,
     };
   }

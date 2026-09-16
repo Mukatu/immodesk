@@ -126,12 +126,83 @@ export class UpdateReconciliationSettingsDto {
   @ApiPropertyOptional({ minimum: 0 }) @IsOptional() @IsInt() @Min(0) bounceFeeAmount?: number;
 }
 
+const PHOTO_REQUIRED_FROM = ['POOR', 'DAMAGED'] as const;
+
+/** `settings_json.facilities` (phase 8, états des lieux/compteurs/maintenance). */
+export class MaintenanceSlaHoursDto {
+  @ApiProperty({ example: 4 }) URGENT!: number;
+  @ApiProperty({ example: 24 }) HIGH!: number;
+  @ApiProperty({ example: 120 }) NORMAL!: number;
+  @ApiProperty({ example: 360 }) LOW!: number;
+}
+
+export class FacilitiesSettingsDto {
+  @ApiProperty({ example: false }) utilityFallbackFlat!: boolean;
+  @ApiProperty({ example: 3, minimum: 1, maximum: 28 }) utilityRunDayOfMonth!: number;
+  @ApiProperty({ enum: PHOTO_REQUIRED_FROM, example: 'POOR' })
+  inspectionPhotoRequiredFrom!: (typeof PHOTO_REQUIRED_FROM)[number];
+  @ApiProperty({ type: MaintenanceSlaHoursDto }) maintenanceSlaHours!: MaintenanceSlaHoursDto;
+  @ApiProperty({ example: false }) autoCreateMaintenanceFromInspection!: boolean;
+}
+
+export class UpdateMaintenanceSlaHoursDto {
+  @ApiPropertyOptional({ minimum: 1, maximum: 8760 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(8760)
+  URGENT?: number;
+  @ApiPropertyOptional({ minimum: 1, maximum: 8760 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(8760)
+  HIGH?: number;
+  @ApiPropertyOptional({ minimum: 1, maximum: 8760 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(8760)
+  NORMAL?: number;
+  @ApiPropertyOptional({ minimum: 1, maximum: 8760 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(8760)
+  LOW?: number;
+}
+
+export class UpdateFacilitiesSettingsDto {
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() utilityFallbackFlat?: boolean;
+
+  @ApiPropertyOptional({ minimum: 1, maximum: 28 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(28)
+  utilityRunDayOfMonth?: number;
+
+  @ApiPropertyOptional({ enum: PHOTO_REQUIRED_FROM })
+  @IsOptional()
+  @IsIn(PHOTO_REQUIRED_FROM)
+  inspectionPhotoRequiredFrom?: (typeof PHOTO_REQUIRED_FROM)[number];
+
+  @ApiPropertyOptional({ type: UpdateMaintenanceSlaHoursDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateMaintenanceSlaHoursDto)
+  maintenanceSlaHours?: UpdateMaintenanceSlaHoursDto;
+
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() autoCreateMaintenanceFromInspection?: boolean;
+}
+
 /** Classes imbriquées exposées pour `@ValidateNested`. */
 export const NESTED_SETTINGS_TYPES = {
   billing: () => UpdateBillingSettingsDto,
   cash: () => UpdateCashSettingsDto,
   messaging: () => UpdateMessagingSettingsDto,
   reconciliation: () => UpdateReconciliationSettingsDto,
+  facilities: () => UpdateFacilitiesSettingsDto,
 };
 
 const AGGREGATOR_PROVIDERS = ['SIMULATOR', 'CINETPAY'] as const;

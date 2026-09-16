@@ -14,9 +14,12 @@ import { ExpensesModule } from './modules/expenses/expenses.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { LandlordPortalModule } from './modules/landlord-portal/landlord-portal.module';
 import { LeasesModule } from './modules/leases/leases.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { MandatesModule } from './modules/mandates/mandates.module';
+import { MetersModule } from './modules/meters/meters.module';
 import { MobileMoneyModule } from './modules/mobile-money/mobile-money.module';
 import { MobileSyncModule } from './modules/mobile-sync/mobile-sync.module';
+import { InspectionsModule } from './modules/inspections/inspections.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { NumberingModule } from './modules/numbering/numbering.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
@@ -29,6 +32,7 @@ import { PlatformModule } from './modules/platform/platform.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
 import { ReconciliationModule } from './modules/reconciliation/reconciliation.module';
+import { UtilitiesModule } from './modules/utilities/utilities.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { IdempotencyInterceptor } from './modules/platform/presentation/idempotency.interceptor';
 import { JwtAuthGuard } from './shared/auth/jwt-auth.guard';
@@ -117,6 +121,17 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     // `LandlordPortalGuard` est appliqué directement sur `PortalController`
     // (`@UseGuards`), jamais en `APP_GUARD` global.
     LandlordPortalModule,
+    // Phase 8 — états des lieux, compteurs & charges, maintenance. `meters`
+    // et `maintenance` sont `@Global()` (lus par `utilities` et `inspections`
+    // respectivement) ; `inspections` consomme `deposits`, `documents` et
+    // `maintenance` (tous `@Global()`) sans import de module. `mobile-sync`,
+    // déclaré plus haut, enregistre trois gestionnaires de plus pour ces
+    // modules : l'ordre des imports n'a pas d'incidence sur la résolution
+    // Nest, qui construit le graphe entier avant l'instanciation.
+    MetersModule,
+    UtilitiesModule,
+    MaintenanceModule,
+    InspectionsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

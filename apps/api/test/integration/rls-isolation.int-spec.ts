@@ -125,6 +125,25 @@ const PHASE7_TENANT_TABLES = [
   'owner_payouts',
 ] as const;
 
+/**
+ * Tables de la phase 8 (états des lieux, compteurs & charges, maintenance).
+ * `documents` est déjà exigée depuis la phase 1. `inspections`, `meters` et
+ * `maintenance_requests` sont ancrées dans `createFixture` : sans elles,
+ * `inspection_items`/`inspection_photos`, `meter_readings` et
+ * `maintenance_updates` seraient sautées faute de cible pour leur clé
+ * étrangère NOT NULL.
+ */
+const PHASE8_TENANT_TABLES = [
+  'inspections',
+  'inspection_items',
+  'inspection_photos',
+  'meters',
+  'meter_readings',
+  'utility_tariffs',
+  'maintenance_requests',
+  'maintenance_updates',
+] as const;
+
 /** Tables dont les déclencheurs refusent le DELETE (append-only ou colonnes verrouillées). */
 const GUARDED_TABLES = [
   'audit_logs',
@@ -418,6 +437,11 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
   it('couvre obligatoirement les 6 tables de la phase 7 (gestion d’agence)', () => {
     const missing = PHASE7_TENANT_TABLES.filter((t) => !covered.includes(t));
     expect({ missing, phase: 7 }).toEqual({ missing: [], phase: 7 });
+  });
+
+  it('couvre obligatoirement les 8 tables de la phase 8 (états des lieux, compteurs, maintenance)', () => {
+    const missing = PHASE8_TENANT_TABLES.filter((t) => !covered.includes(t));
+    expect({ missing, phase: 8 }).toEqual({ missing: [], phase: 8 });
   });
 
   it('vérifie que les tables d’authentification sont bien GLOBALES et hors RLS', async () => {
@@ -780,6 +804,45 @@ async function createFixture(admin: PrismaClient, label: string): Promise<Fixtur
     `RLS-REL-${label}-${suffix}`,
   );
   anchors.set('owner_statements', ownerStatementId);
+
+  // --- Ancres de la phase 8 ---------------------------------------------
+  //
+  // `inspection_items.inspection_id` et `inspection_photos.inspection_id`
+  // sont NOT NULL : sans ancre dédiée, ces deux tables seraient sautées.
+  // `meter_readings.meter_id` et `maintenance_updates.request_id` de même.
+  const inspectionId = uuidv7();
+  const meterId = uuidv7();
+  const maintenanceRequestId = uuidv7();
+
+  await admin.$executeRawUnsafe(
+    `INSERT INTO inspections (id, organization_id, unit_id, property_id, reference, inspection_type)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, 'PERIODIC')`,
+    inspectionId,
+    organizationId,
+    unitId,
+    propertyId,
+    `RLS-EDL-${label}-${suffix}`,
+  );
+  await admin.$executeRawUnsafe(
+    `INSERT INTO meters (id, organization_id, property_id, meter_type, serial_number)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, 'OTHER', $4)`,
+    meterId,
+    organizationId,
+    propertyId,
+    `RLS-MTR-${label}-${suffix}`,
+  );
+  await admin.$executeRawUnsafe(
+    `INSERT INTO maintenance_requests (id, organization_id, property_id, reference, title, description)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4, 'Ancre RLS', 'Ligne d’ancrage pour le balayage RLS.')`,
+    maintenanceRequestId,
+    organizationId,
+    propertyId,
+    `RLS-MNT-${label}-${suffix}`,
+  );
+
+  anchors.set('inspections', inspectionId);
+  anchors.set('meters', meterId);
+  anchors.set('maintenance_requests', maintenanceRequestId);
 
   return { organizationId, userIds, anchors, slug };
 }

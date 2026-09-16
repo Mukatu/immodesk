@@ -199,6 +199,14 @@ export const configSchema = z
     // Lien d'activation du portail bailleur envoyé par WhatsApp.
     PORTAL_BASE_URL: z.string().url().default('https://portail.immodesk.cg'),
 
+    // --- États des lieux, compteurs, charges, maintenance (phase 8) ------
+    UTILITY_RUN_DAY_OF_MONTH: z.coerce.number().int().min(1).max(28).default(3),
+    MAINTENANCE_SLA_URGENT_HOURS: z.coerce.number().int().positive().default(4),
+    MAINTENANCE_SLA_HIGH_HOURS: z.coerce.number().int().positive().default(24),
+    MAINTENANCE_SLA_NORMAL_DAYS: z.coerce.number().int().positive().default(5),
+    MAINTENANCE_SLA_LOW_DAYS: z.coerce.number().int().positive().default(15),
+    INSPECTION_SIGNATURE_GRACE_DAYS: z.coerce.number().int().positive().default(15),
+
     // --- Observabilité ---------------------------------------------------
     SENTRY_DSN: z.string().optional(),
     SWAGGER_ENABLED: booleanish.default(true),

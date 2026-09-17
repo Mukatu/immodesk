@@ -152,7 +152,7 @@ describe('Phase 9 — tableaux de bord', () => {
     // Facture impayée, échéance 2026-05-20 : 120 jours de retard → tranche 90+.
     await ctx.admin.$executeRawUnsafe(
       `INSERT INTO rent_invoices (id, organization_id, lease_id, tenant_id, unit_id, property_id, landlord_id, invoice_number, status, period_start, period_end, due_date, total_amount, paid_amount, balance_amount)
-       VALUES ($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7::uuid,'LOY-TEST-0003','OVERDUE','2026-05-01','2026-05-31','2026-05-20',60000,0,60000)`,
+       VALUES ($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7::uuid,'LOY-TEST-0003','OVERDUE','2026-05-15','2026-05-31','2026-05-20',60000,0,60000)`,
       uuidv7(),
       orgId,
       leaseActiveId,

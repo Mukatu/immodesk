@@ -229,7 +229,12 @@ export class DunningRulesService {
     try {
       return await work();
     } catch (error) {
-      if (isUniqueViolation(error, 'step')) throw new DomainError('DUNNING.STEP_ORDER_TAKEN');
+      // Aucun indice : `dunning_rules` ne porte qu'une seule contrainte
+      // d'unicité, `dunning_rules_step_uk (organization_id, step_order)`.
+      // Restreindre sur le texte de l'erreur échouait, Prisma ne renseignant
+      // pas toujours la cible d'une contrainte absente de son schéma, et le
+      // conflit ressortait alors en 500 au lieu du 409 attendu.
+      if (isUniqueViolation(error)) throw new DomainError('DUNNING.STEP_ORDER_TAKEN');
       throw error;
     }
   }

@@ -102,6 +102,7 @@ export class DunningRulesController {
 
   @Post(':id/activate')
   @Roles('MANAGER')
+  @HttpCode(HttpStatus.OK)
   @ApiHeader(ORG_HEADER)
   @ApiOperation({
     summary: 'Activer ou désactiver une règle',

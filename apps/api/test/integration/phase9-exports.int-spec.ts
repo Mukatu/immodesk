@@ -118,7 +118,7 @@ describe('Phase 9 — exports CSV', () => {
     // Le nom du locataire, avec point-virgule ET guillemets, doit rester une
     // seule colonne à la relecture : entre guillemets, guillemets internes
     // doublés.
-    expect(lines[1]).toContain('"dit ""Le Sage"" ; Poto-Poto"');
+    expect(lines[1]).toContain('"Ngoma dit ""Le Sage"" ; Poto-Poto"');
     expect(lines[1]).toContain('75000');
   });
 

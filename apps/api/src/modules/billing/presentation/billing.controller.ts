@@ -155,6 +155,7 @@ export class BillingController {
 
   @Post('penalty-rules/:id/activate')
   @Roles('MANAGER')
+  @HttpCode(HttpStatus.OK)
   @ApiHeader(ORG_HEADER)
   @ApiOperation({
     summary: 'Activer ou désactiver une règle de pénalité',

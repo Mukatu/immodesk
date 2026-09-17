@@ -130,7 +130,9 @@ async function setupOrgWithInvoice(page: Page, opts: SetupOptions): Promise<stri
   await page.getByRole('option', { name: `${unitPrefix}01`, exact: true }).click();
   await page.getByPlaceholder('Rechercher un locataire par nom ou numéro').fill(tenantName);
   await page.getByRole('button', { name: new RegExp(tenantName) }).click();
-  const startDate = new Date().toISOString().slice(0, 10);
+  // Date ancrée (comme phase8-patrimoine.spec.ts) : sert uniquement à fabriquer
+  // le jeu d'essai, aucune règle métier n'exige que le bail débute « aujourd'hui ».
+  const startDate = '2024-01-15';
   await page.getByLabel('Date de début', { exact: true }).fill(startDate);
   await page.getByRole('button', { name: 'Suivant' }).click();
   await page.getByLabel('Loyer', { exact: true }).fill('100000');
@@ -150,11 +152,14 @@ async function setupOrgWithInvoice(page: Page, opts: SetupOptions): Promise<stri
     .getByLabel('Bail')
     .selectOption({ label: `${tenantName} — ${buildingName} (${unitPrefix}01)` });
   const periodStart = `${startDate.slice(0, 8)}01`;
-  const dueDateFuture = new Date();
-  dueDateFuture.setUTCDate(dueDateFuture.getUTCDate() + 30);
+  // Échéance ancrée loin dans le futur (recalcInvoiceStatus compare
+  // graceUntilDate = dueDate à la date système réelle, billing-seed.ts) :
+  // une date fixe très éloignée garantit « dans le futur » sans dépendre de
+  // l'horloge du poste qui exécute le test.
+  const dueDateFuture = '2099-12-31';
   await page.locator('#periodStart').fill(periodStart);
   await page.locator('#periodEnd').fill(startDate);
-  await page.locator('#dueDate').fill(dueDateFuture.toISOString().slice(0, 10));
+  await page.locator('#dueDate').fill(dueDateFuture);
   await page.getByLabel('Libellé de la ligne').fill('Loyer');
   await page.getByLabel('Montant de la ligne').fill('100000');
   await page.getByText('Émettre immédiatement').click();

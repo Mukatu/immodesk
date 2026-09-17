@@ -96,7 +96,9 @@ test.describe('Gérance d’agence phase 7 : campagne → relevé → reversemen
     await page.getByRole('option', { name: 'G01', exact: true }).click();
     await page.getByPlaceholder('Rechercher un locataire par nom ou numéro').fill('Loubaki');
     await page.getByRole('button', { name: /Loubaki/ }).click();
-    const startDate = new Date().toISOString().slice(0, 10);
+    // Date ancrée (comme phase8-patrimoine.spec.ts) : sert uniquement à fabriquer
+    // le jeu d'essai, aucune règle métier n'exige que le bail débute « aujourd'hui ».
+    const startDate = '2024-01-15';
     await page.getByLabel('Date de début', { exact: true }).fill(startDate);
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.getByLabel('Loyer', { exact: true }).fill('100000');
@@ -114,11 +116,14 @@ test.describe('Gérance d’agence phase 7 : campagne → relevé → reversemen
     await page.goto('/app/factures/nouvelle');
     await page.getByLabel('Bail').selectOption({ label: 'Loubaki — Résidence Gérance Test (G01)' });
     const periodStart = `${startDate.slice(0, 8)}01`;
-    const dueDateFuture = new Date();
-    dueDateFuture.setUTCDate(dueDateFuture.getUTCDate() + 30);
+    // Échéance ancrée loin dans le futur (recalcInvoiceStatus compare
+    // graceUntilDate = dueDate à la date système réelle, billing-seed.ts) :
+    // une date fixe très éloignée garantit « dans le futur » sans dépendre de
+    // l'horloge du poste qui exécute le test.
+    const dueDateFuture = '2099-12-31';
     await page.locator('#periodStart').fill(periodStart);
     await page.locator('#periodEnd').fill(startDate);
-    await page.locator('#dueDate').fill(dueDateFuture.toISOString().slice(0, 10));
+    await page.locator('#dueDate').fill(dueDateFuture);
     await page.getByLabel('Libellé de la ligne').fill('Loyer du mois');
     await page.getByLabel('Montant de la ligne').fill('100000');
     await page.getByText('Émettre immédiatement').click();
@@ -146,6 +151,15 @@ test.describe('Gérance d’agence phase 7 : campagne → relevé → reversemen
     await expect(page.getByText('Actif', { exact: true })).toBeVisible();
 
     // --- Campagne mensuelle : relevé brouillon ---
+    // ATTENTION, cas volontairement laissé relatif au présent : l'encaissement
+    // comptoir ci-dessus n'expose aucun champ de date (voir le formulaire
+    // /app/paiements/nouveau) donc le mock timestampe paymentDate sur l'horloge
+    // système réelle (`now`, payments-handlers.ts, POST /payments). La campagne
+    // ne retient que les paiements CONFIRMED dont paymentDate tombe dans le mois
+    // demandé (runCampaignForOrg, agency-handlers.ts) : ancrer cette période sur
+    // un mois fixe casserait le test dès que le mois réel change. currentPeriod
+    // doit donc rester calculé à partir de la date système réelle, en écho exact
+    // du paymentDate implicite du paiement qui vient d'être créé.
     await page.goto('/app/gerance/releves');
     const currentPeriod = new Date().toISOString().slice(0, 7);
     await page.locator('#statement-run-period').fill(currentPeriod);

@@ -1,8 +1,16 @@
 import { extractInvoiceReferences } from '../../src/modules/reconciliation/domain/reference-parser';
 import { labelSimilarity, scoreCandidate } from '../../src/modules/reconciliation/domain/scoring';
 
-function daysFromNow(days: number): Date {
-  const d = new Date();
+/**
+ * `scoreCandidate` compare deux dates FOURNIES par l'appelant (elle ne lit
+ * jamais l'horloge) : seul l'écart entre elles compte pour le barème, jamais
+ * leur position par rapport à aujourd'hui. Les dates de test sont donc de
+ * simples données fabriquées à partir d'une ancre fixe et arbitraire.
+ */
+const REFERENCE_DATE = new Date(Date.UTC(2026, 0, 15));
+
+function dateOffset(days: number): Date {
+  const d = new Date(REFERENCE_DATE);
   d.setUTCDate(d.getUTCDate() + days);
   return d;
 }
@@ -37,8 +45,8 @@ describe('reconciliation — scoreCandidate (barème)', () => {
     lineAmount: 100_000n,
     targetAmount: 100_000n,
     amountTolerancePercent: 2,
-    lineDate: daysFromNow(0),
-    targetDate: daysFromNow(0),
+    lineDate: dateOffset(0),
+    targetDate: dateOffset(0),
     normalizedLineLabel: 'JEAN MABIALA',
     normalizedTargetLabel: 'JEAN MABIALA',
     targetType: 'PAYMENT' as const,
@@ -63,17 +71,17 @@ describe('reconciliation — scoreCandidate (barème)', () => {
   });
 
   it('écart de date < 3 jours : 20 points', () => {
-    const breakdown = scoreCandidate({ ...base, targetDate: daysFromNow(-2) });
+    const breakdown = scoreCandidate({ ...base, targetDate: dateOffset(-2) });
     expect(breakdown?.date).toBe(20);
   });
 
   it('écart de date < 10 jours : 10 points', () => {
-    const breakdown = scoreCandidate({ ...base, targetDate: daysFromNow(5) });
+    const breakdown = scoreCandidate({ ...base, targetDate: dateOffset(5) });
     expect(breakdown?.date).toBe(10);
   });
 
   it('écart de date ≥ 10 jours : 0 point', () => {
-    const breakdown = scoreCandidate({ ...base, targetDate: daysFromNow(15) });
+    const breakdown = scoreCandidate({ ...base, targetDate: dateOffset(15) });
     expect(breakdown?.date).toBe(0);
   });
 

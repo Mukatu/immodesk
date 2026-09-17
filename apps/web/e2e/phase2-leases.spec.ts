@@ -124,7 +124,9 @@ test.describe('Baux phase 2 : création → activation → contrat → résiliat
     await page.getByPlaceholder('Rechercher un locataire par nom ou numéro').fill('Bakala');
     await expect(page.getByRole('button', { name: /Bakala/ })).toBeVisible();
     await page.getByRole('button', { name: /Bakala/ }).click();
-    const startDate = new Date().toISOString().slice(0, 10);
+    // Date ancrée (comme phase8-patrimoine.spec.ts) : sert uniquement à fabriquer
+    // le jeu d'essai, la règle métier n'impose aucune contrainte de fraîcheur.
+    const startDate = '2024-01-10';
     await page.getByLabel('Date de début', { exact: true }).fill(startDate);
     await page.getByRole('button', { name: 'Suivant' }).click();
 
@@ -196,10 +198,12 @@ test.describe('Baux phase 2 : création → activation → contrat → résiliat
     await expect(page.getByText('Signé', { exact: true })).toBeVisible();
 
     // --- Résiliation du bail ---
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // Date ancrée, postérieure au début du bail : aucune règle métier ne
+    // rapproche cette date de « aujourd'hui » (leases-handlers.ts, terminate).
+    const terminationDate = '2024-06-15';
     await page.getByRole('button', { name: 'Résilier', exact: true }).click();
     await expect(page.getByText('Résilier le bail')).toBeVisible();
-    await page.getByLabel("Date d'effet", { exact: true }).fill(todayStr);
+    await page.getByLabel("Date d'effet", { exact: true }).fill(terminationDate);
     await page.getByLabel('Motif', { exact: true }).fill('Départ du locataire');
     // Aperçu du solde de dépôt restituable avant confirmation.
     const balancePreview = page.getByText(/Solde du dépôt restituable après résiliation/);

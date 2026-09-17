@@ -62,15 +62,22 @@ describe('Taux de recouvrement (encaissé / appelé)', () => {
 });
 
 describe('Bornes du mois civil précédent', () => {
-  it('renvoie le mois civil qui précède une date métier, quelle que soit la date courante', () => {
-    // Date relative : ne dépend jamais d'une date codée en dur, reste vert indéfiniment.
-    const today = new Date();
-    const firstOfCurrentMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-    const expectedPrevDate = new Date(firstOfCurrentMonth.getTime() - 1);
-    const expectedPeriod = `${expectedPrevDate.getUTCFullYear()}-${String(
-      expectedPrevDate.getUTCMonth() + 1,
-    ).padStart(2, '0')}`;
-    const expectedBounds = monthBounds(expectedPeriod);
+  // `previousMonthPeriod` reçoit la date métier en paramètre (elle ne lit pas
+  // l'horloge) : la date du jour ne sert ici qu'à fabriquer le jeu d'essai,
+  // elle est donc ancrée sur une date fixe et arbitraire (15 juin 2026, en
+  // milieu de mois, hors bascule d'année ou de mois court).
+  it('renvoie le mois civil qui précède la date métier fournie', () => {
+    const today = new Date(Date.UTC(2026, 5, 15));
+    const expectedBounds = monthBounds('2026-05');
+
+    const bounds = previousMonthPeriod(today);
+    expect(bounds.start.toISOString()).toBe(expectedBounds?.start.toISOString());
+    expect(bounds.end.toISOString()).toBe(expectedBounds?.end.toISOString());
+  });
+
+  it('bascule correctement l’année quand la date métier est en janvier', () => {
+    const today = new Date(Date.UTC(2026, 0, 10));
+    const expectedBounds = monthBounds('2025-12');
 
     const bounds = previousMonthPeriod(today);
     expect(bounds.start.toISOString()).toBe(expectedBounds?.start.toISOString());

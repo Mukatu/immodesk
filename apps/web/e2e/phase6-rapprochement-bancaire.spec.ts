@@ -29,7 +29,10 @@ test.describe('Rapprochement bancaire phase 6', () => {
     const tenantPhone = '069000904';
     const landlordName = 'Mabiala';
     const tenantName = 'Kimbembe';
-    const checkNumber = `CHQ-E2E-${Date.now()}`;
+    // Littéral fixe : le doublon est détecté par organisation + banque + numéro
+    // (bank-checks-handlers.ts), et chaque test crée sa propre organisation
+    // fraîche, donc aucun besoin d'un suffixe rendu unique par l'horloge.
+    const checkNumber = 'CHQ-E2E-000001';
 
     // --- Connexion OTP → organisation fraîche ---
     await page.goto('/login');

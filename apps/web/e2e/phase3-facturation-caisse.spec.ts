@@ -88,7 +88,9 @@ test.describe('Facturation et caisse phase 3 : facture → encaissements → qui
     await page.getByRole('option', { name: 'C01', exact: true }).click();
     await page.getByPlaceholder('Rechercher un locataire par nom ou numéro').fill('Nkodia');
     await page.getByRole('button', { name: /Nkodia/ }).click();
-    const startDate = new Date().toISOString().slice(0, 10);
+    // Date ancrée (comme phase8-patrimoine.spec.ts) : sert uniquement à fabriquer
+    // le jeu d'essai, aucune règle métier n'exige que le bail débute « aujourd'hui ».
+    const startDate = '2024-01-15';
     await page.getByLabel('Date de début', { exact: true }).fill(startDate);
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.getByLabel('Loyer', { exact: true }).fill('100000');
@@ -108,14 +110,16 @@ test.describe('Facturation et caisse phase 3 : facture → encaissements → qui
       .getByLabel('Bail')
       .selectOption({ label: 'Nkodia — Résidence Facturation Test (C01)' });
     const periodStart = `${startDate.slice(0, 8)}01`;
-    // Échéance fixée loin dans le futur : le mock ne calcule aucune grâce par
-    // défaut (graceUntilDate = dueDate), une échéance proche ferait basculer
-    // la facture en "En retard" avant même le premier encaissement.
-    const dueDateFuture = new Date();
-    dueDateFuture.setUTCDate(dueDateFuture.getUTCDate() + 30);
+    // Échéance ancrée loin dans le futur (le mock ne calcule aucune grâce par
+    // défaut : graceUntilDate = dueDate, comparé à la date système réelle dans
+    // recalcInvoiceStatus, billing-seed.ts) : une échéance proche ferait
+    // basculer la facture en "En retard" avant même le premier encaissement.
+    // Une date fixe très éloignée suffit à garantir « dans le futur » sans
+    // dépendre de l'horloge du poste qui exécute le test.
+    const dueDateFuture = '2099-12-31';
     await page.locator('#periodStart').fill(periodStart);
     await page.locator('#periodEnd').fill(startDate);
-    await page.locator('#dueDate').fill(dueDateFuture.toISOString().slice(0, 10));
+    await page.locator('#dueDate').fill(dueDateFuture);
     await page.getByLabel('Libellé de la ligne').fill('Loyer septembre');
     await page.getByLabel('Montant de la ligne').fill('100000');
     await page.getByText('Émettre immédiatement').click();

@@ -13,12 +13,17 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
-/** Un dimanche quelconque, calculé depuis maintenant : jamais une date en dur qui expirerait. */
-function nextSunday(from: Date): Date {
-  const d = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
-  while (d.getUTCDay() !== 0) d.setUTCDate(d.getUTCDate() + 1);
-  return d;
-}
+/**
+ * Ancre fixe (lundi 5 janvier 2026) : la fonction testée est un simple calcul
+ * arithmétique entre deux dates fournies, sans lecture de l'horloge — la
+ * valeur précise de l'ancre n'a aucune incidence sur le résultat attendu,
+ * seul son jour de semaine compte. Fixer la date supprime la dépendance au
+ * jour d'exécution sans rien perdre : rien n'« expire » puisque rien ici ne
+ * dépend du calendrier réel.
+ */
+const MONDAY = new Date(Date.UTC(2026, 0, 5));
+/** Dimanche suivant `MONDAY`, dérivé arithmétiquement (jamais périmé). */
+const SUNDAY = addDays(MONDAY, 6);
 
 describe('Machine à états d’un chèque (docs/api/phase6-contract.md § Chèques)', () => {
   it('table de transitions exhaustive : chaque paire autorisée passe, toute autre lève BANK.CHECK_INVALID_TRANSITION', () => {
@@ -72,34 +77,28 @@ describe('Machine à états d’un chèque (docs/api/phase6-contract.md § Chèq
 
 describe('Jours ouvrés écoulés (dépôt du lundi au samedi, dimanche seul jour chômé)', () => {
   it('rend zéro si les dates sont égales ou inversées', () => {
-    const now = new Date();
-    expect(businessDaysBetween(now, now)).toBe(0);
-    expect(businessDaysBetween(now, addDays(now, -1))).toBe(0);
+    expect(businessDaysBetween(MONDAY, MONDAY)).toBe(0);
+    expect(businessDaysBetween(MONDAY, addDays(MONDAY, -1))).toBe(0);
   });
 
   it('une semaine pleine (7 jours) contient toujours exactement un dimanche : 6 jours ouvrés', () => {
-    const from = new Date();
-    expect(businessDaysBetween(from, addDays(from, 7))).toBe(6);
+    expect(businessDaysBetween(MONDAY, addDays(MONDAY, 7))).toBe(6);
   });
 
   it('deux semaines pleines (14 jours) contiennent toujours exactement deux dimanches : 12 jours ouvrés', () => {
-    const from = new Date();
-    expect(businessDaysBetween(from, addDays(from, 14))).toBe(12);
+    expect(businessDaysBetween(MONDAY, addDays(MONDAY, 14))).toBe(12);
   });
 
   it('un dimanche seul (veille samedi → dimanche) ne compte aucun jour ouvré', () => {
-    const sunday = nextSunday(new Date());
-    expect(businessDaysBetween(addDays(sunday, -1), sunday)).toBe(0);
+    expect(businessDaysBetween(addDays(SUNDAY, -1), SUNDAY)).toBe(0);
   });
 
   it('vendredi → dimanche compte le samedi ouvré, pas le dimanche', () => {
-    const sunday = nextSunday(new Date());
-    expect(businessDaysBetween(addDays(sunday, -2), sunday)).toBe(1);
+    expect(businessDaysBetween(addDays(SUNDAY, -2), SUNDAY)).toBe(1);
   });
 
   it('samedi est un jour ouvré : deux jours consécutifs hors dimanche comptent deux', () => {
-    const sunday = nextSunday(new Date());
     // jeudi -> samedi : vendredi et samedi, tous deux ouvrés.
-    expect(businessDaysBetween(addDays(sunday, -3), addDays(sunday, -1))).toBe(2);
+    expect(businessDaysBetween(addDays(SUNDAY, -3), addDays(SUNDAY, -1))).toBe(2);
   });
 });

@@ -88,7 +88,9 @@ test.describe('Synchronisation phase 5 : file des lots, conflit, résolution', (
     await page.getByRole('option', { name: 'S01', exact: true }).click();
     await page.getByPlaceholder('Rechercher un locataire par nom ou numéro').fill('Ondongo');
     await page.getByRole('button', { name: /Ondongo/ }).click();
-    const startDate = new Date().toISOString().slice(0, 10);
+    // Date ancrée (comme phase8-patrimoine.spec.ts) : sert uniquement à fabriquer
+    // le jeu d'essai, aucune règle métier n'exige que le bail débute « aujourd'hui ».
+    const startDate = '2024-01-15';
     await page.getByLabel('Date de début', { exact: true }).fill(startDate);
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.getByLabel('Loyer', { exact: true }).fill('100000');
@@ -104,9 +106,11 @@ test.describe('Synchronisation phase 5 : file des lots, conflit, résolution', (
 
     // --- Deux factures émises : la première deviendra la cible du conflit ---
     const periodStart = `${startDate.slice(0, 8)}01`;
-    const dueDateFuture = new Date();
-    dueDateFuture.setUTCDate(dueDateFuture.getUTCDate() + 30);
-    const dueDateStr = dueDateFuture.toISOString().slice(0, 10);
+    // Échéance ancrée loin dans le futur (recalcInvoiceStatus compare
+    // graceUntilDate = dueDate à la date système réelle, billing-seed.ts) :
+    // une date fixe très éloignée garantit « dans le futur » sans dépendre de
+    // l'horloge du poste qui exécute le test.
+    const dueDateStr = '2099-12-31';
 
     for (let i = 0; i < 2; i += 1) {
       await page.goto('/app/factures/nouvelle');

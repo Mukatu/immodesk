@@ -726,6 +726,15 @@ export const ERROR_CATALOG = {
   },
   'UTILITIES.RUN_NOT_FOUND': { status: 404, message: 'Campagne de refacturation introuvable.' },
 
+  // --- Domaine DUNNING (relances impayés, phase 9) -----------------------
+  'DUNNING.RULE_NOT_FOUND': { status: 404, message: 'Règle de relance introuvable.' },
+  'DUNNING.STEP_ORDER_TAKEN': {
+    status: 409,
+    message: 'Ce rang de relance est déjà occupé par une autre règle.',
+  },
+  'DUNNING.RUN_NOT_FOUND': { status: 404, message: 'Exécution de relance introuvable.' },
+  'DUNNING.TEMPLATE_NOT_FOUND': { status: 404, message: 'Modèle de message introuvable.' },
+
   // --- Domaine MAINTENANCE (demandes de maintenance, phase 8) -----------
   'MAINTENANCE.NOT_FOUND': { status: 404, message: 'Demande de maintenance introuvable.' },
   'MAINTENANCE.INVALID_TRANSITION': { status: 409, message: 'Transition impossible.' },
@@ -737,6 +746,24 @@ export const ERROR_CATALOG = {
     status: 409,
     message: 'Cette demande est déjà affectée.',
   },
+
+  // --- Domaine REPORTING (tableaux de bord, phase 9) --------------------
+  'REPORTING.INVALID_PERIOD': {
+    status: 422,
+    message: 'Période invalide : « from » doit précéder ou égaler « to ».',
+  },
+
+  // --- Domaine EXPORTS (exports CSV, phase 9) ---------------------------
+  'EXPORTS.KIND_INVALID': {
+    status: 422,
+    message: 'Type d’export inconnu : utilisez invoices, payments, arrears ou dashboard.',
+  },
+  'EXPORTS.DASHBOARD_KIND_INVALID': {
+    status: 422,
+    message:
+      'Pour un export « dashboard », « dashboardKind » est obligatoire : collection-rate, arrears, vacancy ou payment-methods.',
+  },
+  'EXPORTS.JOB_NOT_FOUND': { status: 404, message: 'Travail d’export introuvable.' },
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CATALOG;

@@ -6,7 +6,7 @@ import { PrismaService, type TenantClient } from '../../../shared/prisma/prisma.
 import { isUniqueViolation } from '../../../shared/prisma/sql-errors';
 import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
-import type { PenaltyBasis } from '../domain/penalties';
+import { simulatePenalty, type PenaltyBasis } from '../domain/penalties';
 
 export interface PenaltyRuleInput {
   name: string;
@@ -164,6 +164,72 @@ export class PenaltyRulesService {
       });
       return toView(after);
     });
+  }
+
+  /**
+   * Active/désactive une règle de pénalité (phase 9, tranche 4). Comme les
+   * règles de relance (arbitrage 3 du contrat phase 9), une règle de
+   * pénalité ne se supprime jamais.
+   */
+  async setActive(
+    organizationId: string,
+    userId: string,
+    id: string,
+    isActive: boolean,
+  ): Promise<PenaltyRuleView> {
+    return this.prisma.withTenant(organizationId, userId, async (tx) => {
+      const before = await tx.penalty_rules.findFirst({ where: { id } });
+      if (!before) throw new DomainError('BILLING.PENALTY_RULE_NOT_FOUND', { id });
+      const after = await tx.penalty_rules.update({
+        where: { id },
+        data: { is_active: isActive, updated_at: new Date() },
+      });
+      await audit(this.auditService, tx, {
+        action: 'STATE_TRANSITION',
+        operation: AUDIT_OPERATIONS.PENALTY_RULE_UPDATED,
+        entityType: 'penalty_rules',
+        entityId: id,
+        previousState: toJsonState({ isActive: before.is_active }),
+        newState: toJsonState({ isActive: after.is_active }),
+      });
+      return toView(after);
+    });
+  }
+
+  /**
+   * Simule une pénalité sans rien écrire (`POST /v1/penalty-rules/{id}/simulate`,
+   * contrat § « Pénalités »). Réutilise `computePenalty` via `simulatePenalty` :
+   * aucune divergence de calcul avec le moteur réel (phase 3, inchangé).
+   */
+  async simulate(
+    organizationId: string,
+    userId: string,
+    id: string,
+    input: { balanceAmount: bigint; daysOverdue: number },
+  ): Promise<{ penaltyAmount: number; cappedBy: string | null; periods: number }> {
+    const row = await this.prisma.withTenant(organizationId, userId, (tx) =>
+      tx.penalty_rules.findFirst({ where: { id } }),
+    );
+    if (!row) throw new DomainError('BILLING.PENALTY_RULE_NOT_FOUND', { id });
+    const result = simulatePenalty(
+      {
+        basis: row.basis as PenaltyBasis,
+        rateBps: row.rate_bps,
+        flatAmount: row.flat_amount,
+        graceDays: row.grace_days,
+        capAmount: row.cap_amount,
+        capRateBps: row.cap_rate_bps,
+        maxPeriods: row.max_periods,
+        appliesToCharges: row.applies_to_charges,
+      },
+      input.balanceAmount,
+      input.daysOverdue,
+    );
+    return {
+      penaltyAmount: toJsonAmountOrNull(result.penaltyAmount) ?? 0,
+      cappedBy: result.cappedBy,
+      periods: result.periods,
+    };
   }
 
   /** Une seule règle par défaut active (`penalty_rules_default_uk`). */

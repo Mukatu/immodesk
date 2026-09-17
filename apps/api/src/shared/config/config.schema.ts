@@ -207,6 +207,12 @@ export const configSchema = z
     MAINTENANCE_SLA_LOW_DAYS: z.coerce.number().int().positive().default(15),
     INSPECTION_SIGNATURE_GRACE_DAYS: z.coerce.number().int().positive().default(15),
 
+    // --- Relances, pénalités, tableaux de bord, exports (phase 9) --------
+    DUNNING_CRON_ENABLED: booleanish.default(true),
+    DUNNING_MAX_RUNS_PER_HOUR: z.coerce.number().int().positive().default(500),
+    EXPORT_SYNC_ROW_LIMIT: z.coerce.number().int().positive().default(10_000),
+    EXPORT_LINK_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+
     // --- Observabilité ---------------------------------------------------
     SENTRY_DSN: z.string().optional(),
     SWAGGER_ENABLED: booleanish.default(true),

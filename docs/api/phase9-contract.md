@@ -61,30 +61,30 @@ Quatre agrégats, tous filtrables par période, immeuble et bailleur, tous en le
 
 ## Exports
 
-`POST /v1/organizations/{id}/exports/{kind}` avec `kind` parmi `invoices`, `payments`, `arrears`, `dashboard`. Le corps reprend les mêmes filtres que la liste correspondante. Le fichier CSV est produit de façon synchrone jusqu'à dix mille lignes, au-delà par un travail de fond dont l'état est consultable. Il est rangé dans `documents` avec le genre `OTHER` et un nom parlant, par exemple `impayes-2026-09.csv`, et la réponse renvoie un lien signé valable une heure. Les montants sont exportés en entiers XAF sans séparateur, les dates au format ISO.
+`POST /v1/exports/{kind}` avec `kind` parmi `invoices`, `payments`, `arrears`, `dashboard`. L'organisation est portée par l'en-tête de tenant, comme partout ailleurs, et non par le chemin. Pour `dashboard`, le corps précise en outre `dashboardKind`, qui désigne lequel des quatre agrégats exporter. Le corps reprend les mêmes filtres que la liste correspondante. Le fichier CSV est produit de façon synchrone jusqu'à dix mille lignes, au-delà par un travail de fond dont l'état est consultable. Il est rangé dans `documents` avec le genre `OTHER` et un nom parlant, par exemple `impayes-2026-09.csv`, et la réponse renvoie un lien signé valable une heure. Les montants sont exportés en entiers XAF sans séparateur, les dates au format ISO.
 
 ## Routes
 
-| Méthode | Route                                                                  | Rôle       | Sortie                                                                    |
-| :------ | :--------------------------------------------------------------------- | :--------- | :------------------------------------------------------------------------ |
-| GET     | `/v1/dunning-rules`                                                    | VIEWER     | `200 { items: DunningRule[] }`                                            |
-| POST    | `/v1/dunning-rules`                                                    | MANAGER    | `201 DunningRule` ; 409 `DUNNING.STEP_ORDER_TAKEN`                        |
-| PATCH   | `/v1/dunning-rules/{id}`                                               | MANAGER    | `200 DunningRule`                                                         |
-| POST    | `/v1/dunning-rules/{id}/activate`                                      | MANAGER    | `200 DunningRule` (corps `{ isActive }`)                                  |
-| GET     | `/v1/dunning-runs?ruleId=&invoiceId=&status=&from=&to=&limit=&cursor=` | ACCOUNTANT | `200 { items: DunningRun[], pageInfo }`                                   |
-| GET     | `/v1/dunning-runs/{id}`                                                | ACCOUNTANT | `200 DunningRun`                                                          |
-| POST    | `/v1/organizations/{id}/dunning-runs/trigger`                          | MANAGER    | `202 { scanned, created, skipped, failed, dryRun }`                       |
-| GET     | `/v1/penalty-rules`                                                    | VIEWER     | `200 { items: PenaltyRule[] }`                                            |
-| POST    | `/v1/penalty-rules`                                                    | OWNER      | `201 PenaltyRule`                                                         |
-| PATCH   | `/v1/penalty-rules/{id}`                                               | OWNER      | `200 PenaltyRule`                                                         |
-| POST    | `/v1/penalty-rules/{id}/activate`                                      | MANAGER    | `200 PenaltyRule`                                                         |
-| POST    | `/v1/penalty-rules/{id}/simulate`                                      | MANAGER    | `200 { penaltyAmount, cappedBy, periods }`                                |
-| GET     | `/v1/dashboards/collection-rate?from=&to=&propertyId=&landlordId=`     | VIEWER     | `200 CollectionRateDashboard`                                             |
-| GET     | `/v1/dashboards/arrears?asOf=&propertyId=&landlordId=`                 | VIEWER     | `200 ArrearsDashboard`                                                    |
-| GET     | `/v1/dashboards/vacancy?asOf=&propertyId=`                             | VIEWER     | `200 VacancyDashboard`                                                    |
-| GET     | `/v1/dashboards/payment-methods?from=&to=&propertyId=`                 | VIEWER     | `200 PaymentMethodsDashboard`                                             |
-| POST    | `/v1/exports/{kind}`                                                   | ACCOUNTANT | `201 { documentId, downloadUrl, expiresAt, rowCount }` ou `202 { jobId }` |
-| GET     | `/v1/exports/jobs/{jobId}`                                             | ACCOUNTANT | `200 { status, documentId?, downloadUrl?, error? }`                       |
+| Méthode | Route                                                                            | Rôle       | Sortie                                                                    |
+| :------ | :------------------------------------------------------------------------------- | :--------- | :------------------------------------------------------------------------ |
+| GET     | `/v1/dunning-rules`                                                              | VIEWER     | `200 { items: DunningRule[] }`                                            |
+| POST    | `/v1/dunning-rules`                                                              | MANAGER    | `201 DunningRule` ; 409 `DUNNING.STEP_ORDER_TAKEN`                        |
+| PATCH   | `/v1/dunning-rules/{id}`                                                         | MANAGER    | `200 DunningRule`                                                         |
+| POST    | `/v1/dunning-rules/{id}/activate`                                                | MANAGER    | `200 DunningRule` (corps `{ isActive }`)                                  |
+| GET     | `/v1/dunning-runs?ruleId=&invoiceId=&tenantId=&status=&from=&to=&limit=&cursor=` | ACCOUNTANT | `200 { items: DunningRun[], pageInfo }`                                   |
+| GET     | `/v1/dunning-runs/{id}`                                                          | ACCOUNTANT | `200 DunningRun`                                                          |
+| POST    | `/v1/organizations/{id}/dunning-runs/trigger`                                    | MANAGER    | `202 { scanned, created, skipped, failed, dryRun }`                       |
+| GET     | `/v1/penalty-rules`                                                              | VIEWER     | `200 { items: PenaltyRule[] }`                                            |
+| POST    | `/v1/penalty-rules`                                                              | OWNER      | `201 PenaltyRule`                                                         |
+| PATCH   | `/v1/penalty-rules/{id}`                                                         | OWNER      | `200 PenaltyRule`                                                         |
+| POST    | `/v1/penalty-rules/{id}/activate`                                                | MANAGER    | `200 PenaltyRule`                                                         |
+| POST    | `/v1/penalty-rules/{id}/simulate`                                                | MANAGER    | `200 { penaltyAmount, cappedBy, periods }`                                |
+| GET     | `/v1/dashboards/collection-rate?from=&to=&propertyId=&landlordId=`               | VIEWER     | `200 CollectionRateDashboard`                                             |
+| GET     | `/v1/dashboards/arrears?asOf=&propertyId=&landlordId=`                           | VIEWER     | `200 ArrearsDashboard`                                                    |
+| GET     | `/v1/dashboards/vacancy?asOf=&propertyId=`                                       | VIEWER     | `200 VacancyDashboard`                                                    |
+| GET     | `/v1/dashboards/payment-methods?from=&to=&propertyId=`                           | VIEWER     | `200 PaymentMethodsDashboard`                                             |
+| POST    | `/v1/exports/{kind}`                                                             | ACCOUNTANT | `201 { documentId, downloadUrl, expiresAt, rowCount }` ou `202 { jobId }` |
+| GET     | `/v1/exports/jobs/{jobId}`                                                       | ACCOUNTANT | `200 { status, documentId?, downloadUrl?, error? }`                       |
 
 ## Types
 

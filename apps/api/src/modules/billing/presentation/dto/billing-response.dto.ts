@@ -163,3 +163,10 @@ export class PenaltyRuleDto {
 export class PenaltyRuleListDto {
   @ApiProperty({ type: [PenaltyRuleDto] }) items!: PenaltyRuleDto[];
 }
+
+export class PenaltySimulationDto {
+  @ApiProperty(AMOUNT) penaltyAmount!: number;
+  @ApiProperty({ enum: ['AMOUNT', 'RATE', 'PERIODS'], nullable: true, type: String })
+  cappedBy!: string | null;
+  @ApiProperty() periods!: number;
+}

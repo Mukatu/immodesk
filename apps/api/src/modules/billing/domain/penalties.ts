@@ -155,6 +155,86 @@ function capOf(rule: PenaltyRuleTerms, state: PenaltyInvoiceState): bigint | nul
   return caps.reduce((min, c) => (c < min ? c : min));
 }
 
+// ---------------------------------------------------------------------------
+// Simulation (phase 9) : `POST /v1/penalty-rules/{id}/simulate`.
+// Ajout additif — le calcul métier reste entièrement porté par
+// `computePenalty` ci-dessus (phase 3, inchangé) : la simulation ne fait que
+// synthétiser un état de facture à partir de `{ balanceAmount, daysOverdue }`
+// et signale, à titre informatif, ce qui a borné le résultat.
+// ---------------------------------------------------------------------------
+
+export interface PenaltySimulationResult {
+  penaltyAmount: bigint;
+  cappedBy: 'AMOUNT' | 'RATE' | 'PERIODS' | null;
+  periods: number;
+}
+
+/** Date d'ancrage arbitraire : la simulation ne reçoit qu'un nombre de jours. */
+const SIMULATION_EPOCH = new Date(Date.UTC(2000, 0, 1));
+
+/**
+ * Nombre d'unités AVANT plafonnement par `maxPeriods`, pour une première
+ * application (`lastPenaltyRunDate` nul — le seul cas que `simulatePenalty`
+ * synthétise). Reflète EXACTEMENT `unitsDue()` (non exportée) dans ce même
+ * cas : un mois ou un forfait ne comptent jamais qu'une unité à la première
+ * application, seules les exécutions suivantes du cron en accumulent
+ * davantage via `lastPenaltyRunDate`.
+ */
+function naiveUnits(rule: PenaltyRuleTerms, effectiveDays: number): number {
+  switch (rule.basis) {
+    case 'RATE_BPS_PER_DAY':
+    case 'FLAT_AMOUNT_PER_DAY':
+      return effectiveDays;
+    case 'RATE_BPS_PER_MONTH':
+    case 'FLAT_AMOUNT':
+      return 1;
+  }
+}
+
+/**
+ * Simule le montant de pénalité pour un solde et un retard donnés, sans rien
+ * écrire. Réutilise `computePenalty` pour le montant (aucune divergence de
+ * calcul avec le moteur réel) ; `cappedBy` et `periods` sont des indications
+ * complémentaires, calculées séparément à des fins d'affichage.
+ */
+export function simulatePenalty(
+  rule: PenaltyRuleTerms,
+  balanceAmount: bigint,
+  daysOverdue: number,
+): PenaltySimulationResult {
+  const dueDate = SIMULATION_EPOCH;
+  const today = addDays(dueDate, Math.max(0, daysOverdue));
+  const state: PenaltyInvoiceState = {
+    dueDate,
+    graceUntilDate: null,
+    rentAmount: balanceAmount,
+    chargesAmount: 0n,
+    penaltyAmount: 0n,
+    paidAmount: 0n,
+    balanceAmount,
+    periodsApplied: 0,
+    lastPenaltyRunDate: null,
+  };
+  const result = computePenalty(rule, state, today);
+  if (!result) return { penaltyAmount: 0n, cappedBy: null, periods: 0 };
+
+  const effectiveDays = Math.max(0, daysOverdue - rule.graceDays);
+  const naive = naiveUnits(rule, effectiveDays);
+  const cap = capOf(rule, state);
+  let cappedBy: PenaltySimulationResult['cappedBy'] = null;
+  if (rule.maxPeriods !== null && naive > rule.maxPeriods) {
+    cappedBy = 'PERIODS';
+  } else if (cap !== null && result.amount === cap) {
+    cappedBy =
+      rule.capAmount !== null && cap === rule.capAmount
+        ? 'AMOUNT'
+        : rule.capRateBps !== null
+          ? 'RATE'
+          : null;
+  }
+  return { penaltyAmount: result.amount, cappedBy, periods: result.units };
+}
+
 function labelOf(rule: PenaltyRuleTerms, units: number): string {
   switch (rule.basis) {
     case 'RATE_BPS_PER_DAY':

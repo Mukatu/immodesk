@@ -2,6 +2,7 @@ import { parseIsoDate } from '../../src/modules/leases/domain/calendar';
 import {
   computePenalty,
   penaltyPrincipal,
+  simulatePenalty,
   type PenaltyInvoiceState,
   type PenaltyRuleTerms,
 } from '../../src/modules/billing/domain/penalties';
@@ -116,5 +117,62 @@ describe('Pénalités de retard — quatre bases et plafonds', () => {
       balanceAmount: 112_000n,
     });
     expect(penaltyPrincipal(penaltyUnpaid, true)).toBe(110_000n);
+  });
+});
+
+describe('simulatePenalty — POST /v1/penalty-rules/{id}/simulate (phase 9)', () => {
+  it('ne pénalise rien tant que la franchise n’est pas dépassée', () => {
+    const perDay = rule({ basis: 'RATE_BPS_PER_DAY', rateBps: 100, graceDays: 5 });
+    expect(simulatePenalty(perDay, 100_000n, 3)).toEqual({
+      penaltyAmount: 0n,
+      cappedBy: null,
+      periods: 0,
+    });
+  });
+
+  it('RATE_BPS_PER_DAY : montant identique à computePenalty, sans plafond', () => {
+    const perDay = rule({ basis: 'RATE_BPS_PER_DAY', rateBps: 100, graceDays: 5 });
+    expect(simulatePenalty(perDay, 100_000n, 13)).toEqual({
+      penaltyAmount: 8_000n,
+      cappedBy: null,
+      periods: 8,
+    });
+  });
+
+  it('signale un plafond en montant atteint (cappedBy: AMOUNT)', () => {
+    const capped = rule({
+      basis: 'RATE_BPS_PER_DAY',
+      rateBps: 100,
+      graceDays: 5,
+      capAmount: 2_500n,
+    });
+    expect(simulatePenalty(capped, 100_000n, 13)).toEqual({
+      penaltyAmount: 2_500n,
+      cappedBy: 'AMOUNT',
+      periods: 8,
+    });
+  });
+
+  it('signale un plafond en nombre de périodes atteint (cappedBy: PERIODS)', () => {
+    const maxed = rule({
+      basis: 'FLAT_AMOUNT_PER_DAY',
+      flatAmount: 500n,
+      graceDays: 0,
+      maxPeriods: 5,
+    });
+    expect(simulatePenalty(maxed, 100_000n, 10)).toEqual({
+      penaltyAmount: 2_500n,
+      cappedBy: 'PERIODS',
+      periods: 5,
+    });
+  });
+
+  it('FLAT_AMOUNT : une seule période, quel que soit le retard au-delà de la franchise', () => {
+    const flat = rule({ basis: 'FLAT_AMOUNT', flatAmount: 10_000n, graceDays: 5 });
+    expect(simulatePenalty(flat, 100_000n, 20)).toEqual({
+      penaltyAmount: 10_000n,
+      cappedBy: null,
+      periods: 1,
+    });
   });
 });

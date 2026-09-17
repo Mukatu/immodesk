@@ -21,8 +21,10 @@ import { BillingRunsService } from '../application/billing-runs.service';
 import { PenaltyRulesService, type PenaltyRuleInput } from '../application/penalty-rules.service';
 import type { PenaltyBasis } from '../domain/penalties';
 import {
+  ActivatePenaltyRuleDto,
   DashboardQueryDto,
   PenaltyRuleInputDto,
+  SimulatePenaltyRuleDto,
   StartBillingRunDto,
   UpdatePenaltyRuleDto,
 } from './dto/billing.dto';
@@ -32,6 +34,7 @@ import {
   BillingRunDto,
   PenaltyRuleDto,
   PenaltyRuleListDto,
+  PenaltySimulationDto,
 } from './dto/billing-response.dto';
 
 function toRuleInput(dto: Partial<PenaltyRuleInputDto>): Partial<PenaltyRuleInput> {
@@ -148,5 +151,41 @@ export class BillingController {
     @Body() dto: UpdatePenaltyRuleDto,
   ): Promise<PenaltyRuleDto> {
     return this.penaltyRules.update(tenant.organizationId, tenant.userId, id, toRuleInput(dto));
+  }
+
+  @Post('penalty-rules/:id/activate')
+  @Roles('MANAGER')
+  @ApiHeader(ORG_HEADER)
+  @ApiOperation({
+    summary: 'Activer ou désactiver une règle de pénalité',
+    description: 'Une règle de pénalité ne se supprime jamais (même arbitrage que les relances).',
+  })
+  @ApiResponse({ status: 200, type: PenaltyRuleDto })
+  async activatePenaltyRule(
+    @CurrentTenant() tenant: TenantContext,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ActivatePenaltyRuleDto,
+  ): Promise<PenaltyRuleDto> {
+    return this.penaltyRules.setActive(tenant.organizationId, tenant.userId, id, dto.isActive);
+  }
+
+  @Post('penalty-rules/:id/simulate')
+  @Roles('MANAGER')
+  @HttpCode(HttpStatus.OK)
+  @ApiHeader(ORG_HEADER)
+  @ApiOperation({
+    summary: 'Simuler une pénalité sans écrire',
+    description: 'Réutilise `computePenalty` (phase 3) : aucune divergence avec le moteur réel.',
+  })
+  @ApiResponse({ status: 200, type: PenaltySimulationDto })
+  async simulatePenaltyRule(
+    @CurrentTenant() tenant: TenantContext,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SimulatePenaltyRuleDto,
+  ): Promise<PenaltySimulationDto> {
+    return this.penaltyRules.simulate(tenant.organizationId, tenant.userId, id, {
+      balanceAmount: toAmount(dto.balanceAmount),
+      daysOverdue: dto.daysOverdue,
+    });
   }
 }

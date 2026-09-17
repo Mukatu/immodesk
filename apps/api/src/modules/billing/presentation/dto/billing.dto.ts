@@ -215,3 +215,12 @@ export class PenaltyRuleInputDto {
 }
 
 export class UpdatePenaltyRuleDto extends PartialType(PenaltyRuleInputDto) {}
+
+export class ActivatePenaltyRuleDto {
+  @ApiProperty() @IsBoolean() isActive!: boolean;
+}
+
+export class SimulatePenaltyRuleDto {
+  @ApiProperty(AMOUNT) @Type(() => Number) @IsInt() @Min(0) balanceAmount!: number;
+  @ApiProperty({ example: 12 }) @Type(() => Number) @IsInt() @Min(0) daysOverdue!: number;
+}

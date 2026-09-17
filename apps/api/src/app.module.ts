@@ -33,6 +33,8 @@ import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
 import { ReconciliationModule } from './modules/reconciliation/reconciliation.module';
 import { UtilitiesModule } from './modules/utilities/utilities.module';
+import { DunningModule } from './modules/dunning/dunning.module';
+import { ReportingModule } from './modules/reporting/reporting.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { IdempotencyInterceptor } from './modules/platform/presentation/idempotency.interceptor';
 import { JwtAuthGuard } from './shared/auth/jwt-auth.guard';
@@ -132,6 +134,12 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     UtilitiesModule,
     MaintenanceModule,
     InspectionsModule,
+    // Phase 9 — relances, pénalités, tableaux de bord et exports. `dunning`
+    // est `@Global()` : son moteur consomme `notifications` et `billing`
+    // (eux-mêmes `@Global()`) sans import de module. `reporting` ne dépend
+    // d'aucun des deux : il lit les tables et publie ses propres agrégats.
+    DunningModule,
+    ReportingModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

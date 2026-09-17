@@ -162,11 +162,9 @@ La liste détaillée est dans `apps/web/README.md`.
 Les deux dernières adresses sont des consoles web à ouvrir directement dans un navigateur.
 Celle de Mailpit affiche les courriels envoyés en développement, qui ne partent jamais réellement.
 
-> **Incohérence connue, à corriger.** La valeur par défaut du web pointe vers le port 3001,
-> dans `apps/web/.env.example` et dans les trois clients sous `apps/web/src/lib/api/`.
-> Or l'API écoute sur le port 3000, et le serveur de développement Next occupe lui-même le
-> port 3000 par défaut. Tant que ce défaut n'est pas corrigé, il faut poser `NEXT_PUBLIC_API_URL`
-> explicitement comme montré en section 3.2.
+> La valeur par défaut du web vise désormais le port 3000 de l'API, en accord avec le port d'écoute
+> réel de l'API. Le dashboard de développement doit être lancé sur un autre port (par défaut 3001)
+> pour ne pas entrer en collision avec le serveur Next qui réclamerait le port 3000 lui-même.
 
 ---
 

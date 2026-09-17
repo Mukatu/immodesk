@@ -16,9 +16,11 @@ Locale unique : **fr-CG**. Fuseau : **Africa/Brazzaville**. Devise : **XAF**, to
 Copier `.env.example` vers `.env.local` :
 
 ```
-NEXT_PUBLIC_API_URL=http://localhost:3001/v1   # base de l'API, utilisée par le navigateur
-API_INTERNAL_URL=http://localhost:3001/v1      # base de l'API, utilisée par les route handlers Next
+NEXT_PUBLIC_API_URL=http://localhost:3000/v1   # base de l'API, utilisée par le navigateur
+API_INTERNAL_URL=http://localhost:3000/v1      # base de l'API, utilisée par les route handlers Next
 ```
+
+L'API écoute par défaut sur le port 3000 ; le dashboard de développement se lance sur un autre port (par défaut 3001) pour éviter une collision.
 
 ## Scripts
 

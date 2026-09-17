@@ -74,7 +74,9 @@ src/
                           /app/etats-des-lieux/comparaison/[unitId], /app/compteurs,
                           /app/compteurs/[id], /app/parametres/tarifs,
                           /app/facturation/refacturation, /app/maintenance,
-                          /app/maintenance/nouveau, /app/maintenance/[id]
+                          /app/maintenance/nouveau, /app/maintenance/[id], phase 9 :
+                          /app/relances, /app/relances/historique,
+                          /app/relances/historique/[id], /app/tableaux-de-bord
   components/
     ui/                   Primitives shadcn/ui (Radix + class-variance-authority)
     business/             Composants métier : MoneyXaf, MoneyInput, PhoneInput, StatusBadge,
@@ -387,9 +389,58 @@ signatures, comparaison d'entrée/sortie par pièce/élément), `facilities-hand
 refacturation avec rapport déterministe), `maintenance-handlers.ts`, `maintenance-seed.ts` (demandes
 avec cycle de vie, mises à jour, SLA calculé selon priorité).
 
+### Relances, pénalités, tableaux de bord et exports (phase 9)
+
+**Domaine** (`docs/api/phase9-contract.md`) : paliers de relance avec déclencheur (avant/après échéance,
+à l'émission, au basculement en retard), canal de notification principal et canal de repli, modèle de message,
+solde minimum et heure d'envoi locale. Scan quotidien idempotent, sélection par correspondance EXACTE du
+décalage en jours de retard, escalade vers le garant par doublement du message. Règles de pénalité avec
+quatre bases (taux journalier/mensuel en points de base, montant forfaitaire, montant par jour),
+franchise en jours, plafonner par montant ou pourcentage du solde, limiter par nombre de périodes.
+Simulateur de pénalité en lecture seule (aucune écriture). Quatre tableaux de bord agrégés, tous filtrables
+par période, immeuble et bailleur, en lecture seule (VIEWER) : taux de recouvrement avec série mensuelle,
+impayés avec répartition par tranche d'ancienneté (0–30, 31–60, 61–90, 90+ jours) et liste des débiteurs les
+plus en retard, vacance locative avec durée moyenne de vacance, encaissements par mode de paiement mesurant
+la bancarisation. Exports en CSV uniquement (jamais Excel, arbitrage du contrat) : synchrone jusqu'à dix
+mille lignes, asynchrone avec interrogation d'état au-delà. Fichiers rangés en documents, liens signés
+valables une heure.
+
+**Règles de gestion** : (1) Une règle de relance se désactive par `isActive: false`, elle ne se supprime
+jamais. (2) Deux paliers ne peuvent pas partager le même rang (409 `DUNNING.STEP_ORDER_TAKEN`). (3) Il
+n'existe pas de statut « remis » sur une relance (`DunningStepStatus` : PENDING, RUNNING, SENT, SKIPPED,
+FAILED, CANCELLED) ; la remise effective se lit dans le journal des messages. (4) Export en CSV avec
+encodage UTF-8 + BOM et séparateur point-virgule francophones : le fichier s'ouvre directement dans Excel,
+l'Excel natif est écarté.
+
+**Écrans** : `/app/relances` (liste des paliers triée par rang, chacun montrant déclencheur, canal, solde
+minimum, heure d'envoi, pénalité optionnelle, escalade au garant, activation/désactivation en un geste,
+bouton de modification, bouton « Lancer le scan » avec simulation optionnelle) ; `/app/relances/historique`
+(file des exécutions filtrable par palier et statut, pagination par curseur, lien vers détail d'une
+exécution) ; `/app/relances/historique/[id]` (détail d'une exécution : palier, statut, dates planifiée/traitée,
+locataire, facture, solde, retard en jours, raison de l'ignorance ou message d'erreur le cas échéant,
+présence ou absence d'escalade au garant, présence ou absence de pénalité appliquée) ; `/app/tableaux-de-bord`
+(quatre widgets en grille 2×2, filtres en haut : période, immeuble, bailleur, un bouton d'export CSV sur
+chaque widget pour l'agrégat correspondant).
+
+**Composants** : `DunningStepDialog`, `DunningStepStatusBadge`, `TriggerScanDialog`, `StepActivateButton`,
+`DunningRunDetailSummary`, `ExportButton` (gestion des réponses 201 synchrone et 202 asynchrone),
+`CollectionRateWidget`, `ArrearsWidget`, `VacancyWidget`, `PaymentMethodsWidget`.
+
+**Hooks** : `use-dunning-rules`, `use-dunning-runs`, `use-dunning-run`, `use-penalty-rules`,
+`use-dashboards-collection-rate`, `use-dashboards-arrears`, `use-dashboards-vacancy`,
+`use-dashboards-payment-methods`, `use-exports`, `use-export-job`.
+
+**Mocks MSW** : `dunning-handlers.ts`, `dunning-seed.ts` (paliers, historique d'exécutions couvrant les six
+statuts), `dashboards-handlers.ts` (quatre agrégats), `exports-handlers.ts` (téléchargement CSV).
+La simulation des relances s'appuie sur une date de référence FIXE `DUNNING_REFERENCE_TODAY = new Date('2024-03-01')`
+déclarée en tête de `dunning-seed.ts`, jamais sur `new Date()`, afin que les tests e2e restent déterministes.
+Le moteur sélectionne le palier par correspondance EXACTE du décalage en jours de retard, comme le serveur :
+une simulation plus permissive que le serveur rendrait les tests complaisants et invalides pour valider les
+bugs de sélection du palier.
+
 ## Tests
 
-- **Unitaires** (`pnpm test`, Vitest + Testing Library, **291 tests** répartis sur 59 fichiers) :
+- **Unitaires** (`pnpm test`, Vitest + Testing Library, **308 tests** répartis sur 63 fichiers) :
   formatage XAF (`MoneyXaf`), saisie téléphone congolaise (`PhoneInput`), affichage téléphone
   (`PhoneDisplay`), badge occupation (`OccupancyBadge`), validation taille et MIME de
   `DocumentUploader`, client API (`apiFetch`) incluant le rafraîchissement automatique de token et
@@ -454,6 +505,17 @@ avec cycle de vie, mises à jour, SLA calculé selon priorité).
     du rapport (créées, ignorés, erreurs) ; (3) demande de maintenance signalée (fuite) → refus exige
     un motif (dialog bloqué) → prise en compte → affectation (refus disparaît) → mise à jour en
     « En intervention » → résolution → clôture, entièrement mocké via MSW.
+  - **Phase 9** (`e2e/phase9-recouvrement.spec.ts`) : deux scénarios indépendants — (1) création d'une
+    organisation fraîche, un bailleur, un immeuble, un lot, un locataire, un bail actif, deux factures
+    ancrées à une date fixe de 3 jours avant la date de référence du simulateur → création d'une règle
+    de pénalité forfaitaire → test du simulateur sans écriture → création d'un palier de relance avec
+    pénalité et seuil minimum → tentative de création d'un palier sur un rang occupé (409) → scan en
+    simulation puis en mode réel → vérification de l'historique : une facture au-dessus du seuil reçoit
+    la relance, l'autre au-dessous est ignorée (correspondance EXACTE au jour de retard, jamais
+    « au moins ») → réexécution du scan le même jour pour vérifier l'idempotence (pas de doublon) ;
+    (2) création d'une seconde organisation → vérification que les quatre tableaux de bord s'affichent
+    → filtrage par période → vérification de quatre boutons d'export CSV (jamais Excel) → export depuis
+    la liste des factures, vérification du format CSV, entièrement mocké via MSW.
 
 Tous les scénarios e2e utilisent MSW (`src/mocks/handlers.ts`), interceptée côté serveur
 (`msw/node`, activé dans `instrumentation.ts` quand `E2E_MOCK=1`). Les appels directs du navigateur
@@ -499,6 +561,14 @@ signatures, comparaison entrée/sortie), `facilities-handlers.ts`/`facilities-se
 relevés avec gestion des passages par zéro et erreurs de saisie, tarifs par bien/type, campagne de
 refacturation idempotente avec rapport), `maintenance-handlers.ts`/`maintenance-seed.ts` (demandes de
 maintenance avec cycle de vie statut, mises à jour, calcul du SLA selon priorité).
+
+Phase 9 ajoute `dunning-handlers.ts`/`dunning-seed.ts` (paliers et historique d'exécutions couvrant les
+six statuts), `dashboards-handlers.ts` (quatre agrégats filtrables), `exports-handlers.ts` (génération
+CSV synchrone et asynchrone). La simulation des relances s'appuie sur une date de référence FIXE
+déclarée en tête de `dunning-seed.ts` : `DUNNING_REFERENCE_TODAY = new Date('2024-03-01')`, jamais
+sur l'horloge du système, afin que le test reste déterministe quelle que soit la date d'exécution.
+Le moteur sélectionne le palier par correspondance EXACTE du décalage en jours de retard, comme le
+serveur : une simulation plus permissive que le serveur rendrait les tests complaisants.
 
 ## Accessibilité et performance
 

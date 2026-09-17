@@ -1,0 +1,165 @@
+'use client';
+
+import * as React from 'react';
+import Link from 'next/link';
+import type { ColumnDef } from '@tanstack/react-table';
+
+import { DataTable } from '@/components/business/data-table';
+import { MoneyXaf } from '@/components/business/money-xaf';
+import { PageHeader } from '@/components/business/page-header';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useDunningRules } from '@/lib/api/hooks/use-dunning-rules';
+import { useDunningRuns } from '@/lib/api/hooks/use-dunning-runs';
+import { DUNNING_STEP_STATUS_LABELS } from '@/lib/enum-labels';
+import type { DunningRun, DunningStepStatus } from '@/lib/api/types';
+import { formatDateFr } from '../_components/format-date-fr';
+import { DunningStepStatusBadge } from '../_components/dunning-step-status-badge';
+
+const PAGE_SIZE = 20;
+
+export default function DunningHistoryPage() {
+  const [ruleId, setRuleId] = React.useState('ALL');
+  const [status, setStatus] = React.useState<DunningStepStatus | 'ALL'>('ALL');
+  const [cursor, setCursor] = React.useState<string | undefined>(undefined);
+  const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
+
+  const { data: rulesData } = useDunningRules();
+  const { data, isLoading } = useDunningRuns({
+    ruleId: ruleId === 'ALL' ? undefined : ruleId,
+    status: status === 'ALL' ? undefined : status,
+    cursor,
+    limit: PAGE_SIZE,
+  });
+
+  function resetPaging() {
+    setCursor(undefined);
+    setPreviousCursors([]);
+  }
+
+  function handleNextPage() {
+    if (data?.pageInfo.nextCursor) {
+      setPreviousCursors((prev) => [...prev, cursor ?? '']);
+      setCursor(data.pageInfo.nextCursor);
+    }
+  }
+
+  function handlePreviousPage() {
+    setPreviousCursors((prev) => {
+      const next = [...prev];
+      const last = next.pop();
+      setCursor(last || undefined);
+      return next;
+    });
+  }
+
+  const columns = React.useMemo<ColumnDef<DunningRun>[]>(
+    () => [
+      {
+        header: 'Palier',
+        cell: ({ row }) => (
+          <Link
+            href={`/app/relances/historique/${row.original.id}`}
+            className="font-medium text-primary hover:underline"
+          >
+            {row.original.ruleName}
+          </Link>
+        ),
+      },
+      {
+        header: 'Statut',
+        cell: ({ row }) => <DunningStepStatusBadge status={row.original.status} />,
+      },
+      { header: 'Date', cell: ({ row }) => formatDateFr(row.original.runDate) },
+      {
+        header: 'Locataire',
+        cell: ({ row }) => row.original.tenant.displayName,
+      },
+      {
+        header: 'Facture',
+        cell: ({ row }) => row.original.invoice?.invoiceNumber ?? '—',
+      },
+      { header: 'Retard (j)', cell: ({ row }) => row.original.daysOverdue },
+      {
+        header: 'Solde',
+        cell: ({ row }) => <MoneyXaf amount={row.original.balanceAmount} />,
+      },
+    ],
+    [],
+  );
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Historique des relances"
+        description="Chaque exécution, avec son statut, son motif d'ignorance et l'éventuelle pénalité appliquée."
+      />
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="history-rule-filter">Palier</Label>
+          <Select
+            value={ruleId}
+            onValueChange={(v) => {
+              setRuleId(v);
+              resetPaging();
+            }}
+          >
+            <SelectTrigger id="history-rule-filter" className="w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tous les paliers</SelectItem>
+              {(rulesData?.items ?? []).map((rule) => (
+                <SelectItem key={rule.id} value={rule.id}>
+                  {rule.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="history-status-filter">Statut</Label>
+          <Select
+            value={status}
+            onValueChange={(v) => {
+              setStatus(v as DunningStepStatus | 'ALL');
+              resetPaging();
+            }}
+          >
+            <SelectTrigger id="history-status-filter" className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tous les statuts</SelectItem>
+              {(Object.keys(DUNNING_STEP_STATUS_LABELS) as DunningStepStatus[]).map((value) => (
+                <SelectItem key={value} value={value}>
+                  {DUNNING_STEP_STATUS_LABELS[value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={data?.items ?? []}
+        isLoading={isLoading}
+        emptyTitle="Aucune exécution"
+        emptyDescription="Lancez un scan depuis l'écran Paliers pour générer un historique."
+        pageInfo={data?.pageInfo}
+        onNextPage={handleNextPage}
+        onPreviousPage={handlePreviousPage}
+        hasPreviousPage={previousCursors.length > 0}
+      />
+    </div>
+  );
+}

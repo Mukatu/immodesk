@@ -15,6 +15,8 @@ import type {
   DepositMovementType,
   DepositStatus,
   DocumentKind,
+  DunningStepStatus,
+  DunningTrigger,
   ExpenseBearer,
   ExpenseCategory,
   ExpenseStatus,
@@ -319,6 +321,26 @@ export const PENALTY_BASIS_LABELS: Record<PenaltyBasis, string> = {
   RATE_BPS_PER_MONTH: 'Taux par mois',
   FLAT_AMOUNT: 'Montant forfaitaire',
   FLAT_AMOUNT_PER_DAY: 'Montant forfaitaire par jour',
+};
+
+export const DUNNING_TRIGGER_LABELS: Record<DunningTrigger, string> = {
+  DAYS_BEFORE_DUE: "Jours avant l'échéance",
+  DAYS_AFTER_DUE: "Jours après l'échéance",
+  ON_ISSUE: "À l'émission",
+  ON_OVERDUE: 'Au basculement en retard',
+};
+
+/**
+ * Il n'existe pas de statut DELIVERED (contrat phase 9) : la remise effective
+ * d'un message se lit dans le journal des messages (`MessageStatus`), jamais ici.
+ */
+export const DUNNING_STEP_STATUS_LABELS: Record<DunningStepStatus, string> = {
+  PENDING: 'En attente',
+  RUNNING: 'En cours',
+  SENT: 'Envoyée',
+  SKIPPED: 'Ignorée',
+  FAILED: 'Échec',
+  CANCELLED: 'Annulée',
 };
 
 /**

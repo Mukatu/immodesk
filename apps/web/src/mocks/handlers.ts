@@ -15,6 +15,7 @@ import { receiptsHandlers, seedReceiptsDemoData } from './receipts-handlers';
 import { receipts as demoReceipts } from './receipts-seed';
 import { messagesHandlers, seedMessagesDemoData } from './messages-handlers';
 import { penaltyRulesHandlers, seedPenaltyRulesDemoData } from './penalty-rules-handlers';
+import { penaltyRules } from './penalty-rules-seed';
 import {
   notificationTemplatesHandlers,
   seedNotificationTemplatesDemoData,
@@ -38,6 +39,9 @@ import {
 import { inspectionHandlers } from './inspections-handlers';
 import { metersHandlers, utilityRunsHandlers, utilityTariffsHandlers } from './facilities-handlers';
 import { maintenanceHandlers } from './maintenance-handlers';
+import { dunningHandlers, seedDunningDemoData } from './dunning-handlers';
+import { dashboardsHandlers } from './dashboards-handlers';
+import { exportsHandlers } from './exports-handlers';
 import { API_BASE } from './api-base';
 
 /**
@@ -899,6 +903,21 @@ seedMessagesDemoData({
   tenantPhone: (tenantId) => tenants.get(tenantId)?.primaryPhone ?? '+242060000000',
 });
 seedPenaltyRulesDemoData({ DEMO_ORG_ID, nextId });
+(function seedDunningDemoDataIfPossible() {
+  const demoPenaltyRule = [...penaltyRules.values()].find((r) => r.organizationId === DEMO_ORG_ID);
+  const demoTenant = [...tenants.values()].find((t) => t.organizationId === DEMO_ORG_ID);
+  const demoLease = [...leases.values()].find((l) => l.organizationId === DEMO_ORG_ID);
+  seedDunningDemoData({
+    DEMO_ORG_ID,
+    nextId,
+    defaultPenaltyRuleId: demoPenaltyRule?.id,
+    tenantId: demoTenant?.id,
+    tenantDisplayName: demoTenant ? serializeTenant(demoTenant).displayName : undefined,
+    leaseId: demoLease?.id,
+    unitId: demoLease?.unitId,
+    propertyId: demoLease?.propertyId,
+  });
+})();
 seedNotificationTemplatesDemoData({ DEMO_ORG_ID, nextId });
 seedPaymentsPhase4DemoData({
   invoices: billingInvoices,
@@ -2053,6 +2072,9 @@ export const handlers = [
   ...utilityTariffsHandlers,
   ...utilityRunsHandlers,
   ...maintenanceHandlers,
+  ...dunningHandlers,
+  ...dashboardsHandlers,
+  ...exportsHandlers,
 
   // Onboarding du gestionnaire indépendant (phase 7) : organisation + bailleur + bien +
   // mandat en une transaction. Reste ici (et non dans agency-handlers.ts) car il a besoin

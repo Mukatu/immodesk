@@ -10,9 +10,36 @@ import { EmptyState } from '@/components/business/empty-state';
 import { MoneyXaf } from '@/components/business/money-xaf';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PENALTY_BASIS_LABELS } from '@/lib/enum-labels';
-import { usePenaltyRules, useCreatePenaltyRule } from '@/lib/api/hooks/use-penalty-rules';
+import {
+  useActivatePenaltyRule,
+  useCreatePenaltyRule,
+  usePenaltyRules,
+} from '@/lib/api/hooks/use-penalty-rules';
 import type { PenaltyRule } from '@/lib/api/types';
 import { PenaltyRuleDialog } from './penalty-rule-dialog';
+import { PenaltySimulator } from './penalty-simulator';
+
+function ActivateToggleButton({ rule }: { rule: PenaltyRule }) {
+  const activate = useActivatePenaltyRule(rule.id);
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={activate.isPending}
+      onClick={async () => {
+        try {
+          await activate.mutateAsync(!rule.isActive);
+          toast.success(rule.isActive ? 'Règle désactivée.' : 'Règle réactivée.');
+        } catch {
+          toast.error('Impossible de modifier cette règle.');
+        }
+      }}
+    >
+      {rule.isActive ? 'Désactiver' : 'Réactiver'}
+    </Button>
+  );
+}
 
 function rateLabel(rule: PenaltyRule): React.ReactNode {
   if (rule.basis === 'FLAT_AMOUNT' || rule.basis === 'FLAT_AMOUNT_PER_DAY') {
@@ -31,72 +58,78 @@ export function PenaltyRulesSection() {
   const rules = data?.items ?? [];
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-        <div>
-          <CardTitle>Règles de pénalité</CardTitle>
-          <CardDescription>
-            Appliquées aux baux en retard selon les paramètres ci-dessus.
-          </CardDescription>
-        </div>
-        <Button
-          type="button"
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-        >
-          Nouvelle règle
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <Skeleton className="h-24 w-full" />
-        ) : rules.length === 0 ? (
-          <EmptyState title="Aucune règle" description="Créez une règle de pénalité de retard." />
-        ) : (
-          <ul className="space-y-2">
-            {rules.map((rule) => (
-              <li
-                key={rule.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{rule.name}</span>
-                    {rule.isDefault ? <Badge variant="secondary">Par défaut</Badge> : null}
-                    {!rule.isActive ? <Badge variant="outline">Inactive</Badge> : null}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {PENALTY_BASIS_LABELS[rule.basis]} — {rateLabel(rule)}
-                    {rule.graceDays ? ` — grâce ${rule.graceDays} j` : ''}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setEditing(rule);
-                    setDialogOpen(true);
-                  }}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle>Règles de pénalité</CardTitle>
+            <CardDescription>
+              Appliquées aux baux en retard selon les paramètres ci-dessus.
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            onClick={() => {
+              setEditing(null);
+              setDialogOpen(true);
+            }}
+          >
+            Nouvelle règle
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : rules.length === 0 ? (
+            <EmptyState title="Aucune règle" description="Créez une règle de pénalité de retard." />
+          ) : (
+            <ul className="space-y-2">
+              {rules.map((rule) => (
+                <li
+                  key={rule.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3"
                 >
-                  Modifier
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-      <PenaltyRuleDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        rule={editing}
-        onCreate={async (body) => {
-          await createRule.mutateAsync(body);
-          toast.success('Règle créée.');
-        }}
-      />
-    </Card>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{rule.name}</span>
+                      {rule.isDefault ? <Badge variant="secondary">Par défaut</Badge> : null}
+                      {!rule.isActive ? <Badge variant="outline">Inactive</Badge> : null}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {PENALTY_BASIS_LABELS[rule.basis]} — {rateLabel(rule)}
+                      {rule.graceDays ? ` — grâce ${rule.graceDays} j` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditing(rule);
+                        setDialogOpen(true);
+                      }}
+                    >
+                      Modifier
+                    </Button>
+                    <ActivateToggleButton rule={rule} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+        <PenaltyRuleDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          rule={editing}
+          onCreate={async (body) => {
+            await createRule.mutateAsync(body);
+            toast.success('Règle créée.');
+          }}
+        />
+      </Card>
+      <PenaltySimulator rules={rules} />
+    </div>
   );
 }

@@ -917,6 +917,16 @@ export type MessageStatus =
 export type PenaltyBasis =
   'RATE_BPS_PER_DAY' | 'RATE_BPS_PER_MONTH' | 'FLAT_AMOUNT' | 'FLAT_AMOUNT_PER_DAY';
 
+// ---- Relances (phase 9) ----
+
+export type DunningTrigger = 'DAYS_BEFORE_DUE' | 'DAYS_AFTER_DUE' | 'ON_ISSUE' | 'ON_OVERDUE';
+
+/**
+ * Il n'existe pas de statut DELIVERED (arbitrage du contrat phase 9) : la
+ * remise effective d'un message se lit dans `message_logs`, jamais ici.
+ */
+export type DunningStepStatus = 'PENDING' | 'RUNNING' | 'SENT' | 'SKIPPED' | 'FAILED' | 'CANCELLED';
+
 // ---- Paramètres d'organisation (phase 3) ----
 
 export interface BillingSettings {
@@ -1032,7 +1042,19 @@ export interface PenaltyRuleInput {
 
 export interface PenaltyRule extends PenaltyRuleInput {
   id: string;
+  currency: 'XAF';
   createdAt: string;
+}
+
+export interface SimulatePenaltyBody {
+  balanceAmount: number;
+  daysOverdue: number;
+}
+
+export interface SimulatePenaltyResult {
+  penaltyAmount: number;
+  cappedBy: 'capAmount' | 'capRateBps' | null;
+  periods: number;
 }
 
 export interface BillingRunInput {
@@ -2819,4 +2841,197 @@ export interface ResolveMaintenanceRequestBody {
 
 export interface RejectMaintenanceRequestBody {
   reason: string;
+}
+
+// ---- Règles de relance (phase 9) ----
+
+export interface DunningRuleInput {
+  name: string;
+  stepOrder: number;
+  triggerType?: DunningTrigger;
+  offsetDays: number;
+  channel?: NotificationChannel;
+  fallbackChannel?: NotificationChannel;
+  templateId?: string;
+  minBalanceAmount?: number;
+  notifyLandlord?: boolean;
+  notifyCollector?: boolean;
+  applyPenalty?: boolean;
+  penaltyRuleId?: string;
+  escalateToLegal?: boolean;
+  sendHourLocal?: number;
+  skipWeekends?: boolean;
+  isActive?: boolean;
+}
+
+export interface DunningRule extends DunningRuleInput {
+  id: string;
+  currency: 'XAF';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DunningRun {
+  id: string;
+  ruleId: string;
+  ruleName: string;
+  stepOrder: number;
+  status: DunningStepStatus;
+  runDate: string;
+  scheduledAt: string;
+  executedAt: string | null;
+  daysOverdue: number;
+  balanceAmount: number;
+  channel: NotificationChannel;
+  invoice: { id: string; invoiceNumber: string | null } | null;
+  tenant: { id: string; displayName: string };
+  notificationId: string | null;
+  messageLogId: string | null;
+  messageStatus: MessageStatus | null;
+  guarantorNotified: boolean;
+  penaltyApplied: boolean;
+  penaltyAmount: number;
+  skipReason: string | null;
+  errorMessage: string | null;
+}
+
+export interface DunningRunsQuery {
+  ruleId?: string;
+  invoiceId?: string;
+  status?: DunningStepStatus;
+  from?: string;
+  to?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface TriggerDunningRunsBody {
+  dryRun?: boolean;
+}
+
+export interface TriggerDunningRunsResult {
+  scanned: number;
+  created: number;
+  skipped: number;
+  failed: number;
+  dryRun: boolean;
+}
+
+// ---- Tableaux de bord (phase 9) ----
+
+export interface CollectionRateDashboardQuery {
+  from?: string;
+  to?: string;
+  propertyId?: string;
+  landlordId?: string;
+}
+
+export interface CollectionRateDashboard {
+  from: string;
+  to: string;
+  dueAmount: number;
+  collectedAmount: number;
+  outstandingAmount: number;
+  collectionRateBps: number;
+  series: {
+    period: string;
+    dueAmount: number;
+    collectedAmount: number;
+    collectionRateBps: number;
+  }[];
+  byProperty: {
+    propertyId: string;
+    name: string;
+    dueAmount: number;
+    collectedAmount: number;
+    collectionRateBps: number;
+  }[];
+}
+
+export interface ArrearsDashboardQuery {
+  asOf?: string;
+  propertyId?: string;
+  landlordId?: string;
+}
+
+export type ArrearsBucketLabel = '0-30' | '31-60' | '61-90' | '90+';
+
+export interface ArrearsDashboard {
+  asOf: string;
+  totalAmount: number;
+  invoicesCount: number;
+  buckets: { label: ArrearsBucketLabel; amount: number; invoicesCount: number }[];
+  topDebtors: {
+    tenantId: string;
+    displayName: string;
+    phone: string;
+    amount: number;
+    oldestDueDate: string;
+    daysOverdue: number;
+  }[];
+}
+
+export interface VacancyDashboardQuery {
+  asOf?: string;
+  propertyId?: string;
+}
+
+export interface VacancyDashboard {
+  asOf: string;
+  unitsCount: number;
+  occupiedCount: number;
+  vacantCount: number;
+  vacancyRateBps: number;
+  averageVacancyDays: number;
+  byProperty: {
+    propertyId: string;
+    name: string;
+    unitsCount: number;
+    vacantCount: number;
+    vacancyRateBps: number;
+  }[];
+}
+
+export interface PaymentMethodsDashboardQuery {
+  from?: string;
+  to?: string;
+  propertyId?: string;
+}
+
+export interface PaymentMethodsDashboard {
+  from: string;
+  to: string;
+  totalAmount: number;
+  byMethod: { method: PaymentMethod; amount: number; shareBps: number; count: number }[];
+}
+
+// ---- Exports (phase 9) ----
+
+/** Le format est le CSV uniquement (arbitrage 5 du contrat) : Excel natif n'existe pas. */
+export type ExportKind = 'invoices' | 'payments' | 'arrears' | 'dashboard';
+
+export interface ExportRequestBody {
+  filters?: Record<string, string | number | boolean | undefined>;
+}
+
+export interface ExportSyncResult {
+  documentId: string;
+  downloadUrl: string;
+  expiresAt: string;
+  rowCount: number;
+}
+
+export interface ExportJobAccepted {
+  jobId: string;
+}
+
+export type ExportResponse = ExportSyncResult | ExportJobAccepted;
+
+export type ExportJobStatus = 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED';
+
+export interface ExportJob {
+  status: ExportJobStatus;
+  documentId?: string;
+  downloadUrl?: string;
+  error?: string;
 }

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTable } from '@/components/business/data-table';
+import { ExportButton } from '@/components/business/export-button';
 import { PageHeader } from '@/components/business/page-header';
 import { MoneyXaf } from '@/components/business/money-xaf';
 import { InvoiceStatusBadge } from '@/components/business/invoice-status-badge';
@@ -177,7 +178,11 @@ export default function FacturesPage() {
         title="Factures"
         description="Suivez l'émission et le règlement des factures de loyer."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportButton
+              kind="invoices"
+              filters={{ status: status || undefined, propertyId: propertyId || undefined }}
+            />
             <Button asChild variant="outline">
               <Link href="/app/facturation/campagnes">Campagne de facturation</Link>
             </Button>

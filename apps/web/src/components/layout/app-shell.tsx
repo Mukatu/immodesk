@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  AlarmClockCheck,
   Banknote,
+  BarChart3,
   Building2,
   ClipboardCheck,
   CreditCard,
@@ -56,6 +58,8 @@ const NAV_ITEMS = [
   { href: '/app/gerance/mandats', label: 'Gérance', icon: Handshake },
   { href: '/app/quittances', label: 'Quittances', icon: FileCheck2 },
   { href: '/app/messages', label: 'Messages', icon: MessageSquare },
+  { href: '/app/relances', label: 'Relances', icon: AlarmClockCheck },
+  { href: '/app/tableaux-de-bord', label: 'Tableaux de bord', icon: BarChart3 },
   { href: '/app/synchronisation', label: 'Synchronisation', icon: RefreshCw },
   { href: '/app/equipe', label: 'Équipe', icon: Users },
   { href: '/app/parametres', label: 'Paramètres', icon: Settings },

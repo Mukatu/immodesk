@@ -6,6 +6,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 
 import { PageHeader } from '@/components/business/page-header';
 import { DataTable } from '@/components/business/data-table';
+import { ExportButton } from '@/components/business/export-button';
 import { MoneyXaf } from '@/components/business/money-xaf';
 import { PaymentStatusBadge } from '@/components/business/payment-status-badge';
 import { EnumSelect } from '@/components/business/enum-select';
@@ -90,6 +91,10 @@ export default function PaiementsPage() {
         description="Suivez les encaissements et leur affectation aux factures."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <ExportButton
+              kind="payments"
+              filters={{ method: method || undefined, status: status || undefined }}
+            />
             <Button asChild variant="outline">
               <Link href="/app/paiements/declarations">Déclarations</Link>
             </Button>

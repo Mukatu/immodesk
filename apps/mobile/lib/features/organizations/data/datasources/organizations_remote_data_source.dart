@@ -43,8 +43,7 @@ class OrganizationsRemoteDataSource {
         data: <String, dynamic>{
           'type': type.apiValue,
           'legalName': legalName,
-          if (tradeName != null && tradeName.isNotEmpty)
-            'tradeName': tradeName,
+          if (tradeName != null && tradeName.isNotEmpty) 'tradeName': tradeName,
           'city': city,
           if (district != null && district.isNotEmpty) 'district': district,
           'contactPhone': contactPhone,

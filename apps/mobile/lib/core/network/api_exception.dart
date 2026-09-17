@@ -32,7 +32,8 @@ class ApiException implements Exception {
     final Object? data = response?.data;
     if (response != null && data is Map<String, dynamic>) {
       final String code = (data['code'] as String?) ?? 'UNKNOWN';
-      final String message = (data['message'] as String?) ??
+      final String message =
+          (data['message'] as String?) ??
           _defaultMessages[code] ??
           _defaultMessages['UNKNOWN']!;
       return ApiException(

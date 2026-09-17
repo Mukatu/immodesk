@@ -16,7 +16,9 @@ class OrganizationsController extends _$OrganizationsController {
   }
 
   Future<void> refresh() async {
-    await ref.read(authSessionControllerProvider.notifier).refreshOrganizations();
+    await ref
+        .read(authSessionControllerProvider.notifier)
+        .refreshOrganizations();
     final organizations =
         ref.read(authSessionControllerProvider).value?.organizations ??
         const <OrganizationMembership>[];

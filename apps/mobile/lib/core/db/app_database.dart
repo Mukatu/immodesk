@@ -189,6 +189,26 @@ class CachedRemittances extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Relances mises en cache (`feature dunning`, phase 9) : consultation hors
+/// ligne en lecture seule de l'historique déjà envoyé à un locataire.
+/// Aucune écriture, aucune file d'attente — indexé par locataire plutôt
+/// que par organisation seule, car le contrat (`GET /v1/dunning-runs`) ne
+/// filtre pas par locataire et la lecture se fait donc par lots successifs
+/// (voir `DunningRepositoryImpl`).
+@DataClassName('CachedDunningRunRow')
+class CachedDunningRuns extends Table {
+  TextColumn get id => text()();
+  TextColumn get organizationId => text()();
+  TextColumn get tenantId => text()();
+
+  /// JSON de `DunningRun`.
+  TextColumn get payload => text()();
+  DateTimeColumn get cachedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// Base locale Drift (SQLite), chiffrée par défaut (SQLCipher) depuis la
 /// phase 5 — voir `docs/api/phase5-contract.md` « Côté mobile » et
 /// `_openConnection` ci-dessous pour la génération/lecture de la clé.
@@ -203,6 +223,7 @@ class CachedRemittances extends Table {
     CachedInvoices,
     CachedCashReceipts,
     CachedRemittances,
+    CachedDunningRuns,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -212,7 +233,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -236,6 +257,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(outbox, outbox.batchRef);
         await m.createTable(cachedCashReceipts);
         await m.createTable(cachedRemittances);
+      }
+      if (from < 6) {
+        await m.createTable(cachedDunningRuns);
       }
     },
   );
@@ -453,6 +477,40 @@ class AppDatabase extends _$AppDatabase {
     )..where((tbl) => tbl.organizationId.equals(organizationId))).get();
   }
 
+  /// Remplace le cache des relances d'un locataire précis, sans toucher
+  /// aux autres locataires déjà mis en cache (le contrat `GET
+  /// /v1/dunning-runs` ne filtre pas par locataire — voir
+  /// `DunningRepositoryImpl`, qui parcourt un nombre borné de pages).
+  Future<void> replaceCachedDunningRunsForTenant(
+    String organizationId,
+    String tenantId,
+    List<CachedDunningRunRow> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(cachedDunningRuns)..where(
+            (tbl) =>
+                tbl.organizationId.equals(organizationId) &
+                tbl.tenantId.equals(tenantId),
+          ))
+          .go();
+      for (final CachedDunningRunRow row in rows) {
+        await into(cachedDunningRuns).insertOnConflictUpdate(row);
+      }
+    });
+  }
+
+  Future<List<CachedDunningRunRow>> getCachedDunningRunsForTenant(
+    String organizationId,
+    String tenantId,
+  ) {
+    return (select(cachedDunningRuns)..where(
+          (tbl) =>
+              tbl.organizationId.equals(organizationId) &
+              tbl.tenantId.equals(tenantId),
+        ))
+        .get();
+  }
+
   /// Purge les données de référence préchargées (tournée) sans jamais
   /// toucher à l'`outbox` : au-delà de `retentionHours` sans synchronisation
   /// réussie, ce cache est effacé (voir `docs/api/phase5-contract.md`).
@@ -481,6 +539,9 @@ class AppDatabase extends _$AppDatabase {
       )..where((tbl) => tbl.organizationId.equals(organizationId))).go();
       await (delete(
         cachedRemittances,
+      )..where((tbl) => tbl.organizationId.equals(organizationId))).go();
+      await (delete(
+        cachedDunningRuns,
       )..where((tbl) => tbl.organizationId.equals(organizationId))).go();
     });
   }

@@ -152,6 +152,14 @@ class _InvoiceTile extends StatelessWidget {
       key: ValueKey('collection-invoice-${invoice.id}'),
       title: Text('${invoice.tenant.displayName} · Lot ${invoice.unit.code}'),
       subtitle: Text('Échéance le ${invoice.dueDate}'),
+      leading: IconButton(
+        key: ValueKey('collection-invoice-dunning-${invoice.id}'),
+        icon: const Icon(Icons.notifications_outlined),
+        tooltip: 'Relances envoyées',
+        onPressed: () => context.push(
+          RoutePaths.dunningHistory(invoice.tenant.id, invoiceId: invoice.id),
+        ),
+      ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,

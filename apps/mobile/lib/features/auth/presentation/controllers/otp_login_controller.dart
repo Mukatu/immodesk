@@ -80,8 +80,7 @@ class OtpLoginController extends _$OtpLoginController {
     final String? phone = normalizeCongoPhone(rawPhone);
     if (phone == null) {
       state = state.copyWith(
-        errorMessage:
-            'Numéro invalide. Utilisez le format +242 06 XXX XX XX.',
+        errorMessage: 'Numéro invalide. Utilisez le format +242 06 XXX XX XX.',
         errorCode: 'PHONE.INVALID',
         errorOrigin: OtpErrorOrigin.request,
       );

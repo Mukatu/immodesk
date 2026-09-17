@@ -88,10 +88,8 @@ void main() {
   setUp(() {
     mockDio = _MockDio();
     when(
-      () => mockDio.post<dynamic>(
-        '/auth/otp/request',
-        data: any(named: 'data'),
-      ),
+      () =>
+          mockDio.post<dynamic>('/auth/otp/request', data: any(named: 'data')),
     ).thenAnswer(
       (_) async => Response<dynamic>(
         requestOptions: RequestOptions(path: '/auth/otp/request'),
@@ -159,10 +157,7 @@ void main() {
     await goToOtpScreen(tester);
 
     when(
-      () => mockDio.post<dynamic>(
-        '/auth/otp/verify',
-        data: any(named: 'data'),
-      ),
+      () => mockDio.post<dynamic>('/auth/otp/verify', data: any(named: 'data')),
     ).thenAnswer(
       (_) async => Response<dynamic>(
         requestOptions: RequestOptions(path: '/auth/otp/verify'),
@@ -171,10 +166,7 @@ void main() {
       ),
     );
 
-    await tester.enterText(
-      find.byKey(const ValueKey('otp-digit-0')),
-      '123456',
-    );
+    await tester.enterText(find.byKey(const ValueKey('otp-digit-0')), '123456');
     await tester.pump();
     await tester.pump();
     await tester.pump();
@@ -197,10 +189,7 @@ void main() {
     await goToOtpScreen(tester);
 
     when(
-      () => mockDio.post<dynamic>(
-        '/auth/otp/verify',
-        data: any(named: 'data'),
-      ),
+      () => mockDio.post<dynamic>('/auth/otp/verify', data: any(named: 'data')),
     ).thenThrow(
       DioException(
         requestOptions: RequestOptions(path: '/auth/otp/verify'),
@@ -216,10 +205,7 @@ void main() {
       ),
     );
 
-    await tester.enterText(
-      find.byKey(const ValueKey('otp-digit-0')),
-      '000000',
-    );
+    await tester.enterText(find.byKey(const ValueKey('otp-digit-0')), '000000');
     await tester.pump();
     await tester.pump();
     await tester.pump();
@@ -228,45 +214,38 @@ void main() {
     expect(find.text('ORG_SELECT'), findsNothing);
   });
 
-  testWidgets(
-    'IAM.OTP_LOCKED affiche le message de blocage après 5 échecs',
-    (tester) async {
-      await goToOtpScreen(tester);
+  testWidgets('IAM.OTP_LOCKED affiche le message de blocage après 5 échecs', (
+    tester,
+  ) async {
+    await goToOtpScreen(tester);
 
-      when(
-        () => mockDio.post<dynamic>(
-          '/auth/otp/verify',
-          data: any(named: 'data'),
-        ),
-      ).thenThrow(
-        DioException(
+    when(
+      () => mockDio.post<dynamic>('/auth/otp/verify', data: any(named: 'data')),
+    ).thenThrow(
+      DioException(
+        requestOptions: RequestOptions(path: '/auth/otp/verify'),
+        type: DioExceptionType.badResponse,
+        response: Response<dynamic>(
           requestOptions: RequestOptions(path: '/auth/otp/verify'),
-          type: DioExceptionType.badResponse,
-          response: Response<dynamic>(
-            requestOptions: RequestOptions(path: '/auth/otp/verify'),
-            statusCode: 429,
-            data: <String, dynamic>{
-              'code': 'IAM.OTP_LOCKED',
-              'message': 'Trop de tentatives. Demandez un nouveau code.',
-            },
-          ),
+          statusCode: 429,
+          data: <String, dynamic>{
+            'code': 'IAM.OTP_LOCKED',
+            'message': 'Trop de tentatives. Demandez un nouveau code.',
+          },
         ),
-      );
+      ),
+    );
 
-      await tester.enterText(
-        find.byKey(const ValueKey('otp-digit-0')),
-        '000000',
-      );
-      await tester.pump();
-      await tester.pump();
-      await tester.pump();
+    await tester.enterText(find.byKey(const ValueKey('otp-digit-0')), '000000');
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
 
-      expect(
-        find.text('Trop de tentatives. Demandez un nouveau code.'),
-        findsOneWidget,
-      );
-    },
-  );
+    expect(
+      find.text('Trop de tentatives. Demandez un nouveau code.'),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('IAM.RATE_LIMITED affiche le message de limitation de débit', (
     tester,
@@ -274,10 +253,7 @@ void main() {
     await goToOtpScreen(tester);
 
     when(
-      () => mockDio.post<dynamic>(
-        '/auth/otp/verify',
-        data: any(named: 'data'),
-      ),
+      () => mockDio.post<dynamic>('/auth/otp/verify', data: any(named: 'data')),
     ).thenThrow(
       DioException(
         requestOptions: RequestOptions(path: '/auth/otp/verify'),
@@ -293,10 +269,7 @@ void main() {
       ),
     );
 
-    await tester.enterText(
-      find.byKey(const ValueKey('otp-digit-0')),
-      '000000',
-    );
+    await tester.enterText(find.byKey(const ValueKey('otp-digit-0')), '000000');
     await tester.pump();
     await tester.pump();
     await tester.pump();

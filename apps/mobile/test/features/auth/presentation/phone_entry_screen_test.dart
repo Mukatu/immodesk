@@ -93,31 +93,20 @@ void main() {
       verify(
         () => mockDio.post<dynamic>(
           '/auth/otp/request',
-          data: <String, dynamic>{
-            'phone': '+242066000001',
-            'channel': 'SMS',
-          },
+          data: <String, dynamic>{'phone': '+242066000001', 'channel': 'SMS'},
         ),
       ).called(1);
 
       expect(find.byType(OtpVerificationScreen), findsOneWidget);
-      expect(
-        find.text('Entrez le code reçu au +242066000001'),
-        findsOneWidget,
-      );
+      expect(find.text('Entrez le code reçu au +242066000001'), findsOneWidget);
     },
   );
 
-  testWidgets('affiche un numéro invalide sans appeler l\'API', (
-    tester,
-  ) async {
+  testWidgets('affiche un numéro invalide sans appeler l\'API', (tester) async {
     await tester.pumpWidget(buildApp());
     await tester.pump();
 
-    await tester.enterText(
-      find.byKey(const ValueKey('phone-field')),
-      '123',
-    );
+    await tester.enterText(find.byKey(const ValueKey('phone-field')), '123');
     await tester.tap(find.byKey(const ValueKey('send-code-button')));
     await tester.pump();
 
@@ -126,10 +115,8 @@ void main() {
       findsOneWidget,
     );
     verifyNever(
-      () => mockDio.post<dynamic>(
-        '/auth/otp/request',
-        data: any(named: 'data'),
-      ),
+      () =>
+          mockDio.post<dynamic>('/auth/otp/request', data: any(named: 'data')),
     );
   });
 
@@ -137,10 +124,8 @@ void main() {
     tester,
   ) async {
     when(
-      () => mockDio.post<dynamic>(
-        '/auth/otp/request',
-        data: any(named: 'data'),
-      ),
+      () =>
+          mockDio.post<dynamic>('/auth/otp/request', data: any(named: 'data')),
     ).thenThrow(
       DioException(
         requestOptions: RequestOptions(path: '/auth/otp/request'),

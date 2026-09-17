@@ -18,9 +18,7 @@ class PhoneEntryScreen extends ConsumerStatefulWidget {
 }
 
 class _PhoneEntryScreenState extends ConsumerState<PhoneEntryScreen> {
-  final TextEditingController _controller = TextEditingController(
-    text: '+242',
-  );
+  final TextEditingController _controller = TextEditingController(text: '+242');
 
   @override
   void dispose() {
@@ -76,9 +74,7 @@ class _PhoneEntryScreenState extends ConsumerState<PhoneEntryScreen> {
                 const SizedBox(height: 12),
                 Text(
                   state.errorMessage!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ],
               const SizedBox(height: 24),

@@ -68,6 +68,13 @@ class _TenantDetailBody extends ConsumerWidget {
         Text(formatCongoPhoneDisplay(tenant.primaryPhone)),
         const SizedBox(height: 16),
         _TenantActiveLeaseSection(tenantId: tenant.id),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          key: const ValueKey('dunning-history-button'),
+          onPressed: () => context.push(RoutePaths.dunningHistory(tenant.id)),
+          icon: const Icon(Icons.notifications_outlined),
+          label: const Text('Relances envoyées'),
+        ),
         const SizedBox(height: 24),
         Row(
           children: [

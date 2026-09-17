@@ -91,8 +91,7 @@ class _OrganizationCreateScreenState
                 key: const ValueKey('legal-name-field'),
                 controller: _legalName,
                 decoration: const InputDecoration(labelText: 'Raison sociale'),
-                validator: (value) =>
-                    (value == null || value.trim().isEmpty)
+                validator: (value) => (value == null || value.trim().isEmpty)
                     ? 'Champ requis'
                     : null,
               ),
@@ -101,8 +100,7 @@ class _OrganizationCreateScreenState
                 key: const ValueKey('city-field'),
                 controller: _city,
                 decoration: const InputDecoration(labelText: 'Ville'),
-                validator: (value) =>
-                    (value == null || value.trim().isEmpty)
+                validator: (value) => (value == null || value.trim().isEmpty)
                     ? 'Champ requis'
                     : null,
               ),

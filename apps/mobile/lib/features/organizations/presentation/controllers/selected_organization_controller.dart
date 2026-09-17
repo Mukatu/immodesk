@@ -17,10 +17,7 @@ class SelectedOrganizationController extends _$SelectedOrganizationController {
 
   Future<void> select(String organizationId) async {
     final AppDatabase db = ref.read(appDatabaseProvider);
-    await db.setSetting(
-      AppSettingsKeys.selectedOrganizationId,
-      organizationId,
-    );
+    await db.setSetting(AppSettingsKeys.selectedOrganizationId, organizationId);
     state = AsyncData<String?>(organizationId);
   }
 

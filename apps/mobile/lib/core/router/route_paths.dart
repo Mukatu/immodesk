@@ -112,4 +112,14 @@ abstract final class RoutePaths {
       '$maintenanceList/:id/mise-a-jour';
   static String maintenanceUpdate(String id) =>
       '$maintenanceList/$id/mise-a-jour';
+
+  /// Historique des relances envoyées à un locataire (`feature dunning`,
+  /// phase 9), en lecture seule — atteint depuis la fiche d'un locataire ou
+  /// depuis une facture de la tournée (`invoiceId` alors passé en requête
+  /// pour un filtre exact côté API).
+  static const String dunningHistoryPattern = '/relances/:tenantId';
+  static String dunningHistory(String tenantId, {String? invoiceId}) =>
+      invoiceId == null
+      ? '/relances/$tenantId'
+      : '/relances/$tenantId?invoiceId=$invoiceId';
 }

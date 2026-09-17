@@ -12,6 +12,7 @@ import '../../features/collection/presentation/screens/collection_round_screen.d
 import '../../features/collection/presentation/screens/confirmation_screen.dart';
 import '../../features/collection/presentation/screens/encaissement_screen.dart';
 import '../../features/diagnostics/presentation/screens/diagnostics_screen.dart';
+import '../../features/dunning/presentation/screens/dunning_history_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/inspections/presentation/screens/inspection_room_screen.dart';
 import '../../features/inspections/presentation/screens/inspection_setup_screen.dart';
@@ -95,6 +96,13 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.mandateDetailPattern,
         builder: (context, state) =>
             MandateDetailScreen(mandateId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: RoutePaths.dunningHistoryPattern,
+        builder: (context, state) => DunningHistoryScreen(
+          tenantId: state.pathParameters['tenantId']!,
+          invoiceId: state.uri.queryParameters['invoiceId'],
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

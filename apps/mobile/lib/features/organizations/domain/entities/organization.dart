@@ -16,17 +16,17 @@ enum OrganizationType {
 
 extension OrganizationTypeLabel on OrganizationType {
   String get label => switch (this) {
-        OrganizationType.agency => 'Agence immobilière',
-        OrganizationType.independentLandlord => 'Bailleur indépendant',
-        OrganizationType.independentManager => 'Gestionnaire indépendant',
-      };
+    OrganizationType.agency => 'Agence immobilière',
+    OrganizationType.independentLandlord => 'Bailleur indépendant',
+    OrganizationType.independentManager => 'Gestionnaire indépendant',
+  };
 
   /// Valeur attendue par l'API (`POST /v1/organizations`).
   String get apiValue => switch (this) {
-        OrganizationType.agency => 'AGENCY',
-        OrganizationType.independentLandlord => 'INDEPENDENT_LANDLORD',
-        OrganizationType.independentManager => 'INDEPENDENT_MANAGER',
-      };
+    OrganizationType.agency => 'AGENCY',
+    OrganizationType.independentLandlord => 'INDEPENDENT_LANDLORD',
+    OrganizationType.independentManager => 'INDEPENDENT_MANAGER',
+  };
 }
 
 enum OrganizationStatus {

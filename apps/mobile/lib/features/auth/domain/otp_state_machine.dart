@@ -34,13 +34,17 @@ class OtpStateMachine {
   }
 
   void requestSucceeded() {
-    _requireOneOf(const <OtpPhase>[OtpPhase.requestingCode], "confirmer l'envoi du code");
+    _requireOneOf(const <OtpPhase>[
+      OtpPhase.requestingCode,
+    ], "confirmer l'envoi du code");
     _phase = OtpPhase.codeSent;
   }
 
   /// [errorCode] est un code stable du contrat d'API (`IAM.RATE_LIMITED`…).
   void requestFailed(String errorCode) {
-    _requireOneOf(const <OtpPhase>[OtpPhase.requestingCode], "signaler l'echec d'une demande");
+    _requireOneOf(const <OtpPhase>[
+      OtpPhase.requestingCode,
+    ], "signaler l'echec d'une demande");
     _phase = errorCode == 'IAM.RATE_LIMITED'
         ? OtpPhase.rateLimited
         : OtpPhase.enteringPhone;
@@ -56,13 +60,17 @@ class OtpStateMachine {
   }
 
   void verificationSucceeded() {
-    _requireOneOf(const <OtpPhase>[OtpPhase.verifyingCode], 'confirmer la verification');
+    _requireOneOf(const <OtpPhase>[
+      OtpPhase.verifyingCode,
+    ], 'confirmer la verification');
     _phase = OtpPhase.verified;
   }
 
   /// [errorCode] : `IAM.OTP_INVALID`, `IAM.OTP_LOCKED` ou `IAM.RATE_LIMITED`.
   void verificationFailed(String errorCode) {
-    _requireOneOf(const <OtpPhase>[OtpPhase.verifyingCode], "signaler l'echec d'une verification");
+    _requireOneOf(const <OtpPhase>[
+      OtpPhase.verifyingCode,
+    ], "signaler l'echec d'une verification");
     switch (errorCode) {
       case 'IAM.OTP_LOCKED':
         _phase = OtpPhase.locked;

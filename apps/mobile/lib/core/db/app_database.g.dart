@@ -3852,6 +3852,375 @@ class CachedRemittancesCompanion extends UpdateCompanion<CachedRemittanceRow> {
   }
 }
 
+class $CachedDunningRunsTable extends CachedDunningRuns
+    with TableInfo<$CachedDunningRunsTable, CachedDunningRunRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedDunningRunsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _organizationIdMeta = const VerificationMeta(
+    'organizationId',
+  );
+  @override
+  late final GeneratedColumn<String> organizationId = GeneratedColumn<String>(
+    'organization_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tenantIdMeta = const VerificationMeta(
+    'tenantId',
+  );
+  @override
+  late final GeneratedColumn<String> tenantId = GeneratedColumn<String>(
+    'tenant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    organizationId,
+    tenantId,
+    payload,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_dunning_runs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedDunningRunRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('organization_id')) {
+      context.handle(
+        _organizationIdMeta,
+        organizationId.isAcceptableOrUnknown(
+          data['organization_id']!,
+          _organizationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_organizationIdMeta);
+    }
+    if (data.containsKey('tenant_id')) {
+      context.handle(
+        _tenantIdMeta,
+        tenantId.isAcceptableOrUnknown(data['tenant_id']!, _tenantIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tenantIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedDunningRunRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedDunningRunRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      organizationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}organization_id'],
+      )!,
+      tenantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tenant_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedDunningRunsTable createAlias(String alias) {
+    return $CachedDunningRunsTable(attachedDatabase, alias);
+  }
+}
+
+class CachedDunningRunRow extends DataClass
+    implements Insertable<CachedDunningRunRow> {
+  final String id;
+  final String organizationId;
+  final String tenantId;
+
+  /// JSON de `DunningRun`.
+  final String payload;
+  final DateTime cachedAt;
+  const CachedDunningRunRow({
+    required this.id,
+    required this.organizationId,
+    required this.tenantId,
+    required this.payload,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['organization_id'] = Variable<String>(organizationId);
+    map['tenant_id'] = Variable<String>(tenantId);
+    map['payload'] = Variable<String>(payload);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedDunningRunsCompanion toCompanion(bool nullToAbsent) {
+    return CachedDunningRunsCompanion(
+      id: Value(id),
+      organizationId: Value(organizationId),
+      tenantId: Value(tenantId),
+      payload: Value(payload),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedDunningRunRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedDunningRunRow(
+      id: serializer.fromJson<String>(json['id']),
+      organizationId: serializer.fromJson<String>(json['organizationId']),
+      tenantId: serializer.fromJson<String>(json['tenantId']),
+      payload: serializer.fromJson<String>(json['payload']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'organizationId': serializer.toJson<String>(organizationId),
+      'tenantId': serializer.toJson<String>(tenantId),
+      'payload': serializer.toJson<String>(payload),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedDunningRunRow copyWith({
+    String? id,
+    String? organizationId,
+    String? tenantId,
+    String? payload,
+    DateTime? cachedAt,
+  }) => CachedDunningRunRow(
+    id: id ?? this.id,
+    organizationId: organizationId ?? this.organizationId,
+    tenantId: tenantId ?? this.tenantId,
+    payload: payload ?? this.payload,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedDunningRunRow copyWithCompanion(CachedDunningRunsCompanion data) {
+    return CachedDunningRunRow(
+      id: data.id.present ? data.id.value : this.id,
+      organizationId: data.organizationId.present
+          ? data.organizationId.value
+          : this.organizationId,
+      tenantId: data.tenantId.present ? data.tenantId.value : this.tenantId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedDunningRunRow(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('tenantId: $tenantId, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, organizationId, tenantId, payload, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedDunningRunRow &&
+          other.id == this.id &&
+          other.organizationId == this.organizationId &&
+          other.tenantId == this.tenantId &&
+          other.payload == this.payload &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedDunningRunsCompanion extends UpdateCompanion<CachedDunningRunRow> {
+  final Value<String> id;
+  final Value<String> organizationId;
+  final Value<String> tenantId;
+  final Value<String> payload;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedDunningRunsCompanion({
+    this.id = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.tenantId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedDunningRunsCompanion.insert({
+    required String id,
+    required String organizationId,
+    required String tenantId,
+    required String payload,
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       organizationId = Value(organizationId),
+       tenantId = Value(tenantId),
+       payload = Value(payload);
+  static Insertable<CachedDunningRunRow> custom({
+    Expression<String>? id,
+    Expression<String>? organizationId,
+    Expression<String>? tenantId,
+    Expression<String>? payload,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (organizationId != null) 'organization_id': organizationId,
+      if (tenantId != null) 'tenant_id': tenantId,
+      if (payload != null) 'payload': payload,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedDunningRunsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? organizationId,
+    Value<String>? tenantId,
+    Value<String>? payload,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedDunningRunsCompanion(
+      id: id ?? this.id,
+      organizationId: organizationId ?? this.organizationId,
+      tenantId: tenantId ?? this.tenantId,
+      payload: payload ?? this.payload,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (organizationId.present) {
+      map['organization_id'] = Variable<String>(organizationId.value);
+    }
+    if (tenantId.present) {
+      map['tenant_id'] = Variable<String>(tenantId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedDunningRunsCompanion(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('tenantId: $tenantId, ')
+          ..write('payload: $payload, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3868,6 +4237,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CachedCashReceiptsTable(this);
   late final $CachedRemittancesTable cachedRemittances =
       $CachedRemittancesTable(this);
+  late final $CachedDunningRunsTable cachedDunningRuns =
+      $CachedDunningRunsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3882,6 +4253,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cachedInvoices,
     cachedCashReceipts,
     cachedRemittances,
+    cachedDunningRuns,
   ];
 }
 
@@ -5943,6 +6315,221 @@ typedef $$CachedRemittancesTableProcessedTableManager =
       CachedRemittanceRow,
       PrefetchHooks Function()
     >;
+typedef $$CachedDunningRunsTableCreateCompanionBuilder =
+    CachedDunningRunsCompanion Function({
+      required String id,
+      required String organizationId,
+      required String tenantId,
+      required String payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedDunningRunsTableUpdateCompanionBuilder =
+    CachedDunningRunsCompanion Function({
+      Value<String> id,
+      Value<String> organizationId,
+      Value<String> tenantId,
+      Value<String> payload,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedDunningRunsTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedDunningRunsTable> {
+  $$CachedDunningRunsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tenantId => $composableBuilder(
+    column: $table.tenantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedDunningRunsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedDunningRunsTable> {
+  $$CachedDunningRunsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tenantId => $composableBuilder(
+    column: $table.tenantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedDunningRunsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedDunningRunsTable> {
+  $$CachedDunningRunsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tenantId =>
+      $composableBuilder(column: $table.tenantId, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$CachedDunningRunsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedDunningRunsTable,
+          CachedDunningRunRow,
+          $$CachedDunningRunsTableFilterComposer,
+          $$CachedDunningRunsTableOrderingComposer,
+          $$CachedDunningRunsTableAnnotationComposer,
+          $$CachedDunningRunsTableCreateCompanionBuilder,
+          $$CachedDunningRunsTableUpdateCompanionBuilder,
+          (
+            CachedDunningRunRow,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedDunningRunsTable,
+              CachedDunningRunRow
+            >,
+          ),
+          CachedDunningRunRow,
+          PrefetchHooks Function()
+        > {
+  $$CachedDunningRunsTableTableManager(
+    _$AppDatabase db,
+    $CachedDunningRunsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedDunningRunsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedDunningRunsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedDunningRunsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> organizationId = const Value.absent(),
+                Value<String> tenantId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedDunningRunsCompanion(
+                id: id,
+                organizationId: organizationId,
+                tenantId: tenantId,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String organizationId,
+                required String tenantId,
+                required String payload,
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedDunningRunsCompanion.insert(
+                id: id,
+                organizationId: organizationId,
+                tenantId: tenantId,
+                payload: payload,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedDunningRunsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedDunningRunsTable,
+      CachedDunningRunRow,
+      $$CachedDunningRunsTableFilterComposer,
+      $$CachedDunningRunsTableOrderingComposer,
+      $$CachedDunningRunsTableAnnotationComposer,
+      $$CachedDunningRunsTableCreateCompanionBuilder,
+      $$CachedDunningRunsTableUpdateCompanionBuilder,
+      (
+        CachedDunningRunRow,
+        BaseReferences<
+          _$AppDatabase,
+          $CachedDunningRunsTable,
+          CachedDunningRunRow
+        >,
+      ),
+      CachedDunningRunRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5965,4 +6552,6 @@ class $AppDatabaseManager {
       $$CachedCashReceiptsTableTableManager(_db, _db.cachedCashReceipts);
   $$CachedRemittancesTableTableManager get cachedRemittances =>
       $$CachedRemittancesTableTableManager(_db, _db.cachedRemittances);
+  $$CachedDunningRunsTableTableManager get cachedDunningRuns =>
+      $$CachedDunningRunsTableTableManager(_db, _db.cachedDunningRuns);
 }

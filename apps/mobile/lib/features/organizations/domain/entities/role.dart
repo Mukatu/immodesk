@@ -16,10 +16,10 @@ enum Role {
 
 extension RoleLabel on Role {
   String get label => switch (this) {
-        Role.owner => 'Propriétaire',
-        Role.manager => 'Gestionnaire',
-        Role.collector => 'Démarcheur',
-        Role.accountant => 'Comptable',
-        Role.viewer => 'Lecture seule',
-      };
+    Role.owner => 'Propriétaire',
+    Role.manager => 'Gestionnaire',
+    Role.collector => 'Démarcheur',
+    Role.accountant => 'Comptable',
+    Role.viewer => 'Lecture seule',
+  };
 }

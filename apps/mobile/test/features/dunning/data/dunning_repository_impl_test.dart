@@ -50,57 +50,102 @@ void main() {
 
   tearDown(() => database.close());
 
-  test(
-    'filtre par locataire et trie du plus récent au plus ancien (dates ancrées)',
-    () async {
-      when(
-        () => remote.fetchRuns(
-          'org-1',
-          invoiceId: null,
-          cursor: null,
-          limit: any(named: 'limit'),
-        ),
-      ).thenAnswer(
-        (_) async => DunningRunsPage(
-          items: [
-            _run(
-              id: 'run-old',
-              tenantId: 'tenant-1',
-              scheduledAt: '2026-01-05T08:00:00.000Z',
-              executedAt: '2026-01-05T08:00:00.000Z',
-            ),
-            _run(
-              id: 'run-other-tenant',
-              tenantId: 'tenant-2',
-              scheduledAt: '2026-01-20T08:00:00.000Z',
-              executedAt: '2026-01-20T08:00:00.000Z',
-            ),
-            _run(
-              id: 'run-recent',
-              tenantId: 'tenant-1',
-              scheduledAt: '2026-01-15T08:00:00.000Z',
-              executedAt: '2026-01-15T08:00:00.000Z',
-            ),
-          ],
-          nextCursor: null,
-        ),
-      );
-
-      final result = await repository.fetchHistoryForTenant(
-        organizationId: 'org-1',
+  test('transmet le filtre par locataire et trie du plus récent au plus ancien '
+      '(dates ancrées)', () async {
+    when(
+      () => remote.fetchRuns(
+        'org-1',
+        invoiceId: null,
         tenantId: 'tenant-1',
-      );
+        cursor: null,
+        limit: any(named: 'limit'),
+      ),
+    ).thenAnswer(
+      (_) async => DunningRunsPage(
+        items: [
+          _run(
+            id: 'run-old',
+            tenantId: 'tenant-1',
+            scheduledAt: '2026-01-05T08:00:00.000Z',
+            executedAt: '2026-01-05T08:00:00.000Z',
+          ),
+          _run(
+            id: 'run-recent',
+            tenantId: 'tenant-1',
+            scheduledAt: '2026-01-15T08:00:00.000Z',
+            executedAt: '2026-01-15T08:00:00.000Z',
+          ),
+        ],
+        nextCursor: null,
+      ),
+    );
 
-      expect(result.isFromCache, isFalse);
-      expect(result.data.map((r) => r.id).toList(), ['run-recent', 'run-old']);
-    },
-  );
+    final result = await repository.fetchHistoryForTenant(
+      organizationId: 'org-1',
+      tenantId: 'tenant-1',
+    );
+
+    expect(result.isFromCache, isFalse);
+    expect(result.data.map((r) => r.id).toList(), ['run-recent', 'run-old']);
+    verify(
+      () => remote.fetchRuns(
+        'org-1',
+        invoiceId: null,
+        tenantId: 'tenant-1',
+        cursor: null,
+        limit: any(named: 'limit'),
+      ),
+    ).called(1);
+  });
+
+  test('ouverture depuis une facture filtre par invoiceId sans transmettre '
+      'tenantId', () async {
+    when(
+      () => remote.fetchRuns(
+        'org-1',
+        invoiceId: 'invoice-1',
+        tenantId: null,
+        cursor: null,
+        limit: any(named: 'limit'),
+      ),
+    ).thenAnswer(
+      (_) async => DunningRunsPage(
+        items: [
+          _run(
+            id: 'run-invoice',
+            tenantId: 'tenant-1',
+            scheduledAt: '2026-01-15T08:00:00.000Z',
+            executedAt: '2026-01-15T08:00:00.000Z',
+          ),
+        ],
+        nextCursor: null,
+      ),
+    );
+
+    final result = await repository.fetchHistoryForTenant(
+      organizationId: 'org-1',
+      tenantId: 'tenant-1',
+      invoiceId: 'invoice-1',
+    );
+
+    expect(result.data.map((r) => r.id).toList(), ['run-invoice']);
+    verify(
+      () => remote.fetchRuns(
+        'org-1',
+        invoiceId: 'invoice-1',
+        tenantId: null,
+        cursor: null,
+        limit: any(named: 'limit'),
+      ),
+    ).called(1);
+  });
 
   test('replie sur le cache local quand le réseau est indisponible', () async {
     when(
       () => remote.fetchRuns(
         'org-1',
         invoiceId: null,
+        tenantId: 'tenant-1',
         cursor: null,
         limit: any(named: 'limit'),
       ),
@@ -126,6 +171,7 @@ void main() {
       () => remote.fetchRuns(
         'org-1',
         invoiceId: null,
+        tenantId: 'tenant-1',
         cursor: null,
         limit: any(named: 'limit'),
       ),

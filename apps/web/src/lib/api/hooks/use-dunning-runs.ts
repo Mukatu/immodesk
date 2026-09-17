@@ -19,7 +19,13 @@ function buildQuery(params: Record<string, string | number | undefined>): string
   return qs ? `?${qs}` : '';
 }
 
-/** Historique des exécutions de relance, filtrable (palier, facture, statut, période). */
+/**
+ * Filtre par locataire, exposé par le serveur (`tenantId` sur
+ * `GET /dunning-runs`, cf. `dunning.dto.ts` et phase9-contract.md) mais absent
+ * du contrat de type partagé `DunningRunsQuery` — étendu ici localement plutôt
+ * que dans `apps/web/src/lib/api/types.ts`, hors périmètre de cette tâche.
+ */
+/** Historique des exécutions de relance, filtrable (palier, locataire, facture, statut, période). */
 export function useDunningRuns(params: DunningRunsQuery = {}) {
   return useQuery({
     queryKey: ['dunning-runs', params],
@@ -28,6 +34,7 @@ export function useDunningRuns(params: DunningRunsQuery = {}) {
         `/dunning-runs${buildQuery({
           ruleId: params.ruleId,
           invoiceId: params.invoiceId,
+          tenantId: params.tenantId,
           status: params.status,
           from: params.from,
           to: params.to,

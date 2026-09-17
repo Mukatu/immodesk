@@ -43,6 +43,9 @@ void main() {
     );
   }
 
+  // Simule le filtrage côté serveur documenté par
+  // `docs/api/phase9-contract.md` : `GET /v1/dunning-runs?tenantId=` ne
+  // renvoie que les relances du locataire demandé.
   void stubRuns(List<Map<String, dynamic>> items) {
     when(
       () => mockDio.get<dynamic>(
@@ -50,16 +53,25 @@ void main() {
         queryParameters: any(named: 'queryParameters'),
         options: any(named: 'options'),
       ),
-    ).thenAnswer(
-      (_) async => Response<dynamic>(
+    ).thenAnswer((invocation) async {
+      final Map<String, dynamic> query =
+          invocation.namedArguments[#queryParameters] as Map<String, dynamic>;
+      final String? tenantId = query['tenantId'] as String?;
+      final List<Map<String, dynamic>> filtered = tenantId == null
+          ? items
+          : items.where((item) {
+              final tenant = item['tenant'] as Map<String, dynamic>;
+              return tenant['id'] == tenantId;
+            }).toList();
+      return Response<dynamic>(
         requestOptions: RequestOptions(path: '/dunning-runs'),
         statusCode: 200,
         data: <String, dynamic>{
-          'items': items,
+          'items': filtered,
           'pageInfo': {'nextCursor': null},
         },
-      ),
-    );
+      );
+    });
   }
 
   testWidgets(

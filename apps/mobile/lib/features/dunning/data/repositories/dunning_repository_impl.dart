@@ -16,14 +16,8 @@ class DunningRepositoryImpl implements DunningRepository {
   final DunningRemoteDataSource _remote;
   final AppDatabase _db;
 
-  /// Taille de page côté API et nombre maximal de pages parcourues lorsque
-  /// la recherche n'est pas bornée par `invoiceId` (voir `dunning_repository.dart`) :
-  /// le contrat n'offre pas de filtre par locataire sur `GET
-  /// /v1/dunning-runs`, donc une ouverture depuis la fiche locataire filtre
-  /// côté mobile sur un nombre borné de relances récentes plutôt que sur
-  /// l'historique complet de l'organisation.
+  /// Taille de page côté API.
   static const int _pageLimit = 100;
-  static const int _maxScannedPages = 5;
 
   bool _isNetworkError(ApiException e) => e.code.startsWith('NETWORK.');
 
@@ -36,20 +30,17 @@ class DunningRepositoryImpl implements DunningRepository {
     try {
       final List<DunningRun> collected = <DunningRun>[];
       String? cursor;
-      int pagesScanned = 0;
       do {
         final DunningRunsPage page = await _remote.fetchRuns(
           organizationId,
           invoiceId: invoiceId,
+          tenantId: invoiceId == null ? tenantId : null,
           cursor: cursor,
           limit: _pageLimit,
         );
-        collected.addAll(page.items.where((run) => run.tenant.id == tenantId));
+        collected.addAll(page.items);
         cursor = page.nextCursor;
-        pagesScanned++;
-      } while (cursor != null &&
-          invoiceId == null &&
-          pagesScanned < _maxScannedPages);
+      } while (cursor != null);
 
       collected.sort(_byMostRecentFirst);
       await _db.replaceCachedDunningRunsForTenant(

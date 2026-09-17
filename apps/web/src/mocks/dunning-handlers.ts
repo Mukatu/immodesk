@@ -168,6 +168,7 @@ export const dunningRunHandlers = [
     const url = new URL(request.url);
     const ruleId = url.searchParams.get('ruleId');
     const invoiceId = url.searchParams.get('invoiceId');
+    const tenantId = url.searchParams.get('tenantId');
     const status = url.searchParams.get('status');
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
@@ -175,6 +176,7 @@ export const dunningRunHandlers = [
       .filter((r) => r.organizationId === organizationId)
       .filter((r) => !ruleId || r.ruleId === ruleId)
       .filter((r) => !invoiceId || r.invoiceId === invoiceId)
+      .filter((r) => !tenantId || r.tenantId === tenantId)
       .filter((r) => !status || r.status === status)
       .filter((r) => !from || r.runDate >= from)
       .filter((r) => !to || r.runDate <= to)

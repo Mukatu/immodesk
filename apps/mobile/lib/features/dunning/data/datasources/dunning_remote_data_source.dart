@@ -24,6 +24,7 @@ class DunningRemoteDataSource {
   Future<DunningRunsPage> fetchRuns(
     String organizationId, {
     String? invoiceId,
+    String? tenantId,
     String? cursor,
     int limit = 100,
   }) async {
@@ -32,6 +33,7 @@ class DunningRemoteDataSource {
         '/dunning-runs',
         queryParameters: <String, dynamic>{
           'invoiceId': ?invoiceId,
+          'tenantId': ?tenantId,
           'cursor': ?cursor,
           'limit': limit,
         },

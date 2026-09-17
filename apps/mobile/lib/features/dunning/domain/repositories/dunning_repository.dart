@@ -10,12 +10,11 @@ abstract interface class DunningRepository {
   /// d'exécution, ou d'échéance planifiée si non encore exécutée) au plus
   /// ancien.
   ///
-  /// Le contrat ne porte pas de filtre par locataire sur cette route.
   /// Lorsque [invoiceId] est fourni (ouverture depuis une facture précise
-  /// de la tournée), un seul appel exact au filtre `invoiceId` suffit.
-  /// Sinon (ouverture depuis la fiche locataire), l'implémentation
-  /// parcourt un nombre borné de pages et filtre côté mobile par
-  /// `tenant.id` — voir `DunningRepositoryImpl`.
+  /// de la tournée), l'appel filtre exactement par `invoiceId`. Sinon
+  /// (ouverture depuis la fiche locataire), l'appel filtre par
+  /// `tenantId` — le contrat expose désormais ce filtre côté serveur,
+  /// voir `DunningRepositoryImpl`.
   Future<CachedResult<List<DunningRun>>> fetchHistoryForTenant({
     required String organizationId,
     required String tenantId,

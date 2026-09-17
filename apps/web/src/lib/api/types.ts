@@ -2898,6 +2898,7 @@ export interface DunningRun {
 export interface DunningRunsQuery {
   ruleId?: string;
   invoiceId?: string;
+  tenantId?: string;
   status?: DunningStepStatus;
   from?: string;
   to?: string;

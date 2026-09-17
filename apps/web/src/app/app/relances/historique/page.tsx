@@ -7,6 +7,8 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/business/data-table';
 import { MoneyXaf } from '@/components/business/money-xaf';
 import { PageHeader } from '@/components/business/page-header';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -17,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { useDunningRules } from '@/lib/api/hooks/use-dunning-rules';
 import { useDunningRuns } from '@/lib/api/hooks/use-dunning-runs';
+import { useTenants } from '@/lib/api/hooks/use-tenants';
 import { DUNNING_STEP_STATUS_LABELS } from '@/lib/enum-labels';
 import type { DunningRun, DunningStepStatus } from '@/lib/api/types';
 import { formatDateFr } from '../_components/format-date-fr';
@@ -27,16 +30,34 @@ const PAGE_SIZE = 20;
 export default function DunningHistoryPage() {
   const [ruleId, setRuleId] = React.useState('ALL');
   const [status, setStatus] = React.useState<DunningStepStatus | 'ALL'>('ALL');
+  const [tenantQuery, setTenantQuery] = React.useState('');
+  const [tenantId, setTenantId] = React.useState<string | null>(null);
+  const [tenantLabel, setTenantLabel] = React.useState('');
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
   const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
 
   const { data: rulesData } = useDunningRules();
+  const { data: tenantsData } = useTenants({ q: tenantQuery || undefined, limit: 8 });
   const { data, isLoading } = useDunningRuns({
     ruleId: ruleId === 'ALL' ? undefined : ruleId,
+    tenantId: tenantId ?? undefined,
     status: status === 'ALL' ? undefined : status,
     cursor,
     limit: PAGE_SIZE,
   });
+
+  function selectTenant(id: string, label: string) {
+    setTenantId(id);
+    setTenantLabel(label);
+    setTenantQuery('');
+    resetPaging();
+  }
+
+  function clearTenant() {
+    setTenantId(null);
+    setTenantLabel('');
+    resetPaging();
+  }
 
   function resetPaging() {
     setCursor(undefined);
@@ -146,6 +167,48 @@ export default function DunningHistoryPage() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="history-tenant-filter">Locataire</Label>
+          {tenantId ? (
+            <div className="flex w-56 items-center justify-between rounded-md border border-border px-3 py-2">
+              <span className="truncate text-sm font-medium">{tenantLabel}</span>
+              <Button
+                id="history-tenant-filter"
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearTenant}
+              >
+                Effacer
+              </Button>
+            </div>
+          ) : (
+            <div className="relative w-56">
+              <Input
+                id="history-tenant-filter"
+                placeholder="Rechercher un locataire…"
+                value={tenantQuery}
+                onChange={(e) => setTenantQuery(e.target.value)}
+              />
+              {tenantQuery && (tenantsData?.items.length ?? 0) > 0 ? (
+                <ul className="absolute z-10 mt-1 w-full divide-y divide-border rounded-md border border-border bg-popover shadow-md">
+                  {tenantsData?.items.map((tenant) => (
+                    <li key={tenant.id}>
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                        onClick={() => selectTenant(tenant.id, tenant.displayName)}
+                      >
+                        {tenant.displayName}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
 

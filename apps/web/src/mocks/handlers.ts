@@ -255,24 +255,50 @@ type ContactChannelType = 'PHONE' | 'MOBILE' | 'WHATSAPP' | 'EMAIL' | 'FAX';
 export type BankAccountHolderType = 'ORGANIZATION' | 'LANDLORD' | 'TENANT';
 type MomoProvider = 'MTN_MOMO' | 'AIRTEL_MONEY' | 'CINETPAY' | 'PAWAPAY' | 'OTHER';
 export type PaymentMethod = 'CASH' | 'MOBILE_MONEY' | 'BANK_TRANSFER' | 'BANK_CHECK';
-export type DocumentKind =
-  | 'ID_DOCUMENT'
-  | 'LEASE_CONTRACT'
-  | 'MANDATE'
-  | 'RECEIPT_PDF'
-  | 'INVOICE_PDF'
-  | 'CASH_RECEIPT_PDF'
-  | 'TRANSFER_PROOF'
-  | 'CHECK_IMAGE'
-  | 'BANK_STATEMENT'
-  | 'INSPECTION_REPORT'
-  | 'INSPECTION_PHOTO'
-  | 'MAINTENANCE_PHOTO'
-  | 'SIGNATURE'
-  | 'OWNER_STATEMENT_PDF'
-  | 'EXPENSE_INVOICE'
-  | 'PROPERTY_PHOTO'
-  | 'OTHER';
+// Doit rester strictement identique à `DOCUMENT_KINDS` de
+// apps/api/src/modules/documents/domain/document-rules.ts.
+export const DOCUMENT_KINDS = [
+  'ID_DOCUMENT',
+  'LEASE_CONTRACT',
+  'MANDATE',
+  'RECEIPT_PDF',
+  'INVOICE_PDF',
+  'CASH_RECEIPT_PDF',
+  'TRANSFER_PROOF',
+  'CHECK_IMAGE',
+  'BANK_STATEMENT',
+  'INSPECTION_REPORT',
+  'INSPECTION_PHOTO',
+  'MAINTENANCE_PHOTO',
+  'SIGNATURE',
+  'OWNER_STATEMENT_PDF',
+  'EXPENSE_INVOICE',
+  'PROPERTY_PHOTO',
+  'OTHER',
+] as const;
+export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+
+// Doit rester strictement identique à `RELATED_ENTITY_TYPES` de
+// apps/api/src/modules/documents/domain/document-rules.ts.
+export const RELATED_ENTITY_TYPES = [
+  'landlord',
+  'tenant',
+  'guarantor',
+  'property',
+  'unit',
+  'organization',
+  'lease',
+  'bank_statement',
+  'bank_check',
+  'inspection',
+  'inspection_item',
+  'meter_reading',
+  'maintenance_request',
+  'maintenance_update',
+  'expense',
+  'payout',
+] as const;
+export type MockRelatedEntityType = (typeof RELATED_ENTITY_TYPES)[number];
 
 export interface MockLandlord {
   id: string;
@@ -1841,6 +1867,15 @@ export const handlers = [
       relatedEntityType?: string;
       relatedEntityId?: string;
     };
+    if (!DOCUMENT_KINDS.includes(body.kind)) {
+      return badRequest('DOCUMENTS.KIND_INVALID', 'Genre de document invalide.');
+    }
+    if (
+      body.relatedEntityType !== undefined &&
+      !(RELATED_ENTITY_TYPES as readonly string[]).includes(body.relatedEntityType)
+    ) {
+      return badRequest('DOCUMENTS.RELATED_ENTITY_TYPE_INVALID', 'Entité liée invalide.');
+    }
     const allowedMimeTypes = [
       'image/jpeg',
       'image/png',
@@ -1911,6 +1946,15 @@ export const handlers = [
       relatedEntityType?: string;
       relatedEntityId?: string;
     };
+    if (!DOCUMENT_KINDS.includes(body.kind)) {
+      return badRequest('DOCUMENTS.KIND_INVALID', 'Genre de document invalide.');
+    }
+    if (
+      body.relatedEntityType !== undefined &&
+      !(RELATED_ENTITY_TYPES as readonly string[]).includes(body.relatedEntityType)
+    ) {
+      return badRequest('DOCUMENTS.RELATED_ENTITY_TYPE_INVALID', 'Entité liée invalide.');
+    }
     const pending = pendingUploadObjects.get(body.objectKey);
     if (!pending || pending.organizationId !== organizationId) {
       return notFound('DOCUMENTS.OBJECT_NOT_FOUND', "L'objet n'a pas été téléversé.");

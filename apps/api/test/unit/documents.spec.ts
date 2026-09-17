@@ -5,6 +5,7 @@ import {
   buildObjectKey,
   MAX_IMAGE_BYTES,
   MAX_PDF_BYTES,
+  RELATED_ENTITY_TYPES,
   sanitizeFileName,
   SIGNED_URL_TTL_SECONDS,
 } from '../../src/modules/documents/domain/document-rules';
@@ -112,6 +113,31 @@ describe('Clés d’objet', () => {
     } catch (error) {
       expect((error as DomainError).code).toBe('DOCUMENTS.OBJECT_KEY_INVALID');
     }
+  });
+});
+
+describe('Entités de rattachement', () => {
+  it('contient exactement les seize valeurs attendues', () => {
+    // Un retrait accidentel doit casser ce test : les valeurs sont nommées,
+    // pas comptées.
+    expect(RELATED_ENTITY_TYPES).toEqual([
+      'landlord',
+      'tenant',
+      'guarantor',
+      'property',
+      'unit',
+      'organization',
+      'lease',
+      'bank_statement',
+      'bank_check',
+      'inspection',
+      'inspection_item',
+      'meter_reading',
+      'maintenance_request',
+      'maintenance_update',
+      'expense',
+      'payout',
+    ]);
   });
 });
 

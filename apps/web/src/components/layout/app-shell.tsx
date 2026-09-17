@@ -5,9 +5,11 @@ import { usePathname } from 'next/navigation';
 import {
   Banknote,
   Building2,
+  ClipboardCheck,
   CreditCard,
   FileCheck2,
   FileText,
+  Gauge,
   Handshake,
   Home,
   Landmark,
@@ -20,6 +22,7 @@ import {
   Users,
   Users2,
   Wallet,
+  Wrench,
 } from 'lucide-react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -43,6 +46,9 @@ const NAV_ITEMS = [
   { href: '/app/baux', label: 'Baux', icon: FileText },
   { href: '/app/depots', label: 'Dépôts', icon: Wallet },
   { href: '/app/immeubles', label: 'Immeubles', icon: Building2 },
+  { href: '/app/etats-des-lieux', label: 'États des lieux', icon: ClipboardCheck },
+  { href: '/app/compteurs', label: 'Compteurs', icon: Gauge },
+  { href: '/app/maintenance', label: 'Maintenance', icon: Wrench },
   { href: '/app/factures', label: 'Factures', icon: Receipt },
   { href: '/app/paiements', label: 'Paiements', icon: CreditCard },
   { href: '/app/caisse', label: 'Caisse', icon: Banknote },

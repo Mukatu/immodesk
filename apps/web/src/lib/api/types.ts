@@ -298,6 +298,11 @@ export type DocumentKind =
   | 'PROPERTY_PHOTO'
   | 'OTHER';
 
+/**
+ * Doit rester strictement identique à `RELATED_ENTITY_TYPES` de
+ * `apps/api/src/modules/documents/domain/document-rules.ts`, que l'API valide
+ * par `@IsIn` : toute valeur absente de cette liste est refusée par 400.
+ */
 export type RelatedEntityType =
   | 'landlord'
   | 'tenant'
@@ -306,9 +311,18 @@ export type RelatedEntityType =
   | 'unit'
   | 'organization'
   | 'lease'
+  // Phase 6 : import de relevé bancaire et photo de chèque.
+  | 'bank_statement'
+  | 'bank_check'
   // Phase 7 : justificatif de dépense, preuve de reversement.
   | 'expense'
-  | 'payout';
+  | 'payout'
+  // Phase 8 : états des lieux, compteurs et maintenance.
+  | 'inspection'
+  | 'inspection_item'
+  | 'meter_reading'
+  | 'maintenance_request'
+  | 'maintenance_update';
 
 // ---- Tiers : bailleurs ----
 
@@ -2524,13 +2538,19 @@ export interface AddInspectionPhotoBody {
 }
 
 /**
+ * Les signatures sont des images téléversées via le module documents
+ * (`tenantSignatureDocumentId`/`agentSignatureDocumentId`, tous deux
+ * facultatifs côté serveur) : c'est le mobile, sur le terrain, qui les
+ * capture et les téléverse. Le dashboard web n'a aucun composant de capture
+ * de signature et n'envoie donc aucun de ces deux identifiants.
+ *
  * Si le locataire est absent, `tenantPresent: false` et `absenceReason`
  * deviennent obligatoires ; le statut passe alors en `PENDING_SIGNATURE`
  * plutôt que `SIGNED` (delai de grâce de 15 jours avant clôture manuelle).
  */
 export interface SignInspectionBody {
-  tenantSignatureDataUrl?: string;
-  agentSignatureDataUrl: string;
+  tenantSignatureDocumentId?: string;
+  agentSignatureDocumentId?: string;
   tenantPresent?: boolean;
   absenceReason?: string;
 }

@@ -39,7 +39,8 @@ Depuis `apps/web/` (ou via `pnpm --filter @immodesk/web <script>` depuis la raci
 ```
 src/
   app/                    App Router : /login, /onboarding/organisation, /app/**, /invitations/[token],
-                          /acces-refuse, error.tsx, not-found.tsx, /api/auth/* (BFF), phase 1 :
+                          /acces-refuse, /app/equipe, error.tsx, not-found.tsx, /api/auth/* (BFF),
+                          phase 1 :
                           /app/bailleurs, /app/bailleurs/[id], /app/locataires,
                           /app/locataires/[id], /app/locataires/nouveau, /app/immeubles,
                           /app/immeubles/[id], /app/immeubles/nouveau, /app/lots/[id], phase 2 :
@@ -55,7 +56,23 @@ src/
                           /app/parametres/paiements, /app/parametres/webhooks,
                           /app/paiements/declarations, /app/paiements/mobile-money, phase 5 :
                           /app/synchronisation, /app/synchronisation/conflits,
-                          /app/synchronisation/appareils
+                          /app/synchronisation/appareils, phase 6 :
+                          /app/banque/releves, /app/banque/releves/[id],
+                          /app/banque/rapprochement, /app/banque/cheques,
+                          /app/parametres/rapprochement, phase 7 :
+                          /app/gerance/mandats, /app/gerance/mandats/[id],
+                          /app/gerance/mandats/nouveau, /app/gerance/depenses,
+                          /app/gerance/depenses/nouvelle, /app/gerance/commissions,
+                          /app/gerance/releves, /app/gerance/releves/[id],
+                          /app/gerance/reversements, /onboarding/gestionnaire-independant,
+                          /portail, /portail/activer, /portail/activer/[token],
+                          /portail/releves, /portail/encaissements, /portail/quittances,
+                          /portail/reversements, phase 8 :
+                          /app/etats-des-lieux, /app/etats-des-lieux/[id],
+                          /app/etats-des-lieux/comparaison/[unitId], /app/compteurs,
+                          /app/compteurs/[id], /app/parametres/tarifs,
+                          /app/facturation/refacturation, /app/maintenance,
+                          /app/maintenance/nouveau, /app/maintenance/[id]
   components/
     ui/                   Primitives shadcn/ui (Radix + class-variance-authority)
     business/             Composants métier : MoneyXaf, MoneyInput, PhoneInput, StatusBadge,
@@ -312,9 +329,65 @@ et routes `/portal/*`, le jeton d'invitation est l'identifiant du mandat lui-mê
 par la route `landlord-invitation` conformément au contrat). Un mandat de démonstration actif est
 semé sur le premier bailleur/bien de `DEMO_ORG_ID`.
 
+### États des lieux, compteurs et charges, maintenance (phase 8)
+
+**Domaine** (`docs/api/phase8-contract.md`) : états des lieux d'entrée, de sortie, périodiques et
+contradictoires avec photos par poste et signature, comparaison automatique entrée/sortie par pièce et
+élément avec proposition de retenue, gestion des relevés de compteurs (électricité, eau, gaz, énergie
+solaire, etc.) avec gestion des passages par zéro et détection des erreurs de saisie, tarification
+dynamique par bien/type avec forfait ou consommation, campagne de refacturation idempotente des charges
+aux baux, demandes de maintenance avec cycle de vie statut/priorité/affectation et suivi par mises à
+jour.
+
+**Règles de gestion critiques** : (1) Un état des lieux au statut `SIGNED` est figé : aucune action de
+modification n'est proposée. Une contestation ultérieure se marque `DISPUTED` sans jamais toucher au
+constat d'origine. (2) Les signatures manuscrites ne se capturent pas depuis le dashboard : elles se
+recueillent sur le terrain depuis l'application mobile. L'action de signature du dashboard verrouille
+un constat sans signature manuscrite, notamment pour clore le cas d'un locataire absent au-delà du
+délai de grâce. (3) La campagne de refacturation est idempotente par construction : un relevé déjà
+facturé est ignoré automatiquement, donc la relancer ne produit jamais de double facturation.
+
+**Gestion des relevés : cas d'erreur particuliers** : (1) Deux relevés ne peuvent pas porter la même
+date pour un même compteur : l'API refuse par 409 `METERS.READING_DUPLICATE_DATE`, et l'écran propose
+alors d'annuler ou de retenter avec une date différente. (2) Un index inférieur au précédent génère
+une erreur 422 `METERS.INDEX_REGRESSION` ; l'écran proposé deux choix explicites : corriger la saisie
+(édition du dernier relevé) ou confirmer un passage par zéro du compteur en renvoyant `rolloverApplied: true`.
+
+**Écrans** : `/app/etats-des-lieux` (liste filtrable par type, statut, lot, lien vers comparaison
+entrée/sortie) ; `/app/etats-des-lieux/[id]` (détail d'un état des lieux avec postes par pièce, photos,
+actions de signature/contestation/annulation selon le statut, PDF généré automatiquement au statut signé,
+retenue sur dépôt par poste) ; `/app/etats-des-lieux/comparaison/[unitId]` (comparaison des états
+d'entrée et de sortie signés par pièce et élément, état de chaque poste, écart en niveaux de condition,
+présence de photos, retenue proposée en résumé et par poste) ; `/app/compteurs` (liste avec filtres
+bien/lot/type, lien vers campagne de refacturation, création de compteur) ; `/app/compteurs/[id]` (détail
+du compteur, ajout de relevé avec gestion des erreurs de saisie, historique des relevés et consommation)
+; `/app/parametres/tarifs` (grilles tarifaires globales et par bien, groupées par type, création/édition/
+activation par rôle `OWNER`, lien vers campagne de refacturation) ; `/app/facturation/refacturation`
+(lancement d'une campagne sur période et bien optionnel, rapport lisible avec créés/ignorés/erreurs,
+bandeau assurant l'idempotence) ; `/app/maintenance` (liste filtrable par statut, priorité, bien,
+personne affectée, surligné les demandes en retard, lien de création, prise en compte du SLA) ;
+`/app/maintenance/nouveau` (création de demande avec lot, objet, description, priorité, origine du
+signalement) ; `/app/maintenance/[id]` (détail avec mises à jour chronologiques, actions de statut
+selon le cycle `OPEN` → `ACKNOWLEDGED` → `ASSIGNED` → `IN_PROGRESS` / `ON_HOLD` → `RESOLVED` →
+`CLOSED`, ou rejet à tout moment avec motif, lien vers l'état des lieux d'origine si applicable).
+
+**Composants** : `InspectionStatusBadge`, `ConditionBadge`, `PriorityBadge`,
+`MaintenanceStatusBadge`, `MaintenanceDueIndicator`.
+
+**Hooks** : `use-inspections`, `use-inspection`, `use-inspection-comparison`, `use-meters`,
+`use-meter`, `use-create-meter-reading`, `use-utility-tariffs`, `use-set-tariff-active`,
+`use-launch-utility-run`, `use-utility-run`, `use-maintenance-requests`, `use-maintenance-request`,
+`use-create-maintenance-request`.
+
+**Mocks MSW** : `inspections-handlers.ts`, `inspections-seed.ts` (états des lieux avec photos,
+signatures, comparaison d'entrée/sortie par pièce/élément), `facilities-handlers.ts`,
+`facilities-seed.ts` (compteurs, tarifs, relevés avec gestion des passages par zéro, campagne de
+refacturation avec rapport déterministe), `maintenance-handlers.ts`, `maintenance-seed.ts` (demandes
+avec cycle de vie, mises à jour, SLA calculé selon priorité).
+
 ## Tests
 
-- **Unitaires** (`pnpm test`, Vitest + Testing Library, **206 tests** répartis sur 44 fichiers) :
+- **Unitaires** (`pnpm test`, Vitest + Testing Library, **291 tests** répartis sur 59 fichiers) :
   formatage XAF (`MoneyXaf`), saisie téléphone congolaise (`PhoneInput`), affichage téléphone
   (`PhoneDisplay`), badge occupation (`OccupancyBadge`), validation taille et MIME de
   `DocumentUploader`, client API (`apiFetch`) incluant le rafraîchissement automatique de token et
@@ -333,7 +406,12 @@ semé sur le premier bailleur/bien de `DEMO_ORG_ID`.
   suggestion de rapprochement avec validation/rejet (`SuggestionCard`), badges de gestion d'agence
   phase 7 (`MandateStatusBadge`, `ExpenseStatusBadge`, `StatementStatusBadge`, `PayoutStatusBadge`),
   bailleur en diaspora (`DiasporaBadge`), cumul de commissions (`CommissionSummaryCard`), lignes de
-  relevé de gérance en débit/crédit sans jamais de montant négatif (`StatementLinesTable`).
+  relevé de gérance en débit/crédit sans jamais de montant négatif (`StatementLinesTable`), carte de
+  poste d'état des lieux (`InspectionItemCard`), groupement de postes par pièce (`InspectionItemsByRoom`),
+  ajout de relevé avec gestion des erreurs de saisie (`AddReadingDialog`), affichage d'une ligne de
+  relevé (`ReadingRow`), ligne tarifaire (`TariffRow`), rapport de campagne de refacturation
+  (`UtilityRunReport`), indicateur demande en retard (`MaintenanceDueIndicator`), entrée de mise à
+  jour de maintenance (`MaintenanceUpdateEntry`), badge statut maintenance (`MaintenanceStatusBadge`).
 - **e2e** (`pnpm test:e2e`, Playwright) :
   - **Phase 0** (`e2e/login-onboarding-invitation.spec.ts`) : connexion OTP → création
     d'organisation → invitation, entièrement mocké via MSW.
@@ -365,6 +443,15 @@ semé sur le premier bailleur/bien de `DEMO_ORG_ID`.
     par WhatsApp depuis un mandat actif → activation du portail par code reçu sur le téléphone, dans
     un contexte navigateur neuf (session isolée de l'agence) → vérification qu'aucune action
     d'écriture ni aucun lien vers l'agence n'est proposé sur les cinq écrans du portail.
+  - **Phase 8** (`e2e/phase8-patrimoine.spec.ts`) : trois parcours indépendants — (1) états des lieux
+    d'entrée et sortie semés via l'API mobile → affichage du constat de sortie signé figé → validation
+    de la retenue sur dépôt depuis la comparaison entrée/sortie → vérification de l'exclusivité
+    (retenue appliquée, aucune autre action) ; (2) compteur d'eau créé → premier relevé → second
+    relevé en régression (index < précédent) → refus proposant "Corriger" ou "Confirmer le passage par
+    zéro" → confirmation du passage par zéro → lancement de campagne de refacturation → vérification
+    du rapport (créées, ignorés, erreurs) ; (3) demande de maintenance signalée (fuite) → refus exige
+    un motif (dialog bloqué) → prise en compte → affectation (refus disparaît) → mise à jour en
+    « En intervention » → résolution → clôture, entièrement mocké via MSW.
 
 Tous les scénarios e2e utilisent MSW (`src/mocks/handlers.ts`), interceptée côté serveur
 (`msw/node`, activé dans `instrumentation.ts` quand `E2E_MOCK=1`). Les appels directs du navigateur
@@ -404,6 +491,12 @@ rattache à la première facture non annulée de l'organisation dès qu'elle en 
 basculant à CANCELLED pour rejouer le scénario « changement côté serveur pendant l'absence de
 connexion » — fonctionne aussi bien pour `DEMO_ORG_ID` que pour une organisation e2e fraîchement
 créée dont le portefeuille est construit via l'écran Factures.
+
+Phase 8 ajoute `inspections-handlers.ts`/`inspections-seed.ts` (états des lieux, postes, photos,
+signatures, comparaison entrée/sortie), `facilities-handlers.ts`/`facilities-seed.ts` (compteurs,
+relevés avec gestion des passages par zéro et erreurs de saisie, tarifs par bien/type, campagne de
+refacturation idempotente avec rapport), `maintenance-handlers.ts`/`maintenance-seed.ts` (demandes de
+maintenance avec cycle de vie statut, mises à jour, calcul du SLA selon priorité).
 
 ## Accessibilité et performance
 

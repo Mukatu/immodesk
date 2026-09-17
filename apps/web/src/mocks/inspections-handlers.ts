@@ -386,8 +386,8 @@ export const inspectionHandlers = [
       return conflict('INSPECTIONS.LOCKED', 'État des lieux déjà signé.');
     }
     const body = (await request.json()) as {
-      tenantSignatureDataUrl?: string;
-      agentSignatureDataUrl: string;
+      tenantSignatureDocumentId?: string;
+      agentSignatureDocumentId?: string;
       tenantPresent?: boolean;
       absenceReason?: string;
     };

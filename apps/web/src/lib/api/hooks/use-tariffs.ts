@@ -44,11 +44,33 @@ export function useCreateUtilityTariff() {
   });
 }
 
+/**
+ * `isActive` n'appartient pas à `UtilityTariffInput` (c'est un champ dérivé de
+ * `UtilityTariff`, jamais saisi à la création) : élargi ici pour permettre la
+ * désactivation/réactivation d'un tarif, qui ne se supprime jamais.
+ */
 export function useUpdateUtilityTariff(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<UtilityTariffInput>) =>
+    mutationFn: (body: Partial<UtilityTariffInput> & { isActive?: boolean }) =>
       apiFetch<UtilityTariff>(`/utility-tariffs/${id}`, { method: 'PATCH', body }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['utility-tariffs'] });
+    },
+  });
+}
+
+/**
+ * Variante de `useUpdateUtilityTariff` dont l'identifiant est fourni à l'appel
+ * plutôt qu'à l'instanciation du hook : nécessaire pour une action déclenchée
+ * depuis une liste (bascule active/inactive), où l'identifiant change à
+ * chaque ligne et ne peut pas être figé dans une fermeture de rendu précédent.
+ */
+export function useSetTariffActive() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      apiFetch<UtilityTariff>(`/utility-tariffs/${id}`, { method: 'PATCH', body: { isActive } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['utility-tariffs'] });
     },

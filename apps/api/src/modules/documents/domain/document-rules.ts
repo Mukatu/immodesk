@@ -41,6 +41,9 @@ export const RELATED_ENTITY_TYPES = [
   'meter_reading',
   'maintenance_request',
   'maintenance_update',
+  // Phase 7 : justificatif de dépense de gérance et preuve de reversement au bailleur.
+  'expense',
+  'payout',
 ] as const;
 export type RelatedEntityType = (typeof RELATED_ENTITY_TYPES)[number];
 

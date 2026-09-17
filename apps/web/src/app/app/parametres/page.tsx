@@ -146,6 +146,15 @@ export default function ParametresPage() {
             Seuil de suggestion, tolérances, confirmation automatique et frais de rejet de chèque.
           </p>
         </Link>
+        <Link
+          href="/app/parametres/tarifs"
+          className="rounded-md border border-border p-4 hover:bg-accent"
+        >
+          <p className="font-medium">Grilles tarifaires</p>
+          <p className="text-sm text-muted-foreground">
+            Tarifs d’eau et d’électricité par bien, pour la refacturation des charges.
+          </p>
+        </Link>
         {isOwner ? (
           <Link
             href="/app/parametres/webhooks"

@@ -53,6 +53,23 @@ export function useMeters(params: UseMetersParams = {}) {
   });
 }
 
+/**
+ * Le contrat (`docs/api/phase8-contract.md`) ne définit pas de route
+ * `GET /meters/{id}` : seules la liste (`GET /meters`) et la mise à jour
+ * (`PATCH /meters/{id}`) existent. La fiche détail réutilise donc la liste,
+ * non filtrée et à large limite, et retrouve le compteur par id côté client
+ * — cohérent avec le mock (`paginate()` ignore de toute façon `limit`/`cursor`
+ * et renvoie tous les compteurs de l'organisation).
+ */
+export function useMeter(id: string | null) {
+  const query = useQuery({
+    queryKey: ['meters', 'all'],
+    queryFn: () => apiFetch<Paginated<Meter>>('/meters?limit=200'),
+    enabled: Boolean(id),
+  });
+  return { ...query, data: query.data?.items.find((m) => m.id === id) ?? null };
+}
+
 export function useCreateMeter() {
   const queryClient = useQueryClient();
   return useMutation({

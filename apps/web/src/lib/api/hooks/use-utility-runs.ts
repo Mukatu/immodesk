@@ -21,15 +21,18 @@ export function useLaunchUtilityRun() {
 }
 
 /**
- * Suivi d'une campagne. `refetchInterval` laissé au consommateur (écran de
- * suivi) plutôt que codé ici, pour ne pas imposer de polling en arrière-plan
- * partout où le hook est utilisé.
+ * Suivi d'une campagne, sur le modèle de `useBillingRun` (phase 3) :
+ * interrogation périodique tant que le statut est `RUNNING`, arrêtée dès
+ * `DONE` ou `FAILED`.
  */
-export function useUtilityRun(runId: string | null, options: { refetchInterval?: number } = {}) {
+export function useUtilityRun(runId: string | null) {
   return useQuery({
     queryKey: ['utility-runs', runId],
     queryFn: () => apiFetch<UtilityRunReport>(`/billing/utility-runs/${runId}`),
     enabled: Boolean(runId),
-    refetchInterval: options.refetchInterval,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'DONE' || status === 'FAILED' ? false : 2000;
+    },
   });
 }

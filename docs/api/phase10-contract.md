@@ -66,6 +66,7 @@ Complète les contrats des phases 0 à 9 (mêmes conventions). Tables : `subscri
 - **Paiement** : le locataire règle une facture par Mobile Money, derrière le même fournisseur que les loyers. La confirmation suit la règle de re-interrogation de la phase 4.
 - **Quittance** : téléchargement du PDF déjà produit par la phase 3, avec son jeton de vérification publique inchangé.
 - **Virement déclaré** : le locataire déclare un virement avec preuve obligatoire, exactement comme le fait le mobile depuis la phase 4. La validation reste réservée au gestionnaire.
+- **Téléversement de la preuve par le locataire** : les routes du module documents sont réservées au rôle `MANAGER`, un locataire ne peut donc pas les appeler. Deux routes jumelles lui sont ouvertes, portant le même mécanisme d'URL signée et les mêmes plafonds de taille et de type, mais gardées par le rôle dérivé `TENANT_PORTAL` et **restreintes à ses propres baux** : le document créé porte obligatoirement `related_entity_type = 'lease'` et un `related_entity_id` appartenant au périmètre de la session. Toute autre entité de rattachement est refusée. Sans ces deux routes, la preuve exigée ci-dessus serait impossible à fournir.
 - **Activation progressive** : l'ouverture du portail est commandée par un drapeau de fonctionnalité par organisation, dans `feature_flags`, dont l'unicité est déjà garantie par index selon qu'il est global ou propre à une organisation. Le module des drapeaux existe déjà dans les organisations : il est étendu, pas recréé.
 
 ## Apport d'affaires
@@ -80,40 +81,42 @@ Complète les contrats des phases 0 à 9 (mêmes conventions). Tables : `subscri
 
 ## Routes
 
-| Méthode | Route                                                  | Rôle              | Sortie                                                              |
-| :------ | :----------------------------------------------------- | :---------------- | :------------------------------------------------------------------ |
-| GET     | `/v1/subscription-plans`                               | Authentifié       | `200 { items: SubscriptionPlan[] }`                                 |
-| GET     | `/v1/organizations/{id}/subscription`                  | OWNER, MANAGER    | `200 Subscription`                                                  |
-| POST    | `/v1/organizations/{id}/subscription`                  | OWNER             | `200 Subscription` (souscription ou changement de plan)             |
-| POST    | `/v1/organizations/{id}/subscription/cancel`           | OWNER             | `200 Subscription` ; 409 `SUBSCRIPTIONS.ALREADY_CANCELLED`          |
-| GET     | `/v1/organizations/{id}/subscription-invoices`         | OWNER, ACCOUNTANT | `200 { items: SubscriptionInvoice[], pageInfo }`                    |
-| POST    | `/v1/subscription-invoices/{id}/pay`                   | OWNER             | `202 { transactionId, status }` ; 409 `SUBSCRIPTIONS.ALREADY_PAID`  |
-| POST    | `/v1/webhooks/mobile-money/subscription`               | Public signé      | `204`                                                               |
-| POST    | `/v1/onboarding/{orgId}/first-property`                | OWNER             | `201 Property`                                                      |
-| POST    | `/v1/onboarding/{orgId}/first-lease`                   | OWNER             | `201 Lease`                                                         |
-| POST    | `/v1/onboarding/{orgId}/invite`                        | OWNER             | `201 Invitation`                                                    |
-| GET     | `/v1/onboarding/{orgId}/state`                         | OWNER             | `200 OnboardingState` (dérivé, jamais stocké)                       |
-| POST    | `/v1/portfolio-imports`                                | OWNER, MANAGER    | `202 { jobId }` ; 409 `IMPORTS.ALREADY_RUNNING`                     |
-| GET     | `/v1/portfolio-imports/{jobId}`                        | OWNER, MANAGER    | `200 ImportReport`                                                  |
-| POST    | `/v1/tenant-auth/otp/request`                          | Public            | `202 { expiresAt, resendAfter }`                                    |
-| POST    | `/v1/tenant-auth/otp/verify`                           | Public            | `200 { accessToken, tenant }`                                       |
-| GET     | `/v1/tenant/invoices`                                  | TENANT_PORTAL     | `200 { items: TenantInvoice[], pageInfo }`                          |
-| GET     | `/v1/tenant/invoices/{id}`                             | TENANT_PORTAL     | `200 TenantInvoice` ; 404 hors périmètre                            |
-| POST    | `/v1/tenant/invoices/{id}/pay`                         | TENANT_PORTAL     | `202 { transactionId, status }`                                     |
-| GET     | `/v1/tenant/receipts/{id}`                             | TENANT_PORTAL     | `200 { downloadUrl, expiresAt }`                                    |
-| POST    | `/v1/tenant/bank-transfer-declarations`                | TENANT_PORTAL     | `201 BankTransferDeclaration` (preuve obligatoire)                  |
-| GET     | `/v1/tenant/bank-transfer-declarations`                | TENANT_PORTAL     | `200 { items, pageInfo }`                                           |
-| POST    | `/v1/referral-partners`                                | Authentifié       | `201 ReferralPartner` (statut PENDING_VERIFICATION)                 |
-| GET     | `/v1/referral-partners/me`                             | Partenaire        | `200 ReferralPartner`                                               |
-| POST    | `/v1/organizations/{id}/referral-code`                 | OWNER             | `201 Referral` ; 422 `REFERRALS.SELF_REFERRAL` ; 409 déjà parrainée |
-| POST    | `/v1/referral-partners/me/properties`                  | Partenaire        | `202 { confirmationSentTo }` (aucune ligne avant confirmation)      |
-| POST    | `/v1/referral-partners/me/properties/{id}/confirm-otp` | Public bailleur   | `201 Referral`                                                      |
-| GET     | `/v1/referral-partners/me/referrals`                   | Partenaire        | `200 { items: Referral[], pageInfo }`                               |
-| GET     | `/v1/referral-partners/me/commissions`                 | Partenaire        | `200 { items: ReferralCommission[], totals }`                       |
-| POST    | `/v1/admin/referral-commissions/approve`               | OWNER plateforme  | `200 { approved, heldByCap }`                                       |
-| POST    | `/v1/admin/referral-payouts`                           | OWNER plateforme  | `202 { payoutIds }`                                                 |
-| GET     | `/v1/admin/referral-payouts/{id}`                      | OWNER plateforme  | `200 ReferralPayout`                                                |
-| GET     | `/v1/admin/subscriptions/at-risk`                      | OWNER plateforme  | `200 { items, pageInfo }`                                           |
+| Méthode | Route                                                  | Rôle              | Sortie                                                                          |
+| :------ | :----------------------------------------------------- | :---------------- | :------------------------------------------------------------------------------ |
+| GET     | `/v1/subscription-plans`                               | Authentifié       | `200 { items: SubscriptionPlan[] }`                                             |
+| GET     | `/v1/organizations/{id}/subscription`                  | OWNER, MANAGER    | `200 Subscription`                                                              |
+| POST    | `/v1/organizations/{id}/subscription`                  | OWNER             | `200 Subscription` (souscription ou changement de plan)                         |
+| POST    | `/v1/organizations/{id}/subscription/cancel`           | OWNER             | `200 Subscription` ; 409 `SUBSCRIPTIONS.ALREADY_CANCELLED`                      |
+| GET     | `/v1/organizations/{id}/subscription-invoices`         | OWNER, ACCOUNTANT | `200 { items: SubscriptionInvoice[], pageInfo }`                                |
+| POST    | `/v1/subscription-invoices/{id}/pay`                   | OWNER             | `202 { transactionId, status }` ; 409 `SUBSCRIPTIONS.ALREADY_PAID`              |
+| POST    | `/v1/webhooks/mobile-money/subscription`               | Public signé      | `204`                                                                           |
+| POST    | `/v1/onboarding/{orgId}/first-property`                | OWNER             | `201 Property`                                                                  |
+| POST    | `/v1/onboarding/{orgId}/first-lease`                   | OWNER             | `201 Lease`                                                                     |
+| POST    | `/v1/onboarding/{orgId}/invite`                        | OWNER             | `201 Invitation`                                                                |
+| GET     | `/v1/onboarding/{orgId}/state`                         | OWNER             | `200 OnboardingState` (dérivé, jamais stocké)                                   |
+| POST    | `/v1/portfolio-imports`                                | OWNER, MANAGER    | `202 { jobId }` ; 409 `IMPORTS.ALREADY_RUNNING`                                 |
+| GET     | `/v1/portfolio-imports/{jobId}`                        | OWNER, MANAGER    | `200 ImportReport`                                                              |
+| POST    | `/v1/tenant-auth/otp/request`                          | Public            | `202 { expiresAt, resendAfter }`                                                |
+| POST    | `/v1/tenant-auth/otp/verify`                           | Public            | `200 { accessToken, tenant }`                                                   |
+| GET     | `/v1/tenant/invoices`                                  | TENANT_PORTAL     | `200 { items: TenantInvoice[], pageInfo }`                                      |
+| GET     | `/v1/tenant/invoices/{id}`                             | TENANT_PORTAL     | `200 TenantInvoice` ; 404 hors périmètre                                        |
+| POST    | `/v1/tenant/invoices/{id}/pay`                         | TENANT_PORTAL     | `202 { transactionId, status }`                                                 |
+| GET     | `/v1/tenant/receipts/{id}`                             | TENANT_PORTAL     | `200 { downloadUrl, expiresAt }`                                                |
+| POST    | `/v1/tenant/documents/upload-url`                      | TENANT_PORTAL     | `201 { uploadUrl, objectKey, expiresAt }` (rattachement à un bail du périmètre) |
+| POST    | `/v1/tenant/documents`                                 | TENANT_PORTAL     | `201 Document` ; 404 hors périmètre                                             |
+| POST    | `/v1/tenant/bank-transfer-declarations`                | TENANT_PORTAL     | `201 BankTransferDeclaration` (preuve obligatoire)                              |
+| GET     | `/v1/tenant/bank-transfer-declarations`                | TENANT_PORTAL     | `200 { items, pageInfo }`                                                       |
+| POST    | `/v1/referral-partners`                                | Authentifié       | `201 ReferralPartner` (statut PENDING_VERIFICATION)                             |
+| GET     | `/v1/referral-partners/me`                             | Partenaire        | `200 ReferralPartner`                                                           |
+| POST    | `/v1/organizations/{id}/referral-code`                 | OWNER             | `201 Referral` ; 422 `REFERRALS.SELF_REFERRAL` ; 409 déjà parrainée             |
+| POST    | `/v1/referral-partners/me/properties`                  | Partenaire        | `202 { confirmationSentTo }` (aucune ligne avant confirmation)                  |
+| POST    | `/v1/referral-partners/me/properties/{id}/confirm-otp` | Public bailleur   | `201 Referral`                                                                  |
+| GET     | `/v1/referral-partners/me/referrals`                   | Partenaire        | `200 { items: Referral[], pageInfo }`                                           |
+| GET     | `/v1/referral-partners/me/commissions`                 | Partenaire        | `200 { items: ReferralCommission[], totals }`                                   |
+| POST    | `/v1/admin/referral-commissions/approve`               | OWNER plateforme  | `200 { approved, heldByCap }`                                                   |
+| POST    | `/v1/admin/referral-payouts`                           | OWNER plateforme  | `202 { payoutIds }`                                                             |
+| GET     | `/v1/admin/referral-payouts/{id}`                      | OWNER plateforme  | `200 ReferralPayout`                                                            |
+| GET     | `/v1/admin/subscriptions/at-risk`                      | OWNER plateforme  | `200 { items, pageInfo }`                                                       |
 
 ## Variables d'environnement nouvelles
 

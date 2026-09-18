@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/business/page-header';
 import { PhoneInput } from '@/components/business/phone-input';
 import { toE164Congo } from '@/lib/phone';
 import { useAuth } from '@/lib/auth/auth-context';
+import { apiFetch } from '@/lib/api/client';
 import { useOnboardIndependentManager } from '@/lib/api/hooks/use-onboarding';
 import { setCurrentOrganizationId } from '@/lib/api/token-store';
 import { ApiError, genericErrorMessage } from '@/lib/api/errors';
@@ -31,6 +32,7 @@ export default function OnboardingGestionnaireIndependantPage() {
   const [propertyAddressLine, setPropertyAddressLine] = React.useState('');
   const [propertyCity, setPropertyCity] = React.useState('Brazzaville');
   const [commissionRatePercent, setCommissionRatePercent] = React.useState('10');
+  const [referralCode, setReferralCode] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
 
   async function handleSubmit() {
@@ -63,8 +65,25 @@ export default function OnboardingGestionnaireIndependantPage() {
         commissionRateBps: Math.round(Number(commissionRatePercent) * 100),
       });
       setCurrentOrganizationId(result.organization.id);
+      const code = referralCode.trim();
+      if (code) {
+        // Route dédiée (pas un champ du corps de création) : voir
+        // docs/api/phase10-contract.md, section « Apport d'affaires ».
+        // Échec non bloquant : l'organisation et le mandat existent déjà.
+        try {
+          await apiFetch(`/organizations/${result.organization.id}/referral-code`, {
+            method: 'POST',
+            body: { code },
+            organizationId: result.organization.id,
+          });
+        } catch {
+          // Ignoré volontairement.
+        }
+      }
       await refresh();
-      router.push(`/app/gerance/mandats/${result.mandate.id}`);
+      router.push(
+        `/onboarding/etapes?redirect=${encodeURIComponent(`/app/gerance/mandats/${result.mandate.id}`)}`,
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : genericErrorMessage);
     }
@@ -190,6 +209,15 @@ export default function OnboardingGestionnaireIndependantPage() {
                 />
                 <p className="text-xs text-muted-foreground">Pré-rempli à 10 %, modifiable.</p>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="referral-code">Code de parrainage (optionnel)</Label>
+              <Input
+                id="referral-code"
+                placeholder="IMD-XXXXXX"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
+              />
             </div>
           </CardContent>
         </Card>

@@ -42,6 +42,7 @@ type IdentityValues = z.infer<typeof identitySchema>;
 export default function ParametresPage() {
   const { currentOrganizationId, currentOrganization } = useAuth();
   const isOwner = currentOrganization?.role === 'OWNER';
+  const canImportPortfolio = isOwner || currentOrganization?.role === 'MANAGER';
   const { data: organization, isLoading: loadingOrg } = useOrganization(currentOrganizationId);
   const { data: settings, isLoading: loadingSettings } =
     useOrganizationSettings(currentOrganizationId);
@@ -155,6 +156,17 @@ export default function ParametresPage() {
             Tarifs d’eau et d’électricité par bien, pour la refacturation des charges.
           </p>
         </Link>
+        {canImportPortfolio ? (
+          <Link
+            href="/app/parametres/import-portefeuille"
+            className="rounded-md border border-border p-4 hover:bg-accent"
+          >
+            <p className="font-medium">Import de portefeuille</p>
+            <p className="text-sm text-muted-foreground">
+              Reprise en masse depuis un fichier CSV (bailleurs, biens, lots, locataires, baux).
+            </p>
+          </Link>
+        ) : null}
         {isOwner ? (
           <Link
             href="/app/parametres/webhooks"

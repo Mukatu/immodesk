@@ -42,6 +42,13 @@ import { maintenanceHandlers } from './maintenance-handlers';
 import { dunningHandlers, seedDunningDemoData } from './dunning-handlers';
 import { dashboardsHandlers } from './dashboards-handlers';
 import { exportsHandlers } from './exports-handlers';
+import { subscriptionHandlers } from './subscription-handlers';
+import { onboardingWizardHandlers } from './onboarding-wizard-handlers';
+import { portfolioImportHandlers } from './portfolio-import-handlers';
+import { tenantPortalHandlers } from './tenant-portal-handlers';
+import { seedTenantPortalDemoData } from './tenant-portal-seed';
+import { referralHandlers } from './referral-handlers';
+import { seedReferralDemoData } from './referral-seed';
 import { API_BASE } from './api-base';
 
 /**
@@ -50,7 +57,7 @@ import { API_BASE } from './api-base';
  * État en mémoire, réinitialisé à chaque démarrage du serveur Next (process e2e).
  */
 
-const DEV_OTP_CODE = '000000';
+export const DEV_OTP_CODE = '000000';
 
 // API_BASE est importé (et réexporté) depuis son propre module sans dépendance :
 // voir le commentaire de api-base.ts sur le cycle d'import avec leases-handlers.ts
@@ -90,7 +97,7 @@ interface MockMembership {
   joinedAt: string;
 }
 
-interface MockInvitation {
+export interface MockInvitation {
   id: string;
   organizationId: string;
   phone: string;
@@ -103,7 +110,7 @@ interface MockInvitation {
 export const users = new Map<string, MockUser>();
 export const organizations = new Map<string, MockOrganization>();
 export const memberships: MockMembership[] = [];
-const invitations = new Map<string, MockInvitation>();
+export const invitations = new Map<string, MockInvitation>();
 const accessTokens = new Map<string, string>(); // token -> userId
 const refreshTokens = new Map<string, string>(); // token -> userId
 
@@ -940,6 +947,15 @@ seedBankReconciliationDemoData(DEMO_ORG_ID);
     });
   }
 })();
+seedTenantPortalDemoData({
+  tenants,
+  leases,
+  invoices: billingInvoices,
+  documents,
+  DEMO_ORG_ID,
+  nextId,
+});
+seedReferralDemoData({ DEMO_ORG_ID, nextId });
 
 export function notFound(code: string, message = 'Introuvable.') {
   return HttpResponse.json({ code, message }, { status: 404 });
@@ -2075,6 +2091,11 @@ export const handlers = [
   ...dunningHandlers,
   ...dashboardsHandlers,
   ...exportsHandlers,
+  ...subscriptionHandlers,
+  ...onboardingWizardHandlers,
+  ...portfolioImportHandlers,
+  ...tenantPortalHandlers,
+  ...referralHandlers,
 
   // Onboarding du gestionnaire indépendant (phase 7) : organisation + bailleur + bien +
   // mandat en une transaction. Reste ici (et non dans agency-handlers.ts) car il a besoin

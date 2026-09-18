@@ -76,7 +76,13 @@ src/
                           /app/facturation/refacturation, /app/maintenance,
                           /app/maintenance/nouveau, /app/maintenance/[id], phase 9 :
                           /app/relances, /app/relances/historique,
-                          /app/relances/historique/[id], /app/tableaux-de-bord
+                          /app/relances/historique/[id], /app/tableaux-de-bord, phase 10 :
+                          /app/abonnement, /onboarding/etapes, /app/parametres/import-portefeuille,
+                          /locataire, /locataire/connexion, /locataire/factures/[id],
+                          /locataire/virement, /partenaire, /partenaire/tableau-de-bord,
+                          /partenaire/confirmer/[registrationId] (page publique),
+                          /app/admin, /app/admin/commissions, /app/admin/versements,
+                          /app/admin/abonnements-a-risque, /app/admin/contre-passations
   components/
     ui/                   Primitives shadcn/ui (Radix + class-variance-authority)
     business/             Composants métier : MoneyXaf, MoneyInput, PhoneInput, StatusBadge,
@@ -438,6 +444,65 @@ Le moteur sélectionne le palier par correspondance EXACTE du décalage en jours
 une simulation plus permissive que le serveur rendrait les tests complaisants et invalides pour valider les
 bugs de sélection du palier.
 
+### Abonnement SaaS, onboarding guidé, import de portefeuille, portail locataire et apport d'affaires (phase 10)
+
+**Domaine** (`docs/api/phase10-contract.md`) : **abonnement SaaS** par organisation (une seule ligne pour
+toujours, arbitrage n°1), catalogue de plans (Starter, Standard mensuel/annuel, Pro), facture d'abonnement
+réglée en une fois par Mobile Money (jamais DRAFT ni PARTIALLY_PAID, arbitrage n°2) ; **onboarding guidé**
+en trois étapes facultatives et reprenables après la création de l'organisation (premier bien, premier bail,
+première invitation), avancement entièrement dérivé côté serveur (aucune colonne de progression stockée) ;
+**import de portefeuille** en masse par fichier CSV (bailleurs, biens, lots, locataires, baux, arbitrage n°3),
+transactionnel ligne à ligne (une ligne en échec n'interrompt jamais l'import, elle est comptée et motivée
+dans le rapport) ; **portail locataire** en libre-service (arbitrage n°4 : aucun rôle stocké, jeton propre au
+portail, jamais partagé avec l'agence ni le portail bailleur), périmètre strict aux baux ACTIFS du locataire
+connecté ; **apport d'affaires** (parrainage, arbitrages n°5 à 7) avec code de parrainage saisi à
+l'inscription ou bien apporté directement par le partenaire (avec confirmation OTP obligatoire par le
+bailleur avant toute création de filleul, `referrals_otp_chk`), commissions à trois statuts
+(ACCRUED → APPROVED → PAID) approuvées par campagne mensuelle puis versées en lot par Mobile Money, jamais
+une seconde fois pour la même organisation filleule (arbitrage n°5) ; **abonnements à risque** (vue
+plateforme des organisations PAST_DUE/SUSPENDED).
+
+**Écrans** : `/app/abonnement` (plan courant, historique des factures, paiement Mobile Money d'une facture
+émise ou en retard, changement de plan, résiliation réservée à OWNER) ; `/onboarding/etapes` (suite affichée
+juste après la création de l'organisation, trois étapes avec indicateur de progression, chacune « passable »
+sans effet côté serveur — reprenable plus tard depuis les écrans normaux) ; `/app/parametres/import-portefeuille`
+(dépôt du fichier via le téléverseur de documents générique, rapport de suivi par sondage jusqu'à un statut
+final, téléchargement CSV des lignes rejetées, réservé aux rôles Gestionnaire et Propriétaire) ; portail
+locataire (`/locataire/connexion` — OTP direct sur le téléphone sans jeton d'invitation, `/locataire` — liste
+des factures tous baux actifs confondus, `/locataire/factures/[id]` — détail, paiement Mobile Money,
+téléchargement de quittance une fois payée, `/locataire/virement` — déclaration de virement avec preuve
+obligatoire et historique) ; espace partenaire (`/partenaire` — inscription et code de parrainage à
+partager, `/partenaire/tableau-de-bord` — filleuls et commissions/versements, `/partenaire/confirmer/[registrationId]`
+— page publique de confirmation par le bailleur apporté) ; back-office plateforme (`/app/admin` et
+sous-écrans, accès restreint côté composant au rôle OWNER en l'absence de rôle « plateforme » modélisé :
+`/app/admin/commissions` — campagne d'approbation ACCRUED → APPROVED, `/app/admin/versements` — versement
+groupé par lot de commissions APPROVED, `/app/admin/abonnements-a-risque`, `/app/admin/contre-passations`).
+
+**Composants** : `PaySubscriptionInvoiceDialog`, `ChangePlanDialog`, `ImportReportCard`,
+`TenantPortalShell`, `PayInvoicePanel`, `ReceiptDownloadButton`, `DeclareTransferForm`,
+`PartnerRegistrationForm`, `PartnerShareCard`, `RegisterPropertyDialog`, `PayoutRow`.
+
+**Hooks** : `use-subscriptions`, `use-onboarding-wizard`, `use-portfolio-imports`, `use-tenant-portal`,
+`use-referral`, `use-admin-referrals`.
+
+**Mocks MSW** : `subscription-handlers.ts`/`subscription-seed.ts` (catalogue de plans, upsert de la ligne
+d'abonnement, simulateur Mobile Money par suffixe du numéro payeur — ...01 succès, ...02 échec, ...03
+attente puis expiration), `onboarding-wizard-handlers.ts` (trois routes idempotentes réutilisant les mêmes
+règles de création que les phases 0 à 2, état dérivé sans stockage), `portfolio-import-handlers.ts`/
+`portfolio-import-seed.ts` (job d'import avec rapport déterministe : 42 lignes lues, 38 créées, 4 rejetées,
+un type d'entité par ligne rejetée), `tenant-portal-handlers.ts`/`tenant-portal-seed.ts` (jeton propre au
+portail, réutilise les tables `invoices`/`receipts`/`transferDeclarations` déjà seedées par les phases 3-4),
+`referral-handlers.ts`/`referral-seed.ts` (partenaires, filleuls, commissions et versements, anti-abus
+serveur contre l'auto-parrainage et le double parrainage d'une même organisation).
+
+**Écart connu, documenté dans le code** (`src/app/locataire/virement/_lib/upload-tenant-proof.ts`) : le
+téléversement de la preuve de virement depuis le portail locataire appelle les routes génériques
+`/documents/upload-url` et `/documents`, qui résolvent l'organisation via l'en-tête `X-Organization-Id`
+(`orgIdFromRequest`, `mocks/handlers.ts`) — jamais envoyé par le client locataire (jeton Bearer seul,
+`tenant-client.ts`). La preuve étant obligatoire, aucune déclaration de virement locataire ne peut donc
+aboutir tant que ce point n'est pas traité ; le scénario e2e correspondant s'arrête volontairement au
+contrôle de validation client (voir la section Tests).
+
 ## Tests
 
 - **Unitaires** (`pnpm test`, Vitest + Testing Library, **308 tests** répartis sur 63 fichiers) :
@@ -516,6 +581,33 @@ bugs de sélection du palier.
     (2) création d'une seconde organisation → vérification que les quatre tableaux de bord s'affichent
     → filtrage par période → vérification de quatre boutons d'export CSV (jamais Excel) → export depuis
     la liste des factures, vérification du format CSV, entièrement mocké via MSW.
+  - **Phase 10 monétisation** (`e2e/phase10-monetisation.spec.ts`) : deux scénarios indépendants —
+    (1) organisation fraîche → facture d'abonnement (plan Standard, période d'essai) payée par
+    Mobile Money (numéro payeur se terminant par ...01) → facture « Payée », abonnement « Actif » ;
+    (2) un partenaire s'inscrit et récupère son code de parrainage (contexte séparé) → une seconde
+    organisation le saisit à l'étape 3 de la création → suite d'onboarding guidé traversée de bout en
+    bout (premier bien créé après détour par « Créer un bailleur », premier bail créé après détour par
+    lot et locataire, première invitation envoyée) → vérification côté partenaire que le filleul
+    apparaît en attente, source « Code saisi à l'inscription ».
+  - **Phase 10 import de portefeuille** (`e2e/phase10-import-portefeuille.spec.ts`) : téléversement
+    d'un fichier CSV → rapport déterministe du mock (42 lignes lues, 38 créées, 4 rejetées) → les
+    quatre lignes rejetées sont visibles avec leur motif → téléchargement du CSV des rejets → nouvel
+    import possible.
+  - **Phase 10 portail locataire** (`e2e/phase10-portail-locataire.spec.ts`) : portefeuille minimal
+    (bailleur avec compte bancaire, immeuble, lot, locataire, bail actif, facture émise) → connexion
+    OTP du locataire dans un contexte navigateur neuf → consultation de la facture → paiement Mobile
+    Money (...01) → facture « Payée » et quittance disponible → déclaration de virement : compte
+    bancaire du bailleur proposé, contrôle client bloquant tant qu'aucune preuve n'est jointe (l'envoi
+    complet n'est pas exercé, voir l'écart connu documenté ci-dessus).
+  - **Phase 10 parrainage** (`e2e/phase10-parrainage.spec.ts`) : deux scénarios indépendants —
+    (1) inscription d'un partenaire → apport d'un bien pour un bailleur qui n'a pas encore de compte
+    Immodesk → ce bailleur crée son compte avec le même numéro → confirmation par OTP sur la page
+    publique `/partenaire/confirmer/[registrationId]`, sans session → le filleul apparaît côté
+    partenaire (source « Bien enregistré par le partenaire », en attente) → aucune commission pour
+    l'instant (aucun abonnement payé côté filleul) ; (2) back-office : approbation de la commission
+    ACCRUED du partenaire de démonstration (`seedReferralDemoData`, seule donnée du mock permettant
+    d'exercer cette route) → versement groupé regroupant cette commission avec celle déjà APPROVED du
+    même partenaire → un versement « Reversé » couvrant deux commissions.
 
 Tous les scénarios e2e utilisent MSW (`src/mocks/handlers.ts`), interceptée côté serveur
 (`msw/node`, activé dans `instrumentation.ts` quand `E2E_MOCK=1`). Les appels directs du navigateur
@@ -569,6 +661,18 @@ déclarée en tête de `dunning-seed.ts` : `DUNNING_REFERENCE_TODAY = new Date('
 sur l'horloge du système, afin que le test reste déterministe quelle que soit la date d'exécution.
 Le moteur sélectionne le palier par correspondance EXACTE du décalage en jours de retard, comme le
 serveur : une simulation plus permissive que le serveur rendrait les tests complaisants.
+
+Phase 10 ajoute `subscription-handlers.ts`/`subscription-seed.ts` (catalogue de plans, ligne d'abonnement
+indexée par organisation, simulateur Mobile Money par suffixe du numéro payeur), `onboarding-wizard-handlers.ts`
+(premier bien/bail/invitation, état dérivé sans stockage), `portfolio-import-handlers.ts`/
+`portfolio-import-seed.ts` (job d'import au rapport déterministe), `tenant-portal-handlers.ts`/
+`tenant-portal-seed.ts` (jeton propre au portail locataire, réutilise les tables des phases 3-4),
+`referral-handlers.ts`/`referral-seed.ts` (partenaires, filleuls, commissions et versements, avec un
+partenaire de démonstration ACTIVE et trois commissions ACCRUED/APPROVED/PAID, seule donnée permettant
+d'exercer réellement l'approbation et le versement groupé du back-office). Écart connu : le téléversement
+de la preuve de virement depuis le portail locataire (`upload-tenant-proof.ts`) appelle les routes
+génériques de documents, qui exigent `X-Organization-Id` — jamais envoyé par le client locataire ; voir le
+commentaire du fichier et la section Tests.
 
 ## Accessibilité et performance
 

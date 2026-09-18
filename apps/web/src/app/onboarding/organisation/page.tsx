@@ -23,6 +23,7 @@ import { PageHeader } from '@/components/business/page-header';
 import { cn } from '@/lib/utils';
 import { toE164Congo } from '@/lib/phone';
 import { useAuth } from '@/lib/auth/auth-context';
+import { apiFetch } from '@/lib/api/client';
 import { useCreateOrganization } from '@/lib/api/hooks/use-organizations';
 import type { OrganizationType } from '@/lib/api/types';
 
@@ -61,6 +62,7 @@ const schema = z.object({
   district: z.string().optional(),
   localPhone: z.string().refine((v) => toE164Congo(v) !== null, 'Numéro invalide.'),
   contactEmail: z.string().email('Adresse e-mail invalide.').optional().or(z.literal('')),
+  referralCode: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -84,6 +86,7 @@ export default function OnboardingOrganisationPage() {
       district: '',
       localPhone: '',
       contactEmail: '',
+      referralCode: '',
     },
     mode: 'onChange',
   });
@@ -92,7 +95,7 @@ export default function OnboardingOrganisationPage() {
     const fieldsByStep: Array<Array<keyof FormValues>> = [
       ['type'],
       ['legalName', 'tradeName', 'city', 'district'],
-      ['localPhone', 'contactEmail'],
+      ['localPhone', 'contactEmail', 'referralCode'],
     ];
     const valid = await form.trigger(fieldsByStep[stepIndex]);
     if (!valid) return;
@@ -118,7 +121,7 @@ export default function OnboardingOrganisationPage() {
     const phone = toE164Congo(values.localPhone);
     if (!phone) return;
     try {
-      await createOrganization.mutateAsync({
+      const organization = await createOrganization.mutateAsync({
         type: values.type,
         legalName: values.legalName,
         tradeName: values.tradeName || undefined,
@@ -127,8 +130,23 @@ export default function OnboardingOrganisationPage() {
         contactPhone: phone,
         contactEmail: values.contactEmail || undefined,
       });
+      const referralCode = values.referralCode?.trim();
+      if (referralCode) {
+        // Route dédiée (pas un champ du corps de création) : voir
+        // docs/api/phase10-contract.md, section « Apport d'affaires ».
+        // Échec non bloquant (ex. code invalide) : l'organisation existe déjà.
+        try {
+          await apiFetch(`/organizations/${organization.id}/referral-code`, {
+            method: 'POST',
+            body: { code: referralCode },
+            organizationId: organization.id,
+          });
+        } catch {
+          // Ignoré volontairement : le parrainage n'est pas bloquant pour l'onboarding.
+        }
+      }
       await refresh();
-      router.push('/app');
+      router.push('/onboarding/etapes');
     } catch (error) {
       setServerError(
         error instanceof Error ? error.message : 'Impossible de créer l’organisation.',
@@ -306,6 +324,19 @@ export default function OnboardingOrganisationPage() {
                     <FormLabel htmlFor="contact-email">E-mail de contact (optionnel)</FormLabel>
                     <FormControl>
                       <Input id="contact-email" type="email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="referralCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel htmlFor="referral-code">Code de parrainage (optionnel)</FormLabel>
+                    <FormControl>
+                      <Input id="referral-code" placeholder="IMD-XXXXXX" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

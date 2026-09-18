@@ -38,6 +38,13 @@ test.describe('Portefeuille phase 1 : bailleur → immeuble → lots → locatai
 
     await page.locator('#contact-phone').fill(ORG_CONTACT_PHONE);
     await page.getByRole('button', { name: 'Créer l’organisation' }).click();
+    // La création redirige désormais vers l'onboarding guidé (phase 10) :
+    // sans intérêt pour ce scénario, on le passe entièrement.
+    await expect(page).toHaveURL(/\/onboarding\/etapes/);
+    await page.getByRole('button', { name: 'Passer cette étape' }).click();
+    await page.getByRole('button', { name: 'Passer cette étape' }).click();
+    await page.getByRole('button', { name: 'Passer cette étape' }).click();
+    await page.getByRole('button', { name: 'Aller au tableau de bord' }).click();
 
     await expect(page).toHaveURL(/\/app$/);
     await expect(page.getByRole('heading', { name: /Agence Portefeuille E2E/ })).toBeVisible();

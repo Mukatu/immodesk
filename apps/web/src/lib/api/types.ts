@@ -667,6 +667,21 @@ export interface CreateDocumentBody {
 }
 
 /**
+ * Téléversement depuis le portail locataire — extension mock au contrat
+ * (voir apps/web/src/mocks/tenant-portal-handlers.ts) : les mêmes routes
+ * génériques `/documents/*` exigent `X-Organization-Id`, indisponible pour un
+ * jeton locataire, d'où des routes `/tenant/documents/*` scopées par bail
+ * ACTIF (`leaseId` obligatoire) plutôt que par organisation.
+ */
+export interface TenantUploadUrlRequest extends UploadUrlRequest {
+  leaseId: string;
+}
+
+export interface TenantCreateDocumentBody extends CreateDocumentBody {
+  leaseId: string;
+}
+
+/**
  * Types du contrat d'API — Phase 2 (baux et dépôts de garantie).
  * Recopiés depuis docs/api/phase2-contract.md. Ne pas diverger du contrat
  * sans mettre à jour ce fichier et le document source.
@@ -3035,4 +3050,430 @@ export interface ExportJob {
   documentId?: string;
   downloadUrl?: string;
   error?: string;
+}
+
+/**
+ * Types du contrat d'API — Phase 10 (abonnement SaaS, onboarding guidé, import
+ * de portefeuille, portail locataire, apport d'affaires). Recopiés depuis
+ * docs/api/phase10-contract.md. Aucune modification du DDL par cette phase :
+ * les tables et énumérations existantes (`InvoiceStatus`, `MomoProvider`,
+ * `PayoutStatus`) sont réutilisées telles quelles quand le contrat le précise
+ * explicitement, jamais redéfinies.
+ */
+
+// ---- Abonnement SaaS ----
+
+export type SubscriptionStatus =
+  'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CANCELLED' | 'EXPIRED';
+
+export type BillingInterval = 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+
+/**
+ * `invoice_status` (partagé avec les loyers) est réutilisé tel quel pour
+ * `subscription_invoices`, mais un abonnement se règle en une fois par Mobile
+ * Money : seuls ISSUED, PAID, OVERDUE et CANCELLED sont produits. DRAFT et
+ * PARTIALLY_PAID n'existent jamais pour ce domaine (arbitrage n°2 du contrat).
+ */
+export type SubscriptionInvoiceStatus = Extract<
+  InvoiceStatus,
+  'ISSUED' | 'PAID' | 'OVERDUE' | 'CANCELLED'
+>;
+
+export interface SubscriptionPlanFeatures {
+  [key: string]: boolean | number | string;
+}
+
+/** Catalogue global, sans `organizationId` : seuls les plans publics et actifs sont exposés. */
+export interface SubscriptionPlan {
+  id: string;
+  code: string;
+  name: string;
+  billingInterval: BillingInterval;
+  basePrice: number;
+  includedUnits: number;
+  perUnitPrice: number;
+  maxUnits: number | null;
+  maxMembers: number | null;
+  trialDays: number;
+  features: SubscriptionPlanFeatures;
+  isPublic: boolean;
+  isActive: boolean;
+}
+
+/**
+ * Une organisation n'a qu'un seul abonnement, pour toujours
+ * (`subscriptions_org_uk UNIQUE (organization_id)`, arbitrage n°1) : changer
+ * de plan met à jour cette même ligne, il n'existe aucun historique des plans
+ * successifs. `unitsCount` et `recurringAmount` sont recalculés côté serveur
+ * à chaque facturation, jamais fournis par l'appelant.
+ */
+export interface Subscription {
+  id: string;
+  organizationId: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  unitsCount: number;
+  recurringAmount: number;
+  discountRateBps: number;
+  trialEndsAt: string | null;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  graceDays: number;
+  cancelledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Corps de `POST /organizations/{id}/subscription` : souscription initiale ou changement de plan selon qu'une ligne existe déjà. */
+export interface SubscriptionInput {
+  planId: string;
+}
+
+export interface SubscriptionInvoice {
+  id: string;
+  subscriptionId: string;
+  periodStart: string;
+  periodEnd: string;
+  amount: number;
+  paidAmount: number;
+  status: SubscriptionInvoiceStatus;
+  dueDate: string;
+  issuedAt: string;
+  paidAt: string | null;
+}
+
+/** Corps de `POST /subscription-invoices/{id}/pay` : non détaillé par le contrat, calqué sur `MomoInitiateInput` (paiement Mobile Money, même agrégateur que les loyers). */
+export interface SubscriptionInvoicePaymentInput {
+  payerMsisdn: string;
+  clientRef?: string;
+}
+
+export interface SubscriptionInvoicePaymentAccepted {
+  transactionId: string;
+  status: MomoStatus;
+}
+
+// ---- Onboarding guidé (phase 10, distinct de l'onboarding du gestionnaire indépendant ci-dessus) ----
+
+/** Étape « premier bien » : mêmes champs et validation que `PropertyInput` (phases 1-2), sans duplication. */
+export type OnboardingFirstPropertyInput = PropertyInput;
+
+/** Étape « premier bail » : mêmes champs et validation que `LeaseInput`. */
+export type OnboardingFirstLeaseInput = LeaseInput;
+
+/** Étape « première invitation » : mêmes champs que l'invitation d'un membre (phase 0). */
+export interface OnboardingInviteInput {
+  phone: string;
+  role: Role;
+}
+
+/**
+ * État d'avancement dérivé, jamais stocké : chaque étape est marquée faite si
+ * l'entité correspondante existe déjà pour l'organisation. Aucune colonne de
+ * progression n'est ajoutée en base.
+ */
+export interface OnboardingState {
+  firstPropertyDone: boolean;
+  firstPropertyId: string | null;
+  firstLeaseDone: boolean;
+  firstLeaseId: string | null;
+  inviteDone: boolean;
+  invitationId: string | null;
+}
+
+// ---- Import de portefeuille ----
+
+export type PortfolioImportStatus = 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED';
+
+export type PortfolioImportEntityType = 'LANDLORD' | 'PROPERTY' | 'UNIT' | 'TENANT' | 'LEASE';
+
+export interface PortfolioImportRejection {
+  line: number;
+  entityType: PortfolioImportEntityType;
+  reason: string;
+}
+
+/** Corps de `POST /portfolio-imports` : le fichier est téléversé au préalable par le module documents (genre OTHER), puis cité par son id. */
+export interface PortfolioImportInput {
+  documentId: string;
+}
+
+export interface PortfolioImportAccepted {
+  jobId: string;
+}
+
+/**
+ * Rapport suivi par `GET /portfolio-imports/{jobId}`. L'écriture est
+ * transactionnelle par ligne : une ligne en échec ne bloque jamais les
+ * suivantes, elle est comptée et motivée dans `rejections`.
+ */
+export interface PortfolioImportReport {
+  jobId: string;
+  status: PortfolioImportStatus;
+  documentId: string;
+  linesRead: number;
+  linesCreated: number;
+  linesRejected: number;
+  rejections: PortfolioImportRejection[];
+  reportDocumentId: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+}
+
+// ---- Portail locataire ----
+
+/**
+ * Aucun motif d'OTP propre au locataire n'existe : la connexion utilise
+ * `otp_purpose = 'LOGIN'`, comme n'importe quel autre canal (arbitrage n°4).
+ */
+export type OtpPurpose = 'LOGIN' | 'PHONE_VERIFICATION' | 'PASSWORD_RESET' | 'SENSITIVE_ACTION';
+
+export interface TenantOtpRequestInput {
+  phone: string;
+}
+
+export interface TenantOtpRequestResponse {
+  expiresAt: string;
+  resendAfter: string;
+}
+
+export interface TenantOtpVerifyInput {
+  phone: string;
+  code: string;
+}
+
+/**
+ * Session du portail locataire : aucun rôle stocké, le rôle dérivé
+ * `TENANT_PORTAL` n'existe que côté serveur (arbitrage n°4). Le périmètre est
+ * l'ensemble des baux actifs rattachés au `tenantId` du numéro vérifié — un
+ * locataire présent dans deux organisations voit ses baux des deux.
+ */
+export interface TenantPortalSession {
+  tenantId: string;
+  displayName: string;
+  primaryPhone: string;
+  leases: { id: string; reference: string | null; property: string; unit: string }[];
+}
+
+export interface TenantOtpVerifyResponse {
+  accessToken: string;
+  tenant: TenantPortalSession;
+}
+
+/**
+ * Vue du locataire sur sa propre facture. Le contrat ne détaille pas de
+ * schéma JSON pour cette route : champs repris de `InvoiceSummary`/`InvoiceDetail`
+ * (mêmes noms), sans les références internes de gestion. Le cloisonnement
+ * (baux actifs du locataire connecté) est fait côté serveur ; toute facture
+ * hors périmètre répond 404, jamais 403.
+ *
+ * `receipt` suit le même nom que sur `InvoiceDetail` (jamais `receiptId` brut) :
+ * présent uniquement quand la quittance existe (facture réglée), `null` sinon.
+ */
+export interface TenantInvoice {
+  id: string;
+  invoiceNumber: string | null;
+  status: InvoiceStatus;
+  lease: { id: string; reference: string | null };
+  unit: { id: string; code: string };
+  property: { id: string; name: string };
+  periodStart: string;
+  periodEnd: string;
+  dueDate: string;
+  totalAmount: number;
+  paidAmount: number;
+  balanceAmount: number;
+  rentAmount: number;
+  chargesAmount: number;
+  penaltyAmount: number;
+  issuedAt: string | null;
+  paidAt: string | null;
+  receipt: { id: string; receiptNumber: string } | null;
+}
+
+/** Corps non détaillé par le contrat : calqué sur `MomoInitiateInput`, `tenantId` en moins (implicite, dérivé de la session du portail). */
+export interface TenantInvoicePaymentInput {
+  payerMsisdn: string;
+  clientRef?: string;
+}
+
+/** `POST /tenant/invoices/{id}/pay` : même mécanisme Mobile Money que les loyers, avec re-interrogation obligatoire (jamais le webhook seul). */
+export interface TenantInvoicePaymentAccepted {
+  transactionId: string;
+  status: MomoStatus;
+}
+
+export interface TenantReceiptDownload {
+  downloadUrl: string;
+  expiresAt: string;
+}
+
+/**
+ * Déclaration de virement par le locataire : « exactement comme le fait le
+ * mobile depuis la phase 4 » (contrat) — mêmes champs que
+ * `TransferDeclarationInput`, `tenantId` en moins (implicite, dérivé de la
+ * session du portail).
+ */
+export type TenantBankTransferDeclarationInput = Omit<TransferDeclarationInput, 'tenantId'>;
+
+export type TenantBankTransferDeclaration = TransferDeclaration;
+
+// ---- Apport d'affaires (parrainage) ----
+
+export type ReferralPartnerStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
+
+export type ReferralStatus = 'PENDING' | 'QUALIFIED' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+
+/**
+ * À ne pas confondre avec `CommissionStatus` (phase 7, commissions de
+ * gérance) : domaine distinct, valeurs distinctes.
+ */
+export type ReferralCommissionStatus = 'ACCRUED' | 'APPROVED' | 'PAID' | 'REVERSED' | 'CANCELLED';
+
+export type ReferralSource =
+  'CODE_AT_SIGNUP' | 'PARTNER_REGISTERED_PROPERTY' | 'LINK' | 'MANUAL_ADMIN';
+
+export interface ReferralPartnerInput {
+  displayName: string;
+  phone: string;
+}
+
+/**
+ * Le code (`IMD-` + six caractères alphanumériques majuscules) est engendré
+ * côté serveur, jamais fourni par l'appelant. `verifiedAt`, `momoProvider` et
+ * `payoutMsisdn` ne sont renseignés qu'au passage à ACTIVE
+ * (`referral_partners_verified_chk`), et vont toujours de pair.
+ */
+export interface ReferralPartner {
+  id: string;
+  userId: string;
+  displayName: string;
+  phone: string;
+  code: string;
+  status: ReferralPartnerStatus;
+  momoProvider: MomoProvider | null;
+  payoutMsisdn: string | null;
+  verifiedAt: string | null;
+  createdAt: string;
+}
+
+/** Corps de `POST /organizations/{id}/referral-code` : saisi à l'inscription (source CODE_AT_SIGNUP). */
+export interface ReferralCodeInput {
+  code: string;
+}
+
+/**
+ * Un parrainage par organisation filleule, définitivement
+ * (`referrals_org_uk UNIQUE (referred_organization_id)`, arbitrage n°5).
+ * `qualifiedAt` est renseigné dès que `status` quitte PENDING.
+ */
+export interface Referral {
+  id: string;
+  partnerId: string;
+  referredOrganizationId: string;
+  referredOrganizationName: string;
+  source: ReferralSource;
+  status: ReferralStatus;
+  qualifiedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+/** `POST /referral-partners/me/properties` : n'engendre aucune ligne `Referral` tant que le bailleur n'a pas confirmé par OTP (`referrals_otp_chk`). */
+export interface ReferralPropertyRegistrationInput {
+  landlordPhone: string;
+  propertyName: string;
+  propertyAddressLine: string;
+  propertyCity: string;
+}
+
+/**
+ * `registrationId` : champ hors contrat (le contrat ne précise pas comment
+ * l'appelant apprend l'identifiant à passer à `confirm-otp`) — ajouté pour
+ * rendre le parcours réalisable de bout en bout côté web. À vérifier contre
+ * l'implémentation serveur réelle dès qu'elle existe.
+ */
+export interface ReferralPropertyRegistrationAccepted {
+  confirmationSentTo: string;
+  registrationId: string;
+}
+
+export interface ReferralPropertyConfirmInput {
+  code: string;
+}
+
+/**
+ * Une commission payée ne se modifie jamais : un remboursement crée une
+ * nouvelle ligne REVERSED avec `reversalOfId` pointant sur l'originale, qui
+ * reste intacte (arbitrage n°7).
+ */
+export interface ReferralCommission {
+  id: string;
+  partnerId: string;
+  referralId: string;
+  subscriptionInvoiceId: string;
+  amount: number;
+  rateBps: number;
+  status: ReferralCommissionStatus;
+  reversalOfId: string | null;
+  payoutId: string | null;
+  accruedAt: string;
+  approvedAt: string | null;
+  paidAt: string | null;
+}
+
+export interface ReferralCommissionTotals {
+  accrued: number;
+  approved: number;
+  paid: number;
+}
+
+export interface ReferralCommissionsResponse {
+  items: ReferralCommission[];
+  totals: ReferralCommissionTotals;
+}
+
+/** Regroupement d'un versement par lot. Réutilise `PayoutStatus`, déjà partagé avec les reversements bailleur (six valeurs, distinctes d'une commission). */
+export interface ReferralPayout {
+  id: string;
+  partnerId: string;
+  periodStart: string;
+  periodEnd: string;
+  amount: number;
+  status: PayoutStatus;
+  commissionsCount: number;
+  failureReason: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+// ---- Back-office plateforme ----
+
+export interface ReferralCommissionsApproveInput {
+  partnerId?: string;
+  periodEnd?: string;
+}
+
+export interface ReferralCommissionsApproveResult {
+  approved: number;
+  heldByCap: number;
+}
+
+export interface ReferralPayoutsCreateInput {
+  partnerIds?: string[];
+}
+
+export interface ReferralPayoutsCreateAccepted {
+  payoutIds: string[];
+}
+
+export interface AtRiskSubscription {
+  organizationId: string;
+  organizationName: string;
+  status: SubscriptionStatus;
+  planCode: string;
+  currentPeriodEnd: string;
+  overdueInvoicesCount: number;
+  overdueAmount: number;
+  daysPastDue: number;
 }

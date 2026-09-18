@@ -2,6 +2,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { REFRESH_COOKIE_NAME } from '@/lib/auth/cookies';
 import { PORTAL_REFRESH_COOKIE_NAME } from '@/lib/auth/portal-cookies';
+import {
+  TENANT_PORTAL_LOGIN_PATH,
+  TENANT_PORTAL_SESSION_FLAG_COOKIE,
+} from '@/app/locataire/_lib/tenant-portal-cookie';
 
 const PROTECTED_PREFIXES = ['/app', '/onboarding'];
 /** `/portail/activer` reste public : c'est le point d'entrée avant toute session portail. */
@@ -18,6 +22,21 @@ export function middleware(request: NextRequest) {
     if (!hasPortalSession) {
       const activateUrl = new URL('/portail/activer', request.url);
       return NextResponse.redirect(activateUrl);
+    }
+    return NextResponse.next();
+  }
+
+  // Portail locataire : session OTP sans cookie serveur (voir tenant-auth-context.tsx).
+  // Le middleware ne peut donc pas lire l'access token — il lit uniquement le
+  // drapeau non sensible posé côté client (voir tenant-portal-cookie.ts).
+  if (
+    pathname === '/locataire' ||
+    (pathname.startsWith('/locataire/') && pathname !== TENANT_PORTAL_LOGIN_PATH)
+  ) {
+    const hasTenantSession = Boolean(request.cookies.get(TENANT_PORTAL_SESSION_FLAG_COOKIE)?.value);
+    if (!hasTenantSession) {
+      const loginUrl = new URL(TENANT_PORTAL_LOGIN_PATH, request.url);
+      return NextResponse.redirect(loginUrl);
     }
     return NextResponse.next();
   }
@@ -42,5 +61,12 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/app/:path*', '/onboarding/:path*', '/portail/:path*', '/portail'],
+  matcher: [
+    '/app/:path*',
+    '/onboarding/:path*',
+    '/portail/:path*',
+    '/portail',
+    '/locataire/:path*',
+    '/locataire',
+  ],
 };

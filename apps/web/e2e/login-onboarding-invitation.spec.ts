@@ -39,6 +39,13 @@ test.describe('Connexion OTP → création d’organisation → invitation', () 
     // Étape 3 : contact
     await page.locator('#contact-phone').fill('066000098');
     await page.getByRole('button', { name: 'Créer l’organisation' }).click();
+    // La création redirige désormais vers l'onboarding guidé (phase 10) :
+    // sans intérêt pour ce scénario, on le passe entièrement.
+    await expect(page).toHaveURL(/\/onboarding\/etapes/);
+    await page.getByRole('button', { name: 'Passer cette étape' }).click();
+    await page.getByRole('button', { name: 'Passer cette étape' }).click();
+    await page.getByRole('button', { name: 'Passer cette étape' }).click();
+    await page.getByRole('button', { name: 'Aller au tableau de bord' }).click();
 
     // Tableau de bord
     await expect(page).toHaveURL(/\/app$/);

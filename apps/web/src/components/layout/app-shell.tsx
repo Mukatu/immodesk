@@ -21,10 +21,13 @@ import {
   Receipt,
   RefreshCw,
   Settings,
+  ShieldCheck,
+  UserPlus,
   Users,
   Users2,
   Wallet,
   Wrench,
+  Wallet2,
 } from 'lucide-react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -62,8 +65,14 @@ const NAV_ITEMS = [
   { href: '/app/tableaux-de-bord', label: 'Tableaux de bord', icon: BarChart3 },
   { href: '/app/synchronisation', label: 'Synchronisation', icon: RefreshCw },
   { href: '/app/equipe', label: 'Équipe', icon: Users },
+  { href: '/app/abonnement', label: 'Abonnement', icon: Wallet2 },
+  { href: '/partenaire', label: 'Devenir partenaire', icon: UserPlus },
+  // Réservé au rôle OWNER : même restriction que le back-office lui-même
+  // (apps/web/src/app/app/admin/layout.tsx), une approximation documentée en
+  // l'absence de rôle « plateforme/staff » dans le contrat.
+  { href: '/app/admin', label: 'Back-office', icon: ShieldCheck, ownerOnly: true },
   { href: '/app/parametres', label: 'Paramètres', icon: Settings },
-];
+] satisfies { href: string; label: string; icon: typeof Wallet2; ownerOnly?: boolean }[];
 
 function initials(name: string): string {
   return name
@@ -76,7 +85,9 @@ function initials(name: string): string {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, status, logout } = useAuth();
+  const { user, status, logout, currentOrganization } = useAuth();
+  const isOwner = currentOrganization?.role === 'OWNER';
+  const navItems = NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -117,7 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <nav aria-label="Navigation principale" className="mx-auto flex max-w-6xl gap-1 px-4 pb-2">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {navItems.map(({ href, label, icon: Icon }) => {
             const active =
               pathname === href || (href !== '/app' && pathname.startsWith(`${href}/`));
             return (

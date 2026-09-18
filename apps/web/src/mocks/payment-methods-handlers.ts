@@ -46,7 +46,8 @@ function bankAccountsFor(organizationId: string, landlordId: string | null) {
     : active.filter((a) => a.holderType === 'ORGANIZATION');
 }
 
-function buildPaymentInstructions(params: {
+/** Exporté pour tenant-portal-handlers.ts (résolution sans `orgIdFromRequest`, voir écart signalé). */
+export function buildPaymentInstructions(params: {
   organizationId: string;
   landlordId: string | null;
   transferReference: string | null;

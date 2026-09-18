@@ -5,6 +5,7 @@
 import type {
   BankAccountHolderType,
   BankStatementStatus,
+  BillingInterval,
   CashReceiptStatus,
   CheckStatus,
   CommissionBasis,
@@ -47,6 +48,7 @@ import type {
   MomoProvider,
   MomoStatus,
   NotificationChannel,
+  OtpPurpose,
   OwnerStatementLineType,
   OwnerStatementStatus,
   PartyType,
@@ -54,12 +56,20 @@ import type {
   PaymentMethod,
   PaymentStatus,
   PenaltyBasis,
+  PortfolioImportEntityType,
+  PortfolioImportStatus,
   PropertyType,
   ReceiptStatus,
   ReconciliationTargetType,
+  ReferralCommissionStatus,
+  ReferralPartnerStatus,
+  ReferralSource,
+  ReferralStatus,
   RemittanceStatus,
   RentPeriod,
   StatementFormat,
+  SubscriptionInvoiceStatus,
+  SubscriptionStatus,
   SyncBatchStatus,
   SyncOperationOutcome,
   SyncOperationType,
@@ -672,6 +682,82 @@ export const MAINTENANCE_REPORTER_LABELS: Record<MaintenanceReporter, string> = 
   COLLECTOR: 'Démarcheur',
   MANAGER: 'Gestionnaire',
   INSPECTION: 'État des lieux',
+};
+
+// ---- Phase 10 : abonnement SaaS, portail locataire, apport d'affaires ----
+
+export const SUBSCRIPTION_STATUS_LABELS: Record<SubscriptionStatus, string> = {
+  TRIALING: "Période d'essai",
+  ACTIVE: 'Actif',
+  PAST_DUE: 'Impayé',
+  SUSPENDED: 'Suspendu',
+  CANCELLED: 'Résilié',
+  EXPIRED: 'Expiré',
+};
+
+export const BILLING_INTERVAL_LABELS: Record<BillingInterval, string> = {
+  MONTHLY: 'Mensuel',
+  QUARTERLY: 'Trimestriel',
+  ANNUAL: 'Annuel',
+};
+
+export const SUBSCRIPTION_INVOICE_STATUS_LABELS: Record<SubscriptionInvoiceStatus, string> = {
+  ISSUED: 'Émise',
+  PAID: 'Payée',
+  OVERDUE: 'En retard',
+  CANCELLED: 'Annulée',
+};
+
+export const OTP_PURPOSE_LABELS: Record<OtpPurpose, string> = {
+  LOGIN: 'Connexion',
+  PHONE_VERIFICATION: 'Vérification du numéro',
+  PASSWORD_RESET: 'Réinitialisation du mot de passe',
+  SENSITIVE_ACTION: 'Action sensible',
+};
+
+export const PORTFOLIO_IMPORT_STATUS_LABELS: Record<PortfolioImportStatus, string> = {
+  QUEUED: 'En file',
+  RUNNING: 'En cours',
+  DONE: 'Terminé',
+  FAILED: 'Échec',
+};
+
+export const PORTFOLIO_IMPORT_ENTITY_TYPE_LABELS: Record<PortfolioImportEntityType, string> = {
+  LANDLORD: 'Bailleur',
+  PROPERTY: 'Bien',
+  UNIT: 'Lot',
+  TENANT: 'Locataire',
+  LEASE: 'Bail',
+};
+
+export const REFERRAL_PARTNER_STATUS_LABELS: Record<ReferralPartnerStatus, string> = {
+  PENDING_VERIFICATION: 'Vérification en attente',
+  ACTIVE: 'Actif',
+  SUSPENDED: 'Suspendu',
+  CLOSED: 'Clôturé',
+};
+
+export const REFERRAL_STATUS_LABELS: Record<ReferralStatus, string> = {
+  PENDING: 'En attente',
+  QUALIFIED: 'Qualifié',
+  ACTIVE: 'Actif',
+  EXPIRED: 'Expiré',
+  CANCELLED: 'Annulé',
+};
+
+export const REFERRAL_COMMISSION_STATUS_LABELS: Record<ReferralCommissionStatus, string> = {
+  ACCRUED: 'Provisionnée',
+  APPROVED: 'Approuvée',
+  PAID: 'Payée',
+  REVERSED: 'Contre-passée',
+  CANCELLED: 'Annulée',
+};
+
+export const REFERRAL_SOURCE_LABELS: Record<ReferralSource, string> = {
+  CODE_AT_SIGNUP: "Code saisi à l'inscription",
+  PARTNER_REGISTERED_PROPERTY: 'Bien enregistré par le partenaire',
+  LINK: 'Lien de parrainage',
+  MANUAL_ADMIN: 'Rattachement manuel (plateforme)',
 };
 
 /** Convertit un Record de libellés en options `{ value, label }` (ex. pour un Select). */

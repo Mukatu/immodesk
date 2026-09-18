@@ -54,6 +54,13 @@ test.describe('Baux phase 2 : création → activation → contrat → résiliat
 
     await page.locator('#contact-phone').fill(ORG_CONTACT_PHONE);
     await page.getByRole('button', { name: 'Créer l’organisation' }).click();
+    // La création redirige désormais vers l'onboarding guidé (phase 10) :
+    // sans intérêt pour ce scénario, on le passe entièrement.
+    await expect(page).toHaveURL(/\/onboarding\/etapes/);
+    await page.getByRole('button', { name: 'Passer cette étape' }).click();
+    await page.getByRole('button', { name: 'Passer cette étape' }).click();
+    await page.getByRole('button', { name: 'Passer cette étape' }).click();
+    await page.getByRole('button', { name: 'Aller au tableau de bord' }).click();
 
     await expect(page).toHaveURL(/\/app$/);
     await expect(page.getByRole('heading', { name: /Agence Baux E2E/ })).toBeVisible();

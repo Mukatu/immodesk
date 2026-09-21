@@ -764,6 +764,84 @@ export const ERROR_CATALOG = {
       'Pour un export « dashboard », « dashboardKind » est obligatoire : collection-rate, arrears, vacancy ou payment-methods.',
   },
   'EXPORTS.JOB_NOT_FOUND': { status: 404, message: 'Travail d’export introuvable.' },
+
+  // --- Phase 10 : abonnement SaaS (docs/api/phase10-contract.md) --------
+  'SUBSCRIPTIONS.NOT_FOUND': { status: 404, message: 'Abonnement introuvable.' },
+  'SUBSCRIPTIONS.PLAN_NOT_FOUND': { status: 404, message: 'Offre introuvable.' },
+  'SUBSCRIPTIONS.ALREADY_CANCELLED': {
+    status: 409,
+    message: 'Cet abonnement est déjà résilié.',
+  },
+  'SUBSCRIPTIONS.INVOICE_NOT_FOUND': { status: 404, message: "Facture d'abonnement introuvable." },
+  'SUBSCRIPTIONS.ALREADY_PAID': {
+    status: 409,
+    message: 'Cette facture est déjà réglée.',
+  },
+
+  // --- Phase 10 : onboarding guidé ---------------------------------------
+  'ONBOARDING.STEP_ALREADY_DONE': {
+    status: 409,
+    message: 'Cette étape est déjà réalisée pour cette organisation.',
+  },
+
+  // --- Phase 10 : import de portefeuille ---------------------------------
+  'IMPORTS.ALREADY_RUNNING': {
+    status: 409,
+    message: 'Un import est déjà en cours pour cette organisation.',
+  },
+  'IMPORTS.JOB_NOT_FOUND': { status: 404, message: "Travail d'import introuvable." },
+  'IMPORTS.FILE_INVALID': {
+    status: 422,
+    message: 'Fichier invalide : CSV UTF-8, séparateur point-virgule attendu.',
+  },
+  'IMPORTS.TOO_MANY_ROWS': {
+    status: 422,
+    message: 'Fichier trop volumineux : nombre de lignes maximal dépassé.',
+  },
+
+  // --- Phase 10 : portail locataire (domaine PARTIES, comme le portail
+  // bailleur de la phase 7 réutilise AGENCY.PORTAL_* plutôt qu'un domaine
+  // dédié) -----------------------------------------------------------------
+  'PARTIES.PORTAL_NOT_ENABLED': {
+    status: 403,
+    message: "Le portail locataire n'est pas activé pour cette organisation.",
+  },
+  'PARTIES.PORTAL_NO_ACTIVE_LEASE': {
+    status: 403,
+    message: 'Aucun bail actif rattaché à ce compte.',
+  },
+  'PARTIES.PORTAL_OUT_OF_SCOPE': {
+    status: 404,
+    message: 'Ressource introuvable.',
+  },
+  'PARTIES.PORTAL_RELATED_ENTITY_INVALID': {
+    status: 422,
+    message: 'Ce document ne peut être rattaché qu’à l’un de vos baux.',
+  },
+
+  // --- Phase 10 : apport d'affaires (parrainage) --------------------------
+  'REFERRALS.PARTNER_NOT_FOUND': { status: 404, message: 'Partenaire introuvable.' },
+  'REFERRALS.PARTNER_ALREADY_EXISTS': {
+    status: 409,
+    message: 'Vous êtes déjà enregistré comme partenaire.',
+  },
+  'REFERRALS.SELF_REFERRAL': {
+    status: 422,
+    message: 'Un partenaire ne peut pas parrainer sa propre organisation.',
+  },
+  'REFERRALS.ALREADY_REFERRED': {
+    status: 409,
+    message: 'Cette organisation est déjà rattachée à un parrainage.',
+  },
+  'REFERRALS.NOT_FOUND': { status: 404, message: 'Parrainage introuvable.' },
+  'REFERRALS.OTP_REQUIRED': {
+    status: 422,
+    message: 'Confirmation du bailleur par code à usage unique requise.',
+  },
+  'REFERRALS.PAYOUT_THRESHOLD_NOT_REACHED': {
+    status: 409,
+    message: 'Le cumul des commissions approuvées n’atteint pas encore le seuil de versement.',
+  },
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CATALOG;

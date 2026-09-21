@@ -22,6 +22,7 @@ import { MobileSyncModule } from './modules/mobile-sync/mobile-sync.module';
 import { InspectionsModule } from './modules/inspections/inspections.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { NumberingModule } from './modules/numbering/numbering.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { OwnerPayoutsModule } from './modules/owner-payouts/owner-payouts.module';
 import { OwnerStatementsModule } from './modules/owner-statements/owner-statements.module';
@@ -30,8 +31,13 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { PdfModule } from './modules/pdf/pdf.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
+import { PortfolioImportsModule } from './modules/portfolio-imports/portfolio-imports.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
 import { ReconciliationModule } from './modules/reconciliation/reconciliation.module';
+import { ReferralModule } from './modules/referral/referral.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { TenantAuthModule } from './modules/tenant-auth/tenant-auth.module';
+import { TenantPortalModule } from './modules/tenant-portal/tenant-portal.module';
 import { UtilitiesModule } from './modules/utilities/utilities.module';
 import { DunningModule } from './modules/dunning/dunning.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
@@ -87,6 +93,15 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     CashModule,
     ReceiptsModule,
     PlatformModule,
+    // `subscriptions` (phase 10) est importé ICI, AVANT `webhooks` : sa route
+    // `POST /webhooks/mobile-money/subscription` doit s'enregistrer avant la
+    // route générique `POST /webhooks/mobile-money/:provider` de `webhooks`,
+    // faute de quoi Express (premier motif compatible gagne, sans égard à sa
+    // spécificité) router­ait « subscription » vers `:provider` et casserait
+    // le webhook dédié. `subscriptions` importe `mobile-money` mais jamais
+    // `webhooks` : c'est ce qui garantit que le graphe scanné par Nest ne
+    // fait apparaître le contrôleur générique qu'après le nôtre.
+    SubscriptionsModule,
     // Phase 4 — Mobile Money, virement déclaré, webhooks. `mobile-money`
     // publie le registre de fournisseurs et la file de vérification que
     // `webhooks` importe pour router sans jamais nommer un fournisseur.
@@ -140,6 +155,20 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     // d'aucun des deux : il lit les tables et publie ses propres agrégats.
     DunningModule,
     ReportingModule,
+    // Phase 10 — tranche 1 (fondations) : onboarding guidé, import de
+    // portefeuille, portail locataire et apport d'affaires. `subscriptions`
+    // est déclaré plus haut (voir commentaire à côté de `PlatformModule`) :
+    // seul son ORDRE D'IMPORT a bougé, pas son contenu. Les modules restants
+    // sont encore des squelettes (aucun contrôleur ni service métier) sauf
+    // `tenant-portal`, qui porte déjà `TenantPortalGuard` — les tranches
+    // suivantes complètent chacune SON dossier sans toucher aux autres.
+    // `referral` consommera `PlatformAdminGuard` (`shared/platform-admin/`)
+    // pour ses routes `/v1/admin/*`.
+    OnboardingModule,
+    PortfolioImportsModule,
+    TenantAuthModule,
+    TenantPortalModule,
+    ReferralModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

@@ -71,3 +71,15 @@ export function maskPhone(e164: string): string {
   if (e164.length <= 6) return '***';
   return `${e164.slice(0, 7)}${'*'.repeat(Math.max(0, e164.length - 8))}${e164.slice(-1)}`;
 }
+
+/**
+ * Masque un numéro pour un AFFICHAGE UTILISATEUR (jamais les journaux, voir
+ * `maskPhone` ci-dessus) : `+242066••••02` (docs/api/phase10-contract.md,
+ * exemple de `confirmationSentTo`). Convention distincte — puces `•` plutôt
+ * qu'astérisques, deux derniers chiffres visibles plutôt qu'un seul — propre
+ * aux réponses d'API destinées à être lues par un humain.
+ */
+export function maskPhoneForDisplay(e164: string): string {
+  if (e164.length <= 9) return '•••';
+  return `${e164.slice(0, 7)}${'•'.repeat(Math.max(0, e164.length - 9))}${e164.slice(-2)}`;
+}

@@ -213,6 +213,22 @@ export const configSchema = z
     EXPORT_SYNC_ROW_LIMIT: z.coerce.number().int().positive().default(10_000),
     EXPORT_LINK_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
 
+    // --- Abonnement SaaS (phase 10, docs/api/phase10-contract.md) --------
+    SUBSCRIPTION_CRON_ENABLED: booleanish.default(true),
+    // Jour du mois qui ancre la première échéance d'un abonnement MENSUEL
+    // (`subscriptions.next_billing_date`). Les abonnements TRIMESTRIELS et
+    // ANNUELS gardent le même jour du mois, à l'échéance de leur intervalle.
+    SUBSCRIPTION_BILLING_DAY_OF_MONTH: z.coerce.number().int().min(1).max(28).default(1),
+    // Valeur par défaut de `subscriptions.grace_days` à la souscription :
+    // ACTIVE → PAST_DUE → SUSPENDED après ce délai (contrat, § « Cycle de vie »).
+    SUBSCRIPTION_DEFAULT_GRACE_DAYS: z.coerce.number().int().positive().default(7),
+
+    // --- Onboarding guidé, import de portefeuille (phase 10) -------------
+    PORTFOLIO_IMPORT_MAX_ROWS: z.coerce.number().int().positive().default(5000),
+
+    // --- Apport d'affaires / parrainage (phase 10) ------------------------
+    REFERRAL_DEFAULT_PROGRAM_CODE: z.string().default('IMD-STD'),
+
     // --- Observabilité ---------------------------------------------------
     SENTRY_DSN: z.string().optional(),
     SWAGGER_ENABLED: booleanish.default(true),

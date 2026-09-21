@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nest
 import { Prisma, PrismaClient } from '@prisma/client';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/config.schema';
+import { DomainError } from '../errors/domain-error';
 import { currentTenant, requireTenant } from '../tenant/tenant-context';
 
 /** Client transactionnel Prisma exposé aux dépôts. */
@@ -32,8 +33,9 @@ export const GLOBAL_TABLES = [
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
+  private adminInstance: PrismaClient | null = null;
 
-  constructor(@Inject(APP_CONFIG) config: AppConfig) {
+  constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {
     super({
       datasources: { db: { url: config.DATABASE_URL } },
       log: config.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
@@ -100,6 +102,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     return this.withTenant(ctx.organizationId, ctx.userId, fn);
   }
 
+  /**
+   * Positionne uniquement `app.current_user_id`, pour les tables GLOBALES
+   * (sans `organization_id`) qui portent malgré tout une policy RLS
+   * « chacun ne voit/n'écrit que ses propres lignes » — `referral_partners`,
+   * `referrals`, `referral_commissions`, `referral_payouts` (migration
+   * `0_init`, policies `partner_self`). `app.current_organization_id` n'a
+   * ici aucune policy qui le lise : on réutilise `withTenant` avec
+   * `NIL_UUID` comme organisation, purement pour ne pas dupliquer la
+   * mécanique `set_config`/transaction.
+   */
+  async withUser<T>(userId: string, fn: (tx: TenantClient) => Promise<T>): Promise<T> {
+    return this.withTenant(NIL_UUID, userId, fn);
+  }
+
   /** Contexte courant si présent, sans lever d'erreur. */
   tenantOrNull(): ReturnType<typeof currentTenant> {
     return currentTenant();
@@ -115,5 +131,33 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       timeout: 15_000,
       maxWait: 5_000,
     });
+  }
+
+  /**
+   * Client d'administration (rôle `immodesk_admin`, `BYPASSRLS`), pour les
+   * écritures qui ne sont pas portées par l'utilisateur courant — un
+   * rattachement de code de parrainage par l'organisation filleule (pas le
+   * partenaire), la constatation d'une commission déclenchée par le module
+   * `subscriptions`, l'approbation ou le versement en campagne : le contrat
+   * documente ces cas comme relevant d'`immodesk_admin` (migration `0_init`,
+   * commentaire au-dessus des policies `partner_self`).
+   *
+   * Instance paresseuse et partagée par tout appelant de ce `PrismaService`
+   * (une seule connexion admin par process), à la différence des services
+   * qui instancient chacun leur propre `PrismaClient(DATABASE_ADMIN_URL)`
+   * (`webhooks`, `mobile-money`…) — cette variante centralisée reste
+   * testable en unitaire : un faux `PrismaService` n'a qu'à fournir
+   * `withAdmin` pour rester mockable, exactement comme `withUser`.
+   */
+  async withAdmin<T>(fn: (tx: PrismaClient) => Promise<T>): Promise<T> {
+    const adminUrl = this.config.DATABASE_ADMIN_URL;
+    if (!adminUrl) {
+      throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'DATABASE_ADMIN_URL absent' });
+    }
+    this.adminInstance ??= new PrismaClient({
+      datasources: { db: { url: adminUrl } },
+      log: ['error'],
+    });
+    return fn(this.adminInstance);
   }
 }

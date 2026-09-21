@@ -24,6 +24,11 @@ import { MobileMoneyController } from './presentation/mobile-money.controller';
  * `domain/ports.ts`), consommé par `owner-payouts` — non `@Global()`, ce
  * module reste importé explicitement (comme `PdfModule` par
  * `owner-statements`) plutôt que publié à toute l'application.
+ *
+ * Phase 10 : exporte aussi `MomoAggregatorService`, consommé par
+ * `tenant-portal` pour le paiement de facture par le locataire (même
+ * fournisseur agrégateur que les loyers réglés par un COLLECTOR — voir
+ * `TenantPaymentsService`), jamais réimplémenté.
  */
 @Module({
   imports: [OrganizationsModule],
@@ -46,6 +51,7 @@ import { MobileMoneyController } from './presentation/mobile-money.controller';
     MobileMoneyProviderRegistry,
     MomoVerifyQueue,
     MomoQueryService,
+    MomoAggregatorService,
     MomoVerificationService,
     MomoReconcileService,
     MOMO_PAYOUT_INITIATOR,

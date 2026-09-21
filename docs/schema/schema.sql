@@ -250,6 +250,7 @@ CREATE TABLE users (
     locale              TEXT NOT NULL DEFAULT 'fr-CG',
     avatar_document_id  UUID,
     status              user_status NOT NULL DEFAULT 'PENDING',
+    is_platform_admin   BOOLEAN NOT NULL DEFAULT false,
     last_login_at       TIMESTAMPTZ,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -261,6 +262,7 @@ CREATE TABLE users (
 COMMENT ON TABLE users IS 'Table GLOBALE (hors RLS) : un utilisateur peut appartenir à plusieurs organisations et être locataire ailleurs.';
 COMMENT ON COLUMN users.phone_e164 IS 'Identifiant de connexion principal, format E.164 (+242...).';
 COMMENT ON COLUMN users.status IS 'PENDING tant que le téléphone n''est pas vérifié par OTP.';
+COMMENT ON COLUMN users.is_platform_admin IS 'Extension phase 10 (hors contrat DDL initial) : administrateur de la plateforme Immodesk, habilité aux routes /v1/admin/*. Ne se substitue à aucun rôle d''organisation ; ne concerne qu''un tout petit nombre de comptes internes, jamais accordé via une route publique.';
 
 CREATE UNIQUE INDEX users_email_uk ON users (lower(email)) WHERE email IS NOT NULL AND deleted_at IS NULL;
 -- =====================================================================

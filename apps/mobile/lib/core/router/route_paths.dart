@@ -122,4 +122,17 @@ abstract final class RoutePaths {
       invoiceId == null
       ? '/relances/$tenantId'
       : '/relances/$tenantId?invoiceId=$invoiceId';
+
+  /// Apport d'affaires (`feature referral`, phase 10) : inscription
+  /// partenaire, apport d'un bien, filleuls et commissions. Toutes
+  /// authentifiées sauf la confirmation, PUBLIQUE (atteinte par lien envoyé
+  /// au bailleur, sans compte ni organisation).
+  static const String referralPartner = '/parrainage';
+  static const String referralPropertyLead = '/parrainage/immeuble';
+  static const String referralReferrals = '/parrainage/filleuls';
+  static const String referralCommissions = '/parrainage/commissions';
+  static const String referralConfirmationPattern =
+      '/parrainage/confirmation/:id';
+  static String referralConfirmation(String id) =>
+      '/parrainage/confirmation/$id';
 }

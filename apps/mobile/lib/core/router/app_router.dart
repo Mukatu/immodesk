@@ -47,6 +47,11 @@ import '../../features/portfolio/presentation/screens/property_detail_screen.dar
 import '../../features/portfolio/presentation/screens/tenant_detail_screen.dart';
 import '../../features/portfolio/presentation/screens/tenants_list_screen.dart';
 import '../../features/portfolio/presentation/screens/unit_detail_screen.dart';
+import '../../features/referral/presentation/screens/commissions_list_screen.dart';
+import '../../features/referral/presentation/screens/property_lead_confirmation_screen.dart';
+import '../../features/referral/presentation/screens/property_lead_form_screen.dart';
+import '../../features/referral/presentation/screens/referral_partner_screen.dart';
+import '../../features/referral/presentation/screens/referrals_list_screen.dart';
 import '../../features/sync/presentation/screens/outbox_screen.dart';
 import '../../shared/widgets/app_bottom_nav_shell.dart';
 import '../../shared/widgets/lease_picker_screen.dart';
@@ -102,6 +107,30 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => DunningHistoryScreen(
           tenantId: state.pathParameters['tenantId']!,
           invoiceId: state.uri.queryParameters['invoiceId'],
+        ),
+      ),
+      GoRoute(
+        path: RoutePaths.referralPartner,
+        builder: (context, state) => const ReferralPartnerScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.referralPropertyLead,
+        builder: (context, state) => const PropertyLeadFormScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.referralReferrals,
+        builder: (context, state) => const ReferralsListScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.referralCommissions,
+        builder: (context, state) => const CommissionsListScreen(),
+      ),
+      // Route PUBLIQUE (confirmation bailleur) : pas de garde d'auth ici,
+      // conformément à `docs/api/phase10-contract.md` (confirm-otp public).
+      GoRoute(
+        path: RoutePaths.referralConfirmationPattern,
+        builder: (context, state) => PropertyLeadConfirmationScreen(
+          propertyLeadId: state.pathParameters['id']!,
         ),
       ),
       StatefulShellRoute.indexedStack(

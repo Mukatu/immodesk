@@ -77,6 +77,13 @@ class MoreScreen extends ConsumerWidget {
           ),
           const Divider(height: 1),
           ListTile(
+            key: const ValueKey('more-referral-tile'),
+            leading: const Icon(Icons.handshake_outlined),
+            title: const Text('Apport d\'affaires'),
+            onTap: () => context.push(RoutePaths.referralPartner),
+          ),
+          const Divider(height: 1),
+          ListTile(
             key: const ValueKey('more-outbox-tile'),
             leading: Badge(
               key: const ValueKey('outbox-badge'),

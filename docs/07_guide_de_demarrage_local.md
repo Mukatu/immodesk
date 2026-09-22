@@ -89,9 +89,19 @@ Depuis la racine du dépôt, en PowerShell, poser d'abord les trois variables :
 
 ```powershell
 $env:E2E_MOCK="1"
-$env:NEXT_PUBLIC_API_URL="http://localhost:3100/api/proxy"
+$env:NEXT_PUBLIC_API_URL="/api/proxy"
 $env:API_INTERNAL_URL="https://mock.immodesk.internal/v1"
 ```
+
+> **`NEXT_PUBLIC_API_URL` doit rester un chemin relatif.** Le navigateur le résout
+> contre l'origine courante : localhost sur le poste, l'adresse réseau depuis un
+> téléphone du même Wi-Fi, ou l'adresse d'un tunnel HTTPS. Une valeur absolue du type
+> `http://localhost:3100/api/proxy` fonctionne sur le poste et **casse partout
+> ailleurs** — sur un téléphone, « localhost » désigne le téléphone lui-même, et tout
+> appel de l'application à l'API échoue en « Failed to fetch ». La connexion, elle,
+> continue de passer : elle emprunte des routes de même origine, ce qui rend la panne
+> trompeuse — on croit l'application fonctionnelle jusqu'au premier écran qui appelle
+> vraiment l'API.
 
 Puis, dans le même terminal, au choix. Voie rapide, sans compilation préalable :
 

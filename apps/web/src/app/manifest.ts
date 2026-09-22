@@ -51,6 +51,28 @@ export default function manifest(): MetadataRoute.Manifest {
      * de génération d'image au projet pour une seule icône.
      */
     icons: [
+      // Chrome n'emet `beforeinstallprompt` — donc n'autorise l'installation — que si
+      // le manifeste declare un PNG d'au moins 192x192. Le SVG seul et l'icone iOS de
+      // 180x180 ne suffisaient pas : l'invite ne s'affichait jamais sur Android.
+      {
+        src: '/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png',
+      },
+      {
+        src: '/icon-512.png',
+        sizes: '512x512',
+        type: 'image/png',
+      },
+      // Icone « maskable » : la marque est reduite a 60 % et centree, de sorte que les
+      // lanceurs Android qui appliquent un masque (cercle, goutte…) ne rognent pas le
+      // dessin.
+      {
+        src: '/icon-maskable-512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
       {
         src: '/icon.svg',
         sizes: 'any',

@@ -69,7 +69,7 @@ export class PropertyDto {
   @ApiProperty({ nullable: true, type: Number }) latitude!: number | null;
   @ApiProperty({ nullable: true, type: Number }) longitude!: number | null;
   @ApiProperty({ nullable: true, type: String }) landTitleReference!: string | null;
-  @ApiProperty({ nullable: true, type: String }) parcelNumber!: string | null;
+  @ApiProperty({ nullable: true, type: String }) occupancyPermit!: string | null;
   @ApiProperty({ nullable: true, type: Number }) builtYear!: number | null;
   @ApiProperty({ nullable: true, type: Number }) totalAreaSqm!: number | null;
   @ApiProperty({ nullable: true, type: Number }) floorsCount!: number | null;

@@ -18388,7 +18388,7 @@
           "landTitleReference": {
             "type": "string"
           },
-          "parcelNumber": {
+          "occupancyPermit": {
             "type": "string"
           },
           "builtYear": {
@@ -18768,7 +18768,7 @@
             "type": "string",
             "nullable": true
           },
-          "parcelNumber": {
+          "occupancyPermit": {
             "type": "string",
             "nullable": true
           },
@@ -18856,7 +18856,7 @@
           "latitude",
           "longitude",
           "landTitleReference",
-          "parcelNumber",
+          "occupancyPermit",
           "builtYear",
           "totalAreaSqm",
           "floorsCount",
@@ -20293,7 +20293,7 @@
           "landTitleReference": {
             "type": "string"
           },
-          "parcelNumber": {
+          "occupancyPermit": {
             "type": "string"
           },
           "builtYear": {
@@ -20682,7 +20682,7 @@
             "type": "string",
             "nullable": true
           },
-          "parcelNumber": {
+          "occupancyPermit": {
             "type": "string",
             "nullable": true
           },
@@ -20782,7 +20782,7 @@
           "latitude",
           "longitude",
           "landTitleReference",
-          "parcelNumber",
+          "occupancyPermit",
           "builtYear",
           "totalAreaSqm",
           "floorsCount",
@@ -20856,7 +20856,7 @@
           "landTitleReference": {
             "type": "string"
           },
-          "parcelNumber": {
+          "occupancyPermit": {
             "type": "string"
           },
           "builtYear": {

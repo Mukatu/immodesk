@@ -510,7 +510,7 @@ export interface PropertyInput {
   latitude?: number;
   longitude?: number;
   landTitleReference?: string;
-  parcelNumber?: string;
+  occupancyPermit?: string;
   builtYear?: number;
   totalAreaSqm?: number;
   floorsCount?: number;

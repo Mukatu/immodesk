@@ -2016,7 +2016,7 @@ model properties {
   latitude              Decimal?                @db.Decimal(9, 6)
   longitude             Decimal?                @db.Decimal(9, 6)
   land_title_reference  String?
-  parcel_number         String?
+  occupancy_permit      String?
   built_year            Int?                    @db.SmallInt
   total_area_sqm        Decimal?                @db.Decimal(10, 2)
   floors_count          Int?                    @db.SmallInt

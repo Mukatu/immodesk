@@ -34,7 +34,7 @@ export interface PropertyInput {
   latitude?: number | null;
   longitude?: number | null;
   landTitleReference?: string | null;
-  parcelNumber?: string | null;
+  occupancyPermit?: string | null;
   builtYear?: number | null;
   totalAreaSqm?: number | null;
   floorsCount?: number | null;
@@ -318,8 +318,8 @@ export class PropertiesService {
       ...(input.landTitleReference !== undefined
         ? { land_title_reference: trimOrNull(input.landTitleReference) }
         : {}),
-      ...(input.parcelNumber !== undefined
-        ? { parcel_number: trimOrNull(input.parcelNumber) }
+      ...(input.occupancyPermit !== undefined
+        ? { occupancy_permit: trimOrNull(input.occupancyPermit) }
         : {}),
       ...(input.builtYear !== undefined ? { built_year: input.builtYear } : {}),
       ...(input.totalAreaSqm !== undefined ? { total_area_sqm: input.totalAreaSqm } : {}),

@@ -144,7 +144,9 @@ export default function ImmeubleDetailPage() {
     ...(property.landTitleReference
       ? [{ label: 'Titre foncier', value: property.landTitleReference }]
       : []),
-    ...(property.parcelNumber ? [{ label: "Permis d'occuper", value: property.parcelNumber }] : []),
+    ...(property.occupancyPermit
+      ? [{ label: "Permis d'occuper", value: property.occupancyPermit }]
+      : []),
     ...(property.builtYear
       ? [{ label: 'Année de construction', value: String(property.builtYear) }]
       : []),

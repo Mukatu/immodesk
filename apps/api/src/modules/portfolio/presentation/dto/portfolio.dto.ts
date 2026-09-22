@@ -103,7 +103,7 @@ export class PropertyBodyDto {
   longitude?: number;
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) landTitleReference?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) parcelNumber?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) occupancyPermit?: string;
 
   @ApiPropertyOptional({ example: 2014 })
   @IsOptional()

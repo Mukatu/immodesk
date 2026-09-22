@@ -1146,7 +1146,7 @@ erDiagram
 | `country_code`                                   | CHAR(2)         | non  | `'CG'`                | Code pays.                                                                          |
 | `latitude` / `longitude`                         | NUMERIC(9,6)    | oui  | —                     | Coordonnées GPS.                                                                    |
 | `land_title_reference`                           | TEXT            | oui  | —                     | Référence du titre foncier ou de l'attestation de propriété.                        |
-| `parcel_number`                                  | TEXT            | oui  | —                     | Numéro de parcelle cadastrale.                                                      |
+| `occupancy_permit`                               | TEXT            | oui  | —                     | Numéro du permis d'occuper (document foncier congolais).                            |
 | `built_year`                                     | SMALLINT        | oui  | —                     | Année de construction.                                                              |
 | `total_area_sqm`                                 | NUMERIC(10,2)   | oui  | —                     | Surface totale (m²).                                                                |
 | `floors_count`                                   | SMALLINT        | oui  | —                     | Nombre d'étages.                                                                    |

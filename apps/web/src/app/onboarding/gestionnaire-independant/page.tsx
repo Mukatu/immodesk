@@ -103,7 +103,7 @@ export default function OnboardingGestionnaireIndependantPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="org-name">Nom de votre activité</Label>
+              <Label htmlFor="org-name">Nom et prénom</Label>
               <Input
                 id="org-name"
                 placeholder="Ex. Gestion Mavoungou"

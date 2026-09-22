@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Étape 1/4 : organisation `INDEPENDENT_MANAGER` (raison sociale, ville,
+/// Étape 1/4 : organisation `INDEPENDENT_MANAGER` (nom et prénom, ville,
 /// téléphone de contact).
 class OnboardingStepOrganization extends StatelessWidget {
   const OnboardingStepOrganization({
@@ -32,7 +32,7 @@ class OnboardingStepOrganization extends StatelessWidget {
         TextFormField(
           key: const ValueKey('onboarding-org-name-field'),
           controller: legalName,
-          decoration: const InputDecoration(labelText: 'Nom de votre activité'),
+          decoration: const InputDecoration(labelText: 'Nom et prénom'),
         ),
         const SizedBox(height: 16),
         TextFormField(

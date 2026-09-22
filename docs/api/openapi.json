@@ -3566,7 +3566,9 @@
                 "inspection_item",
                 "meter_reading",
                 "maintenance_request",
-                "maintenance_update"
+                "maintenance_update",
+                "expense",
+                "payout"
               ]
             }
           },
@@ -6076,6 +6078,114 @@
         "tags": ["Facturation"]
       }
     },
+    "/v1/penalty-rules/{id}/activate": {
+      "post": {
+        "description": "Une règle de pénalité ne se supprime jamais (même arbitrage que les relances).",
+        "operationId": "BillingController_activatePenaltyRule",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivatePenaltyRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PenaltyRuleDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Activer ou désactiver une règle de pénalité",
+        "tags": ["Facturation"]
+      }
+    },
+    "/v1/penalty-rules/{id}/simulate": {
+      "post": {
+        "description": "Réutilise `computePenalty` (phase 3) : aucune divergence avec le moteur réel.",
+        "operationId": "BillingController_simulatePenaltyRule",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulatePenaltyRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PenaltySimulationDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Simuler une pénalité sans écrire",
+        "tags": ["Facturation"]
+      }
+    },
     "/v1/payments": {
       "post": {
         "description": "CASH et saisie confirmée par un MANAGER / ACCOUNTANT : CONFIRMED ; sinon PENDING_VERIFICATION. Un `clientRef` ou un `Idempotency-Key` déjà vus rendent le paiement initial en 200.",
@@ -7824,6 +7934,297 @@
         },
         "summary": "Sonde de disponibilité",
         "tags": ["Plateforme"]
+      }
+    },
+    "/v1/subscription-plans": {
+      "get": {
+        "operationId": "SubscriptionPlansController_list",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Catalogue des offres publiques et actives",
+        "tags": ["Abonnement"]
+      }
+    },
+    "/v1/organizations/{id}/subscription": {
+      "get": {
+        "operationId": "SubscriptionsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Doit correspondre à `:id`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Abonnement courant de l'organisation",
+        "tags": ["Abonnement"]
+      },
+      "post": {
+        "description": "Souscription initiale si aucune ligne, changement de plan sinon (jamais une seconde ligne).",
+        "operationId": "SubscriptionsController_subscribe",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Doit correspondre à `:id`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscribeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Souscrire ou changer de plan",
+        "tags": ["Abonnement"]
+      }
+    },
+    "/v1/organizations/{id}/subscription/cancel": {
+      "post": {
+        "description": "Le statut ne bascule à CANCELLED qu’à la fin de la période courante, jamais immédiatement.",
+        "operationId": "SubscriptionsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Doit correspondre à `:id`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelSubscriptionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Demander la résiliation",
+        "tags": ["Abonnement"]
+      }
+    },
+    "/v1/organizations/{id}/subscription-invoices": {
+      "get": {
+        "operationId": "SubscriptionInvoicesController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["ISSUED", "PAID", "OVERDUE", "CANCELLED"]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Factures d'abonnement de l'organisation",
+        "tags": ["Abonnement"]
+      }
+    },
+    "/v1/subscription-invoices/{id}/pay": {
+      "post": {
+        "operationId": "SubscriptionInvoicesController_pay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaySubscriptionInvoiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Payer une facture d'abonnement par Mobile Money",
+        "tags": ["Abonnement"]
+      }
+    },
+    "/v1/webhooks/mobile-money/subscription": {
+      "post": {
+        "operationId": "SubscriptionWebhooksController_receive",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Réception du webhook Mobile Money de l'abonnement",
+        "tags": ["Abonnement"]
       }
     },
     "/v1/payments/mobile-money/declarations": {
@@ -14373,6 +14774,2160 @@
         "summary": "Convertir un poste en demande de maintenance",
         "tags": ["États des lieux"]
       }
+    },
+    "/v1/dunning-rules": {
+      "get": {
+        "operationId": "DunningRulesController_list",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DunningRuleListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Règles de relance de l’organisation",
+        "tags": ["Relances — règles"]
+      },
+      "post": {
+        "operationId": "DunningRulesController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DunningRuleInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DunningRuleDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DUNNING.STEP_ORDER_TAKEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer un palier de relance",
+        "tags": ["Relances — règles"]
+      }
+    },
+    "/v1/dunning-rules/{id}": {
+      "patch": {
+        "operationId": "DunningRulesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDunningRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DunningRuleDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DUNNING.STEP_ORDER_TAKEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modifier un palier de relance",
+        "tags": ["Relances — règles"]
+      }
+    },
+    "/v1/dunning-rules/{id}/activate": {
+      "post": {
+        "description": "Arbitrage 3 du contrat : une règle ne se supprime jamais. N’affecte ni les relances déjà envoyées ni les pénalités déjà émises.",
+        "operationId": "DunningRulesController_activate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateDunningRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DunningRuleDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Activer ou désactiver une règle",
+        "tags": ["Relances — règles"]
+      }
+    },
+    "/v1/dunning-runs": {
+      "get": {
+        "operationId": "DunningRunsController_list",
+        "parameters": [
+          {
+            "name": "ruleId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoiceId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Historique des relances pour un locataire (emprunte dunning_runs_tenant_idx) — écart assumé au contrat écrit, ajouté à la demande du produit mobile.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["PENDING", "RUNNING", "SENT", "SKIPPED", "FAILED", "CANCELLED"]
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DunningRunPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Historique des relances, pagination par curseur",
+        "tags": ["Relances — exécutions"]
+      }
+    },
+    "/v1/dunning-runs/{id}": {
+      "get": {
+        "operationId": "DunningRunsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DunningRunDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d’une relance",
+        "tags": ["Relances — exécutions"]
+      }
+    },
+    "/v1/organizations/{id}/dunning-runs/trigger": {
+      "post": {
+        "description": "Mêmes garanties d’idempotence que le cron quotidien. `dryRun` simule le comptage sans rien envoyer ni écrire. Ignore l’heure d’envoi configurée sur chaque règle (déclenchement explicite), contrairement au cron horaire qui la respecte.",
+        "operationId": "DunningTriggerController_trigger",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TriggerDunningRunDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DunningTriggerAcceptedDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rejouer le scan de relance à la demande",
+        "tags": ["Relances — exécutions"]
+      }
+    },
+    "/v1/dashboards/collection-rate": {
+      "get": {
+        "operationId": "DashboardsController_collectionRateDashboard",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "landlordId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Recouvrement : dû, encaissé, taux, série mensuelle, par immeuble",
+        "tags": ["Tableaux de bord"]
+      }
+    },
+    "/v1/dashboards/arrears": {
+      "get": {
+        "operationId": "DashboardsController_arrearsDashboard",
+        "parameters": [
+          {
+            "name": "asOf",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "landlordId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Impayés : tranches d’ancienneté et locataires les plus en retard",
+        "tags": ["Tableaux de bord"]
+      }
+    },
+    "/v1/dashboards/vacancy": {
+      "get": {
+        "operationId": "DashboardsController_vacancyDashboard",
+        "parameters": [
+          {
+            "name": "asOf",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Vacance : lots occupés / vacants, taux, durée moyenne de vacance",
+        "tags": ["Tableaux de bord"]
+      }
+    },
+    "/v1/dashboards/payment-methods": {
+      "get": {
+        "operationId": "DashboardsController_paymentMethodsDashboard",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Encaissements par mode de paiement (bancarisation progressive)",
+        "tags": ["Tableaux de bord"]
+      }
+    },
+    "/v1/exports/{kind}": {
+      "post": {
+        "description": "Synchrone jusqu’au seuil configuré (201) ; au-delà, un travail de fond est mis en file (202 { jobId }), consultable par GET /v1/exports/jobs/{jobId}.",
+        "operationId": "ExportsController_create",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Exporter en CSV (invoices, payments, arrears, dashboard)",
+        "tags": ["Exports"]
+      }
+    },
+    "/v1/exports/jobs/{jobId}": {
+      "get": {
+        "operationId": "ExportsController_job",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "État d'un export de fond",
+        "tags": ["Exports"]
+      }
+    },
+    "/v1/onboarding/{orgId}/first-property": {
+      "post": {
+        "description": "Délègue à `POST /v1/properties`. 409 une fois un bien déjà créé.",
+        "operationId": "GuidedOnboardingController_firstProperty",
+        "parameters": [
+          {
+            "name": "orgId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePropertyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ONBOARDING.STEP_ALREADY_DONE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Étape 1 : premier bien",
+        "tags": ["Onboarding guidé"]
+      }
+    },
+    "/v1/onboarding/{orgId}/first-lease": {
+      "post": {
+        "description": "Délègue à `POST /v1/leases` (le lot et le locataire doivent déjà exister). 409 une fois un bail déjà créé.",
+        "operationId": "GuidedOnboardingController_firstLease",
+        "parameters": [
+          {
+            "name": "orgId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLeaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ONBOARDING.STEP_ALREADY_DONE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Étape 2 : premier bail",
+        "tags": ["Onboarding guidé"]
+      }
+    },
+    "/v1/onboarding/{orgId}/invite": {
+      "post": {
+        "description": "Délègue à `POST /v1/organizations/{id}/invitations`. 409 une fois déjà invité.",
+        "operationId": "GuidedOnboardingController_invite",
+        "parameters": [
+          {
+            "name": "orgId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ONBOARDING.STEP_ALREADY_DONE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Étape 3 : première invitation",
+        "tags": ["Onboarding guidé"]
+      }
+    },
+    "/v1/onboarding/{orgId}/state": {
+      "get": {
+        "description": "Jamais stocké : recalculé à chaque lecture depuis l'existence des entités.",
+        "operationId": "GuidedOnboardingController_state",
+        "parameters": [
+          {
+            "name": "orgId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingStateDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "État d'avancement, dérivé",
+        "tags": ["Onboarding guidé"]
+      }
+    },
+    "/v1/portfolio-imports": {
+      "post": {
+        "description": "Traitement de fond (202 { jobId }), consultable par GET /v1/portfolio-imports/{jobId}. Un seul import actif par organisation.",
+        "operationId": "PortfolioImportsController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePortfolioImportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobCreatedDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "IMPORTS.ALREADY_RUNNING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "IMPORTS.TOO_MANY_ROWS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Importer un portefeuille depuis un CSV déjà téléversé",
+        "tags": ["Import de portefeuille"]
+      }
+    },
+    "/v1/portfolio-imports/{jobId}": {
+      "get": {
+        "operationId": "PortfolioImportsController_job",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReportDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "IMPORTS.JOB_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "État et rapport d'un import",
+        "tags": ["Import de portefeuille"]
+      }
+    },
+    "/v1/tenant-auth/otp/request": {
+      "post": {
+        "description": "Refuse 403 `PARTIES.PORTAL_NO_ACTIVE_LEASE` sans fiche locataire à bail actif pour ce numéro, ou 403 `PARTIES.PORTAL_NOT_ENABLED` si aucune de ses organisations n’a activé le portail ; sinon délègue à l’OTP générique (`otp_purpose = LOGIN`, WhatsApp puis repli SMS).",
+        "operationId": "TenantAuthController_requestOtp",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantOtpRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantOtpRequestResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "PARTIES.PORTAL_NO_ACTIVE_LEASE / PARTIES.PORTAL_NOT_ENABLED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Demander un code de connexion au portail locataire",
+        "tags": ["Portail locataire — connexion"]
+      }
+    },
+    "/v1/tenant-auth/otp/verify": {
+      "post": {
+        "description": "Authentifie via l’OTP générique puis lie la fiche locataire non encore liée pour ce numéro (toutes agences confondues) au compte obtenu. Jeton générique, sans `refreshToken` dans cette réponse (contrat).",
+        "operationId": "TenantAuthController_verifyOtp",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantOtpVerifyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantAuthVerifyResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "IAM.OTP_INVALID / IAM.OTP_EXPIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Vérifier le code et ouvrir la session du portail locataire",
+        "tags": ["Portail locataire — connexion"]
+      }
+    },
+    "/v1/tenant/invoices": {
+      "get": {
+        "operationId": "TenantInvoicesController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Curseur opaque signé, issu de `pageInfo.nextCursor`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les factures des baux actifs du locataire",
+        "tags": ["Portail locataire — factures"]
+      }
+    },
+    "/v1/tenant/invoices/{id}": {
+      "get": {
+        "operationId": "TenantInvoicesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PARTIES.PORTAL_OUT_OF_SCOPE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d’une facture du locataire",
+        "tags": ["Portail locataire — factures"]
+      }
+    },
+    "/v1/tenant/invoices/{id}/pay": {
+      "post": {
+        "description": "Même fournisseur agrégateur que les loyers, avec la même règle de confirmation par re-interrogation (contrat, § « Paiement »).",
+        "operationId": "TenantInvoicesController_pay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantInvoicePayDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantInvoicePayResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PARTIES.PORTAL_OUT_OF_SCOPE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Régler une facture par Mobile Money",
+        "tags": ["Portail locataire — factures"]
+      }
+    },
+    "/v1/tenant/receipts/{id}": {
+      "get": {
+        "operationId": "TenantReceiptsController_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdfLinkDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PARTIES.PORTAL_OUT_OF_SCOPE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "URL signée (10 min) du PDF d’une quittance du locataire",
+        "tags": ["Portail locataire — quittances"]
+      }
+    },
+    "/v1/tenant/bank-transfer-declarations": {
+      "post": {
+        "operationId": "TenantBankTransfersController_declare",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantTransferDeclareDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Déclarer un virement pour l’un de ses baux, preuve obligatoire",
+        "tags": ["Portail locataire — virements déclarés"]
+      },
+      "get": {
+        "operationId": "TenantBankTransfersController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Curseur opaque signé, issu de `pageInfo.nextCursor`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister ses déclarations de virement, tous baux confondus",
+        "tags": ["Portail locataire — virements déclarés"]
+      }
+    },
+    "/v1/tenant/documents/upload-url": {
+      "post": {
+        "description": "Mêmes plafonds de taille et de type que le module `documents`. `relatedEntityType` doit valoir `lease` et `relatedEntityId` désigner l’UN des baux actifs de la session, sinon 422 `PARTIES.PORTAL_RELATED_ENTITY_INVALID`.",
+        "operationId": "TenantDocumentsController_createUploadUrl",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadUrlRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadUrlResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "PARTIES.PORTAL_RELATED_ENTITY_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "URL signée de téléversement, restreinte à un bail du locataire",
+        "tags": ["Portail locataire — documents"]
+      }
+    },
+    "/v1/tenant/documents": {
+      "post": {
+        "operationId": "TenantDocumentsController_register",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "PARTIES.PORTAL_RELATED_ENTITY_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enregistrer un document téléversé, restreint à un bail du locataire",
+        "tags": ["Portail locataire — documents"]
+      }
+    },
+    "/v1/referral-partners": {
+      "post": {
+        "operationId": "ReferralPartnersController_register",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterReferralPartnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralPartnerDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "REFERRALS.PARTNER_ALREADY_EXISTS"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Devenir partenaire (statut PENDING_VERIFICATION)",
+        "tags": ["Apport d’affaires — partenaires"]
+      }
+    },
+    "/v1/referral-partners/me": {
+      "get": {
+        "operationId": "ReferralPartnersController_getMe",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralPartnerDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mon compte partenaire",
+        "tags": ["Apport d’affaires — partenaires"]
+      }
+    },
+    "/v1/referral-partners/me/properties": {
+      "post": {
+        "operationId": "ReferralPartnersController_registerProperty",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterPropertyLeadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterPropertyLeadResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enregistrer un immeuble (aucune ligne créée avant confirmation du bailleur)",
+        "tags": ["Apport d’affaires — partenaires"]
+      }
+    },
+    "/v1/referral-partners/me/referrals": {
+      "get": {
+        "operationId": "ReferralPartnersController_listReferrals",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mes parrainages",
+        "tags": ["Apport d’affaires — partenaires"]
+      }
+    },
+    "/v1/referral-partners/me/commissions": {
+      "get": {
+        "operationId": "ReferralPartnersController_listCommissions",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralCommissionListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mes commissions, avec totaux par statut",
+        "tags": ["Apport d’affaires — partenaires"]
+      }
+    },
+    "/v1/referral-partners/me/properties/{id}/confirm-otp": {
+      "post": {
+        "operationId": "ReferralPropertyConfirmationController_confirm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPropertyLeadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REFERRALS.NOT_FOUND"
+          },
+          "409": {
+            "description": "REFERRALS.ALREADY_REFERRED"
+          },
+          "422": {
+            "description": "REFERRALS.SELF_REFERRAL"
+          }
+        },
+        "summary": "Le bailleur confirme l'apport par code à usage unique",
+        "tags": ["Apport d’affaires — confirmation bailleur"]
+      }
+    },
+    "/v1/organizations/{id}/referral-code": {
+      "post": {
+        "operationId": "ReferralCodeController_attach",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachReferralCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REFERRALS.PARTNER_NOT_FOUND"
+          },
+          "409": {
+            "description": "REFERRALS.ALREADY_REFERRED"
+          },
+          "422": {
+            "description": "REFERRALS.SELF_REFERRAL"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rattacher un code de parrainage à cette organisation",
+        "tags": ["Apport d’affaires — code de parrainage"]
+      }
+    },
+    "/v1/admin/referral-commissions/approve": {
+      "post": {
+        "operationId": "ReferralAdminController_approve",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveCommissionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApproveCommissionsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Campagne mensuelle d'approbation des commissions ACCRUED",
+        "tags": ["Apport d’affaires — administration plateforme"]
+      }
+    },
+    "/v1/admin/referral-payouts": {
+      "post": {
+        "operationId": "ReferralAdminController_createPayouts",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePayoutsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatePayoutsResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "REFERRALS.PAYOUT_THRESHOLD_NOT_REACHED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer les versements des commissions APPROVED",
+        "tags": ["Apport d’affaires — administration plateforme"]
+      }
+    },
+    "/v1/admin/referral-payouts/{id}": {
+      "get": {
+        "operationId": "ReferralAdminController_getPayout",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralPayoutDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REFERRALS.NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Détail d'un versement",
+        "tags": ["Apport d’affaires — administration plateforme"]
+      }
+    },
+    "/v1/admin/subscriptions/at-risk": {
+      "get": {
+        "operationId": "ReferralAdminController_listAtRisk",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtRiskListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Abonnements PAST_DUE, proches de la suspension",
+        "tags": ["Apport d’affaires — administration plateforme"]
+      }
     }
   },
   "info": {
@@ -15750,6 +18305,39 @@
         },
         "required": ["primaryPhone"]
       },
+      "FurnitureItemDto": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "string",
+            "enum": [
+              "BED",
+              "MATTRESS",
+              "WARDROBE",
+              "TABLE",
+              "CHAIRS",
+              "SOFA",
+              "FRIDGE",
+              "STOVE",
+              "AIR_CONDITIONER",
+              "FAN",
+              "TELEVISION",
+              "WASHING_MACHINE",
+              "WATER_HEATER",
+              "MICROWAVE",
+              "CURTAINS",
+              "KITCHEN_UTENSILS"
+            ],
+            "example": "BED"
+          },
+          "quantity": {
+            "type": "number",
+            "example": 2,
+            "description": "Entier ≥ 1 ; absent si non pertinent."
+          }
+        },
+        "required": ["item"]
+      },
       "OnboardingPropertyDto": {
         "type": "object",
         "properties": {
@@ -15826,6 +18414,24 @@
           "hasBorehole": {
             "type": "boolean",
             "default": false
+          },
+          "hasGenerator": {
+            "type": "boolean",
+            "default": false
+          },
+          "hasSolarPanels": {
+            "type": "boolean",
+            "default": false
+          },
+          "isFurnished": {
+            "type": "boolean",
+            "default": false
+          },
+          "furniture": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FurnitureItemDto"
+            }
           },
           "caretakerName": {
             "type": "string",
@@ -16191,6 +18797,21 @@
           "hasBorehole": {
             "type": "boolean"
           },
+          "hasGenerator": {
+            "type": "boolean"
+          },
+          "hasSolarPanels": {
+            "type": "boolean"
+          },
+          "isFurnished": {
+            "type": "boolean"
+          },
+          "furniture": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FurnitureItemDto"
+            }
+          },
           "caretakerName": {
             "type": "string",
             "nullable": true
@@ -16243,6 +18864,10 @@
           "hasWater",
           "hasElectricity",
           "hasBorehole",
+          "hasGenerator",
+          "hasSolarPanels",
+          "isFurnished",
+          "furniture",
           "caretakerName",
           "caretakerPhone",
           "coverDocumentId",
@@ -17695,6 +20320,24 @@
             "type": "boolean",
             "default": false
           },
+          "hasGenerator": {
+            "type": "boolean",
+            "default": false
+          },
+          "hasSolarPanels": {
+            "type": "boolean",
+            "default": false
+          },
+          "isFurnished": {
+            "type": "boolean",
+            "default": false
+          },
+          "furniture": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FurnitureItemDto"
+            }
+          },
           "caretakerName": {
             "type": "string",
             "example": "Papa Célestin"
@@ -18068,6 +20711,21 @@
           "hasBorehole": {
             "type": "boolean"
           },
+          "hasGenerator": {
+            "type": "boolean"
+          },
+          "hasSolarPanels": {
+            "type": "boolean"
+          },
+          "isFurnished": {
+            "type": "boolean"
+          },
+          "furniture": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FurnitureItemDto"
+            }
+          },
           "caretakerName": {
             "type": "string",
             "nullable": true
@@ -18132,6 +20790,10 @@
           "hasWater",
           "hasElectricity",
           "hasBorehole",
+          "hasGenerator",
+          "hasSolarPanels",
+          "isFurnished",
+          "furniture",
           "caretakerName",
           "caretakerPhone",
           "coverDocumentId",
@@ -18220,6 +20882,24 @@
           "hasBorehole": {
             "type": "boolean",
             "default": false
+          },
+          "hasGenerator": {
+            "type": "boolean",
+            "default": false
+          },
+          "hasSolarPanels": {
+            "type": "boolean",
+            "default": false
+          },
+          "isFurnished": {
+            "type": "boolean",
+            "default": false
+          },
+          "furniture": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FurnitureItemDto"
+            }
           },
           "caretakerName": {
             "type": "string",
@@ -19023,7 +21703,9 @@
               "inspection_item",
               "meter_reading",
               "maintenance_request",
-              "maintenance_update"
+              "maintenance_update",
+              "expense",
+              "payout"
             ]
           },
           "relatedEntityId": {
@@ -19123,7 +21805,9 @@
               "inspection_item",
               "meter_reading",
               "maintenance_request",
-              "maintenance_update"
+              "maintenance_update",
+              "expense",
+              "payout"
             ]
           },
           "relatedEntityId": {
@@ -22018,6 +24702,50 @@
           }
         }
       },
+      "ActivatePenaltyRuleDto": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": ["isActive"]
+      },
+      "SimulatePenaltyRuleDto": {
+        "type": "object",
+        "properties": {
+          "balanceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 85000
+          },
+          "daysOverdue": {
+            "type": "number",
+            "example": 12
+          }
+        },
+        "required": ["balanceAmount", "daysOverdue"]
+      },
+      "PenaltySimulationDto": {
+        "type": "object",
+        "properties": {
+          "penaltyAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 85000
+          },
+          "cappedBy": {
+            "type": "string",
+            "enum": ["AMOUNT", "RATE", "PERIODS"],
+            "nullable": true
+          },
+          "periods": {
+            "type": "number"
+          }
+        },
+        "required": ["penaltyAmount", "cappedBy", "periods"]
+      },
       "AllocationInputDto": {
         "type": "object",
         "properties": {
@@ -23591,6 +26319,39 @@
           }
         },
         "required": ["status", "checks"]
+      },
+      "SubscribeDto": {
+        "type": "object",
+        "properties": {
+          "planCode": {
+            "type": "string",
+            "example": "STARTER"
+          },
+          "momoMsisdn": {
+            "type": "string",
+            "example": "+242066123456"
+          }
+        },
+        "required": ["planCode"]
+      },
+      "CancelSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "PaySubscriptionInvoiceDto": {
+        "type": "object",
+        "properties": {
+          "payerMsisdn": {
+            "type": "string",
+            "example": "+242066123456",
+            "description": "Par défaut, le numéro Mobile Money déjà enregistré sur l’abonnement."
+          }
+        }
       },
       "MomoDeclareDto": {
         "type": "object",
@@ -27466,6 +30227,1167 @@
             "enum": ["TENANT", "LANDLORD", "COLLECTOR", "MANAGER", "INSPECTION"]
           }
         }
+      },
+      "DunningRuleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Relance J+3"
+          },
+          "stepOrder": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1
+          },
+          "triggerType": {
+            "type": "string",
+            "enum": ["DAYS_BEFORE_DUE", "DAYS_AFTER_DUE", "ON_ISSUE", "ON_OVERDUE"],
+            "default": "DAYS_AFTER_DUE"
+          },
+          "offsetDays": {
+            "type": "number",
+            "default": 0,
+            "example": 3
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
+            "default": "WHATSAPP"
+          },
+          "fallbackChannel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
+            "nullable": true
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minBalanceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 50000,
+            "default": 0
+          },
+          "notifyLandlord": {
+            "type": "boolean",
+            "default": false
+          },
+          "notifyCollector": {
+            "type": "boolean",
+            "default": false
+          },
+          "applyPenalty": {
+            "type": "boolean",
+            "default": false
+          },
+          "penaltyRuleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "escalateToLegal": {
+            "type": "boolean",
+            "default": false
+          },
+          "sendHourLocal": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 23,
+            "default": 9
+          },
+          "skipWeekends": {
+            "type": "boolean",
+            "default": false
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["XAF"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["name", "stepOrder", "id", "currency", "createdAt", "updatedAt"]
+      },
+      "DunningRuleListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DunningRuleDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "DunningRuleInputDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Relance J+3"
+          },
+          "stepOrder": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1
+          },
+          "triggerType": {
+            "type": "string",
+            "enum": ["DAYS_BEFORE_DUE", "DAYS_AFTER_DUE", "ON_ISSUE", "ON_OVERDUE"],
+            "default": "DAYS_AFTER_DUE"
+          },
+          "offsetDays": {
+            "type": "number",
+            "default": 0,
+            "example": 3
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
+            "default": "WHATSAPP"
+          },
+          "fallbackChannel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
+            "nullable": true
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minBalanceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 50000,
+            "default": 0
+          },
+          "notifyLandlord": {
+            "type": "boolean",
+            "default": false
+          },
+          "notifyCollector": {
+            "type": "boolean",
+            "default": false
+          },
+          "applyPenalty": {
+            "type": "boolean",
+            "default": false
+          },
+          "penaltyRuleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "escalateToLegal": {
+            "type": "boolean",
+            "default": false
+          },
+          "sendHourLocal": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 23,
+            "default": 9
+          },
+          "skipWeekends": {
+            "type": "boolean",
+            "default": false
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": ["name", "stepOrder"]
+      },
+      "UpdateDunningRuleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Relance J+3"
+          },
+          "stepOrder": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1
+          },
+          "triggerType": {
+            "type": "string",
+            "enum": ["DAYS_BEFORE_DUE", "DAYS_AFTER_DUE", "ON_ISSUE", "ON_OVERDUE"],
+            "default": "DAYS_AFTER_DUE"
+          },
+          "offsetDays": {
+            "type": "number",
+            "default": 0,
+            "example": 3
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
+            "default": "WHATSAPP"
+          },
+          "fallbackChannel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
+            "nullable": true
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minBalanceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "example": 50000,
+            "default": 0
+          },
+          "notifyLandlord": {
+            "type": "boolean",
+            "default": false
+          },
+          "notifyCollector": {
+            "type": "boolean",
+            "default": false
+          },
+          "applyPenalty": {
+            "type": "boolean",
+            "default": false
+          },
+          "penaltyRuleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "escalateToLegal": {
+            "type": "boolean",
+            "default": false
+          },
+          "sendHourLocal": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 23,
+            "default": 9
+          },
+          "skipWeekends": {
+            "type": "boolean",
+            "default": false
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "ActivateDunningRuleDto": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": ["isActive"]
+      },
+      "DunningRunInvoiceRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["id", "invoiceNumber"]
+      },
+      "DunningRunTenantRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "displayName"]
+      },
+      "DunningRunDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ruleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ruleName": {
+            "type": "string"
+          },
+          "stepOrder": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING", "RUNNING", "SENT", "SKIPPED", "FAILED", "CANCELLED"]
+          },
+          "runDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "executedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "daysOverdue": {
+            "type": "number"
+          },
+          "balanceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 50000
+          },
+          "channel": {
+            "type": "string"
+          },
+          "invoice": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DunningRunInvoiceRefDto"
+              }
+            ]
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/DunningRunTenantRefDto"
+          },
+          "notificationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "messageLogId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "messageStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "guarantorNotified": {
+            "type": "boolean"
+          },
+          "penaltyApplied": {
+            "type": "boolean"
+          },
+          "penaltyAmount": {
+            "type": "integer",
+            "format": "int64",
+            "example": 50000
+          },
+          "skipReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorMessage": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "ruleId",
+          "ruleName",
+          "stepOrder",
+          "status",
+          "runDate",
+          "scheduledAt",
+          "executedAt",
+          "daysOverdue",
+          "balanceAmount",
+          "channel",
+          "invoice",
+          "tenant",
+          "notificationId",
+          "messageLogId",
+          "messageStatus",
+          "guarantorNotified",
+          "penaltyApplied",
+          "penaltyAmount",
+          "skipReason",
+          "errorMessage"
+        ]
+      },
+      "DunningRunPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DunningRunDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "TriggerDunningRunDto": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean",
+            "default": false,
+            "description": "Simule sans envoyer ni écrire."
+          }
+        }
+      },
+      "DunningTriggerAcceptedDto": {
+        "type": "object",
+        "properties": {
+          "scanned": {
+            "type": "number"
+          },
+          "created": {
+            "type": "number"
+          },
+          "skipped": {
+            "type": "number"
+          },
+          "failed": {
+            "type": "number"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        },
+        "required": ["scanned", "created", "skipped", "failed", "dryRun"]
+      },
+      "ExportRequestDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "landlordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "description": "Filtre `invoices` (invoice_status)."
+          },
+          "method": {
+            "type": "string",
+            "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"],
+            "description": "Filtre `payments`."
+          },
+          "dashboardKind": {
+            "type": "string",
+            "enum": ["collection-rate", "arrears", "vacancy", "payment-methods"],
+            "description": "Obligatoire lorsque `kind = dashboard`."
+          }
+        }
+      },
+      "OnboardingStateDto": {
+        "type": "object",
+        "properties": {
+          "firstPropertyDone": {
+            "type": "boolean",
+            "description": "Un premier bien existe pour cette organisation."
+          },
+          "firstLeaseDone": {
+            "type": "boolean",
+            "description": "Un premier bail existe pour cette organisation."
+          },
+          "inviteDone": {
+            "type": "boolean",
+            "description": "Une invitation a déjà été envoyée pour cette organisation."
+          }
+        },
+        "required": ["firstPropertyDone", "firstLeaseDone", "inviteDone"]
+      },
+      "CreatePortfolioImportDto": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Document CSV déjà téléversé par le mécanisme habituel du module `documents`."
+          }
+        },
+        "required": ["documentId"]
+      },
+      "ImportJobCreatedDto": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "example": "import-…"
+          }
+        },
+        "required": ["jobId"]
+      },
+      "ImportRejectionDto": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "number",
+            "example": 12,
+            "description": "Numéro de ligne dans le fichier."
+          },
+          "reason": {
+            "type": "string",
+            "example": "Colonne « téléphone » manquante."
+          }
+        },
+        "required": ["line", "reason"]
+      },
+      "ImportReportDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["QUEUED", "ACTIVE", "COMPLETED", "FAILED"]
+          },
+          "totalRows": {
+            "type": "number",
+            "example": 500
+          },
+          "createdCount": {
+            "type": "number",
+            "example": 480
+          },
+          "rejectedCount": {
+            "type": "number",
+            "example": 20
+          },
+          "rejected": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportRejectionDto"
+            }
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Document du rapport (genre OTHER)."
+          },
+          "downloadUrl": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": ["status"]
+      },
+      "TenantOtpRequestDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "+242066000001",
+            "description": "Numéro de téléphone du locataire, normalisé en E.164."
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["SMS", "WHATSAPP"],
+            "default": "WHATSAPP",
+            "description": "Canal tenté en premier, avec repli SMS automatique."
+          }
+        },
+        "required": ["phone"]
+      },
+      "TenantOtpRequestResponseDto": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Expiration du code demandé."
+          },
+          "resendAfter": {
+            "type": "number",
+            "example": 60,
+            "description": "Secondes avant un nouvel envoi possible."
+          }
+        },
+        "required": ["expiresAt", "resendAfter"]
+      },
+      "TenantOtpVerifyDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "+242066000001"
+          },
+          "code": {
+            "type": "string",
+            "example": "123456",
+            "description": "Code à 6 chiffres reçu par WhatsApp ou SMS."
+          },
+          "deviceName": {
+            "type": "string",
+            "example": "Android — Pointe-Noire"
+          }
+        },
+        "required": ["phone", "code"]
+      },
+      "TenantAuthTenantDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Fiche locataire principale (première trouvée)."
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Bernadette Loemba"
+          },
+          "leaseCount": {
+            "type": "number",
+            "example": 2,
+            "description": "Nombre de baux actifs dans le périmètre de la session."
+          }
+        },
+        "required": ["id", "displayName", "leaseCount"]
+      },
+      "TenantAuthVerifyResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/TenantAuthTenantDto"
+          }
+        },
+        "required": ["accessToken", "tenant"]
+      },
+      "TenantInvoicePayDto": {
+        "type": "object",
+        "properties": {
+          "payerMsisdn": {
+            "type": "string",
+            "example": "+242066000001",
+            "description": "Numéro Mobile Money du locataire, normalisé en E.164."
+          },
+          "clientRef": {
+            "type": "string",
+            "example": "01J8Z...ULID",
+            "description": "Clé d'idempotence côté client."
+          }
+        },
+        "required": ["payerMsisdn", "clientRef"]
+      },
+      "TenantInvoicePayResponseDto": {
+        "type": "object",
+        "properties": {
+          "transactionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": ["transactionId", "status"]
+      },
+      "TenantTransferDeclareDto": {
+        "type": "object",
+        "properties": {
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "declaredAmount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 300000
+          },
+          "transferDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "transferReference": {
+            "type": "string"
+          },
+          "payerName": {
+            "type": "string",
+            "example": "Jean Mabiala"
+          },
+          "payerBankCode": {
+            "type": "string"
+          },
+          "payerBankName": {
+            "type": "string"
+          },
+          "payerAccountNumber": {
+            "type": "string"
+          },
+          "beneficiaryBankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "proofDocumentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Preuve obligatoire (contrat)."
+          },
+          "clientRef": {
+            "type": "string",
+            "example": "01J8Z...ULID"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "leaseId",
+          "declaredAmount",
+          "transferDate",
+          "payerName",
+          "beneficiaryBankAccountId",
+          "proofDocumentId",
+          "clientRef"
+        ]
+      },
+      "RegisterReferralPartnerDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "example": "Jean Mabiala"
+          }
+        }
+      },
+      "ReferralPartnerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "partnerCode": {
+            "type": "string",
+            "example": "IMD-4K7QRT"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING_VERIFICATION", "ACTIVE", "SUSPENDED", "CLOSED"]
+          },
+          "displayName": {
+            "type": "object",
+            "nullable": true
+          },
+          "totalAccruedAmount": {
+            "type": "string",
+            "example": 0
+          },
+          "totalPaidAmount": {
+            "type": "string",
+            "example": 0
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "partnerCode",
+          "status",
+          "totalAccruedAmount",
+          "totalPaidAmount",
+          "createdAt"
+        ]
+      },
+      "RegisterPropertyLeadDto": {
+        "type": "object",
+        "properties": {
+          "landlordPhone": {
+            "type": "string",
+            "example": "+242066000002",
+            "description": "Numéro du bailleur rencontré sur le terrain (format E.164)."
+          },
+          "note": {
+            "type": "string",
+            "example": "Immeuble Bacongo, 12 logements"
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["SMS", "WHATSAPP"],
+            "default": "WHATSAPP"
+          }
+        },
+        "required": ["landlordPhone"]
+      },
+      "RegisterPropertyLeadResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "À reporter dans l’URL de confirmation."
+          },
+          "confirmationSentTo": {
+            "type": "string",
+            "example": "+242066••••02"
+          }
+        },
+        "required": ["id", "confirmationSentTo"]
+      },
+      "ReferralDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "partnerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "referredOrganizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "referredPropertyId": {
+            "type": "object",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": ["CODE_AT_SIGNUP", "PARTNER_REGISTERED_PROPERTY", "LINK", "MANUAL_ADMIN"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING", "QUALIFIED", "ACTIVE", "EXPIRED", "CANCELLED"]
+          },
+          "qualifiedAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "activatedAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "partnerId", "referredOrganizationId", "source", "status", "createdAt"]
+      },
+      "ReferralListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReferralDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "ReferralCommissionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "referralId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "baseAmount": {
+            "type": "string",
+            "example": "10000"
+          },
+          "rateBps": {
+            "type": "number",
+            "example": 2000
+          },
+          "commissionAmount": {
+            "type": "string",
+            "example": "2000"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACCRUED", "APPROVED", "PAID", "REVERSED", "CANCELLED"]
+          },
+          "periodMonth": {
+            "type": "object",
+            "nullable": true
+          },
+          "accruedAt": {
+            "type": "string"
+          },
+          "reversalOfId": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "referralId",
+          "baseAmount",
+          "rateBps",
+          "commissionAmount",
+          "status",
+          "accruedAt"
+        ]
+      },
+      "ReferralCommissionTotalsDto": {
+        "type": "object",
+        "properties": {
+          "ACCRUED": {
+            "type": "string",
+            "example": "0"
+          },
+          "APPROVED": {
+            "type": "string",
+            "example": "0"
+          },
+          "PAID": {
+            "type": "string",
+            "example": "0"
+          },
+          "REVERSED": {
+            "type": "string",
+            "example": "0"
+          },
+          "CANCELLED": {
+            "type": "string",
+            "example": "0"
+          }
+        },
+        "required": ["ACCRUED", "APPROVED", "PAID", "REVERSED", "CANCELLED"]
+      },
+      "ReferralCommissionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReferralCommissionDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ReferralCommissionTotalsDto"
+          }
+        },
+        "required": ["items", "pageInfo", "totals"]
+      },
+      "ConfirmPropertyLeadDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "123456"
+          }
+        },
+        "required": ["code"]
+      },
+      "AttachReferralCodeDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "IMD-4K7QRT"
+          }
+        },
+        "required": ["code"]
+      },
+      "ApproveCommissionsDto": {
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Limite la campagne à un partenaire."
+          },
+          "periodMonth": {
+            "type": "string",
+            "example": "2026-09",
+            "description": "Mois d’imputation (AAAA-MM) ; par défaut le mois courant."
+          }
+        }
+      },
+      "ApproveCommissionsResponseDto": {
+        "type": "object",
+        "properties": {
+          "approved": {
+            "type": "number",
+            "example": 3,
+            "description": "Nombre de commissions passées APPROVED."
+          },
+          "heldByCap": {
+            "type": "number",
+            "example": 1,
+            "description": "Nombre de commissions retenues par le plafond mensuel."
+          }
+        },
+        "required": ["approved", "heldByCap"]
+      },
+      "CreatePayoutsDto": {
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Limite le versement à un partenaire."
+          }
+        }
+      },
+      "CreatePayoutsResponseDto": {
+        "type": "object",
+        "properties": {
+          "payoutIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["payoutIds"]
+      },
+      "ReferralPayoutDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "partnerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "periodStart": {
+            "type": "string"
+          },
+          "periodEnd": {
+            "type": "string"
+          },
+          "totalAmount": {
+            "type": "string",
+            "example": "15000"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING", "APPROVED", "PROCESSING", "PAID", "FAILED", "CANCELLED"]
+          },
+          "msisdn": {
+            "type": "object",
+            "nullable": true
+          },
+          "requestedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "partnerId",
+          "periodStart",
+          "periodEnd",
+          "totalAmount",
+          "status",
+          "requestedAt"
+        ]
+      },
+      "AtRiskSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PAST_DUE"]
+          }
+        },
+        "required": ["organizationId", "organizationName", "status"]
+      },
+      "AtRiskListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AtRiskSubscriptionDto"
+            }
+          },
+          "pageInfo": {
+            "type": "object"
+          }
+        },
+        "required": ["items", "pageInfo"]
       }
     }
   }

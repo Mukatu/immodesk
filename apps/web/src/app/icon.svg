@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192" role="img" aria-label="Immodesk">
+  <title>Immodesk</title>
+  <!--
+    Icône d'application (onglet navigateur, écran d'accueil, manifeste PWA).
+    Reprend le bloc de marque de app-shell.tsx : carré arrondi au fond rose
+    (--primary du thème clair, voir manifest.ts pour le calcul HSL → hex),
+    initiale « I » en blanc.
+
+    La lettre est dessinée en géométrie et NON en <text> : un <text> dépendrait
+    d'une police présente sur l'appareil, et le rendu varierait d'un téléphone à
+    l'autre. Ici l'icône est identique partout, sans police ni génération d'image.
+  -->
+  <rect width="192" height="192" rx="40" ry="40" fill="#EC4699" />
+  <g fill="#ffffff">
+    <rect x="62" y="50" width="68" height="20" rx="6" ry="6" />
+    <rect x="86" y="50" width="20" height="92" rx="4" ry="4" />
+    <rect x="62" y="122" width="68" height="20" rx="6" ry="6" />
+  </g>
+</svg>

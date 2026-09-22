@@ -36,16 +36,23 @@ export default function manifest(): MetadataRoute.Manifest {
     dir: 'ltr',
     background_color: BACKGROUND_HEX,
     theme_color: PRIMARY_HEX,
+    /*
+     * Icône SVG statique (src/app/icon.svg), et non une génération par
+     * `ImageResponse` : celle-ci plantait à chaque requête sous Windows, le
+     * chargement de la police par défaut de @vercel/og produisant une URL
+     * invalide (`.\file:\C:\...noto-sans...ttf`). Un SVG statique n'a besoin
+     * ni de police ni de génération, et reste net à toutes les tailles —
+     * d'où `sizes: 'any'`.
+     *
+     * Réserve connue : iOS n'accepte pas le SVG pour l'icône d'écran d'accueil
+     * et retombera sur une capture de la page. Y remédier demande un vrai PNG,
+     * donc un outil de génération d'image à ajouter au projet.
+     */
     icons: [
       {
-        src: '/icon',
-        sizes: '192x192',
-        type: 'image/png',
-      },
-      {
-        src: '/apple-icon',
-        sizes: '180x180',
-        type: 'image/png',
+        src: '/icon.svg',
+        sizes: 'any',
+        type: 'image/svg+xml',
       },
     ],
   };

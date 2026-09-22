@@ -1129,7 +1129,7 @@ Durée indicative : **5 semaines**.
 
 ## 5.1 Objectif et valeur livrée
 
-Jusqu'ici, l'application mobile des démarcheurs (`COLLECTOR`) fonctionne en ligne uniquement (phase 3). Cette phase la rend **offline-first** : base locale Flutter/Riverpod/Drift (SQLite), file d'attente locale (« outbox ») pour les écritures créées hors connexion, moteur de synchronisation bidirectionnel (`SyncEngine`) avec le serveur, capture de signature tactile et de photos compressées, chiffrement des données au repos sur l'appareil, et un mode démarcheur au périmètre volontairement restreint.
+Jusqu'ici, l'application mobile des démarcheurs (`COLLECTOR`) fonctionne en ligne uniquement (phase 3). Cette phase la rend **offline-first** : base locale Flutter/Riverpod/Drift (SQLite), file d'attente locale (« outbox ») pour les écritures créées hors connexion, moteur de synchronisation bidirectionnel (`SyncEngine`) avec le serveur, capture de signature tactile et de photos compressées, chiffrement des données au repos sur l'appareil, et un mode démarcheur au périmètre volontairement restreint. Ce périmètre restreint est arbitré par [ADR-013](adr/0013-web-installable-surface-universelle.md) : il constitue une étape et non la destination, `docs/_DECISIONS_COMMUNES.md` décrivant la cible où les bailleurs et les locataires rejoignent le mobile.
 
 À la fin de la phase, un démarcheur peut partir en tournée à Brazzaville ou Pointe-Noire sans réseau pendant plusieurs heures, encaisser des loyers en espèces avec signature, réaliser des états des lieux avec photos, puis synchroniser l'ensemble sans doublon et sans perte dès que la connexion revient.
 

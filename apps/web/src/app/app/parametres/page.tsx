@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -40,9 +39,7 @@ const identitySchema = z.object({
 type IdentityValues = z.infer<typeof identitySchema>;
 
 export default function ParametresPage() {
-  const { currentOrganizationId, currentOrganization } = useAuth();
-  const isOwner = currentOrganization?.role === 'OWNER';
-  const canImportPortfolio = isOwner || currentOrganization?.role === 'MANAGER';
+  const { currentOrganizationId } = useAuth();
   const { data: organization, isLoading: loadingOrg } = useOrganization(currentOrganizationId);
   const { data: settings, isLoading: loadingSettings } =
     useOrganizationSettings(currentOrganizationId);
@@ -51,15 +48,13 @@ export default function ParametresPage() {
 
   const form = useForm<IdentityValues>({
     resolver: zodResolver(identitySchema),
-    values: organization
-      ? {
-          legalName: organization.legalName,
-          tradeName: organization.tradeName ?? '',
-          city: organization.city,
-          district: organization.district ?? '',
-          contactEmail: organization.contactEmail ?? '',
-        }
-      : undefined,
+    values: {
+      legalName: organization?.legalName ?? '',
+      tradeName: organization?.tradeName ?? '',
+      city: organization?.city ?? '',
+      district: organization?.district ?? '',
+      contactEmail: organization?.contactEmail ?? '',
+    },
   });
 
   const [dueDay, setDueDay] = React.useState(5);
@@ -109,76 +104,6 @@ export default function ParametresPage() {
         title="Paramètres"
         description="Identité de l’organisation et réglages de facturation."
       />
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Link
-          href="/app/parametres/facturation"
-          className="rounded-md border border-border p-4 hover:bg-accent"
-        >
-          <p className="font-medium">Facturation, caisse et messagerie</p>
-          <p className="text-sm text-muted-foreground">
-            Génération des factures, plafond de caisse, règles de pénalité.
-          </p>
-        </Link>
-        <Link
-          href="/app/parametres/messages"
-          className="rounded-md border border-border p-4 hover:bg-accent"
-        >
-          <p className="font-medium">Gabarits de messages</p>
-          <p className="text-sm text-muted-foreground">
-            Corps des messages WhatsApp et SMS envoyés aux locataires.
-          </p>
-        </Link>
-        <Link
-          href="/app/parametres/paiements"
-          className="rounded-md border border-border p-4 hover:bg-accent"
-        >
-          <p className="font-medium">Méthodes de paiement</p>
-          <p className="text-sm text-muted-foreground">
-            Mobile Money déclaré, Mobile Money agrégateur et virement bancaire.
-          </p>
-        </Link>
-        <Link
-          href="/app/parametres/rapprochement"
-          className="rounded-md border border-border p-4 hover:bg-accent"
-        >
-          <p className="font-medium">Rapprochement bancaire</p>
-          <p className="text-sm text-muted-foreground">
-            Seuil de suggestion, tolérances, confirmation automatique et frais de rejet de chèque.
-          </p>
-        </Link>
-        <Link
-          href="/app/parametres/tarifs"
-          className="rounded-md border border-border p-4 hover:bg-accent"
-        >
-          <p className="font-medium">Grilles tarifaires</p>
-          <p className="text-sm text-muted-foreground">
-            Tarifs d’eau et d’électricité par bien, pour la refacturation des charges.
-          </p>
-        </Link>
-        {canImportPortfolio ? (
-          <Link
-            href="/app/parametres/import-portefeuille"
-            className="rounded-md border border-border p-4 hover:bg-accent"
-          >
-            <p className="font-medium">Import de portefeuille</p>
-            <p className="text-sm text-muted-foreground">
-              Reprise en masse depuis un fichier CSV (bailleurs, biens, lots, locataires, baux).
-            </p>
-          </Link>
-        ) : null}
-        {isOwner ? (
-          <Link
-            href="/app/parametres/webhooks"
-            className="rounded-md border border-border p-4 hover:bg-accent"
-          >
-            <p className="font-medium">Webhooks</p>
-            <p className="text-sm text-muted-foreground">
-              Journal technique des événements entrants et rejeu.
-            </p>
-          </Link>
-        ) : null}
-      </div>
 
       <Card>
         <CardHeader>

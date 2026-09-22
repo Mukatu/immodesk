@@ -16,14 +16,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useContextPanel, type ContextPanelTone } from '@/components/layout/context-panel';
 import { useCommissions } from '@/lib/api/hooks/use-commissions';
 import { useMandates } from '@/lib/api/hooks/use-mandates';
-import { COMMISSION_STATUS_LABELS } from '@/lib/enum-labels';
-import type { Commission } from '@/lib/api/types';
+import { COMMISSION_BASIS_LABELS, COMMISSION_STATUS_LABELS } from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
+import type { Commission, CommissionStatus } from '@/lib/api/types';
+
+/**
+ * Statuts de commission de GÉRANCE (5 valeurs, contrat phase 7) — à ne pas confondre
+ * avec `ReferralCommissionStatus` (apport d'affaires, phase 10) qui n'a rien à voir
+ * avec cet écran.
+ */
+const COMMISSION_TONE: Record<CommissionStatus, ContextPanelTone> = {
+  PENDING: 'neutral',
+  ACCRUED: 'info',
+  INVOICED: 'info',
+  SETTLED: 'ok',
+  CANCELLED: 'danger',
+};
 
 export default function CommissionsPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedCommissionId, setSelectedCommissionId] = React.useState<string | null>(null);
   const [mandateId, setMandateId] = React.useState('ALL');
   const [period, setPeriod] = React.useState('');
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedCommissionId(null);
+  }, [isContextPanelOpen]);
 
   const { data: mandates } = useMandates({ limit: 100 });
   const { data } = useCommissions({
@@ -50,6 +71,72 @@ export default function CommissionsPage() {
     ],
     [],
   );
+
+  function handleRowSelect(commission: Commission) {
+    setSelectedCommissionId(commission.id);
+    openContextPanel({
+      title: 'Commission de gestion',
+      blocks: [
+        {
+          type: 'identity',
+          title: `Commission — ${commission.landlord.displayName}`,
+          subtitle: `Période ${commission.periodStart.slice(0, 7)}`,
+          badge: {
+            label: COMMISSION_STATUS_LABELS[commission.status],
+            tone: COMMISSION_TONE[commission.status],
+          },
+        },
+        {
+          type: 'metric',
+          title: 'Montant',
+          value: formatXaf(commission.totalAmount),
+          label: 'Total TTC',
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Bailleur', v: commission.landlord.displayName },
+            { k: 'Base de calcul', v: COMMISSION_BASIS_LABELS[commission.basis] },
+            {
+              k: 'Taux',
+              v:
+                commission.rateBps !== null
+                  ? `${(commission.rateBps / 100).toLocaleString('fr-FR')} %`
+                  : '—',
+            },
+            { k: 'Montant de base', v: formatXaf(commission.baseAmount) },
+            { k: 'TVA', v: formatXaf(commission.vatAmount) },
+          ],
+        },
+        {
+          type: 'actions',
+          actions: [
+            commission.mandateId
+              ? {
+                  label: 'Voir la fiche du mandat',
+                  primary: true,
+                  href: `/app/gerance/mandats/${commission.mandateId}`,
+                }
+              : {
+                  label: 'Voir la fiche du bailleur',
+                  primary: true,
+                  href: `/app/bailleurs/${commission.landlord.id}`,
+                },
+            { label: 'Voir le bailleur', href: `/app/bailleurs/${commission.landlord.id}` },
+            ...(commission.ownerStatementId
+              ? [
+                  {
+                    label: 'Voir le relevé de gérance',
+                    href: `/app/gerance/releves/${commission.ownerStatementId}`,
+                  },
+                ]
+              : []),
+          ],
+        },
+      ],
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -103,6 +190,15 @@ export default function CommissionsPage() {
         data={data?.items ?? []}
         emptyTitle="Aucune commission"
         emptyDescription="Les commissions apparaissent après une campagne de relevés."
+        onRowSelect={handleRowSelect}
+        getRowLabel={(commission) =>
+          `Voir le détail de la commission de ${commission.landlord.displayName}`
+        }
+        getRowClassName={(commission) =>
+          commission.id === selectedCommissionId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

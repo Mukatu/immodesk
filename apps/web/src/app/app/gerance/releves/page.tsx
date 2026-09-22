@@ -22,17 +22,34 @@ import { DataTable } from '@/components/business/data-table';
 import { PageHeader } from '@/components/business/page-header';
 import { MoneyXaf } from '@/components/business/money-xaf';
 import { StatementStatusBadge } from '@/components/business/statement-status-badge';
+import { useContextPanel, type ContextPanelTone } from '@/components/layout/context-panel';
 import {
   useOwnerStatementRun,
   useOwnerStatements,
   useStartOwnerStatementRun,
 } from '@/lib/api/hooks/use-owner-statements';
-import type { OwnerStatementSummary } from '@/lib/api/types';
+import { OWNER_STATEMENT_STATUS_LABELS } from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
+import type { OwnerStatementStatus, OwnerStatementSummary } from '@/lib/api/types';
+
+const STATEMENT_TONE: Record<OwnerStatementStatus, ContextPanelTone> = {
+  DRAFT: 'neutral',
+  ISSUED: 'info',
+  SENT: 'info',
+  PAID: 'ok',
+  CANCELLED: 'danger',
+};
 
 export default function RelevesPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedStatementId, setSelectedStatementId] = React.useState<string | null>(null);
   const [period, setPeriod] = React.useState('');
   const [runId, setRunId] = React.useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedStatementId(null);
+  }, [isContextPanelOpen]);
 
   const startRun = useStartOwnerStatementRun();
   const runQuery = useOwnerStatementRun(runId);
@@ -80,6 +97,53 @@ export default function RelevesPage() {
     ],
     [],
   );
+
+  function handleRowSelect(statement: OwnerStatementSummary) {
+    setSelectedStatementId(statement.id);
+    openContextPanel({
+      title: 'Relevé de gérance',
+      blocks: [
+        {
+          type: 'identity',
+          title: statement.statementNumber,
+          subtitle: `${statement.landlord.displayName} — ${statement.property?.name ?? 'Consolidé'}`,
+          badge: {
+            label: OWNER_STATEMENT_STATUS_LABELS[statement.status],
+            tone: STATEMENT_TONE[statement.status],
+          },
+        },
+        {
+          type: 'metric',
+          title: 'Solde',
+          value: formatXaf(statement.netPayableAmount),
+          label: 'Solde net à reverser',
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Bailleur', v: statement.landlord.displayName },
+            { k: 'Bien', v: statement.property?.name ?? 'Consolidé' },
+            { k: 'Période', v: statement.periodStart.slice(0, 7) },
+            { k: 'Loyers encaissés', v: formatXaf(statement.rentCollectedAmount) },
+            { k: 'Commission', v: formatXaf(statement.commissionAmount) },
+            { k: 'Dépenses', v: formatXaf(statement.expensesAmount) },
+          ],
+        },
+        {
+          type: 'actions',
+          actions: [
+            {
+              label: 'Voir la fiche du relevé',
+              primary: true,
+              href: `/app/gerance/releves/${statement.id}`,
+            },
+            { label: 'Voir le bailleur', href: `/app/bailleurs/${statement.landlord.id}` },
+          ],
+        },
+      ],
+    });
+  }
 
   return (
     <div className="space-y-8">
@@ -172,6 +236,13 @@ export default function RelevesPage() {
         isLoading={isLoading}
         emptyTitle="Aucun relevé"
         emptyDescription="Lancez une campagne pour générer les premiers relevés."
+        onRowSelect={handleRowSelect}
+        getRowLabel={(statement) => `Voir le détail du relevé ${statement.statementNumber}`}
+        getRowClassName={(statement) =>
+          statement.id === selectedStatementId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

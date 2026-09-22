@@ -10,8 +10,10 @@ import { PageHeader } from '@/components/business/page-header';
 import { MoneyXaf } from '@/components/business/money-xaf';
 import { EnumSelect } from '@/components/business/enum-select';
 import { PeriodPicker, currentPeriod } from '@/components/business/period-picker';
+import { useContextPanel } from '@/components/layout/context-panel';
 import { useReceipts } from '@/lib/api/hooks/use-receipts';
 import { RECEIPT_STATUS_LABELS, NOTIFICATION_CHANNEL_LABELS } from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
 import type { ReceiptStatus, ReceiptSummary } from '@/lib/api/types';
 
 const RECEIPT_STATUS_VARIANT: Record<ReceiptStatus, NonNullable<BadgeProps['variant']>> = {
@@ -22,9 +24,19 @@ const RECEIPT_STATUS_VARIANT: Record<ReceiptStatus, NonNullable<BadgeProps['vari
   CANCELLED: 'outline',
 };
 
+const RECEIPT_TONE: Record<ReceiptStatus, 'ok' | 'info' | 'warning' | 'danger' | 'neutral'> = {
+  DRAFT: 'neutral',
+  GENERATING: 'warning',
+  ISSUED: 'info',
+  SENT: 'ok',
+  CANCELLED: 'neutral',
+};
+
 const PAGE_SIZE = 20;
 
 export default function QuittancesPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedReceiptId, setSelectedReceiptId] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState<ReceiptStatus | ''>('');
   const [period, setPeriod] = React.useState(currentPeriod());
   const [periodEnabled, setPeriodEnabled] = React.useState(false);
@@ -42,6 +54,63 @@ export default function QuittancesPage() {
   function resetPagination() {
     setCursor(undefined);
     setPreviousCursors([]);
+  }
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedReceiptId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(receipt: ReceiptSummary) {
+    setSelectedReceiptId(receipt.id);
+    openContextPanel({
+      title: 'Quittance',
+      blocks: [
+        {
+          type: 'identity',
+          title: receipt.receiptNumber,
+          subtitle: receipt.tenant.displayName,
+          badge: {
+            label: RECEIPT_STATUS_LABELS[receipt.status],
+            tone: RECEIPT_TONE[receipt.status],
+          },
+        },
+        { type: 'metric', value: formatXaf(receipt.totalAmount), label: 'Montant quittancé' },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            {
+              k: 'Période',
+              v:
+                receipt.periodStart && receipt.periodEnd
+                  ? `${new Date(receipt.periodStart).toLocaleDateString('fr-CG')} – ${new Date(receipt.periodEnd).toLocaleDateString('fr-CG')}`
+                  : '—',
+            },
+            { k: 'Émise le', v: new Date(receipt.issueDate).toLocaleDateString('fr-CG') },
+            {
+              k: 'Envoi',
+              v: receipt.sentChannel
+                ? NOTIFICATION_CHANNEL_LABELS[receipt.sentChannel]
+                : 'Non envoyée',
+            },
+            {
+              k: 'Envoyée le',
+              v: receipt.sentAt ? new Date(receipt.sentAt).toLocaleDateString('fr-CG') : '—',
+            },
+          ],
+        },
+        {
+          type: 'actions',
+          actions: [
+            { label: 'Voir la quittance', primary: true, href: `/app/quittances/${receipt.id}` },
+            { label: 'Voir le paiement', href: `/app/paiements/${receipt.paymentId}` },
+            ...(receipt.invoiceId
+              ? [{ label: 'Voir la facture', href: `/app/factures/${receipt.invoiceId}` }]
+              : []),
+          ],
+        },
+      ],
+    });
   }
 
   const columns = React.useMemo<ColumnDef<ReceiptSummary>[]>(
@@ -151,6 +220,13 @@ export default function QuittancesPage() {
           });
         }}
         hasPreviousPage={previousCursors.length > 0}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(receipt) => `Ouvrir le détail de la quittance ${receipt.receiptNumber}`}
+        getRowClassName={(receipt) =>
+          receipt.id === selectedReceiptId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

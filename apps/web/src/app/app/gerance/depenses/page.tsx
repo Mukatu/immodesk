@@ -18,14 +18,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useContextPanel, type ContextPanelTone } from '@/components/layout/context-panel';
 import { useExpenses } from '@/lib/api/hooks/use-expenses';
 import { useProperties } from '@/lib/api/hooks/use-properties';
-import { EXPENSE_CATEGORY_LABELS } from '@/lib/enum-labels';
+import { EXPENSE_CATEGORY_LABELS, EXPENSE_STATUS_LABELS } from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
 import { ApproveExpenseButton } from './_components/approve-expense-button';
 import { RejectExpenseDialog } from './_components/reject-expense-dialog';
 import type { Expense, ExpenseStatus } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
+
+const EXPENSE_TONE: Record<ExpenseStatus, ContextPanelTone> = {
+  DRAFT: 'neutral',
+  SUBMITTED: 'info',
+  APPROVED: 'ok',
+  PAID: 'ok',
+  REBILLED: 'neutral',
+  REJECTED: 'danger',
+  CANCELLED: 'danger',
+};
 
 const STATUS_FILTERS: { value: ExpenseStatus | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'Toutes' },
@@ -36,10 +48,16 @@ const STATUS_FILTERS: { value: ExpenseStatus | 'ALL'; label: string }[] = [
 ];
 
 export default function DepensesPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedExpenseId, setSelectedExpenseId] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState<ExpenseStatus | 'ALL'>('ALL');
   const [propertyId, setPropertyId] = React.useState<string>('ALL');
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
   const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedExpenseId(null);
+  }, [isContextPanelOpen]);
 
   const { data: properties } = useProperties({ limit: 100 });
   const { data, isLoading } = useExpenses({
@@ -116,6 +134,70 @@ export default function DepensesPage() {
     });
   }
 
+  function handleRowSelect(expense: Expense) {
+    setSelectedExpenseId(expense.id);
+    openContextPanel({
+      title: 'Dépense',
+      blocks: [
+        {
+          type: 'identity',
+          title: expense.reference,
+          subtitle: expense.label,
+          badge: {
+            label: EXPENSE_STATUS_LABELS[expense.status],
+            tone: EXPENSE_TONE[expense.status],
+          },
+        },
+        {
+          type: 'metric',
+          title: 'Montant',
+          value: formatXaf(expense.totalAmount),
+          label: 'Total TTC',
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Fournisseur', v: expense.supplierName ?? '—' },
+            { k: 'Catégorie', v: EXPENSE_CATEGORY_LABELS[expense.category] },
+            { k: 'Bien', v: expense.property?.name ?? '—' },
+            { k: 'Bailleur', v: expense.landlord?.displayName ?? '—' },
+            { k: 'Justificatif', v: expense.invoiceDocumentId ? 'Joint' : 'Absent' },
+            { k: 'Date', v: new Date(expense.expenseDate).toLocaleDateString('fr-CG') },
+          ],
+        },
+        ...(!expense.invoiceDocumentId
+          ? [
+              {
+                type: 'alert' as const,
+                tone: 'warning' as const,
+                text: 'Aucun justificatif n’est joint à cette dépense.',
+              },
+            ]
+          : []),
+        {
+          type: 'actions',
+          actions: [
+            expense.property
+              ? {
+                  label: 'Voir la fiche du bien',
+                  primary: true,
+                  href: `/app/immeubles/${expense.property.id}`,
+                }
+              : {
+                  label: 'Voir la fiche du bailleur',
+                  primary: true,
+                  href: `/app/bailleurs/${expense.landlord?.id ?? ''}`,
+                },
+            ...(expense.landlord
+              ? [{ label: 'Voir le bailleur', href: `/app/bailleurs/${expense.landlord.id}` }]
+              : []),
+          ],
+        },
+      ],
+    });
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -184,6 +266,13 @@ export default function DepensesPage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         hasPreviousPage={previousCursors.length > 0}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(expense) => `Voir le détail de la dépense ${expense.reference}`}
+        getRowClassName={(expense) =>
+          expense.id === selectedExpenseId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

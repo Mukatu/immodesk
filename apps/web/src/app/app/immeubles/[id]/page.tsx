@@ -16,17 +16,82 @@ import { PhoneDisplay } from '@/components/business/phone-display';
 import { DataTable } from '@/components/business/data-table';
 import { EmptyState } from '@/components/business/empty-state';
 import { Button } from '@/components/ui/button';
+import { useContextPanel, type ContextPanelTone } from '@/components/layout/context-panel';
 import { useProperty } from '@/lib/api/hooks/use-properties';
-import { PROPERTY_TYPE_LABELS } from '@/lib/enum-labels';
+import { PROPERTY_TYPE_LABELS, UNIT_STATUS_LABELS, UNIT_TYPE_LABELS } from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
 import { ApiError } from '@/lib/api/client';
+import type { Unit, UnitStatus } from '@/lib/api/types';
 import { BulkUnitsDialog } from '../_components/bulk-units-dialog';
 import { createUnitColumns } from '../_components/units-columns';
+
+const UNIT_STATUS_TONE: Record<UnitStatus, ContextPanelTone> = {
+  AVAILABLE: 'ok',
+  OCCUPIED: 'neutral',
+  RESERVED: 'warning',
+  UNDER_MAINTENANCE: 'warning',
+  UNAVAILABLE: 'neutral',
+};
 
 export default function ImmeubleDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedUnitId, setSelectedUnitId] = React.useState<string | null>(null);
   const { data: property, isLoading, error } = useProperty(id);
   const unitColumns = React.useMemo(() => createUnitColumns(), []);
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedUnitId(null);
+  }, [isContextPanelOpen]);
+
+  function handleUnitRowSelect(unit: Unit) {
+    setSelectedUnitId(unit.id);
+    const status = unit.status ?? 'AVAILABLE';
+    openContextPanel({
+      title: 'Lot',
+      blocks: [
+        {
+          type: 'identity',
+          title: unit.code,
+          subtitle: unit.unitType ? UNIT_TYPE_LABELS[unit.unitType] : undefined,
+          badge: { label: UNIT_STATUS_LABELS[status], tone: UNIT_STATUS_TONE[status] },
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Type', v: unit.unitType ? UNIT_TYPE_LABELS[unit.unitType] : '—' },
+            { k: 'Loyer', v: formatXaf(unit.baseRentAmount) },
+            { k: 'Charges', v: formatXaf(unit.baseChargesAmount ?? 0) },
+            {
+              k: 'Dépôt de garantie',
+              v: unit.depositMonths ? `${unit.depositMonths} mois` : '—',
+            },
+            { k: 'Surface', v: unit.areaSqm ? `${unit.areaSqm} m²` : '—' },
+          ],
+        },
+        ...(status === 'UNDER_MAINTENANCE'
+          ? [
+              {
+                type: 'alert' as const,
+                text: 'Ce lot est actuellement en travaux.',
+                tone: 'warning' as const,
+              },
+            ]
+          : []),
+        {
+          type: 'actions',
+          actions: property
+            ? [
+                { label: 'Voir la fiche du lot', primary: true, href: `/app/lots/${unit.id}` },
+                { label: 'Voir le bailleur', href: `/app/bailleurs/${property.landlord.id}` },
+              ]
+            : [{ label: 'Voir la fiche du lot', primary: true, href: `/app/lots/${unit.id}` }],
+        },
+      ],
+    });
+  }
 
   if (isLoading) {
     return (
@@ -166,6 +231,13 @@ export default function ImmeubleDetailPage() {
             data={property.units}
             emptyTitle="Aucun lot"
             emptyDescription="Créez des lots en série pour commencer à louer ce bien."
+            onRowSelect={handleUnitRowSelect}
+            getRowLabel={(unit) => `Voir le détail du lot ${unit.code}`}
+            getRowClassName={(unit) =>
+              unit.id === selectedUnitId
+                ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+                : undefined
+            }
           />
         </CardContent>
       </Card>

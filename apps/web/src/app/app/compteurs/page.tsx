@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { DataTable } from '@/components/business/data-table';
 import { PageHeader } from '@/components/business/page-header';
+import { useContextPanel } from '@/components/layout/context-panel';
 import { useMeters } from '@/lib/api/hooks/use-meters';
 import { useProperties } from '@/lib/api/hooks/use-properties';
 import { useUnits } from '@/lib/api/hooks/use-units';
@@ -25,8 +26,12 @@ import { formatDateFr } from './_components/format-date-fr';
 
 const PAGE_SIZE = 20;
 const METER_TYPE_OPTIONS = enumOptions(METER_TYPE_LABELS);
+/** Seuil au-delà duquel le dernier relevé d'un compteur (non prépayé) est jugé ancien. */
+const STALE_READING_DAYS = 90;
 
 export default function CompteursPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedMeterId, setSelectedMeterId] = React.useState<string | null>(null);
   const [propertyId, setPropertyId] = React.useState('ALL');
   const [unitId, setUnitId] = React.useState('ALL');
   const [type, setType] = React.useState<MeterType | 'ALL'>('ALL');
@@ -46,14 +51,94 @@ export default function CompteursPage() {
     limit: PAGE_SIZE,
   });
 
+  const propertyById = React.useMemo(
+    () => new Map((properties?.items ?? []).map((p) => [p.id, p])),
+    [properties],
+  );
+  const unitById = React.useMemo(
+    () => new Map((units?.items ?? []).map((u) => [u.id, u])),
+    [units],
+  );
+
   function resetPaging() {
     setCursor(undefined);
     setPreviousCursors([]);
   }
 
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedMeterId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(meter: Meter) {
+    setSelectedMeterId(meter.id);
+    const property = propertyById.get(meter.propertyId);
+    const unit = meter.unitId ? unitById.get(meter.unitId) : undefined;
+    const daysSinceReading = meter.lastReading
+      ? (Date.now() - new Date(meter.lastReading.readingDate).getTime()) / 86_400_000
+      : null;
+    const isStale =
+      !meter.isPrepaid && (daysSinceReading === null || daysSinceReading > STALE_READING_DAYS);
+    openContextPanel({
+      title: 'Compteur',
+      blocks: [
+        {
+          type: 'identity',
+          title: meter.serialNumber,
+          subtitle: METER_TYPE_LABELS[meter.meterType],
+          badge: {
+            label: meter.isActive ? 'Actif' : 'Inactif',
+            tone: meter.isActive ? 'ok' : 'neutral',
+          },
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Bien', v: property?.name ?? '—' },
+            { k: 'Lot', v: unit?.code ?? '—' },
+            {
+              k: 'Partagé',
+              v: meter.isShared
+                ? `Oui (${((meter.sharedRatioBps ?? 0) / 100).toLocaleString('fr-FR')} %)`
+                : 'Non',
+            },
+            { k: 'Prépayé', v: meter.isPrepaid ? 'Oui' : 'Non' },
+            { k: 'Dernier index', v: meter.lastReading?.currentIndex ?? '—' },
+            {
+              k: 'Dernier relevé',
+              v: meter.lastReading ? formatDateFr(meter.lastReading.readingDate) : '—',
+            },
+          ],
+        },
+        ...(isStale
+          ? [
+              {
+                type: 'alert' as const,
+                text: meter.lastReading
+                  ? `Dernier relevé le ${formatDateFr(meter.lastReading.readingDate)}, il y a plus de ${STALE_READING_DAYS} jours.`
+                  : 'Aucun relevé enregistré pour ce compteur.',
+                tone: 'warning' as const,
+              },
+            ]
+          : []),
+        {
+          type: 'actions',
+          actions: [
+            {
+              label: 'Voir la fiche du compteur',
+              primary: true,
+              href: `/app/compteurs/${meter.id}`,
+            },
+            ...(unit
+              ? [{ label: 'Voir le lot', href: `/app/lots/${unit.id}` }]
+              : [{ label: "Voir l'immeuble", href: `/app/immeubles/${meter.propertyId}` }]),
+          ],
+        },
+      ],
+    });
+  }
+
   const columns = React.useMemo<ColumnDef<Meter>[]>(() => {
-    const propertyById = new Map((properties?.items ?? []).map((p) => [p.id, p]));
-    const unitById = new Map((units?.items ?? []).map((u) => [u.id, u]));
     return [
       {
         header: 'Numéro de série',
@@ -98,7 +183,7 @@ export default function CompteursPage() {
           row.original.lastReading ? formatDateFr(row.original.lastReading.readingDate) : '—',
       },
     ];
-  }, [properties, units]);
+  }, [propertyById, unitById]);
 
   function handleNextPage() {
     if (data?.pageInfo.nextCursor) {
@@ -208,6 +293,13 @@ export default function CompteursPage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         hasPreviousPage={previousCursors.length > 0}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(meter) => `Voir le détail du compteur ${meter.serialNumber}`}
+        getRowClassName={(meter) =>
+          meter.id === selectedMeterId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

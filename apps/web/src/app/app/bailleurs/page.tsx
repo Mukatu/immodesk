@@ -25,9 +25,10 @@ import { DataTable } from '@/components/business/data-table';
 import { PhoneDisplay } from '@/components/business/phone-display';
 import { PhoneInput } from '@/components/business/phone-input';
 import { EnumSelect } from '@/components/business/enum-select';
+import { useContextPanel } from '@/components/layout/context-panel';
 import { useCreateLandlord, useLandlords } from '@/lib/api/hooks/use-landlords';
 import { toE164Congo } from '@/lib/phone';
-import { PAYMENT_METHOD_LABELS } from '@/lib/enum-labels';
+import { PARTY_TYPE_LABELS, PAYMENT_METHOD_LABELS } from '@/lib/enum-labels';
 import type { Landlord, PartyType, PaymentMethod } from '@/lib/api/types';
 
 /** Repousse la mise à jour d'une valeur de `delayMs` millisecondes (anti-rebond). */
@@ -289,6 +290,8 @@ function CreateLandlordSheet({
 }
 
 export default function BailleursPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedLandlordId, setSelectedLandlordId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState('');
   const [city, setCity] = React.useState('');
   const [sheetOpen, setSheetOpen] = React.useState(false);
@@ -296,6 +299,47 @@ export default function BailleursPage() {
   const debouncedCity = useDebouncedValue(city, 300);
 
   const { data, isLoading } = useLandlords({ q: debouncedSearch, city: debouncedCity });
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedLandlordId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(landlord: Landlord) {
+    setSelectedLandlordId(landlord.id);
+    const location = [landlord.district, landlord.city].filter(Boolean).join(', ');
+    openContextPanel({
+      title: 'Bailleur',
+      blocks: [
+        {
+          type: 'identity',
+          title: landlord.displayName,
+          subtitle: location || undefined,
+          badge: landlord.isSelf ? { label: 'Auto-géré (vous)', tone: 'info' } : undefined,
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Type', v: PARTY_TYPE_LABELS[landlord.partyType] },
+            { k: 'Téléphone', v: <PhoneDisplay phone={landlord.primaryPhone} whatsapp /> },
+            { k: 'Ville', v: landlord.city },
+            { k: 'Mode de versement', v: PAYMENT_METHOD_LABELS[landlord.payoutMethod] },
+            { k: 'Biens gérés', v: landlord.propertiesCount },
+          ],
+        },
+        {
+          type: 'actions',
+          actions: [
+            {
+              label: 'Voir la fiche du bailleur',
+              primary: true,
+              href: `/app/bailleurs/${landlord.id}`,
+            },
+          ],
+        },
+      ],
+    });
+  }
 
   const columns = React.useMemo<ColumnDef<Landlord>[]>(
     () => [
@@ -360,6 +404,13 @@ export default function BailleursPage() {
         isLoading={isLoading}
         emptyTitle="Aucun bailleur"
         emptyDescription="Créez votre premier bailleur pour commencer."
+        onRowSelect={handleRowSelect}
+        getRowLabel={(landlord) => `Voir le détail du bailleur ${landlord.displayName}`}
+        getRowClassName={(landlord) =>
+          landlord.id === selectedLandlordId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
 
       <CreateLandlordSheet open={sheetOpen} onOpenChange={setSheetOpen} />

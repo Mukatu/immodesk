@@ -21,12 +21,18 @@ import { EmptyState } from '@/components/business/empty-state';
 import { MoneyXaf } from '@/components/business/money-xaf';
 import { ImportReportPanel } from '@/components/business/import-report-panel';
 import { DocumentUploader } from '@/components/business/document-uploader';
+import {
+  useContextPanel,
+  type ContextBlock,
+  type ContextPanelTone,
+} from '@/components/layout/context-panel';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useBankAccounts } from '@/lib/api/hooks/use-bank-accounts';
 import { useBankStatementAdapters } from '@/lib/api/hooks/use-bank-statement-adapters';
 import { useBankStatements, useImportBankStatement } from '@/lib/api/hooks/use-bank-statements';
 import { ApiError, genericErrorMessage } from '@/lib/api/errors';
 import { BANK_STATEMENT_STATUS_LABELS, STATEMENT_FORMAT_LABELS } from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
 import type {
   BankStatementStatus,
   Document,
@@ -79,13 +85,29 @@ const STATEMENT_STATUS_VARIANT: Record<BankStatementStatus, NonNullable<BadgePro
   FAILED: 'destructive',
 };
 
+const STATEMENT_STATUS_TONE: Record<BankStatementStatus, ContextPanelTone> = {
+  UPLOADED: 'neutral',
+  PARSING: 'info',
+  PARSED: 'neutral',
+  RECONCILING: 'warning',
+  RECONCILED: 'ok',
+  FAILED: 'danger',
+};
+
 export default function RelevesBancairesPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedStatementId, setSelectedStatementId] = React.useState<string | null>(null);
   const [bankAccountId, setBankAccountId] = React.useState<string>('');
   const [format, setFormat] = React.useState<string>(AUTO_DETECT);
   const [importError, setImportError] = React.useState<string | null>(null);
   const [report, setReport] = React.useState<ImportReport | null>(null);
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
   const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
+
+  // Cf. apps/web/src/app/app/baux/page.tsx (modèle).
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedStatementId(null);
+  }, [isContextPanelOpen]);
 
   const { currentOrganizationId } = useAuth();
   // Tous les comptes de l'organisation (le compte crédité par les loyers peut
@@ -99,6 +121,64 @@ export default function RelevesBancairesPage() {
   const importStatement = useImportBankStatement(bankAccountId);
 
   const accountItems = accounts.data?.items ?? [];
+
+  function handleRowSelect(statement: StatementSummary) {
+    setSelectedStatementId(statement.id);
+    const accountLabel = accountItems.find((a) => a.id === statement.bankAccountId)?.label;
+    const pct =
+      statement.linesCount === 0
+        ? null
+        : Math.round((statement.matchedLinesCount / statement.linesCount) * 100);
+
+    const alertBlocks: ContextBlock[] = [];
+    if (statement.status === 'FAILED') {
+      alertBlocks.push({
+        type: 'alert',
+        tone: 'danger',
+        text: "Échec de l'analyse de ce relevé — ouvrez son détail pour le motif exact.",
+      });
+    }
+
+    openContextPanel({
+      title: 'Relevé bancaire',
+      blocks: [
+        {
+          type: 'identity',
+          title: `${formatDateFr(statement.periodStart)} – ${formatDateFr(statement.periodEnd)}`,
+          subtitle: accountLabel,
+          badge: {
+            label: BANK_STATEMENT_STATUS_LABELS[statement.status],
+            tone: STATEMENT_STATUS_TONE[statement.status],
+          },
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Compte', v: accountLabel ?? '—' },
+            { k: 'Format', v: STATEMENT_FORMAT_LABELS[statement.format] },
+            { k: 'Solde initial', v: formatXaf(statement.openingBalance) },
+            { k: 'Solde final', v: formatXaf(statement.closingBalance) },
+            {
+              k: 'Rapprochées',
+              v:
+                pct === null
+                  ? '—'
+                  : `${pct} % (${statement.matchedLinesCount}/${statement.linesCount})`,
+            },
+          ],
+        },
+        ...alertBlocks,
+        {
+          type: 'actions',
+          actions: [
+            { label: 'Voir le relevé', primary: true, href: `/app/banque/releves/${statement.id}` },
+            { label: 'Voir le rapprochement', href: '/app/banque/rapprochement' },
+          ],
+        },
+      ],
+    });
+  }
 
   function handleAccountChange(next: string) {
     setBankAccountId(next);
@@ -267,6 +347,15 @@ export default function RelevesBancairesPage() {
           onNextPage={handleNextPage}
           onPreviousPage={handlePreviousPage}
           hasPreviousPage={previousCursors.length > 0}
+          onRowSelect={handleRowSelect}
+          getRowLabel={(statement) =>
+            `Voir le détail du relevé ${formatDateFr(statement.periodStart)} – ${formatDateFr(statement.periodEnd)}`
+          }
+          getRowClassName={(statement) =>
+            statement.id === selectedStatementId
+              ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+              : undefined
+          }
         />
       ) : (
         <EmptyState

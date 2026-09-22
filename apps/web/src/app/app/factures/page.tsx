@@ -14,12 +14,23 @@ import { MoneyXaf } from '@/components/business/money-xaf';
 import { InvoiceStatusBadge } from '@/components/business/invoice-status-badge';
 import { EnumSelect } from '@/components/business/enum-select';
 import { PeriodPicker, currentPeriod } from '@/components/business/period-picker';
+import { useContextPanel } from '@/components/layout/context-panel';
 import { useInvoices, useIssueInvoice } from '@/lib/api/hooks/use-invoices';
 import { useProperties } from '@/lib/api/hooks/use-properties';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api/client';
 import { INVOICE_STATUS_LABELS } from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
 import type { InvoiceStatus, InvoiceSummary } from '@/lib/api/types';
+
+const INVOICE_TONE: Record<InvoiceStatus, 'ok' | 'info' | 'warning' | 'danger' | 'neutral'> = {
+  DRAFT: 'neutral',
+  ISSUED: 'info',
+  PARTIALLY_PAID: 'warning',
+  PAID: 'ok',
+  OVERDUE: 'danger',
+  CANCELLED: 'neutral',
+};
 
 const PAGE_SIZE = 20;
 
@@ -52,6 +63,8 @@ function IssueInvoiceAction({
 }
 
 export default function FacturesPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedInvoiceId, setSelectedInvoiceId] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState<InvoiceStatus | ''>('');
   const [period, setPeriod] = React.useState(currentPeriod());
   const [periodEnabled, setPeriodEnabled] = React.useState(false);
@@ -169,6 +182,62 @@ export default function FacturesPage() {
       const last = next.pop();
       setCursor(last || undefined);
       return next;
+    });
+  }
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedInvoiceId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(invoice: InvoiceSummary) {
+    setSelectedInvoiceId(invoice.id);
+    const isOverdue = invoice.status === 'OVERDUE';
+    openContextPanel({
+      title: 'Facture',
+      blocks: [
+        {
+          type: 'identity',
+          title: invoice.invoiceNumber ?? 'Facture brouillon',
+          subtitle: `${invoice.tenant.displayName} — ${invoice.unit.code}, ${invoice.property.name}`,
+          badge: {
+            label: INVOICE_STATUS_LABELS[invoice.status],
+            tone: INVOICE_TONE[invoice.status],
+          },
+        },
+        { type: 'metric', value: formatXaf(invoice.balanceAmount), label: 'Solde restant dû' },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Bail', v: invoice.lease.reference ?? '—' },
+            { k: 'Téléphone', v: invoice.tenant.primaryPhone },
+            {
+              k: 'Période',
+              v: `${new Date(invoice.periodStart).toLocaleDateString('fr-CG')} – ${new Date(invoice.periodEnd).toLocaleDateString('fr-CG')}`,
+            },
+            { k: 'Échéance', v: new Date(invoice.dueDate).toLocaleDateString('fr-CG') },
+            { k: 'Total facturé', v: formatXaf(invoice.totalAmount) },
+            { k: 'Payé', v: formatXaf(invoice.paidAmount) },
+          ],
+        },
+        ...(isOverdue
+          ? ([
+              {
+                type: 'alert',
+                tone: 'danger',
+                text: `Facture en retard : échéance dépassée le ${new Date(invoice.dueDate).toLocaleDateString('fr-CG')}.`,
+              },
+            ] as const)
+          : []),
+        {
+          type: 'actions',
+          actions: [
+            { label: 'Voir la facture', primary: true, href: `/app/factures/${invoice.id}` },
+            { label: 'Voir le locataire', href: `/app/locataires/${invoice.tenant.id}` },
+            { label: 'Voir le bail', href: `/app/baux/${invoice.lease.id}` },
+          ],
+        },
+      ],
     });
   }
 
@@ -323,6 +392,15 @@ export default function FacturesPage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         hasPreviousPage={previousCursors.length > 0}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(invoice) =>
+          `Ouvrir le détail de la facture ${invoice.invoiceNumber ?? invoice.tenant.displayName}`
+        }
+        getRowClassName={(invoice) =>
+          invoice.id === selectedInvoiceId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

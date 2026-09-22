@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
 import { PlusCircle } from 'lucide-react';
 
@@ -19,13 +20,21 @@ import { DataTable } from '@/components/business/data-table';
 import { PageHeader } from '@/components/business/page-header';
 import { PriorityBadge } from '@/components/business/priority-badge';
 import { MaintenanceStatusBadge } from '@/components/business/maintenance-status-badge';
+import { useContextPanel, type ContextPanelTone } from '@/components/layout/context-panel';
 import { useMaintenanceRequests } from '@/lib/api/hooks/use-maintenance';
 import { useProperties } from '@/lib/api/hooks/use-properties';
 import { useMembers } from '@/lib/api/hooks/use-members';
 import { useAuth } from '@/lib/auth/auth-context';
+import { apiFetch } from '@/lib/api/client';
 import { MAINTENANCE_PRIORITY_LABELS, MAINTENANCE_STATUS_LABELS } from '@/lib/enum-labels';
-import type { MaintenancePriority, MaintenanceStatus, MaintenanceSummary } from '@/lib/api/types';
-import { formatDateFr } from './_components/format-date-fr';
+import { cn } from '@/lib/utils';
+import type {
+  MaintenanceDetail,
+  MaintenancePriority,
+  MaintenanceStatus,
+  MaintenanceSummary,
+} from '@/lib/api/types';
+import { formatDateFr, formatDateTimeFr } from './_components/format-date-fr';
 import {
   isMaintenanceOverdue,
   MaintenanceDueIndicator,
@@ -33,8 +42,26 @@ import {
 
 const PAGE_SIZE = 20;
 
+const MAINTENANCE_TONE: Record<MaintenanceStatus, ContextPanelTone> = {
+  OPEN: 'warning',
+  ACKNOWLEDGED: 'neutral',
+  ASSIGNED: 'neutral',
+  IN_PROGRESS: 'info',
+  ON_HOLD: 'neutral',
+  RESOLVED: 'ok',
+  CLOSED: 'neutral',
+  REJECTED: 'danger',
+};
+
 export default function MaintenancePage() {
   const { currentOrganizationId } = useAuth();
+  const queryClient = useQueryClient();
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedRequestId, setSelectedRequestId] = React.useState<string | null>(null);
+  // Réf synchrone : évite une fermeture obsolète dans le chargement asynchrone du fil des
+  // mises à jour ci-dessous (l'état `selectedRequestId` ne reflète la sélection qu'au rendu
+  // suivant, cf. même piège traité sur gerance/mandats).
+  const selectedRequestIdRef = React.useRef<string | null>(null);
   const [status, setStatus] = React.useState<MaintenanceStatus | 'ALL'>('ALL');
   const [priority, setPriority] = React.useState<MaintenancePriority | 'ALL'>('ALL');
   const [propertyId, setPropertyId] = React.useState<string>('ALL');
@@ -60,6 +87,13 @@ export default function MaintenancePage() {
     for (const member of members?.items ?? []) map.set(member.user.id, member.user.fullName);
     return map;
   }, [members]);
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) {
+      setSelectedRequestId(null);
+      selectedRequestIdRef.current = null;
+    }
+  }, [isContextPanelOpen]);
 
   function resetPaging() {
     setCursor(undefined);
@@ -125,6 +159,101 @@ export default function MaintenancePage() {
     ],
     [memberNameByUserId, now],
   );
+
+  function buildMaintenanceBlocks(
+    request: MaintenanceSummary,
+    updates: MaintenanceDetail['updates'] | null,
+  ) {
+    const assignedLabel = request.assignedToUserId
+      ? (memberNameByUserId.get(request.assignedToUserId) ?? '—')
+      : 'Non affectée';
+    const overdue = isMaintenanceOverdue(request.slaDueAt, request.status, now);
+    return {
+      title: 'Demande de maintenance',
+      blocks: [
+        {
+          type: 'identity' as const,
+          title: request.reference,
+          subtitle: request.title,
+          badge: {
+            label: MAINTENANCE_STATUS_LABELS[request.status],
+            tone: MAINTENANCE_TONE[request.status],
+          },
+        },
+        {
+          type: 'keyvalue' as const,
+          title: 'Détails',
+          items: [
+            { k: 'Lot et immeuble', v: `${request.unit?.code ?? '—'} — ${request.property.name}` },
+            { k: 'Priorité', v: MAINTENANCE_PRIORITY_LABELS[request.priority] },
+            { k: 'Signalée le', v: formatDateFr(request.reportedAt) },
+            {
+              k: 'Échéance cible',
+              v: request.slaDueAt ? formatDateFr(request.slaDueAt) : 'Non définie',
+            },
+            { k: 'Personne affectée', v: assignedLabel },
+          ],
+        },
+        ...(overdue
+          ? [
+              {
+                type: 'alert' as const,
+                tone: 'warning' as const,
+                text: 'L’échéance cible de cette demande est dépassée.',
+              },
+            ]
+          : []),
+        ...(updates && updates.length > 0
+          ? [
+              {
+                type: 'activity' as const,
+                title: 'Fil des mises à jour',
+                items: updates.map((update) => ({
+                  what:
+                    update.message ??
+                    (update.newStatus
+                      ? `Statut : ${MAINTENANCE_STATUS_LABELS[update.newStatus]}`
+                      : 'Mise à jour'),
+                  when: formatDateTimeFr(update.occurredAt),
+                })),
+              },
+            ]
+          : []),
+        {
+          type: 'actions' as const,
+          actions: [
+            {
+              label: 'Voir la fiche de la demande',
+              primary: true,
+              href: `/app/maintenance/${request.id}`,
+            },
+            { label: 'Voir le bien', href: `/app/immeubles/${request.property.id}` },
+          ],
+        },
+      ],
+    };
+  }
+
+  async function loadMaintenanceUpdates(request: MaintenanceSummary) {
+    try {
+      const detail = await queryClient.fetchQuery({
+        queryKey: ['maintenance-requests', request.id],
+        queryFn: () => apiFetch<MaintenanceDetail>(`/maintenance-requests/${request.id}`),
+      });
+      if (selectedRequestIdRef.current === request.id) {
+        openContextPanel(buildMaintenanceBlocks(request, detail.updates));
+      }
+    } catch {
+      // Le panneau reste utilisable sans le fil des mises à jour en cas d'échec du chargement.
+    }
+  }
+
+  function handleRowSelect(request: MaintenanceSummary) {
+    selectedRequestIdRef.current = request.id;
+    setSelectedRequestId(request.id);
+    openContextPanel(buildMaintenanceBlocks(request, null));
+    void loadMaintenanceUpdates(request);
+  }
 
   function handleNextPage() {
     if (data?.pageInfo.nextCursor) {
@@ -272,8 +401,14 @@ export default function MaintenancePage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         hasPreviousPage={previousCursors.length > 0}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(row) => `Voir le détail de la demande ${row.reference}`}
         getRowClassName={(row) =>
-          isMaintenanceOverdue(row.slaDueAt, row.status, now) ? 'bg-destructive/5' : undefined
+          cn(
+            isMaintenanceOverdue(row.slaDueAt, row.status, now) && 'bg-destructive/5',
+            row.id === selectedRequestId &&
+              'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent',
+          )
         }
       />
     </div>

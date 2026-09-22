@@ -44,15 +44,22 @@ export default function manifest(): MetadataRoute.Manifest {
      * ni de police ni de génération, et reste net à toutes les tailles —
      * d'où `sizes: 'any'`.
      *
-     * Réserve connue : iOS n'accepte pas le SVG pour l'icône d'écran d'accueil
-     * et retombera sur une capture de la page. Y remédier demande un vrai PNG,
-     * donc un outil de génération d'image à ajouter au projet.
+     * iOS n'accepte pas le SVG pour l'icône d'écran d'accueil : src/app/apple-icon.png
+     * (180x180) le complète, servi par Next sous /apple-icon.png via la convention de
+     * fichier. Ce PNG est produit sans dépendance — un PNG n'étant qu'une suite de
+     * blocs et un CRC, et zlib étant fourni par Node — plutôt que d'ajouter un outil
+     * de génération d'image au projet pour une seule icône.
      */
     icons: [
       {
         src: '/icon.svg',
         sizes: 'any',
         type: 'image/svg+xml',
+      },
+      {
+        src: '/apple-icon.png',
+        sizes: '180x180',
+        type: 'image/png',
       },
     ],
   };

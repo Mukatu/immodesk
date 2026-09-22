@@ -50,6 +50,9 @@ test.describe('Facturation et caisse phase 3 : facture → encaissements → qui
     await expect(page).toHaveURL(/\/app$/);
 
     // --- Portefeuille minimal : bailleur → immeuble → lot → locataire ---
+    // Groupe « Patrimoine » fermé par défaut (sidebar-nav.tsx) : à ouvrir avant le
+    // premier clic sur un de ses liens.
+    await page.getByRole('button', { name: 'Patrimoine' }).click();
     await page.getByRole('link', { name: 'Bailleurs' }).click();
     await page.getByRole('button', { name: 'Nouveau bailleur' }).click();
     await page.getByLabel('Nom', { exact: true }).fill('Malonga');

@@ -20,7 +20,7 @@ test.describe('Portail locataire phase 10 : facture, paiement Mobile Money, quit
     page,
     browser,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
 
     // --- Agence : organisation, bailleur + compte bancaire, immeuble, lot ---
     await page.goto('/login');
@@ -47,6 +47,9 @@ test.describe('Portail locataire phase 10 : facture, paiement Mobile Money, quit
     await page.getByRole('button', { name: 'Aller au tableau de bord' }).click();
     await expect(page).toHaveURL(/\/app$/);
 
+    // Groupe « Patrimoine » fermé par défaut (sidebar-nav.tsx) : à ouvrir avant le
+    // premier clic sur un de ses liens.
+    await page.getByRole('button', { name: 'Patrimoine' }).click();
     await page.getByRole('link', { name: 'Bailleurs' }).click();
     await page.getByRole('button', { name: 'Nouveau bailleur' }).click();
     await page.getByLabel('Nom', { exact: true }).fill('Ossebi');
@@ -83,6 +86,16 @@ test.describe('Portail locataire phase 10 : facture, paiement Mobile Money, quit
     await page.getByLabel('Loyer de base', { exact: true }).fill('80000');
     await page.getByRole('button', { name: 'Créer les lots', exact: true }).click();
     await expect(page.getByRole('link', { name: 'T01' })).toBeVisible();
+
+    // Second lot, pour un second bail/locataire hors périmètre (voir plus bas :
+    // vérification du refus 404/jamais-403 du portail locataire).
+    await page.getByRole('button', { name: 'Créer des lots en série' }).click();
+    await page.getByLabel('Préfixe', { exact: true }).fill('T');
+    await page.getByLabel('De', { exact: true }).fill('2');
+    await page.getByLabel('À', { exact: true }).fill('2');
+    await page.getByLabel('Loyer de base', { exact: true }).fill('75000');
+    await page.getByRole('button', { name: 'Créer les lots', exact: true }).click();
+    await expect(page.getByRole('link', { name: 'T02' })).toBeVisible();
 
     // --- Locataire (téléphone servant de connexion au portail) et bail actif ---
     await page.getByRole('link', { name: 'Locataires' }).click();
@@ -129,6 +142,54 @@ test.describe('Portail locataire phase 10 : facture, paiement Mobile Money, quit
     await expect(page).toHaveURL(/\/app\/factures\/[^/]+$/);
     await expect(page.getByText('Émise', { exact: true })).toBeVisible();
 
+    // --- Second locataire, second bail actif, seconde facture : hors périmètre
+    // de Mafoula. Sert uniquement à vérifier plus bas que le portail locataire
+    // refuse par 404 — jamais 403 — l'accès à une facture d'un autre locataire
+    // de la même agence (règle de cloisonnement, tenant-portal-handlers.ts). ---
+    await page.getByRole('link', { name: 'Locataires' }).click();
+    await page.getByRole('link', { name: 'Nouveau locataire' }).click();
+    await page.getByLabel('Nom', { exact: true }).fill('Kimbembe');
+    await page.getByLabel('Téléphone principal', { exact: true }).fill('069060005');
+    await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
+    await page.getByRole('button', { name: 'Créer le locataire', exact: true }).click();
+    await expect(page).toHaveURL(/\/app\/locataires\/(?!nouveau)[^/]+$/);
+
+    await page.goto('/app/baux');
+    await page.getByRole('link', { name: 'Nouveau bail' }).click();
+    await page.getByLabel('Immeuble', { exact: true }).click();
+    await page.getByRole('option', { name: 'Résidence Portail Locataire' }).click();
+    await page.getByLabel('Lot disponible', { exact: true }).click();
+    await page.getByRole('option', { name: 'T02', exact: true }).click();
+    await page.getByPlaceholder('Rechercher un locataire par nom ou numéro').fill('Kimbembe');
+    await page.getByRole('button', { name: /Kimbembe/ }).click();
+    await page.getByLabel('Date de début', { exact: true }).fill('2024-01-15');
+    await page.getByRole('button', { name: 'Suivant' }).click();
+    await page.getByLabel('Loyer', { exact: true }).fill('75000');
+    await page.getByLabel('Périodicité', { exact: true }).click();
+    await page.getByRole('option', { name: 'Mensuel' }).click();
+    await page.getByLabel("Jour d'échéance", { exact: true }).fill('5');
+    await page.getByRole('button', { name: 'Suivant' }).click();
+    await page.getByRole('button', { name: 'Créer le bail' }).click();
+    await expect(page).toHaveURL(/\/app\/baux\/[^/]+$/);
+    await page.getByRole('button', { name: 'Activer' }).click();
+    await page.getByRole('button', { name: 'Confirmer l’activation' }).click();
+    await expect(page.getByText('Actif', { exact: true })).toBeVisible();
+
+    await page.goto('/app/factures/nouvelle');
+    await page
+      .getByLabel('Bail')
+      .selectOption({ label: 'Kimbembe — Résidence Portail Locataire (T02)' });
+    await page.locator('#periodStart').fill('2024-01-01');
+    await page.locator('#periodEnd').fill('2024-01-31');
+    await page.locator('#dueDate').fill('2099-12-31');
+    await page.getByLabel('Libellé de la ligne').fill('Loyer du mois');
+    await page.getByLabel('Montant de la ligne').fill('75000');
+    await page.getByText('Émettre immédiatement').click();
+    await page.getByRole('button', { name: 'Créer la facture' }).click();
+    await expect(page).toHaveURL(/\/app\/factures\/[^/]+$/);
+    await expect(page.getByText('Émise', { exact: true })).toBeVisible();
+    const foreignInvoiceId = new URL(page.url()).pathname.split('/').pop()!;
+
     // --- Portail locataire : session isolée, contexte navigateur neuf ---
     const tenantContext = await browser.newContext();
     const tenantPage = await tenantContext.newPage();
@@ -142,6 +203,34 @@ test.describe('Portail locataire phase 10 : facture, paiement Mobile Money, quit
     await expect(tenantPage).toHaveURL(/\/locataire$/);
     await expect(tenantPage.getByRole('heading', { name: /Bonjour Mafoula/ })).toBeVisible();
     await expect(tenantPage.getByText('Émise', { exact: true })).toBeVisible();
+
+    // --- Refus hors périmètre (docs/api/phase10-contract.md) : la facture de
+    // Kimbembe (autre locataire, même agence) doit répondre 404, jamais 403 —
+    // un 403 confirmerait involontairement au locataire connecté l'existence
+    // d'une facture qui n'est pas la sienne (fuite d'information). Navigation
+    // directe par URL, comme le ferait un locataire qui devine/réutilise un
+    // identifiant qui n'est pas le sien.
+    //
+    // On collecte TOUTES les réponses de cet appel plutôt que la première :
+    // juste après une navigation dure (`goto`), la session locataire se
+    // restaure de façon asynchrone depuis `sessionStorage`
+    // (tenant-auth-context.tsx) ; le tout premier appel peut donc partir sans
+    // jeton (401, hydratation non terminée) avant d'être rejoué par React
+    // Query (`retry: 1`, providers.tsx) une fois la session restaurée. Seule
+    // compte ici l'absence de 403 sur l'ensemble des réponses, et l'obtention
+    // d'un 404 final — jamais le statut du tout premier appel réseau.
+    const foreignInvoiceStatuses: number[] = [];
+    tenantPage.on('response', (res) => {
+      if (res.url().includes(`/tenant/invoices/${foreignInvoiceId}`)) {
+        foreignInvoiceStatuses.push(res.status());
+      }
+    });
+    await tenantPage.goto(`/locataire/factures/${foreignInvoiceId}`);
+    await expect(tenantPage.getByText('Facture introuvable')).toBeVisible();
+    expect(foreignInvoiceStatuses).not.toContain(403);
+    expect(foreignInvoiceStatuses).toContain(404);
+    await tenantPage.goto('/locataire');
+    await expect(tenantPage.getByRole('heading', { name: /Bonjour Mafoula/ })).toBeVisible();
 
     // --- Paiement Mobile Money (numéro payeur se terminant par ...01) ---
     await tenantPage.getByText('Résidence Portail Locataire').click();

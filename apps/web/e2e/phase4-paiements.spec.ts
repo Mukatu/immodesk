@@ -77,6 +77,9 @@ async function setupOrgWithInvoice(page: Page, opts: SetupOptions): Promise<stri
   await expect(page).toHaveURL(/\/app$/);
 
   // --- Bailleur + compte bancaire (numéro de compte + Mobile Money) ---
+  // Groupe « Patrimoine » fermé par défaut (sidebar-nav.tsx) : à ouvrir avant le
+  // premier clic sur un de ses liens.
+  await page.getByRole('button', { name: 'Patrimoine' }).click();
   await page.getByRole('link', { name: 'Bailleurs' }).click();
   await page.getByRole('button', { name: 'Nouveau bailleur' }).click();
   await page.getByLabel('Nom', { exact: true }).fill(landlordName);

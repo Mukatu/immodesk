@@ -51,6 +51,9 @@ test.describe('Recouvrement phase 9 : relances, pénalités, tableaux de bord et
     await expect(page).toHaveURL(/\/app$/);
 
     // --- Bailleur, immeuble, lot ---
+    // Groupe « Patrimoine » fermé par défaut (sidebar-nav.tsx) : à ouvrir avant le
+    // premier clic sur un de ses liens.
+    await page.getByRole('button', { name: 'Patrimoine' }).click();
     await page.getByRole('link', { name: 'Bailleurs' }).click();
     await page.getByRole('button', { name: 'Nouveau bailleur' }).click();
     await page.getByLabel('Nom', { exact: true }).fill('Nkounkou');
@@ -290,6 +293,9 @@ test.describe('Recouvrement phase 9 : relances, pénalités, tableaux de bord et
     await expect(page).toHaveURL(/\/app$/);
 
     // --- Quatre tableaux de bord, tous filtrables, lecture seule ---
+    // Groupe « Pilotage » fermé par défaut (sidebar-nav.tsx) : à ouvrir avant le
+    // premier clic sur un de ses liens.
+    await page.getByRole('button', { name: 'Pilotage' }).click();
     await page.getByRole('link', { name: 'Tableaux de bord' }).click();
     await expect(page).toHaveURL(/\/app\/tableaux-de-bord$/);
     await expect(page.getByText('Taux de recouvrement')).toBeVisible();

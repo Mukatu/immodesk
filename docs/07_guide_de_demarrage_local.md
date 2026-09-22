@@ -117,6 +117,16 @@ même origine, `src/app/api/proxy/[...path]/route.ts`, qui relaie côté serveur
 l'adresse interne interceptée par MSW. C'est ce qui garantit un état simulé unique,
 partagé par toutes les requêtes. Sans `E2E_MOCK`, le proxy répond 404.
 
+> **Attention : `NEXT_PUBLIC_API_URL` est figée à la compilation.** Next remplace les
+> variables `NEXT_PUBLIC_*` par leur valeur littérale dans le bundle au moment du `build` ;
+> le navigateur ne les relit pas au démarrage. Si l'on modifie cette variable alors qu'une
+> compilation existe déjà, relancer le serveur ne suffit pas : il faut **recompiler**.
+> Symptôme caractéristique, la console du navigateur affiche des erreurs CORS visant
+> `http://localhost:3000/v1/...`, qui est la valeur par défaut restée gravée (voir
+> `src/lib/api/client.ts` et `portal-client.ts`). Le piège est d'autant plus sournois qu'un
+> autre projet peut occuper le port 3000 et répondre 404 au lieu de rien, ce qui déguise la
+> panne en erreur d'API.
+
 ### 3.2 Mode réel : avec l'API et la base de données
 
 Nécessite Docker Desktop démarré. Quatre terminaux, ou trois si l'on lance la pile une

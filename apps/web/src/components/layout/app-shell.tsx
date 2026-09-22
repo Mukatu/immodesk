@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ContextPanelProvider } from '@/components/layout/context-panel';
+import { InstallPrompt } from '@/components/layout/install-prompt';
 import { OrgSwitcher } from '@/components/layout/org-switcher';
 import { SidebarNavList } from '@/components/layout/sidebar-nav';
 import { ThemeToggle } from '@/components/layout/theme-toggle';
@@ -190,6 +191,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+      <InstallPrompt />
     </ContextPanelProvider>
   );
 }

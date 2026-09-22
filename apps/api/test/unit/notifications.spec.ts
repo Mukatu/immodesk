@@ -72,7 +72,8 @@ describe('Modèles et SMS', () => {
     }
     // Phase 7 : + LANDLORD_PORTAL_INVITE, OWNER_STATEMENT_READY,
     // PAYOUT_BANK_DETAILS_MISSING (WhatsApp + SMS chacun) : 20 + 6 = 26.
-    expect(SYSTEM_TEMPLATES).toHaveLength(26);
+    // Phase 10 : + SUBSCRIPTION_PAST_DUE_WARNING (WhatsApp + SMS) : 26 + 2 = 28.
+    expect(SYSTEM_TEMPLATES).toHaveLength(28);
   });
 
   it('translittère en GSM-7 et tient la quittance en deux segments', () => {

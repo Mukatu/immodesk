@@ -15,6 +15,36 @@ const optionalText = z
   .transform((value) => (value === undefined || value.trim() === '' ? undefined : value.trim()));
 
 /**
+ * Valeurs de développement des secrets. Publiques par construction (dépôt,
+ * `.env.example`) : en production, la validation refuse qu'elles subsistent.
+ */
+export const DEV_SECRET_DEFAULTS = {
+  CURSOR_SECRET: 'immodesk-cursor-secret-dev',
+  OTP_PEPPER: 'immodesk-otp-pepper-dev',
+  WHATSAPP_APP_SECRET: 'immodesk-dev-whatsapp-app-secret',
+  WHATSAPP_VERIFY_TOKEN: 'immodesk-dev-whatsapp-verify-token',
+  SMS_GATEWAY_WEBHOOK_SECRET: 'immodesk-dev-sms-webhook-secret',
+  LINK_SIGNING_SECRET: 'immodesk-dev-link-signing-secret',
+  MOMO_SIMULATOR_SECRET: 'immodesk-dev-momo-simulator-secret',
+} as const;
+
+const PRODUCTION_SECRET_KEYS = Object.keys(DEV_SECRET_DEFAULTS) as Array<
+  keyof typeof DEV_SECRET_DEFAULTS
+>;
+
+/** Liste d'origines séparées par des virgules ; vide = non défini. */
+const originList = z
+  .string()
+  .optional()
+  .transform((value) => {
+    const list = (value ?? '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter((origin) => origin.length > 0);
+    return list.length > 0 ? list : undefined;
+  });
+
+/**
  * Schéma de configuration de l'API, validé au démarrage (fail-fast).
  * Toute variable absente ou incohérente empêche le boot du processus.
  */
@@ -26,6 +56,10 @@ export const configSchema = z
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
+    // Origines autorisées par CORS (`https://app.immodesk.cg,https://portail.immodesk.cg`).
+    // Absente : toute origine est reflétée — acceptable sur un poste de
+    // développement, refusé au démarrage en production (cf. superRefine).
+    CORS_ALLOWED_ORIGINS: originList,
 
     // --- Base de données -------------------------------------------------
     DATABASE_URL: z.string().url(),
@@ -88,10 +122,10 @@ export const configSchema = z
     JWT_ISSUER: z.string().default('immodesk'),
     JWT_AUDIENCE: z.string().default('immodesk-api'),
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
-    CURSOR_SECRET: z.string().min(16).default('immodesk-cursor-secret-dev'),
+    CURSOR_SECRET: z.string().min(16).default(DEV_SECRET_DEFAULTS.CURSOR_SECRET),
 
     // --- OTP -------------------------------------------------------------
-    OTP_PEPPER: z.string().min(8).default('immodesk-otp-pepper-dev'),
+    OTP_PEPPER: z.string().min(8).default(DEV_SECRET_DEFAULTS.OTP_PEPPER),
     OTP_TTL_SECONDS: z.coerce.number().int().positive().default(300),
     OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
     OTP_RESEND_AFTER_SECONDS: z.coerce.number().int().positive().default(60),
@@ -119,15 +153,18 @@ export const configSchema = z
     WHATSAPP_PHONE_NUMBER_ID: optionalText,
     WHATSAPP_ACCESS_TOKEN: optionalText,
     // Secret d'application Meta : signature `X-Hub-Signature-256` des webhooks.
-    WHATSAPP_APP_SECRET: z.string().min(8).default('immodesk-dev-whatsapp-app-secret'),
+    WHATSAPP_APP_SECRET: z.string().min(8).default(DEV_SECRET_DEFAULTS.WHATSAPP_APP_SECRET),
     // Jeton choisi par l'exploitant, rejoué par Meta lors de la vérification GET.
-    WHATSAPP_VERIFY_TOKEN: z.string().min(8).default('immodesk-dev-whatsapp-verify-token'),
+    WHATSAPP_VERIFY_TOKEN: z.string().min(8).default(DEV_SECRET_DEFAULTS.WHATSAPP_VERIFY_TOKEN),
     WHATSAPP_API_VERSION: z.string().default('v21.0'),
     WHATSAPP_API_BASE_URL: z.string().url().default('https://graph.facebook.com'),
     SMS_GATEWAY_URL: optionalText,
     SMS_GATEWAY_USERNAME: optionalText,
     SMS_GATEWAY_PASSWORD: optionalText,
-    SMS_GATEWAY_WEBHOOK_SECRET: z.string().min(8).default('immodesk-dev-sms-webhook-secret'),
+    SMS_GATEWAY_WEBHOOK_SECRET: z
+      .string()
+      .min(8)
+      .default(DEV_SECRET_DEFAULTS.SMS_GATEWAY_WEBHOOK_SECRET),
     NOTIFICATIONS_WORKER_ENABLED: booleanish.default(true),
     NOTIFICATIONS_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(4),
 
@@ -138,7 +175,7 @@ export const configSchema = z
     PUBLIC_API_BASE_URL: z.string().url().default('http://localhost:3000'),
     // Validité des liens de PDF joints aux messages : 7 jours, plafond SigV4.
     DOCUMENT_LINK_TTL_SECONDS: z.coerce.number().int().min(60).max(604_800).default(604_800),
-    LINK_SIGNING_SECRET: z.string().min(16).default('immodesk-dev-link-signing-secret'),
+    LINK_SIGNING_SECRET: z.string().min(16).default(DEV_SECRET_DEFAULTS.LINK_SIGNING_SECRET),
     RATE_LIMIT_PUBLIC_PER_MINUTE: z.coerce.number().int().positive().default(30),
 
     // --- Facturation (phase 3) -------------------------------------------
@@ -154,7 +191,7 @@ export const configSchema = z
     // que le contrat CinetPay n'est pas signé (arbitrage 6 du contrat phase 4).
     MOMO_PROVIDER_DEFAULT: z.enum(['SIMULATOR', 'CINETPAY']).default('SIMULATOR'),
     MOMO_SIMULATOR_DELAY_MS: z.coerce.number().int().nonnegative().default(1500),
-    MOMO_SIMULATOR_SECRET: z.string().min(8).default('immodesk-dev-momo-simulator-secret'),
+    MOMO_SIMULATOR_SECRET: z.string().min(8).default(DEV_SECRET_DEFAULTS.MOMO_SIMULATOR_SECRET),
     // URL publique par laquelle le simulateur (et CinetPay) rappellent l'API.
     MOMO_WEBHOOK_BASE_URL: z.string().url().default('http://localhost:3000'),
     CINETPAY_API_KEY: optionalText,
@@ -285,12 +322,38 @@ export const configSchema = z
           'CINETPAY_API_KEY, CINETPAY_SITE_ID et CINETPAY_SECRET_KEY sont obligatoires lorsque MOMO_PROVIDER_DEFAULT vaut CINETPAY.',
       });
     }
+    // Sans liste explicite, `bootstrap.ts` reflète toute origine avec les
+    // cookies (`credentials: true`) : surface CSRF et exfiltration par une
+    // page tierce. Acceptable en développement, jamais en production.
+    if (cfg.NODE_ENV === 'production' && !cfg.CORS_ALLOWED_ORIGINS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CORS_ALLOWED_ORIGINS'],
+        message:
+          'CORS_ALLOWED_ORIGINS est obligatoire en production : lister les origines autorisées, séparées par des virgules (ex. https://app.immodesk.cg,https://portail.immodesk.cg), faute de quoi toute origine serait acceptée avec les cookies.',
+      });
+    }
     if (cfg.NODE_ENV === 'production' && cfg.OTP_DEV_CODE) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['OTP_DEV_CODE'],
         message: 'OTP_DEV_CODE ne doit jamais être défini en production.',
       });
+    }
+    // Les valeurs par défaut des secrets ne servent qu'au poste de
+    // développement : elles sont publiques (dépôt, `.env.example`). En
+    // production, chacune doit avoir été remplacée, sinon curseurs, liens
+    // signés, OTP et webhooks sont forgeables par quiconque lit le code.
+    if (cfg.NODE_ENV === 'production') {
+      for (const name of PRODUCTION_SECRET_KEYS) {
+        if (cfg[name] === DEV_SECRET_DEFAULTS[name]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [name],
+            message: `${name} garde sa valeur de développement : à remplacer en production.`,
+          });
+        }
+      }
     }
   });
 

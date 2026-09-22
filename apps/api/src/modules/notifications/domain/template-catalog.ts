@@ -255,6 +255,24 @@ export const SYSTEM_TEMPLATES: readonly SystemTemplate[] = [
     providerTemplateLang: null,
     variables: ['reference', 'landlordName', 'method'],
   },
+  {
+    code: MESSAGE_TEMPLATE_CODES.SUBSCRIPTION_PAST_DUE_WARNING,
+    channel: 'WHATSAPP',
+    name: 'Avertissement avant restriction (abonnement en retard)',
+    body: 'Bonjour {{ownerName}}, l’abonnement Immodesk de {{organizationName}} est en retard de paiement ({{amount}}). Réglez avant le {{deadline}} pour éviter la mise en lecture seule de votre compte. Payer : {{link}}',
+    providerTemplateName: 'subscription_past_due_warning_fr',
+    providerTemplateLang: 'fr',
+    variables: ['ownerName', 'organizationName', 'amount', 'deadline', 'link'],
+  },
+  {
+    code: MESSAGE_TEMPLATE_CODES.SUBSCRIPTION_PAST_DUE_WARNING,
+    channel: 'SMS',
+    name: 'Avertissement avant restriction (abonnement en retard, SMS)',
+    body: 'Immodesk : abonnement {{organizationName}} en retard de {{amount}}. Reglez avant le {{deadline}} pour eviter la restriction du compte.',
+    providerTemplateName: null,
+    providerTemplateLang: null,
+    variables: ['organizationName', 'amount', 'deadline'],
+  },
 ];
 
 export function systemTemplate(code: string, channel: string): SystemTemplate | null {

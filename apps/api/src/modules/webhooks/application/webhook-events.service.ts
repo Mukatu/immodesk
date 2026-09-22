@@ -50,14 +50,33 @@ export class WebhookEventsService {
     private readonly auditService: AuditService,
   ) {}
 
-  /** Insertion idempotente : renvoie `duplicate: true` sans rien modifier si déjà vu. */
+  /**
+   * Insertion idempotente : renvoie `duplicate: true` sans rien modifier si
+   * déjà vu. Exception : un événement NON signé déjà persisté ne bloque
+   * jamais l'arrivée ultérieure du même `external_event_id` correctement
+   * signé — sinon un tiers pourrait « réserver » à l'avance l'identifiant
+   * d'une notification légitime et la faire ignorer. La ligne est alors
+   * reprise (même `id`) et traitée normalement.
+   */
   async persist(input: WebhookPersistInput): Promise<{ id: string; duplicate: boolean }> {
     const id = newId();
     const rows = await this.adminClient().$queryRawUnsafe<Array<{ id: string }>>(
       `INSERT INTO webhook_events (id, organization_id, source, event_type, status, external_event_id,
                                    signature_header, signature_valid, request_path, source_ip, headers, raw_payload)
        VALUES ($1::uuid, $2::uuid, $3::webhook_source, $4, 'RECEIVED', $5, $6, $7, $8, $9::inet, $10::jsonb, $11::jsonb)
-       ON CONFLICT (source, external_event_id) DO NOTHING
+       ON CONFLICT (source, external_event_id) DO UPDATE
+         SET organization_id = coalesce(EXCLUDED.organization_id, webhook_events.organization_id),
+             event_type = EXCLUDED.event_type,
+             status = 'RECEIVED',
+             signature_header = EXCLUDED.signature_header,
+             signature_valid = true,
+             request_path = EXCLUDED.request_path,
+             source_ip = EXCLUDED.source_ip,
+             headers = EXCLUDED.headers,
+             raw_payload = EXCLUDED.raw_payload,
+             error_message = NULL,
+             updated_at = now()
+         WHERE webhook_events.signature_valid = false AND EXCLUDED.signature_valid = true
        RETURNING id`,
       id,
       input.organizationId,
@@ -77,7 +96,9 @@ export class WebhookEventsService {
       );
       return { id: '', duplicate: true };
     }
-    return { id, duplicate: false };
+    // Ligne neuve, ou ligne non signée reprise : dans les deux cas c'est
+    // l'identifiant rendu par la base qui fait foi.
+    return { id: rows[0]?.id ?? id, duplicate: false };
   }
 
   async markStatus(

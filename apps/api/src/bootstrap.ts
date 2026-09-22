@@ -67,8 +67,13 @@ export async function createApp(): Promise<INestApplication> {
     }),
   );
 
+  // Sans liste explicite, toute origine est reflétée avec `credentials` :
+  // commode en développement et en test. En production, la validation de
+  // configuration (config.schema.ts) refuse déjà de démarrer si
+  // CORS_ALLOWED_ORIGINS est absent : ce cas ne peut plus se produire ici.
+  const allowedOrigins = config.get('CORS_ALLOWED_ORIGINS');
   app.enableCors({
-    origin: true,
+    origin: allowedOrigins ?? true,
     credentials: true,
     allowedHeaders: [
       'Authorization',

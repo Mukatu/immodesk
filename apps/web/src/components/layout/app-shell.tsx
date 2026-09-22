@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ContextPanelProvider } from '@/components/layout/context-panel';
 import { InstallPrompt } from '@/components/layout/install-prompt';
 import { OrgSwitcher } from '@/components/layout/org-switcher';
+import { ServiceWorkerRegistration } from '@/components/layout/service-worker-registration';
 import { SidebarNavList } from '@/components/layout/sidebar-nav';
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { useAuth } from '@/lib/auth/auth-context';
@@ -192,6 +193,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <InstallPrompt />
+      <ServiceWorkerRegistration />
     </ContextPanelProvider>
   );
 }

@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from 'react';
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
 import { ChevronRight } from 'lucide-react';
 
@@ -13,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/business/empty-state';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,28 @@ import { cn } from '@/lib/utils';
 /** Éléments interactifs déjà présents dans une cellule (lien de la référence, badge cliquable…) :
  * un clic ou une touche sur l'un d'eux ne doit pas aussi ouvrir le panneau contextuel. */
 const INTERACTIVE_SELECTOR = 'a, button, [role="button"], input, select, textarea';
+
+/**
+ * Détecte la colonne d'actions (pied de carte en vue mobile) : `id: 'actions'` couvre les
+ * trois formes d'en-tête réellement présentes dans le code (chaîne vide, chaîne « Actions »,
+ * ou fonction) puisque chacune de ces colonnes porte cet id ; les deux vérifications de
+ * chaîne restent en filet de sécurité pour une éventuelle colonne d'actions sans cet id.
+ */
+function isFooterColumn(column: { id: string; columnDef: { header?: unknown } }): boolean {
+  if (column.id === 'actions') return true;
+  const header = column.columnDef.header;
+  return typeof header === 'string' && (header === '' || header === 'Actions');
+}
+
+/**
+ * Colonne de sélection (case à cocher de tête de ligne). Elle ne peut pas servir de titre
+ * de carte — ce serait une case à cocher mise en évidence à la place du numéro de facture —
+ * et elle n'a pas non plus sa place dans les paires étiquette/valeur : elle est rendue comme
+ * un contrôle en tête de carte, à gauche du titre.
+ */
+function isSelectionColumn(column: { id: string }): boolean {
+  return column.id === 'select';
+}
 
 export interface CursorPageInfo {
   nextCursor: string | null;
@@ -98,9 +120,23 @@ export function DataTable<TData, TValue>({
     return <EmptyState title={emptyTitle} description={emptyDescription} />;
   }
 
+  // Vue carte (< 640px) : en-têtes indexés par id de colonne, pour retrouver l'en-tête d'une
+  // cellule sans relire de chaîne (flexRender exige le couple header + son propre contexte).
+  //
+  // NE PAS transformer en `useMemo` : un hook s'exécuterait AVANT les deux sorties anticipées
+  // ci-dessus, donc `table.getHeaderGroups()` serait appelé même sans données. C'est ce qui a
+  // fait échouer le prérendu de /app/paiements/mobile-money, dont une colonne a un en-tête
+  // vide sans identifiant. Ici, le calcul n'a lieu que lorsqu'il y a des lignes à rendre —
+  // exactement comme avant l'ajout de la vue carte. Le coût est négligeable (une page de
+  // résultats).
+  const headerByColumnId = new Map(
+    table.getHeaderGroups()[0]?.headers.map((header) => [header.column.id, header]) ?? [],
+  );
+
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-border">
+      {/* Vue tableau : inchangée, simplement masquée sous 640px. */}
+      <div className="hidden rounded-md border border-border sm:block">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -160,6 +196,87 @@ export function DataTable<TData, TValue>({
             ))}
           </TableBody>
         </Table>
+      </div>
+      {/* Vue carte : masquée dès 640px. Construite à partir des mêmes définitions de colonnes,
+          donc aucun écran appelant n'a besoin d'être modifié pour en bénéficier. */}
+      <div className="space-y-3 sm:hidden">
+        {table.getRowModel().rows.map((row) => {
+          const visibleCells = row.getVisibleCells();
+          // La case à cocher de sélection est extraite avant le choix du titre : sans cela,
+          // c'est elle qui deviendrait le titre de la carte (cas de l'écran des factures).
+          const selectionCell = visibleCells.find((cell) => isSelectionColumn(cell.column));
+          const [titleCell, ...otherCells] = visibleCells.filter((cell) => cell !== selectionCell);
+          const footerCell = otherCells.find((cell) => isFooterColumn(cell.column));
+          const middleCells = otherCells.filter((cell) => cell !== footerCell);
+
+          return (
+            <Card
+              key={row.id}
+              className={cn(getRowClassName?.(row.original), onRowSelect && 'cursor-pointer')}
+              onClick={
+                onRowSelect
+                  ? (event) => {
+                      const target = event.target as HTMLElement;
+                      if (target.closest(INTERACTIVE_SELECTOR)) return;
+                      onRowSelect(row.original);
+                    }
+                  : undefined
+              }
+            >
+              <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 p-4">
+                {selectionCell ? (
+                  <div className="shrink-0">
+                    {flexRender(selectionCell.column.columnDef.cell, selectionCell.getContext())}
+                  </div>
+                ) : null}
+                <div className="min-w-0 flex-1 font-semibold">
+                  {titleCell
+                    ? flexRender(titleCell.column.columnDef.cell, titleCell.getContext())
+                    : null}
+                </div>
+                {onRowSelect ? (
+                  // Vrai bouton natif (voir le commentaire au-dessus d'onRowSelect) : toujours
+                  // visible ici (pas d'apparition au survol, absent au doigt), et de 44px au
+                  // moins de côté pour rester atteignable au toucher.
+                  <button
+                    type="button"
+                    onClick={() => onRowSelect(row.original)}
+                    aria-label={getRowLabel?.(row.original) ?? 'Voir le détail de cette ligne'}
+                    className="flex size-11 shrink-0 items-center justify-center rounded-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <ChevronRight aria-hidden="true" className="size-5" />
+                  </button>
+                ) : null}
+              </CardHeader>
+              {middleCells.length > 0 ? (
+                <CardContent className="space-y-2 p-4 pt-0 text-sm">
+                  {middleCells.map((cell) => {
+                    const header = headerByColumnId.get(cell.column.id);
+                    const headerDef = cell.column.columnDef.header;
+                    const hasLabel = !(typeof headerDef === 'string' && headerDef === '');
+                    return (
+                      <div key={cell.id} className="flex flex-col gap-0.5">
+                        {hasLabel && header ? (
+                          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                          </span>
+                        ) : null}
+                        <span>{flexRender(cell.column.columnDef.cell, cell.getContext())}</span>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              ) : null}
+              {footerCell ? (
+                <CardFooter className="p-4 pt-0">
+                  <div className="w-full">
+                    {flexRender(footerCell.column.columnDef.cell, footerCell.getContext())}
+                  </div>
+                </CardFooter>
+              ) : null}
+            </Card>
+          );
+        })}
       </div>
       {(onNextPage || onPreviousPage) && (
         <div className="flex items-center justify-end gap-2">

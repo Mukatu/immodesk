@@ -138,6 +138,13 @@ export class ReferralQualificationService {
    * 7 : une commission ne se modifie jamais, elle se contre-passe). À
    * appeler par le module `subscriptions` quand une facture réglée est
    * remboursée ou annulée après coup.
+   *
+   * VOLONTAIREMENT NON APPELÉE à ce jour : `docs/api/phase10-contract.md` ne
+   * livre aucune route de remboursement d'une `subscription_invoice` (arbitrage
+   * 2 : ISSUED/PAID/OVERDUE/CANCELLED seulement, aucun `POST .../refund`).
+   * Cette méthode reste prête pour le jour où ce remboursement sera livré —
+   * elle n'est pas du code mort oublié, c'est une dépendance du contrat non
+   * encore honorée côté `subscriptions`.
    */
   async reverseCommissionForInvoice(invoiceId: string, reason: string): Promise<void> {
     await this.prisma.withAdmin(async (tx) => {

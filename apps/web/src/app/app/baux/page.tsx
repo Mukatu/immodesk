@@ -11,8 +11,21 @@ import { DataTable } from '@/components/business/data-table';
 import { PageHeader } from '@/components/business/page-header';
 import { MoneyXaf } from '@/components/business/money-xaf';
 import { LeaseStatusBadge } from '@/components/business/lease-status-badge';
+import { useContextPanel } from '@/components/layout/context-panel';
 import { useLeases } from '@/lib/api/hooks/use-leases';
+import { LEASE_STATUS_LABELS } from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
 import type { LeaseStatus, LeaseSummary } from '@/lib/api/types';
+
+const LEASE_TONE: Record<LeaseStatus, 'ok' | 'info' | 'warning' | 'danger' | 'neutral'> = {
+  DRAFT: 'neutral',
+  PENDING_SIGNATURE: 'info',
+  ACTIVE: 'ok',
+  NOTICE_GIVEN: 'warning',
+  TERMINATED: 'danger',
+  EXPIRED: 'neutral',
+  CANCELLED: 'danger',
+};
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -43,6 +56,8 @@ function filterToParams(filter: QuickFilter): { status?: LeaseStatus; endingWith
 }
 
 export default function BauxPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedLeaseId, setSelectedLeaseId] = React.useState<string | null>(null);
   const [searchInput, setSearchInput] = React.useState('');
   const [q, setQ] = React.useState('');
   const [filter, setFilter] = React.useState<QuickFilter>('ALL');
@@ -128,6 +143,50 @@ export default function BauxPage() {
     });
   }
 
+  // Bonus : la ligne dont le panneau contextuel affiche le détail reste visuellement
+  // repérable (liseré `bg-accent`, même codage que l'item actif de la sidebar) tant que
+  // le panneau reste ouvert — utile puisqu'il est non modal et qu'on peut continuer à
+  // parcourir/scroller la liste pendant qu'il affiche encore la ligne précédente.
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedLeaseId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(lease: LeaseSummary) {
+    setSelectedLeaseId(lease.id);
+    openContextPanel({
+      title: 'Bail',
+      blocks: [
+        {
+          type: 'identity',
+          title: lease.reference ?? 'Bail sans référence',
+          subtitle: `${lease.unit.code} — ${lease.property.name}`,
+          badge: { label: LEASE_STATUS_LABELS[lease.status], tone: LEASE_TONE[lease.status] },
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Locataire', v: lease.tenant.displayName },
+            { k: 'Loyer', v: formatXaf(lease.rentAmount) },
+            { k: 'Charges', v: formatXaf(lease.chargesAmount) },
+            { k: 'Échéance', v: `Le ${lease.paymentDueDay}` },
+            { k: 'Début', v: new Date(lease.startDate).toLocaleDateString('fr-CG') },
+          ],
+        },
+        {
+          type: 'actions',
+          actions: [
+            { label: 'Voir la fiche du bail', primary: true, href: `/app/baux/${lease.id}` },
+            {
+              label: 'Voir le locataire',
+              href: `/app/locataires/${lease.tenant.id}`,
+            },
+          ],
+        },
+      ],
+    });
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -189,6 +248,15 @@ export default function BauxPage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         hasPreviousPage={previousCursors.length > 0}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(lease) =>
+          `Voir le détail du bail ${lease.reference ?? lease.tenant.displayName}`
+        }
+        getRowClassName={(lease) =>
+          lease.id === selectedLeaseId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

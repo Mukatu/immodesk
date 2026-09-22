@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import type { LucideIcon } from 'lucide-react';
 import {
   AlertTriangle,
   Building2,
@@ -20,6 +19,8 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { KpiCard } from '@/components/business/kpi-card';
+import { KpiGrid } from '@/components/business/kpi-grid';
 import { PageHeader } from '@/components/business/page-header';
 import { PeriodPicker, currentPeriod } from '@/components/business/period-picker';
 import { MoneyXaf } from '@/components/business/money-xaf';
@@ -89,38 +90,6 @@ function formatApproxCount(
 ): string {
   const noun = pluralize(count, singular, plural);
   return hasMore ? `${count}+ ${noun}` : `${count} ${noun}`;
-}
-
-interface KpiCardProps {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  isLoading: boolean;
-  href?: string;
-  linkLabel?: string;
-}
-
-function KpiCard({ icon: Icon, label, value, isLoading, href, linkLabel }: KpiCardProps) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <Icon className="mb-2 size-5 text-primary" aria-hidden="true" />
-        <CardDescription>{label}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {isLoading ? (
-          <Skeleton className="h-9 w-24" />
-        ) : (
-          <p className="text-3xl font-semibold">{value}</p>
-        )}
-        {href ? (
-          <Button asChild variant="link" size="sm" className="h-auto px-0">
-            <Link href={href}>{linkLabel ?? 'Voir tout'}</Link>
-          </Button>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
 }
 
 export default function DashboardPage() {
@@ -215,51 +184,26 @@ export default function DashboardPage() {
           </div>
         ) : billingDashboardQuery.data ? (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Attendu</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-semibold">
-                    <MoneyXaf amount={billingDashboardQuery.data.expectedAmount} />
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Encaissé</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-semibold">
-                    <MoneyXaf amount={billingDashboardQuery.data.collectedAmount} colorize />
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Reste à encaisser</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-semibold">
-                    <MoneyXaf amount={billingDashboardQuery.data.outstandingAmount} />
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription className="flex items-center gap-1">
-                    <AlertTriangle className="size-3.5 text-destructive" aria-hidden="true" />
-                    En retard
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-semibold">
-                    <MoneyXaf amount={billingDashboardQuery.data.overdueAmount} colorize />
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            <KpiGrid>
+              <KpiCard
+                label="Attendu"
+                value={<MoneyXaf amount={billingDashboardQuery.data.expectedAmount} />}
+              />
+              <KpiCard
+                label="Encaissé"
+                value={<MoneyXaf amount={billingDashboardQuery.data.collectedAmount} colorize />}
+              />
+              <KpiCard
+                label="Reste à encaisser"
+                value={<MoneyXaf amount={billingDashboardQuery.data.outstandingAmount} />}
+              />
+              <KpiCard
+                icon={AlertTriangle}
+                iconClassName="text-destructive"
+                label="En retard"
+                value={<MoneyXaf amount={billingDashboardQuery.data.overdueAmount} colorize />}
+              />
+            </KpiGrid>
 
             <div className="grid gap-4 lg:grid-cols-2">
               <Card>
@@ -381,7 +325,7 @@ export default function DashboardPage() {
         <h2 id="apercu-titre" className="text-lg font-semibold">
           Aperçu
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <KpiGrid>
           <KpiCard
             icon={Building2}
             label="Immeubles"
@@ -434,7 +378,7 @@ export default function DashboardPage() {
             href="/app/synchronisation/conflits"
             linkLabel="Voir les conflits"
           />
-        </div>
+        </KpiGrid>
       </section>
 
       <section aria-labelledby="prochaines-etapes-titre" className="space-y-4">

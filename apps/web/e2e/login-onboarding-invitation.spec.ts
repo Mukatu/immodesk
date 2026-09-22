@@ -32,7 +32,7 @@ test.describe('Connexion OTP → création d’organisation → invitation', () 
     await page.getByRole('button', { name: 'Suivant' }).click();
 
     // Étape 2 : identité
-    await page.getByLabel('Raison sociale').fill('Agence Test E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Test E2E');
     await page.getByLabel('Ville').fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
 

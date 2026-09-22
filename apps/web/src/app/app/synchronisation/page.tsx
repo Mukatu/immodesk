@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { useContextPanel } from '@/components/layout/context-panel';
 import { useSyncBatches } from '@/lib/api/hooks/use-sync-batches';
 import { useSyncDevices } from '@/lib/api/hooks/use-sync-devices';
 import { SYNC_BATCH_STATUS_LABELS } from '@/lib/enum-labels';
@@ -23,6 +24,13 @@ import { BatchDetail } from './_components/batch-detail';
 
 const PAGE_SIZE = 20;
 
+const SYNC_BATCH_TONE: Record<SyncBatchStatus, 'ok' | 'info' | 'warning' | 'danger' | 'neutral'> = {
+  APPLIED: 'ok',
+  PARTIALLY_APPLIED: 'warning',
+  REJECTED: 'danger',
+  FAILED: 'danger',
+};
+
 /**
  * File des lots de synchronisation hors ligne (contrat, `GET /v1/sync/batches`,
  * réservé MANAGER) : appareil, démarcheur, date de réception, statut et
@@ -30,13 +38,76 @@ const PAGE_SIZE = 20;
  * statut et période.
  */
 export default function SynchronisationPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
   const [collectorUserId, setCollectorUserId] = React.useState('');
   const [status, setStatus] = React.useState<SyncBatchStatus | ''>('');
   const [from, setFrom] = React.useState('');
   const [to, setTo] = React.useState('');
   const [selectedBatchId, setSelectedBatchId] = React.useState<string | null>(null);
+  const [selectedContextBatchId, setSelectedContextBatchId] = React.useState<string | null>(null);
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
   const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
+
+  // Même bonus que /app/baux : la ligne dont le panneau contextuel affiche le
+  // résumé reste repérable tant qu'il reste ouvert.
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedContextBatchId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(batch: SyncBatchSummary) {
+    setSelectedContextBatchId(batch.id);
+    openContextPanel({
+      title: 'Lot de synchronisation',
+      blocks: [
+        {
+          type: 'identity',
+          title: batch.batchRef,
+          subtitle: `${batch.collector.fullName} · ${batch.deviceId}`,
+          badge: {
+            label: SYNC_BATCH_STATUS_LABELS[batch.status],
+            tone: SYNC_BATCH_TONE[batch.status],
+          },
+        },
+        {
+          type: 'metric',
+          value: batch.operationsCount,
+          label: 'opérations reçues',
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détail',
+          items: [
+            { k: 'Appliquées', v: batch.appliedCount },
+            { k: 'Rejetées', v: batch.rejectedCount },
+            { k: 'En conflit', v: batch.conflictsCount },
+            { k: 'Plateforme', v: batch.devicePlatform ?? '—' },
+            { k: 'Version app', v: batch.appVersion ?? '—' },
+          ],
+        },
+        {
+          type: 'activity',
+          title: 'Chronologie',
+          items: [
+            { what: 'Lot reçu', when: new Date(batch.receivedAt).toLocaleString('fr-CG') },
+            ...(batch.appliedAt
+              ? [{ what: 'Lot appliqué', when: new Date(batch.appliedAt).toLocaleString('fr-CG') }]
+              : []),
+          ],
+        },
+        {
+          type: 'actions',
+          actions: [
+            {
+              label: 'Voir le détail des opérations',
+              primary: true,
+              keepOpen: true,
+              onSelect: () => setSelectedBatchId(batch.id),
+            },
+          ],
+        },
+      ],
+    });
+  }
 
   const devicesQuery = useSyncDevices();
   const collectors = React.useMemo(() => {
@@ -193,6 +264,13 @@ export default function SynchronisationPage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         hasPreviousPage={previousCursors.length > 0}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(batch) => `Voir le résumé du lot ${batch.batchRef}`}
+        getRowClassName={(batch) =>
+          batch.id === selectedContextBatchId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
 
       {selectedBatchId ? (

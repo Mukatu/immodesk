@@ -10,13 +10,17 @@ import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/business/data-table';
 import { PageHeader } from '@/components/business/page-header';
 import { PhoneDisplay } from '@/components/business/phone-display';
+import { useContextPanel } from '@/components/layout/context-panel';
 import { useTenants } from '@/lib/api/hooks/use-tenants';
+import { formatE164Congo } from '@/lib/phone';
 import type { Tenant } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
 
 export default function LocatairesPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedTenantId, setSelectedTenantId] = React.useState<string | null>(null);
   const [searchInput, setSearchInput] = React.useState('');
   const [q, setQ] = React.useState('');
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
@@ -79,6 +83,46 @@ export default function LocatairesPage() {
     });
   }
 
+  // Bonus : cf. commentaire équivalent dans /app/baux/page.tsx — liseré `bg-accent`
+  // synchronisé avec l'état ouvert/fermé du panneau non modal.
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedTenantId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(tenant: Tenant) {
+    setSelectedTenantId(tenant.id);
+    openContextPanel({
+      title: 'Locataire',
+      blocks: [
+        {
+          type: 'identity',
+          title: tenant.displayName,
+          subtitle: formatE164Congo(tenant.primaryPhone),
+        },
+        {
+          type: 'keyvalue',
+          title: 'Coordonnées',
+          items: [
+            { k: 'Ville', v: tenant.city || '—' },
+            { k: 'Profession', v: tenant.profession || '—' },
+            { k: 'Employeur', v: tenant.employerName || '—' },
+            { k: 'E-mail', v: tenant.email || '—' },
+          ],
+        },
+        {
+          type: 'actions',
+          actions: [
+            {
+              label: 'Voir la fiche complète',
+              primary: true,
+              href: `/app/locataires/${tenant.id}`,
+            },
+          ],
+        },
+      ],
+    });
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -124,6 +168,13 @@ export default function LocatairesPage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         hasPreviousPage={previousCursors.length > 0}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(tenant) => `Voir le détail de ${tenant.displayName}`}
+        getRowClassName={(tenant) =>
+          tenant.id === selectedTenantId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

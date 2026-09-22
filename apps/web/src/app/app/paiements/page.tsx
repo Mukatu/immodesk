@@ -12,13 +12,26 @@ import { PaymentStatusBadge } from '@/components/business/payment-status-badge';
 import { EnumSelect } from '@/components/business/enum-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useContextPanel } from '@/components/layout/context-panel';
 import { usePayments } from '@/lib/api/hooks/use-payments';
 import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
 import type { PaymentMethod, PaymentStatus, PaymentSummary } from '@/lib/api/types';
+
+const PAYMENT_TONE: Record<PaymentStatus, 'ok' | 'info' | 'warning' | 'danger' | 'neutral'> = {
+  PENDING: 'neutral',
+  PENDING_VERIFICATION: 'warning',
+  CONFIRMED: 'ok',
+  REJECTED: 'danger',
+  CANCELLED: 'neutral',
+  REVERSED: 'neutral',
+};
 
 const PAGE_SIZE = 20;
 
 export default function PaiementsPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedPaymentId, setSelectedPaymentId] = React.useState<string | null>(null);
   const [method, setMethod] = React.useState<PaymentMethod | ''>('');
   const [status, setStatus] = React.useState<PaymentStatus | ''>('');
   const [from, setFrom] = React.useState('');
@@ -55,6 +68,56 @@ export default function PaiementsPage() {
       const last = next.pop();
       setCursor(last || undefined);
       return next;
+    });
+  }
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedPaymentId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(payment: PaymentSummary) {
+    setSelectedPaymentId(payment.id);
+    const isRejected = payment.status === 'REJECTED';
+    openContextPanel({
+      title: 'Paiement',
+      blocks: [
+        {
+          type: 'identity',
+          title: payment.reference,
+          subtitle: payment.tenant?.displayName ?? 'Locataire non rattaché',
+          badge: {
+            label: PAYMENT_STATUS_LABELS[payment.status],
+            tone: PAYMENT_TONE[payment.status],
+          },
+        },
+        { type: 'metric', value: formatXaf(payment.amount), label: 'Montant encaissé' },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Méthode', v: PAYMENT_METHOD_LABELS[payment.method] },
+            { k: 'Date', v: new Date(payment.paymentDate).toLocaleDateString('fr-CG') },
+            { k: 'Bail', v: payment.lease?.reference ?? '—' },
+            { k: 'Alloué', v: formatXaf(payment.allocatedAmount) },
+            { k: 'Non alloué', v: formatXaf(payment.unallocatedAmount) },
+          ],
+        },
+        ...(isRejected
+          ? ([{ type: 'alert', tone: 'danger', text: 'Ce paiement a été rejeté.' }] as const)
+          : []),
+        {
+          type: 'actions',
+          actions: [
+            { label: 'Voir le paiement', primary: true, href: `/app/paiements/${payment.id}` },
+            ...(payment.tenant
+              ? [{ label: 'Voir le locataire', href: `/app/locataires/${payment.tenant.id}` }]
+              : []),
+            ...(payment.lease
+              ? [{ label: 'Voir le bail', href: `/app/baux/${payment.lease.id}` }]
+              : []),
+          ],
+        },
+      ],
     });
   }
 
@@ -182,6 +245,13 @@ export default function PaiementsPage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         hasPreviousPage={previousCursors.length > 0}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(payment) => `Ouvrir le détail du paiement ${payment.reference}`}
+        getRowClassName={(payment) =>
+          payment.id === selectedPaymentId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

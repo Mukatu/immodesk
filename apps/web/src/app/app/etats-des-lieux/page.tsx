@@ -11,15 +11,32 @@ import { MoneyXaf } from '@/components/business/money-xaf';
 import { InspectionStatusBadge } from '@/components/business/inspection-status-badge';
 import { ConditionBadge } from '@/components/business/condition-badge';
 import { EnumSelect } from '@/components/business/enum-select';
+import { useContextPanel, type ContextPanelTone } from '@/components/layout/context-panel';
 import { useInspections } from '@/lib/api/hooks/use-inspections';
 import { useUnits } from '@/lib/api/hooks/use-units';
-import { INSPECTION_STATUS_LABELS, INSPECTION_TYPE_LABELS } from '@/lib/enum-labels';
+import {
+  INSPECTION_CONDITION_LABELS,
+  INSPECTION_STATUS_LABELS,
+  INSPECTION_TYPE_LABELS,
+} from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
 import type { InspectionStatus, InspectionSummary, InspectionType } from '@/lib/api/types';
 import { formatDateFr } from './_components/format-date-fr';
 
 const PAGE_SIZE = 20;
 
+const INSPECTION_STATUS_TONE: Record<InspectionStatus, ContextPanelTone> = {
+  DRAFT: 'neutral',
+  IN_PROGRESS: 'info',
+  PENDING_SIGNATURE: 'warning',
+  SIGNED: 'ok',
+  DISPUTED: 'danger',
+  CANCELLED: 'neutral',
+};
+
 export default function EtatsDesLieuxPage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
   const [type, setType] = React.useState<InspectionType | ''>('');
   const [status, setStatus] = React.useState<InspectionStatus | ''>('');
   const [unitId, setUnitId] = React.useState('');
@@ -38,6 +55,68 @@ export default function EtatsDesLieuxPage() {
   function resetPagination() {
     setCursor(undefined);
     setPreviousCursors([]);
+  }
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedInspectionId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(inspection: InspectionSummary) {
+    setSelectedInspectionId(inspection.id);
+    openContextPanel({
+      title: 'État des lieux',
+      blocks: [
+        {
+          type: 'identity',
+          title: inspection.reference,
+          subtitle: `${inspection.unit.code} — ${inspection.property.name}`,
+          badge: {
+            label: INSPECTION_STATUS_LABELS[inspection.status],
+            tone: INSPECTION_STATUS_TONE[inspection.status],
+          },
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Type', v: INSPECTION_TYPE_LABELS[inspection.inspectionType] },
+            { k: 'Locataire', v: inspection.tenant?.displayName ?? '—' },
+            { k: 'Date réalisée', v: formatDateFr(inspection.performedAt) },
+            {
+              k: 'État général',
+              v: inspection.overallCondition
+                ? INSPECTION_CONDITION_LABELS[inspection.overallCondition]
+                : '—',
+            },
+            { k: 'Dégradations', v: formatXaf(inspection.totalDamageAmount) },
+          ],
+        },
+        ...(inspection.status === 'DISPUTED'
+          ? [
+              {
+                type: 'alert' as const,
+                text: 'Cet état des lieux est contesté : vérifiez le motif du litige.',
+                tone: 'danger' as const,
+              },
+            ]
+          : []),
+        {
+          type: 'actions',
+          actions: [
+            {
+              label: "Voir la fiche de l'état des lieux",
+              primary: true,
+              href: `/app/etats-des-lieux/${inspection.id}`,
+            },
+            {
+              label: 'Comparer entrée / sortie',
+              href: `/app/etats-des-lieux/comparaison/${inspection.unit.id}`,
+            },
+            { label: 'Voir le lot', href: `/app/lots/${inspection.unit.id}` },
+          ],
+        },
+      ],
+    });
   }
 
   const columns = React.useMemo<ColumnDef<InspectionSummary>[]>(
@@ -192,6 +271,13 @@ export default function EtatsDesLieuxPage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         hasPreviousPage={previousCursors.length > 0}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(inspection) => `Voir le détail de l'état des lieux ${inspection.reference}`}
+        getRowClassName={(inspection) =>
+          inspection.id === selectedInspectionId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

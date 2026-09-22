@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Immodesk — Hors ligne</title>
+    <!--
+      Page de repli statique servie par public/sw.js quand une navigation échoue
+      faute de réseau. Volontairement sans dépendance (pas de CSS/JS externe) :
+      elle doit pouvoir s'afficher même si tout le reste échoue à charger.
+      Pas de données, pas d'état — un simple message et un bouton pour réessayer.
+    -->
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        box-sizing: border-box;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #f7f8f7;
+        color: #1a1a1a;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0e1512;
+          color: #f2f2f2;
+        }
+      }
+      main {
+        max-width: 360px;
+        text-align: center;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin-bottom: 8px;
+      }
+      p {
+        font-size: 0.9rem;
+        opacity: 0.8;
+        margin-bottom: 20px;
+      }
+      button {
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #fff;
+        background: #ec4699;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Connexion indisponible</h1>
+      <p>Immodesk n'a pas pu joindre le réseau. Vérifiez votre connexion puis réessayez.</p>
+      <button type="button" onclick="location.reload()">Réessayer</button>
+    </main>
+  </body>
+</html>

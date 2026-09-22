@@ -50,6 +50,9 @@ test.describe('Gérance d’agence phase 7 : campagne → relevé → reversemen
     await expect(page).toHaveURL(/\/app$/);
 
     // --- Bailleur + compte bancaire (nécessaire pour le reversement) ---
+    // Groupe « Patrimoine » fermé par défaut (sidebar-nav.tsx) : à ouvrir avant le
+    // premier clic sur un de ses liens.
+    await page.getByRole('button', { name: 'Patrimoine' }).click();
     await page.getByRole('link', { name: 'Bailleurs' }).click();
     await page.getByRole('button', { name: 'Nouveau bailleur' }).click();
     await page.getByLabel('Nom', { exact: true }).fill('Mavoungou');

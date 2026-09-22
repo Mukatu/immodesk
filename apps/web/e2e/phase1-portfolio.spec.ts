@@ -50,6 +50,9 @@ test.describe('Portefeuille phase 1 : bailleur → immeuble → lots → locatai
     await expect(page.getByRole('heading', { name: /Agence Portefeuille E2E/ })).toBeVisible();
 
     // --- Bailleur : création via le panneau (Sheet) depuis /app/bailleurs ---
+    // Groupe « Patrimoine » fermé par défaut (sidebar-nav.tsx) : à ouvrir avant le
+    // premier clic sur un de ses liens.
+    await page.getByRole('button', { name: 'Patrimoine' }).click();
     await page.getByRole('link', { name: 'Bailleurs' }).click();
     await expect(page).toHaveURL(/\/app\/bailleurs$/);
 

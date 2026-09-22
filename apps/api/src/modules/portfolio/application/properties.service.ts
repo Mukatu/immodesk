@@ -10,6 +10,7 @@ import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
 import { LandlordsService } from '../../parties/application/landlords.service';
 import { normalizeOptionalPhone, trimOrNull } from '../../parties/domain/party-rules';
+import { normalizeFurniture, type FurnitureItemInput } from '../domain/furniture';
 import { computeOccupancy, type Occupancy } from '../domain/occupancy';
 import {
   toPropertySummary,
@@ -40,6 +41,10 @@ export interface PropertyInput {
   hasWater?: boolean;
   hasElectricity?: boolean;
   hasBorehole?: boolean;
+  hasGenerator?: boolean;
+  hasSolarPanels?: boolean;
+  isFurnished?: boolean;
+  furniture?: FurnitureItemInput[];
   caretakerName?: string | null;
   caretakerPhone?: string | null;
   coverDocumentId?: string | null;
@@ -116,7 +121,7 @@ export class PropertiesService {
         address_line: (input.addressLine ?? '').trim(),
         district: (input.district ?? '').trim(),
         units_count: 0,
-        ...this.toColumns(input),
+        ...this.toColumns(input, false),
       },
     })) as unknown as PropertyRow;
 
@@ -227,7 +232,7 @@ export class PropertiesService {
           ...(input.name !== undefined ? { name: input.name.trim() } : {}),
           ...(input.addressLine !== undefined ? { address_line: input.addressLine.trim() } : {}),
           ...(input.district !== undefined ? { district: input.district.trim() } : {}),
-          ...this.toColumns(input),
+          ...this.toColumns(input, before.is_furnished),
           updated_at: new Date(),
         },
       })) as unknown as PropertyRow;
@@ -290,7 +295,15 @@ export class PropertiesService {
     }
   }
 
-  private toColumns(input: PropertyInput): Record<string, unknown> {
+  /**
+   * `currentIsFurnished` porte l'état actuel du bien (`false` à la
+   * création, `before.is_furnished` à la mise à jour) : c'est ce qui
+   * permet à `normalizeFurniture` de vider `furniture` quand le bien
+   * n'est meublé ni avant ni après cet appel, même si l'appelant n'a
+   * touché ni l'un ni l'autre champ dans cette requête.
+   */
+  private toColumns(input: PropertyInput, currentIsFurnished: boolean): Record<string, unknown> {
+    const isFurnished = input.isFurnished !== undefined ? input.isFurnished : currentIsFurnished;
     return {
       ...(input.code !== undefined ? { code: trimOrNull(input.code) } : {}),
       ...(input.propertyType !== undefined ? { property_type: input.propertyType } : {}),
@@ -314,6 +327,12 @@ export class PropertiesService {
       ...(input.hasWater !== undefined ? { has_water: input.hasWater } : {}),
       ...(input.hasElectricity !== undefined ? { has_electricity: input.hasElectricity } : {}),
       ...(input.hasBorehole !== undefined ? { has_borehole: input.hasBorehole } : {}),
+      ...(input.hasGenerator !== undefined ? { has_generator: input.hasGenerator } : {}),
+      ...(input.hasSolarPanels !== undefined ? { has_solar_panels: input.hasSolarPanels } : {}),
+      ...(input.isFurnished !== undefined ? { is_furnished: input.isFurnished } : {}),
+      ...(input.furniture !== undefined || input.isFurnished === false
+        ? { furniture: normalizeFurniture(isFurnished, input.furniture) }
+        : {}),
       ...(input.caretakerName !== undefined
         ? { caretaker_name: trimOrNull(input.caretakerName) }
         : {}),

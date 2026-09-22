@@ -8,6 +8,7 @@ import {
   generateUnitCodes,
   MAX_BULK_UNITS,
 } from '../../src/modules/portfolio/domain/unit-code';
+import { normalizeFurniture } from '../../src/modules/portfolio/domain/furniture';
 import { DomainError } from '../../src/shared/errors/domain-error';
 
 describe('Taux d’occupation en points de base', () => {
@@ -125,5 +126,40 @@ describe('Génération d’une série de codes de lots', () => {
 
   it('étiquette par défaut un lot engendré par son code', () => {
     expect(defaultUnitLabel('A7')).toBe('A7');
+  });
+});
+
+describe('Normalisation de l’inventaire de mobilier `furniture`', () => {
+  it('vide la liste quand le bien n’est pas meublé, même si l’appelant en fournit une', () => {
+    // Le client qui bascule isFurnished à false sans avoir vidé son
+    // formulaire de mobilier ne doit pas être bloqué, juste corrigé.
+    expect(normalizeFurniture(false, [{ item: 'BED', quantity: 2 }])).toEqual([]);
+    expect(normalizeFurniture(false, undefined)).toEqual([]);
+  });
+
+  it('conserve une liste valide quand le bien est meublé', () => {
+    const furniture = normalizeFurniture(true, [{ item: 'BED', quantity: 2 }, { item: 'SOFA' }]);
+    expect(furniture).toEqual([{ item: 'BED', quantity: 2 }, { item: 'SOFA' }]);
+  });
+
+  it('refuse un code de mobilier inconnu', () => {
+    expect(() => normalizeFurniture(true, [{ item: 'HAMMOCK' }])).toThrow(DomainError);
+    try {
+      normalizeFurniture(true, [{ item: 'HAMMOCK' }]);
+    } catch (error) {
+      expect((error as DomainError).code).toBe('PORTFOLIO.FURNITURE_ITEM_INVALID');
+      expect((error as DomainError).status).toBe(422);
+    }
+  });
+
+  it('refuse une quantité non entière ou inférieure à 1', () => {
+    expect(() => normalizeFurniture(true, [{ item: 'CHAIRS', quantity: 0 }])).toThrow(DomainError);
+    expect(() => normalizeFurniture(true, [{ item: 'CHAIRS', quantity: 1.5 }])).toThrow(
+      DomainError,
+    );
+  });
+
+  it('accepte une entrée sans quantité', () => {
+    expect(normalizeFurniture(true, [{ item: 'WARDROBE' }])).toEqual([{ item: 'WARDROBE' }]);
   });
 });

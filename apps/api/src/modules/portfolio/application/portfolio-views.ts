@@ -1,5 +1,6 @@
 import { toJsonAmount } from '../../../shared/money/amount';
 import { toLandlordSummary, type LandlordSummaryView } from '../../parties/application/party-views';
+import type { FurnitureItemInput } from '../domain/furniture';
 import type { Occupancy } from '../domain/occupancy';
 
 export interface PropertyRow {
@@ -25,6 +26,10 @@ export interface PropertyRow {
   has_water: boolean;
   has_electricity: boolean;
   has_borehole: boolean;
+  has_generator: boolean;
+  has_solar_panels: boolean;
+  is_furnished: boolean;
+  furniture: unknown;
   caretaker_name: string | null;
   caretaker_phone: string | null;
   cover_document_id: string | null;
@@ -57,6 +62,10 @@ export interface PropertyView {
   hasWater: boolean;
   hasElectricity: boolean;
   hasBorehole: boolean;
+  hasGenerator: boolean;
+  hasSolarPanels: boolean;
+  isFurnished: boolean;
+  furniture: FurnitureItemInput[];
   caretakerName: string | null;
   caretakerPhone: string | null;
   coverDocumentId: string | null;
@@ -96,6 +105,10 @@ export function toPropertyView(row: PropertyRow): PropertyView {
     hasWater: row.has_water,
     hasElectricity: row.has_electricity,
     hasBorehole: row.has_borehole,
+    hasGenerator: row.has_generator,
+    hasSolarPanels: row.has_solar_panels,
+    isFurnished: row.is_furnished,
+    furniture: (row.furniture as FurnitureItemInput[] | null) ?? [],
     caretakerName: row.caretaker_name,
     caretakerPhone: row.caretaker_phone,
     coverDocumentId: row.cover_document_id,

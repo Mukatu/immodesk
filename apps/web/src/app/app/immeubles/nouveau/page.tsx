@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -32,9 +33,11 @@ import { EnumSelect } from '@/components/business/enum-select';
 import { PhoneInput } from '@/components/business/phone-input';
 import { useCreateProperty } from '@/lib/api/hooks/use-properties';
 import { useLandlords } from '@/lib/api/hooks/use-landlords';
-import { PROPERTY_TYPE_LABELS } from '@/lib/enum-labels';
+import { PROPERTY_TYPE_LABELS, FURNITURE_ITEM_LABELS } from '@/lib/enum-labels';
 import { toE164Congo } from '@/lib/phone';
-import type { PropertyType } from '@/lib/api/types';
+import type { FurnitureItem, PropertyType } from '@/lib/api/types';
+
+const FURNITURE_ITEMS = Object.keys(FURNITURE_ITEM_LABELS) as FurnitureItem[];
 
 const schema = z.object({
   landlordId: z.string().min(1, 'Bailleur requis.'),
@@ -55,6 +58,9 @@ const schema = z.object({
   hasWater: z.boolean().optional(),
   hasElectricity: z.boolean().optional(),
   hasBorehole: z.boolean().optional(),
+  hasGenerator: z.boolean().optional(),
+  hasSolarPanels: z.boolean().optional(),
+  isFurnished: z.boolean().optional(),
   caretakerName: z.string().optional(),
   caretakerPhone: z.string().optional(),
   notes: z.string().optional(),
@@ -79,23 +85,65 @@ const DEFAULT_VALUES: FormValues = {
   hasWater: false,
   hasElectricity: false,
   hasBorehole: false,
+  hasGenerator: false,
+  hasSolarPanels: false,
+  isFurnished: false,
   caretakerName: '',
   caretakerPhone: '',
   notes: '',
 };
 
+type FurnitureSelection = Record<FurnitureItem, { checked: boolean; quantity: string }>;
+
+function createEmptyFurnitureSelection(): FurnitureSelection {
+  return Object.fromEntries(
+    FURNITURE_ITEMS.map((item) => [item, { checked: false, quantity: '' }]),
+  ) as FurnitureSelection;
+}
+
 export default function NouvelImmeublePage() {
   const router = useRouter();
   const createProperty = useCreateProperty();
   const { data: landlordsData } = useLandlords({ limit: 100 });
+  const [furniture, setFurniture] = React.useState<FurnitureSelection>(
+    createEmptyFurnitureSelection,
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: DEFAULT_VALUES,
   });
 
+  const isFurnished = form.watch('isFurnished');
+
+  React.useEffect(() => {
+    if (!isFurnished) {
+      setFurniture(createEmptyFurnitureSelection());
+    }
+  }, [isFurnished]);
+
+  function toggleFurnitureItem(item: FurnitureItem, checked: boolean) {
+    setFurniture((current) => ({
+      ...current,
+      [item]: { checked, quantity: checked ? current[item].quantity : '' },
+    }));
+  }
+
+  function setFurnitureQuantity(item: FurnitureItem, quantity: string) {
+    setFurniture((current) => ({
+      ...current,
+      [item]: { ...current[item], quantity },
+    }));
+  }
+
   async function onSubmit(values: FormValues) {
     const caretakerPhone = values.caretakerPhone ? toE164Congo(values.caretakerPhone) : null;
+    const furnitureList = values.isFurnished
+      ? FURNITURE_ITEMS.filter((item) => furniture[item].checked).map((item) => {
+          const quantity = furniture[item].quantity ? Number(furniture[item].quantity) : undefined;
+          return quantity ? { item, quantity } : { item };
+        })
+      : undefined;
     try {
       const property = await createProperty.mutateAsync({
         landlordId: values.landlordId,
@@ -114,6 +162,10 @@ export default function NouvelImmeublePage() {
         hasWater: values.hasWater,
         hasElectricity: values.hasElectricity,
         hasBorehole: values.hasBorehole,
+        hasGenerator: values.hasGenerator,
+        hasSolarPanels: values.hasSolarPanels,
+        isFurnished: values.isFurnished,
+        furniture: furnitureList,
         caretakerName: values.caretakerName || undefined,
         caretakerPhone: caretakerPhone || undefined,
         notes: values.notes || undefined,
@@ -282,7 +334,9 @@ export default function NouvelImmeublePage() {
                   name="parcelNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel htmlFor="parcelNumber">N° de parcelle (optionnel)</FormLabel>
+                      <FormLabel htmlFor="parcelNumber">
+                        Permis d&apos;occuper (optionnel)
+                      </FormLabel>
                       <FormControl>
                         <Input id="parcelNumber" {...field} />
                       </FormControl>
@@ -389,7 +443,99 @@ export default function NouvelImmeublePage() {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="hasGenerator"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          id="hasGenerator"
+                          checked={field.value ?? false}
+                          onChange={(event) => field.onChange(event.target.checked)}
+                        />
+                      </FormControl>
+                      <FormLabel htmlFor="hasGenerator" className="!mt-0">
+                        Groupe électrogène
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="hasSolarPanels"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          id="hasSolarPanels"
+                          checked={field.value ?? false}
+                          onChange={(event) => field.onChange(event.target.checked)}
+                        />
+                      </FormControl>
+                      <FormLabel htmlFor="hasSolarPanels" className="!mt-0">
+                        Panneaux solaires
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="isFurnished"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          id="isFurnished"
+                          checked={field.value ?? false}
+                          onChange={(event) => field.onChange(event.target.checked)}
+                        />
+                      </FormControl>
+                      <FormLabel htmlFor="isFurnished" className="!mt-0">
+                        Meublé
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
               </div>
+
+              {isFurnished ? (
+                <fieldset className="space-y-3 rounded-md border p-4">
+                  <legend className="px-1 text-sm font-medium">
+                    Meubles et équipements fournis
+                  </legend>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {FURNITURE_ITEMS.map((item) => {
+                      const checkboxId = `furniture-${item}`;
+                      const quantityId = `furniture-${item}-quantity`;
+                      const label = FURNITURE_ITEM_LABELS[item];
+                      const selection = furniture[item];
+                      return (
+                        <div key={item} className="flex items-center gap-2">
+                          <Checkbox
+                            id={checkboxId}
+                            checked={selection.checked}
+                            onChange={(event) => toggleFurnitureItem(item, event.target.checked)}
+                          />
+                          <Label htmlFor={checkboxId}>{label}</Label>
+                          {selection.checked ? (
+                            <Input
+                              id={quantityId}
+                              type="number"
+                              min={1}
+                              placeholder="Quantité"
+                              aria-label={`Quantité — ${label}`}
+                              className="ml-auto w-20"
+                              value={selection.quantity}
+                              onChange={(event) => setFurnitureQuantity(item, event.target.value)}
+                            />
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              ) : null}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField

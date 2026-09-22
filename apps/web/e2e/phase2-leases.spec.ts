@@ -68,6 +68,9 @@ test.describe('Baux phase 2 : création → activation → contrat → résiliat
     // --- Portefeuille minimal : bailleur → immeuble → lots → locataire ---
     // (données de démo hors de portée, cf. commentaire d'en-tête ; même
     // enchaînement que phase1-portfolio.spec.ts, condensé)
+    // Groupe « Patrimoine » fermé par défaut (sidebar-nav.tsx) : à ouvrir avant le
+    // premier clic sur un de ses liens.
+    await page.getByRole('button', { name: 'Patrimoine' }).click();
     await page.getByRole('link', { name: 'Bailleurs' }).click();
     await expect(page).toHaveURL(/\/app\/bailleurs$/);
     await page.getByRole('button', { name: 'Nouveau bailleur' }).click();

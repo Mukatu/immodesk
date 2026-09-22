@@ -54,16 +54,34 @@ const ORG_TYPES: Array<{
   },
 ];
 
-const schema = z.object({
-  type: z.enum(['AGENCY', 'INDEPENDENT_LANDLORD', 'INDEPENDENT_MANAGER']),
-  legalName: z.string().min(2, 'Raison sociale requise.'),
-  tradeName: z.string().optional(),
-  city: z.string().min(2, 'Ville requise.'),
-  district: z.string().optional(),
-  localPhone: z.string().refine((v) => toE164Congo(v) !== null, 'Numéro invalide.'),
-  contactEmail: z.string().email('Adresse e-mail invalide.').optional().or(z.literal('')),
-  referralCode: z.string().optional(),
-});
+/**
+ * Personne physique : bailleur ou gestionnaire indépendant, sans structure d'agence.
+ * Sert uniquement à masquer le champ « Nom commercial », propre aux personnes morales.
+ */
+function isIndividualType(type: OrganizationType): boolean {
+  return type === 'INDEPENDENT_LANDLORD' || type === 'INDEPENDENT_MANAGER';
+}
+
+const schema = z
+  .object({
+    type: z.enum(['AGENCY', 'INDEPENDENT_LANDLORD', 'INDEPENDENT_MANAGER']),
+    legalName: z.string(),
+    tradeName: z.string().optional(),
+    city: z.string().min(2, 'Ville requise.'),
+    district: z.string().optional(),
+    localPhone: z.string().refine((v) => toE164Congo(v) !== null, 'Numéro invalide.'),
+    contactEmail: z.string().email('Adresse e-mail invalide.').optional().or(z.literal('')),
+    referralCode: z.string().optional(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.legalName.trim().length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['legalName'],
+        message: 'Nom et prénom requis.',
+      });
+    }
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -90,6 +108,9 @@ export default function OnboardingOrganisationPage() {
     },
     mode: 'onChange',
   });
+
+  const orgType = form.watch('type');
+  const isIndividual = isIndividualType(orgType);
 
   async function goNext() {
     const fieldsByStep: Array<Array<keyof FormValues>> = [
@@ -247,27 +268,29 @@ export default function OnboardingOrganisationPage() {
                 name="legalName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel htmlFor="legalName">Raison sociale</FormLabel>
+                    <FormLabel htmlFor="legalName">Nom et prénom</FormLabel>
                     <FormControl>
-                      <Input id="legalName" placeholder="Agence Mpila Immo" {...field} />
+                      <Input id="legalName" placeholder="Jean Moukala" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="tradeName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel htmlFor="tradeName">Nom commercial (optionnel)</FormLabel>
-                    <FormControl>
-                      <Input id="tradeName" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {isIndividual ? null : (
+                <FormField
+                  control={form.control}
+                  name="tradeName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel htmlFor="tradeName">Nom commercial (optionnel)</FormLabel>
+                      <FormControl>
+                        <Input id="tradeName" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={form.control}
                 name="city"

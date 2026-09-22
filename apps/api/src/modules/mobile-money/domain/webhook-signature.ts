@@ -1,6 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
-function safeEqual(a: string, b: string): boolean {
+/** Comparaison en temps constant de deux chaînes (signatures, jetons). */
+export function safeEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);
   const right = Buffer.from(b);
   return left.length === right.length && timingSafeEqual(left, right);

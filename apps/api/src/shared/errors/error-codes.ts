@@ -109,6 +109,10 @@ export const ERROR_CATALOG = {
     status: 422,
     message: 'Série de lots invalide : « from » doit précéder « to », et 200 lots au maximum.',
   },
+  'PORTFOLIO.FURNITURE_ITEM_INVALID': {
+    status: 422,
+    message: 'Meuble inconnu ou quantité invalide dans « furniture ».',
+  },
 
   // --- Domaine BANKING (comptes de règlement) ---------------------------
   'BANKING.ACCOUNT_NOT_FOUND': { status: 404, message: 'Compte bancaire introuvable.' },

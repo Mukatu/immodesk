@@ -31,12 +31,26 @@ import { EmptyState } from '@/components/business/empty-state';
 import { DataTable } from '@/components/business/data-table';
 import { MoneyXaf } from '@/components/business/money-xaf';
 import { LineStateBadge } from '@/components/business/line-state-badge';
+import {
+  useContextPanel,
+  type ContextBlock,
+  type ContextPanelTone,
+} from '@/components/layout/context-panel';
 import { useBankAccounts } from '@/lib/api/hooks/use-bank-accounts';
 import { useBankStatement, useDiscardBankStatement } from '@/lib/api/hooks/use-bank-statements';
 import { useBankStatementLines } from '@/lib/api/hooks/use-bank-statements';
 import { ApiError, genericErrorMessage } from '@/lib/api/errors';
 import { LINE_STATE_LABELS } from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
 import type { LineState, StatementLine } from '@/lib/api/types';
+
+const LINE_STATE_TONE: Record<LineState, ContextPanelTone> = {
+  UNMATCHED: 'neutral',
+  SUGGESTED: 'warning',
+  PARTIALLY_MATCHED: 'warning',
+  MATCHED: 'ok',
+  IGNORED: 'neutral',
+};
 
 const PAGE_SIZE = 20;
 const ALL_STATES = 'ALL';
@@ -123,8 +137,61 @@ function DiscardStatementDialog({
 export default function RelevesBancaireDetailPage() {
   const params = useParams<{ id: string }>();
   const statementId = params.id;
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const [selectedLineId, setSelectedLineId] = React.useState<string | null>(null);
   const [stateFilter, setStateFilter] = React.useState<LineState | typeof ALL_STATES>(ALL_STATES);
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
+
+  // Cf. apps/web/src/app/app/baux/page.tsx (modèle).
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedLineId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(line: StatementLine) {
+    setSelectedLineId(line.id);
+    const alertBlocks: ContextBlock[] = [];
+    if (line.isIgnored) {
+      alertBlocks.push({
+        type: 'alert',
+        tone: 'warning',
+        text: line.ignoreReason ? `Ligne ignorée : ${line.ignoreReason}` : 'Ligne ignorée.',
+      });
+    }
+
+    openContextPanel({
+      title: 'Ligne de relevé',
+      blocks: [
+        {
+          type: 'identity',
+          title: line.label,
+          subtitle: `${formatDateFr(line.operationDate)} — ${formatXaf(line.amount)}`,
+          badge: { label: LINE_STATE_LABELS[line.state], tone: LINE_STATE_TONE[line.state] },
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Montant', v: formatXaf(line.amount) },
+            { k: 'Montant rapproché', v: formatXaf(line.matchedAmount) },
+            { k: 'Date de valeur', v: line.valueDate ? formatDateFr(line.valueDate) : '—' },
+            { k: 'Référence bancaire', v: line.bankReference ?? '—' },
+            { k: 'Contrepartie', v: line.counterpartyName ?? '—' },
+          ],
+        },
+        ...alertBlocks,
+        {
+          type: 'actions',
+          actions: [
+            {
+              label: 'Traiter dans le rapprochement',
+              primary: true,
+              href: '/app/banque/rapprochement',
+            },
+          ],
+        },
+      ],
+    });
+  }
 
   const statementQuery = useBankStatement(statementId);
   const linesQuery = useBankStatementLines(statementId, {
@@ -247,6 +314,13 @@ export default function RelevesBancaireDetailPage() {
         onNextPage={() => {
           if (linesQuery.data?.pageInfo.nextCursor) setCursor(linesQuery.data.pageInfo.nextCursor);
         }}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(line) => `Voir le détail de la ligne ${line.label}`}
+        getRowClassName={(line) =>
+          line.id === selectedLineId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

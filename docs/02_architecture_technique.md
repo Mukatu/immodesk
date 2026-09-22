@@ -2368,6 +2368,7 @@ Les douze ADR ci-dessous figent les décisions de Phase 0 (ADR-011 et ADR-012 ac
 | ADR-010 | Hébergement en région Europe (Paris)              | Accepté | 0     |
 | ADR-011 | WhatsApp d'abord, SMS passerelle Android en repli | Accepté | 0 / 3 |
 | ADR-012 | Mobile Money à deux modes                         | Accepté | 4     |
+| ADR-013 | Web installable en surface universelle            | Accepté | 8     |
 
 ### ADR-001 — Monolithe modulaire NestJS 11 + Prisma
 

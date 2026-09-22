@@ -29,6 +29,11 @@ import { EmptyState } from '@/components/business/empty-state';
 import { LineStateBadge } from '@/components/business/line-state-badge';
 import { SuggestionCard } from '@/components/business/suggestion-card';
 import { MoneyXaf } from '@/components/business/money-xaf';
+import {
+  useContextPanel,
+  type ContextBlock,
+  type ContextPanelTone,
+} from '@/components/layout/context-panel';
 import { useBankAccounts } from '@/lib/api/hooks/use-bank-accounts';
 import {
   useStatementLinesQueue,
@@ -48,13 +53,16 @@ import { useTenants } from '@/lib/api/hooks/use-tenants';
 import { ApiError, genericErrorMessage } from '@/lib/api/errors';
 import {
   CHECK_STATUS_LABELS,
+  LINE_STATE_LABELS,
   PAYMENT_STATUS_LABELS,
   RECONCILIATION_TARGET_TYPE_LABELS,
   REMITTANCE_STATUS_LABELS,
   TRANSFER_DECLARATION_STATUS_LABELS,
   enumOptions,
 } from '@/lib/enum-labels';
+import { formatXaf } from '@/lib/money';
 import type {
+  LineState,
   MatchSuggestion,
   ReconciliationMatch,
   ReconciliationTargetType,
@@ -62,6 +70,16 @@ import type {
 } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
+
+const LOW_CONFIDENCE_THRESHOLD = 75;
+
+const LINE_STATE_TONE: Record<LineState, ContextPanelTone> = {
+  UNMATCHED: 'neutral',
+  SUGGESTED: 'warning',
+  PARTIALLY_MATCHED: 'warning',
+  MATCHED: 'ok',
+  IGNORED: 'neutral',
+};
 
 const AGE_FILTERS: { value: string; label: string; olderThanDays?: number }[] = [
   { value: 'ALL', label: 'Toutes' },
@@ -560,13 +578,87 @@ function ReconciliationTreatmentPanel({ line }: ReconciliationTreatmentPanelProp
 }
 
 export default function RapprochementBancairePage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
   const [bankAccountId, setBankAccountId] = React.useState<string>('');
   const [ageFilter, setAgeFilter] = React.useState<string>('ALL');
   const [minAmountInput, setMinAmountInput] = React.useState('');
   const [maxAmountInput, setMaxAmountInput] = React.useState('');
   const [selectedLineId, setSelectedLineId] = React.useState<string | null>(null);
+  // Ligne dont le panneau contextuel affiche le détail (indépendante de `selectedLineId`,
+  // qui pilote l'affichage du panneau de traitement complet en bas de page).
+  const [contextLineId, setContextLineId] = React.useState<string | null>(null);
 
   const accounts = useBankAccounts();
+
+  // Cf. apps/web/src/app/app/baux/page.tsx (modèle).
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setContextLineId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(line: StatementLine) {
+    setContextLineId(line.id);
+    const accountLabel = accounts.data?.items.find((a) => a.id === line.bankAccountId)?.label;
+    const proposedMatch = line.matches.find((m) => m.status === 'PROPOSED');
+    const gapAmount = line.amount - line.matchedAmount;
+
+    const alertBlocks: ContextBlock[] = [];
+    if (proposedMatch && proposedMatch.confidenceScore < LOW_CONFIDENCE_THRESHOLD) {
+      alertBlocks.push({
+        type: 'alert',
+        tone: 'warning',
+        text: `Suggestion à confiance faible (${Math.round(proposedMatch.confidenceScore)} %) — à vérifier avant confirmation.`,
+      });
+    }
+
+    openContextPanel({
+      title: 'Ligne de relevé',
+      blocks: [
+        {
+          type: 'identity',
+          title: line.label,
+          subtitle: accountLabel
+            ? `${formatDateFr(line.operationDate)} — ${accountLabel}`
+            : formatDateFr(line.operationDate),
+          badge: { label: LINE_STATE_LABELS[line.state], tone: LINE_STATE_TONE[line.state] },
+        },
+        {
+          type: 'metric',
+          title: 'Écart',
+          value: formatXaf(gapAmount),
+          label:
+            gapAmount === 0
+              ? 'Ligne entièrement rapprochée'
+              : 'Entre le montant de la ligne et le montant rapproché',
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détails',
+          items: [
+            { k: 'Montant (relevé)', v: formatXaf(line.amount) },
+            { k: 'Montant rapproché', v: formatXaf(line.matchedAmount) },
+            { k: "Date d'opération", v: formatDateFr(line.operationDate) },
+            { k: 'Ancienneté', v: ageLabel(line.ageDays) },
+            { k: 'Compte', v: accountLabel ?? '—' },
+          ],
+        },
+        ...alertBlocks,
+        {
+          type: 'actions',
+          actions: [
+            {
+              label: 'Voir le relevé',
+              primary: true,
+              href: `/app/banque/releves/${line.statementId}`,
+            },
+            {
+              label: 'Traiter cette ligne',
+              onSelect: () => setSelectedLineId(line.id),
+            },
+          ],
+        },
+      ],
+    });
+  }
 
   const olderThanDays = AGE_FILTERS.find((f) => f.value === ageFilter)?.olderThanDays;
   const minAmountValue = minAmountInput ? Number(minAmountInput) : undefined;
@@ -679,7 +771,14 @@ export default function RapprochementBancairePage() {
         isLoading={queue.isLoading}
         emptyTitle="Aucune ligne à traiter"
         emptyDescription="Toutes les lignes correspondant aux filtres sont rapprochées."
-        getRowClassName={(row) => (row.ageDays > 30 ? 'bg-warning/10' : undefined)}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(row) => `Voir le détail de la ligne ${row.label}`}
+        getRowClassName={(row) => {
+          if (row.id === contextLineId) {
+            return 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent';
+          }
+          return row.ageDays > 30 ? 'bg-warning/10' : undefined;
+        }}
       />
 
       {selectedLine ? (

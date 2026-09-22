@@ -1,8 +1,10 @@
 'use client';
 
 import * as React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ShieldAlert } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
+import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/business/page-header';
 import { DataTable } from '@/components/business/data-table';
@@ -16,12 +18,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/lib/auth/auth-context';
+import { useContextPanel } from '@/components/layout/context-panel';
+import { apiFetch } from '@/lib/api/client';
 import { useWebhookEvents } from '@/lib/api/hooks/use-webhook-events';
 import { WEBHOOK_SOURCE_LABELS, WEBHOOK_STATUS_LABELS } from '@/lib/enum-labels';
 import type { WebhookEvent, WebhookSource, WebhookStatus } from '@/lib/api/types';
 import { ReplayWebhookButton } from './_components/replay-webhook-button';
 
 const PAGE_SIZE = 20;
+
+const WEBHOOK_STATUS_TONE: Record<WebhookStatus, 'ok' | 'info' | 'warning' | 'danger' | 'neutral'> =
+  {
+    RECEIVED: 'neutral',
+    PROCESSING: 'warning',
+    PROCESSED: 'ok',
+    IGNORED: 'neutral',
+    FAILED: 'danger',
+  };
 
 /**
  * Journal technique des webhooks entrants (phase 4) : réservé à OWNER dans le
@@ -32,12 +45,88 @@ const PAGE_SIZE = 20;
 export default function ParametresWebhooksPage() {
   const { currentOrganization } = useAuth();
   const isOwner = currentOrganization?.role === 'OWNER';
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
+  const queryClient = useQueryClient();
 
   const [source, setSource] = React.useState<WebhookSource | ''>('');
   const [status, setStatus] = React.useState<WebhookStatus | ''>('');
   const [signatureValid, setSignatureValid] = React.useState<'' | 'true' | 'false'>('');
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
   const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
+  const [selectedEventId, setSelectedEventId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedEventId(null);
+  }, [isContextPanelOpen]);
+
+  function handleRowSelect(event: WebhookEvent) {
+    setSelectedEventId(event.id);
+    const repeatedFailure = event.status === 'FAILED' && event.processingAttempts > 1;
+    openContextPanel({
+      title: 'Événement webhook',
+      blocks: [
+        {
+          type: 'identity',
+          title: WEBHOOK_SOURCE_LABELS[event.source],
+          subtitle: event.eventType,
+          badge: {
+            label: WEBHOOK_STATUS_LABELS[event.status],
+            tone: WEBHOOK_STATUS_TONE[event.status],
+          },
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détail',
+          items: [
+            { k: 'Identifiant externe', v: event.externalEventId ?? '—' },
+            {
+              k: 'Signature',
+              v:
+                event.signatureValid === null
+                  ? 'Non vérifiée'
+                  : event.signatureValid
+                    ? 'Valide'
+                    : 'Invalide',
+            },
+            { k: 'Tentatives de traitement', v: event.processingAttempts },
+            { k: 'Reçu le', v: new Date(event.receivedAt).toLocaleString('fr-CG') },
+            {
+              k: 'Entité liée',
+              v: event.relatedEntityType
+                ? `${event.relatedEntityType} ${event.relatedEntityId}`
+                : '—',
+            },
+          ],
+        },
+        ...(repeatedFailure
+          ? ([
+              {
+                type: 'alert',
+                tone: 'warning',
+                text: event.errorMessage ?? 'Échecs de traitement répétés pour cet événement.',
+              },
+            ] as const)
+          : []),
+        {
+          type: 'actions',
+          actions: [
+            {
+              label: 'Rejouer cet événement',
+              primary: true,
+              onSelect: () => {
+                apiFetch<void>(`/webhook-events/${event.id}/replay`, { method: 'POST' })
+                  .then(() => {
+                    toast.success('Événement rejoué.');
+                    queryClient.invalidateQueries({ queryKey: ['webhook-events'] });
+                  })
+                  .catch(() => toast.error('Impossible de rejouer cet événement.'));
+              },
+            },
+          ],
+        },
+      ],
+    });
+  }
 
   const { data, isLoading } = useWebhookEvents({
     source: source || undefined,
@@ -191,6 +280,15 @@ export default function ParametresWebhooksPage() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         hasPreviousPage={previousCursors.length > 0}
+        onRowSelect={handleRowSelect}
+        getRowLabel={(event) =>
+          `Voir le résumé de l'événement ${WEBHOOK_SOURCE_LABELS[event.source]} ${event.eventType}`
+        }
+        getRowClassName={(event) =>
+          event.id === selectedEventId
+            ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+            : undefined
+        }
       />
     </div>
   );

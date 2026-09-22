@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -16,12 +17,35 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { PageInfoDto, LandlordSummaryDto } from '../../../parties/presentation/dto/landlords.dto';
+import { FURNITURE_ITEMS } from '../../domain/furniture';
 import { PROPERTY_TYPES, UNIT_STATUSES, UNIT_TYPES } from '../../domain/occupancy';
 import { MAX_BULK_UNITS } from '../../domain/unit-code';
 
 const PROPERTY_TYPE_VALUES = [...PROPERTY_TYPES];
 const UNIT_TYPE_VALUES = [...UNIT_TYPES];
 const UNIT_STATUS_VALUES = [...UNIT_STATUSES];
+const FURNITURE_ITEM_VALUES = [...FURNITURE_ITEMS];
+
+/**
+ * Entrée de l'inventaire `furniture` d'un bien. La validation de forme
+ * (chaîne, entier ≥ 1) se fait ici ; l'appartenance du code à
+ * `FURNITURE_ITEMS` et la règle « vide si non meublé » sont tranchées côté
+ * domaine (`PortfolioModule` → `normalizeFurniture`), qui lève une
+ * `DomainError` au même titre que les autres règles métier du module —
+ * pas un simple rejet 400 de `class-validator`.
+ */
+export class FurnitureItemDto {
+  @ApiProperty({ enum: FURNITURE_ITEM_VALUES, example: 'BED' })
+  @IsString()
+  item!: string;
+
+  @ApiPropertyOptional({ example: 2, description: 'Entier ≥ 1 ; absent si non pertinent.' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  quantity?: number;
+}
 
 export class PropertyBodyDto {
   @ApiPropertyOptional({ example: 'RES-MPILA' })
@@ -107,6 +131,16 @@ export class PropertyBodyDto {
   @ApiPropertyOptional({ default: true }) @IsOptional() @IsBoolean() hasWater?: boolean;
   @ApiPropertyOptional({ default: true }) @IsOptional() @IsBoolean() hasElectricity?: boolean;
   @ApiPropertyOptional({ default: false }) @IsOptional() @IsBoolean() hasBorehole?: boolean;
+  @ApiPropertyOptional({ default: false }) @IsOptional() @IsBoolean() hasGenerator?: boolean;
+  @ApiPropertyOptional({ default: false }) @IsOptional() @IsBoolean() hasSolarPanels?: boolean;
+  @ApiPropertyOptional({ default: false }) @IsOptional() @IsBoolean() isFurnished?: boolean;
+
+  @ApiPropertyOptional({ type: [FurnitureItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FurnitureItemDto)
+  furniture?: FurnitureItemDto[];
 
   @ApiPropertyOptional({ example: 'Papa Célestin' })
   @IsOptional()

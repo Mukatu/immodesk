@@ -38,6 +38,7 @@ import { PageHeader } from '@/components/business/page-header';
 import { StatusBadge } from '@/components/business/status-badge';
 import { PhoneInput } from '@/components/business/phone-input';
 import { DataTable } from '@/components/business/data-table';
+import { useContextPanel } from '@/components/layout/context-panel';
 import { formatE164Congo, toE164Congo } from '@/lib/phone';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useMembers, useRemoveMember, useUpdateMemberRole } from '@/lib/api/hooks/use-members';
@@ -65,6 +66,16 @@ const inviteSchema = z.object({
 });
 
 type InviteValues = z.infer<typeof inviteSchema>;
+
+/** Initiales (2 lettres max) pour l'avatar du bloc `identity` du panneau contextuel. */
+function memberInitials(fullName: string): string | undefined {
+  const words = fullName.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return undefined;
+  return words
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('');
+}
 
 function InviteDialog({ organizationId }: { organizationId: string }) {
   const [open, setOpen] = React.useState(false);
@@ -172,6 +183,7 @@ function InviteDialog({ organizationId }: { organizationId: string }) {
 }
 
 export default function EquipePage() {
+  const { open: openContextPanel, isOpen: isContextPanelOpen } = useContextPanel();
   const { currentOrganizationId } = useAuth();
   const orgId = currentOrganizationId;
   const { data: membersData, isLoading: loadingMembers } = useMembers(orgId);
@@ -179,6 +191,73 @@ export default function EquipePage() {
   const updateRole = useUpdateMemberRole(orgId);
   const removeMember = useRemoveMember(orgId);
   const revokeInvitation = useRevokeInvitation(orgId);
+  const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!isContextPanelOpen) setSelectedMemberId(null);
+  }, [isContextPanelOpen]);
+
+  function handleMemberSelect(member: Member) {
+    setSelectedMemberId(member.id);
+    const joined = new Date(member.joinedAt);
+    const daysSinceJoined = Math.max(0, Math.floor((Date.now() - joined.getTime()) / 86_400_000));
+    openContextPanel({
+      title: 'Membre de l’équipe',
+      blocks: [
+        {
+          type: 'identity',
+          title: member.user.fullName || 'Sans nom',
+          subtitle: formatE164Congo(member.user.phone),
+          initials: memberInitials(member.user.fullName || member.user.phone),
+          badge: {
+            label: member.status === 'ACTIVE' ? 'Actif' : 'Suspendu',
+            tone: member.status === 'ACTIVE' ? 'ok' : 'warning',
+          },
+        },
+        {
+          type: 'keyvalue',
+          title: 'Détail',
+          items: [
+            { k: 'Rôle', v: ROLE_LABELS[member.role] },
+            { k: 'Téléphone', v: formatE164Congo(member.user.phone) },
+            { k: 'Arrivée le', v: joined.toLocaleDateString('fr-CG') },
+            { k: 'Ancienneté', v: `${daysSinceJoined} j` },
+          ],
+        },
+        {
+          type: 'actions',
+          actions: [
+            ...ROLES.filter((role) => role !== member.role).map((role) => ({
+              label: `Définir comme ${ROLE_LABELS[role]}`,
+              onSelect: () => {
+                updateRole
+                  .mutateAsync({ memberId: member.id, role })
+                  .then(() => toast.success('Rôle mis à jour.'))
+                  .catch((error: unknown) => {
+                    toast.error(
+                      error instanceof Error ? error.message : 'Impossible de changer le rôle.',
+                    );
+                  });
+              },
+            })),
+            {
+              label: 'Retirer de l’organisation',
+              onSelect: () => {
+                removeMember
+                  .mutateAsync(member.id)
+                  .then(() => toast.success('Membre retiré.'))
+                  .catch((error: unknown) => {
+                    toast.error(
+                      error instanceof Error ? error.message : 'Impossible de retirer ce membre.',
+                    );
+                  });
+              },
+            },
+          ],
+        },
+      ],
+    });
+  }
 
   const memberColumns = React.useMemo<ColumnDef<Member>[]>(
     () => [
@@ -302,6 +381,13 @@ export default function EquipePage() {
             isLoading={loadingMembers}
             emptyTitle="Aucun membre"
             emptyDescription="Invitez un collaborateur pour commencer."
+            onRowSelect={handleMemberSelect}
+            getRowLabel={(member) => `Voir le détail de ${member.user.fullName || 'ce membre'}`}
+            getRowClassName={(member) =>
+              member.id === selectedMemberId
+                ? 'relative bg-muted/60 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
+                : undefined
+            }
           />
         </CardContent>
       </Card>

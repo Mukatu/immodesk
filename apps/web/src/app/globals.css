@@ -24,3 +24,16 @@
     @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground;
   }
 }
+
+/*
+ * Texte blanc sur aplat de marque (rose --primary, bleu --accent) : mesuré à 3,56:1 et
+ * 3,63:1, sous le seuil de 4,5:1 du texte courant. Le gras fait basculer ce texte dans la
+ * catégorie « grand texte » du WCAG (seuil 3:1 à partir de 18,66px en gras), où ces deux
+ * rapports passent. Règle volontairement hors @layer : les styles hors couche priment sur
+ * tout utilitaire Tailwind (y compris font-medium posé par Button/Badge), donc pas besoin
+ * de !important ni de retoucher les composants.
+ */
+.text-primary-foreground,
+.text-accent-foreground {
+  font-weight: 700;
+}

@@ -17,7 +17,7 @@ import type {
   ProviderStatus,
   RawWebhook,
 } from '../domain/ports';
-import { signHmac } from '../domain/webhook-signature';
+import { safeEqual, signHmac } from '../domain/webhook-signature';
 
 /**
  * Adaptateur CinetPay (contrat phase 4, § « CinetPay »). Écrit et testable
@@ -92,7 +92,9 @@ export class CinetPayProvider implements MobileMoneyProvider {
       cinetpaySignaturePayload(body),
       this.requireKey('CINETPAY_SECRET_KEY'),
     );
-    return token === expected;
+    // Temps constant : une comparaison `===` s'arrête au premier octet
+    // différent et laisse mesurer, octet par octet, la signature attendue.
+    return safeEqual(token, expected);
   }
 
   private async post<T>(path: string, body: Record<string, unknown>): Promise<T> {

@@ -21,6 +21,7 @@ import type {
   ExpenseBearer,
   ExpenseCategory,
   ExpenseStatus,
+  FurnitureItem,
   Gender,
   IdDocumentType,
   InspectionCondition,
@@ -125,6 +126,25 @@ export const UNIT_TYPE_LABELS: Record<UnitType, string> = {
   PARKING: 'Parking',
   LAND_PLOT: 'Parcelle',
   OTHER: 'Autre',
+};
+
+export const FURNITURE_ITEM_LABELS: Record<FurnitureItem, string> = {
+  BED: 'Lit',
+  MATTRESS: 'Matelas',
+  WARDROBE: 'Armoire',
+  TABLE: 'Table',
+  CHAIRS: 'Chaises',
+  SOFA: 'Canapé',
+  FRIDGE: 'Réfrigérateur',
+  STOVE: 'Cuisinière',
+  AIR_CONDITIONER: 'Climatiseur',
+  FAN: 'Ventilateur',
+  TELEVISION: 'Téléviseur',
+  WASHING_MACHINE: 'Machine à laver',
+  WATER_HEATER: 'Chauffe-eau',
+  MICROWAVE: 'Four à micro-ondes',
+  CURTAINS: 'Rideaux',
+  KITCHEN_UTENSILS: 'Ustensiles de cuisine',
 };
 
 export const UNIT_STATUS_LABELS: Record<UnitStatus, string> = {

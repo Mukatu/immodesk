@@ -52,6 +52,9 @@ test.describe('Synchronisation phase 5 : file des lots, conflit, résolution', (
     await expect(page).toHaveURL(/\/app$/);
 
     // --- Portefeuille minimal : bailleur → immeuble → lot → locataire → bail ---
+    // Groupe « Patrimoine » fermé par défaut (sidebar-nav.tsx) : à ouvrir avant le
+    // premier clic sur un de ses liens.
+    await page.getByRole('button', { name: 'Patrimoine' }).click();
     await page.getByRole('link', { name: 'Bailleurs' }).click();
     await page.getByRole('button', { name: 'Nouveau bailleur' }).click();
     await page.getByLabel('Nom', { exact: true }).fill('Mabiala');

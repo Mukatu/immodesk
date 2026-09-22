@@ -138,7 +138,19 @@ export class SubscriptionWebhookIngestService {
       `INSERT INTO webhook_events (id, organization_id, source, event_type, status, external_event_id,
                                    signature_header, signature_valid, request_path, source_ip, headers, raw_payload)
        VALUES ($1::uuid, $2::uuid, $3::webhook_source, $4, 'RECEIVED', $5, $6, $7, $8, $9::inet, $10::jsonb, $11::jsonb)
-       ON CONFLICT (source, external_event_id) DO NOTHING
+       ON CONFLICT (source, external_event_id) DO UPDATE
+         SET organization_id = coalesce(EXCLUDED.organization_id, webhook_events.organization_id),
+             event_type = EXCLUDED.event_type,
+             status = 'RECEIVED',
+             signature_header = EXCLUDED.signature_header,
+             signature_valid = true,
+             request_path = EXCLUDED.request_path,
+             source_ip = EXCLUDED.source_ip,
+             headers = EXCLUDED.headers,
+             raw_payload = EXCLUDED.raw_payload,
+             error_message = NULL,
+             updated_at = now()
+         WHERE webhook_events.signature_valid = false AND EXCLUDED.signature_valid = true
        RETURNING id`,
       id,
       input.organizationId,
@@ -152,7 +164,11 @@ export class SubscriptionWebhookIngestService {
       JSON.stringify(input.headers ?? {}),
       JSON.stringify(input.rawPayload ?? {}),
     );
-    return rows.length === 0 ? { id: '', duplicate: true } : { id, duplicate: false };
+    // Même règle que `WebhookEventsService.persist` : un événement non signé
+    // déjà vu ne bloque jamais sa version signée, qui reprend la ligne.
+    return rows.length === 0
+      ? { id: '', duplicate: true }
+      : { id: rows[0]?.id ?? id, duplicate: false };
   }
 
   private async markStatus(

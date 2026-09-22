@@ -44,14 +44,22 @@ const sheetVariants = cva(
 export interface SheetContentProps
   extends
     React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  /**
+   * Affiche le voile plein écran (défaut `true`). À désactiver pour un tiroir non modal
+   * (`<Sheet modal={false}>`) : sans voile, le contenu en arrière-plan reste visible et
+   * cliquable pendant que le tiroir est ouvert (cas du panneau contextuel, voir
+   * `components/layout/context-panel.tsx`).
+   */
+  overlay?: boolean;
+}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = 'right', className, children, ...props }, ref) => (
+>(({ side = 'right', className, children, overlay = true, ...props }, ref) => (
   <SheetPortal>
-    <SheetOverlay />
+    {overlay ? <SheetOverlay /> : null}
     <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
       {children}
       <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring">

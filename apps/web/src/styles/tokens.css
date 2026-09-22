@@ -1,11 +1,17 @@
 /*
  * Design tokens Immodesk.
- * Palette sobre inspirée du Congo-Brazzaville : vert profond (primaire) et ocre (accent),
- * sans référence directe au drapeau — usage fonctionnel, pas décoratif.
+ * Palette : rose (primaire, couleur dominante des actions principales et en-têtes) et
+ * bleu (accent, usage volontairement discret — mises en avant secondaires et anneaux de
+ * focus). La luminosité varie légèrement entre thèmes pour garder un contraste texte
+ * suffisant (voir --primary-foreground / --accent-foreground) ; --success reste vert,
+ * c'est un indicateur fonctionnel (paiement confirmé, bail actif), pas la couleur de marque.
  */
 
 :root {
-  --background: 0 0% 100%;
+  /* Fond du corps légèrement grisé (au lieu de blanc pur) : le rose et le bleu de marque
+     s'affirment davantage sur ce gris qu'ils ne le feraient sur un blanc qui les écraserait
+     visuellement. Les cartes restent en blanc pur (--card) pour ressortir sur ce fond. */
+  --background: 150 10% 97%;
   --foreground: 150 18% 12%;
 
   --card: 0 0% 100%;
@@ -14,7 +20,7 @@
   --popover: 0 0% 100%;
   --popover-foreground: 150 18% 12%;
 
-  --primary: 152 42% 26%;
+  --primary: 330 81% 60%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 36 32% 94%;
@@ -23,7 +29,7 @@
   --muted: 150 10% 95%;
   --muted-foreground: 150 8% 42%;
 
-  --accent: 32 58% 45%;
+  --accent: 217 91% 60%;
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 68% 42%;
@@ -37,7 +43,7 @@
 
   --border: 150 12% 87%;
   --input: 150 12% 87%;
-  --ring: 152 42% 26%;
+  --ring: 217 91% 60%;
 
   --radius: 0.6rem;
 
@@ -55,7 +61,7 @@
   --popover: 150 16% 10%;
   --popover-foreground: 150 8% 94%;
 
-  --primary: 152 40% 52%;
+  --primary: 330 81% 60%;
   --primary-foreground: 150 20% 8%;
 
   --secondary: 150 12% 16%;
@@ -64,7 +70,7 @@
   --muted: 150 12% 16%;
   --muted-foreground: 150 8% 68%;
 
-  --accent: 32 55% 55%;
+  --accent: 217 91% 60%;
   --accent-foreground: 150 20% 8%;
 
   --destructive: 0 62% 52%;
@@ -78,5 +84,5 @@
 
   --border: 150 12% 20%;
   --input: 150 12% 20%;
-  --ring: 152 40% 52%;
+  --ring: 217 91% 60%;
 }

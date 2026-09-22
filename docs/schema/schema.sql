@@ -593,6 +593,10 @@ CREATE TABLE properties (
     has_water            BOOLEAN NOT NULL DEFAULT true,
     has_electricity      BOOLEAN NOT NULL DEFAULT true,
     has_borehole         BOOLEAN NOT NULL DEFAULT false,
+    has_generator        BOOLEAN NOT NULL DEFAULT false,
+    has_solar_panels     BOOLEAN NOT NULL DEFAULT false,
+    is_furnished         BOOLEAN NOT NULL DEFAULT false,
+    furniture            JSONB NOT NULL DEFAULT '[]'::jsonb,
     caretaker_name       TEXT,
     caretaker_phone      TEXT,
     cover_document_id    UUID,
@@ -608,6 +612,10 @@ COMMENT ON COLUMN properties.landmark IS 'Repère d''orientation (« derrière l
 COMMENT ON COLUMN properties.land_title_reference IS 'Référence du titre foncier ou de l''attestation de propriété.';
 COMMENT ON COLUMN properties.units_count IS 'Compteur dénormalisé de lots actifs, maintenu par l''application.';
 COMMENT ON COLUMN properties.caretaker_phone IS 'Téléphone du gardien / concierge au format E.164.';
+COMMENT ON COLUMN properties.has_generator IS 'Groupe électrogène disponible pour le bien — délestages fréquents à Brazzaville comme à Pointe-Noire.';
+COMMENT ON COLUMN properties.has_solar_panels IS 'Panneaux solaires installés, en appoint ou en remplacement du réseau SNE.';
+COMMENT ON COLUMN properties.is_furnished IS 'Bien loué meublé dans son ensemble (hors inventaire par lot, voir units.is_furnished) ; conditionne le contenu de furniture.';
+COMMENT ON COLUMN properties.furniture IS 'Inventaire du mobilier fourni, tableau JSON de {item, quantity?} ; toujours vide si is_furnished est faux.';
 
 CREATE INDEX properties_org_idx ON properties (organization_id) WHERE deleted_at IS NULL;
 CREATE INDEX properties_landlord_idx ON properties (organization_id, landlord_id) WHERE deleted_at IS NULL;

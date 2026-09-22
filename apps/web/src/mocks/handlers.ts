@@ -261,6 +261,23 @@ export type UnitType =
   | 'OTHER';
 export type UnitStatus =
   'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'UNDER_MAINTENANCE' | 'UNAVAILABLE';
+export type FurnitureItem =
+  | 'BED'
+  | 'MATTRESS'
+  | 'WARDROBE'
+  | 'TABLE'
+  | 'CHAIRS'
+  | 'SOFA'
+  | 'FRIDGE'
+  | 'STOVE'
+  | 'AIR_CONDITIONER'
+  | 'FAN'
+  | 'TELEVISION'
+  | 'WASHING_MACHINE'
+  | 'WATER_HEATER'
+  | 'MICROWAVE'
+  | 'CURTAINS'
+  | 'KITCHEN_UTENSILS';
 type ContactOwnerType = 'LANDLORD' | 'TENANT' | 'GUARANTOR' | 'MEMBER' | 'SUPPLIER';
 type ContactChannelType = 'PHONE' | 'MOBILE' | 'WHATSAPP' | 'EMAIL' | 'FAX';
 export type BankAccountHolderType = 'ORGANIZATION' | 'LANDLORD' | 'TENANT';
@@ -451,6 +468,10 @@ export interface MockProperty {
   hasWater?: boolean;
   hasElectricity?: boolean;
   hasBorehole?: boolean;
+  hasGenerator?: boolean;
+  hasSolarPanels?: boolean;
+  isFurnished?: boolean;
+  furniture?: Array<{ item: FurnitureItem; quantity?: number }>;
   caretakerName?: string;
   caretakerPhone?: string;
   coverDocumentId?: string;
@@ -771,6 +792,19 @@ export const DEMO_ORG_ID = 'org-demo-cg';
     district: 'Poto-Poto',
     city: 'Brazzaville',
     countryCode: 'CG',
+    hasWater: true,
+    hasElectricity: true,
+    hasGenerator: true,
+    hasSolarPanels: true,
+    isFurnished: true,
+    furniture: [
+      { item: 'BED', quantity: 4 },
+      { item: 'MATTRESS', quantity: 4 },
+      { item: 'WARDROBE', quantity: 2 },
+      { item: 'SOFA', quantity: 1 },
+      { item: 'FRIDGE', quantity: 1 },
+      { item: 'AIR_CONDITIONER', quantity: 2 },
+    ],
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

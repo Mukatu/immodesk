@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowLeft, Droplets, Zap } from 'lucide-react';
+import { ArrowLeft, Droplets, Fuel, Sofa, Sun, Zap } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +18,12 @@ import { EmptyState } from '@/components/business/empty-state';
 import { Button } from '@/components/ui/button';
 import { useContextPanel, type ContextPanelTone } from '@/components/layout/context-panel';
 import { useProperty } from '@/lib/api/hooks/use-properties';
-import { PROPERTY_TYPE_LABELS, UNIT_STATUS_LABELS, UNIT_TYPE_LABELS } from '@/lib/enum-labels';
+import {
+  FURNITURE_ITEM_LABELS,
+  PROPERTY_TYPE_LABELS,
+  UNIT_STATUS_LABELS,
+  UNIT_TYPE_LABELS,
+} from '@/lib/enum-labels';
 import { formatXaf } from '@/lib/money';
 import { ApiError } from '@/lib/api/client';
 import type { Unit, UnitStatus } from '@/lib/api/types';
@@ -130,13 +135,16 @@ export default function ImmeubleDetailPage() {
     ...(property.hasWater ? [{ label: 'Eau courante', icon: Droplets }] : []),
     ...(property.hasElectricity ? [{ label: 'Électricité', icon: Zap }] : []),
     ...(property.hasBorehole ? [{ label: 'Forage', icon: Droplets }] : []),
+    ...(property.hasGenerator ? [{ label: 'Groupe électrogène', icon: Fuel }] : []),
+    ...(property.hasSolarPanels ? [{ label: 'Panneaux solaires', icon: Sun }] : []),
+    ...(property.isFurnished ? [{ label: 'Meublé', icon: Sofa }] : []),
   ];
 
   const details: Array<{ label: string; value: string }> = [
     ...(property.landTitleReference
       ? [{ label: 'Titre foncier', value: property.landTitleReference }]
       : []),
-    ...(property.parcelNumber ? [{ label: 'N° de parcelle', value: property.parcelNumber }] : []),
+    ...(property.parcelNumber ? [{ label: "Permis d'occuper", value: property.parcelNumber }] : []),
     ...(property.builtYear
       ? [{ label: 'Année de construction', value: String(property.builtYear) }]
       : []),
@@ -199,6 +207,28 @@ export default function ImmeubleDetailPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      {property.isFurnished && property.furniture && property.furniture.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Meubles et équipements fournis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+              {property.furniture.map((entry) => (
+                <div key={entry.item} className="contents">
+                  <dt className="font-medium text-muted-foreground">
+                    {FURNITURE_ITEM_LABELS[entry.item]}
+                  </dt>
+                  <dd className="text-foreground">
+                    {entry.quantity ? `× ${entry.quantity}` : '—'}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

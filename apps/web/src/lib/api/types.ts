@@ -254,6 +254,29 @@ export type PropertyType =
   | 'WAREHOUSE'
   | 'OTHER';
 
+export type FurnitureItem =
+  | 'BED'
+  | 'MATTRESS'
+  | 'WARDROBE'
+  | 'TABLE'
+  | 'CHAIRS'
+  | 'SOFA'
+  | 'FRIDGE'
+  | 'STOVE'
+  | 'AIR_CONDITIONER'
+  | 'FAN'
+  | 'TELEVISION'
+  | 'WASHING_MACHINE'
+  | 'WATER_HEATER'
+  | 'MICROWAVE'
+  | 'CURTAINS'
+  | 'KITCHEN_UTENSILS';
+
+export interface PropertyFurnitureItem {
+  item: FurnitureItem;
+  quantity?: number;
+}
+
 export type UnitType =
   | 'STUDIO'
   | 'ROOM'
@@ -494,6 +517,10 @@ export interface PropertyInput {
   hasWater?: boolean;
   hasElectricity?: boolean;
   hasBorehole?: boolean;
+  hasGenerator?: boolean;
+  hasSolarPanels?: boolean;
+  isFurnished?: boolean;
+  furniture?: PropertyFurnitureItem[];
   caretakerName?: string;
   caretakerPhone?: string;
   coverDocumentId?: string;

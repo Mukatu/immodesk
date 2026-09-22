@@ -140,6 +140,7 @@ async function upsertProperty(
       has_water: true,
       has_electricity: true,
       has_borehole: true,
+      has_generator: true,
       caretaker_name: 'Papa Célestin',
       caretaker_phone: '+242066100009',
       notes: 'Immeuble de rapport, 12 lots sur 3 niveaux, groupe électrogène commun.',

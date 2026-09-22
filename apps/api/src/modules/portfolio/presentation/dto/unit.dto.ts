@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PageInfoDto } from '../../../parties/presentation/dto/landlords.dto';
 import { PROPERTY_TYPES, UNIT_STATUSES, UNIT_TYPES } from '../../domain/occupancy';
-import { OccupancyDto, PropertySummaryDto } from './portfolio.dto';
+import { FurnitureItemDto, OccupancyDto, PropertySummaryDto } from './portfolio.dto';
 
 const PROPERTY_TYPE_VALUES = [...PROPERTY_TYPES];
 const UNIT_TYPE_VALUES = [...UNIT_TYPES];
@@ -77,6 +77,10 @@ export class PropertyDto {
   @ApiProperty() hasWater!: boolean;
   @ApiProperty() hasElectricity!: boolean;
   @ApiProperty() hasBorehole!: boolean;
+  @ApiProperty() hasGenerator!: boolean;
+  @ApiProperty() hasSolarPanels!: boolean;
+  @ApiProperty() isFurnished!: boolean;
+  @ApiProperty({ type: [FurnitureItemDto] }) furniture!: FurnitureItemDto[];
   @ApiProperty({ nullable: true, type: String }) caretakerName!: string | null;
   @ApiProperty({ nullable: true, type: String }) caretakerPhone!: string | null;
   @ApiProperty({ nullable: true, type: String }) coverDocumentId!: string | null;

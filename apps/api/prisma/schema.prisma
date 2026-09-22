@@ -2024,6 +2024,10 @@ model properties {
   has_water             Boolean                 @default(true)
   has_electricity       Boolean                 @default(true)
   has_borehole          Boolean                 @default(false)
+  has_generator         Boolean                 @default(false)
+  has_solar_panels      Boolean                 @default(false)
+  is_furnished          Boolean                 @default(false)
+  furniture             Json                    @default("[]")
   caretaker_name        String?
   caretaker_phone       String?
   cover_document_id     String?                 @db.Uuid

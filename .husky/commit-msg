@@ -1,1 +1,2 @@
-pnpm commitlint --edit "$1"
+# Appel direct par node : voir le commentaire equivalent dans pre-commit.
+node node_modules/@commitlint/cli/lib/cli.js --edit "$1"

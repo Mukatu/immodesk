@@ -38,26 +38,40 @@ Source unique : `apps/web/src/styles/tokens.css`. Les couleurs y sont déclarée
 sans unité, pour être consommées par Tailwind. Le thème sombre est défini intégralement
 sous la classe `.dark`.
 
-| Rôle          | Thème clair   | Thème sombre  | Usage                                        |
-| :------------ | :------------ | :------------ | :------------------------------------------- |
-| Primaire      | `152 42% 26%` | `152 40% 52%` | Vert profond : actions principales, en-têtes |
-| Accent        | `32 58% 45%`  | `32 55% 55%`  | Ocre chaud : mises en avant secondaires      |
-| Secondaire    | `36 32% 94%`  | `150 12% 16%` | Beige très clair : fonds de tableaux         |
-| Fond          | `0 0% 100%`   | `150 20% 7%`  | Page                                         |
-| Texte         | `150 18% 12%` | `150 8% 94%`  | Lecture courante                             |
-| Danger        | `0 68% 42%`   | `0 62% 52%`   | Suppression, impayé                          |
-| Succès        | `152 42% 30%` | `152 40% 48%` | Paiement confirmé, bail actif                |
-| Avertissement | `36 82% 44%`  | `36 75% 55%`  | Échéance proche, plafond de caisse atteint   |
+| Rôle          | Thème clair   | Thème sombre  | Usage                                                                                             |
+| :------------ | :------------ | :------------ | :------------------------------------------------------------------------------------------------ |
+| Primaire      | `330 81% 60%` | `330 81% 60%` | Rose : couleur dominante, actions principales, en-têtes                                           |
+| Accent        | `217 91% 60%` | `217 91% 60%` | Bleu : usage discret, mises en avant secondaires et anneaux de focus                              |
+| Secondaire    | `36 32% 94%`  | `150 12% 16%` | Beige très clair : fonds de tableaux                                                              |
+| Fond          | `150 10% 97%` | `150 20% 7%`  | Page (gris très léger en clair, pour que le rose s'affirme au lieu de s'écraser sur du blanc pur) |
+| Carte         | `0 0% 100%`   | `150 16% 10%` | Cartes/panneaux, plus claires que le fond pour ressortir                                          |
+| Texte         | `150 18% 12%` | `150 8% 94%`  | Lecture courante                                                                                  |
+| Danger        | `0 68% 42%`   | `0 62% 52%`   | Suppression, impayé                                                                               |
+| Succès        | `152 42% 30%` | `152 40% 48%` | Paiement confirmé, bail actif (reste vert, indicateur fonctionnel)                                |
+| Avertissement | `36 82% 44%`  | `36 75% 55%`  | Échéance proche, plafond de caisse atteint                                                        |
 
-Trois partis pris :
+Quatre partis pris :
 
-- **Le vert et l'ocre évoquent le Congo-Brazzaville sans citer le drapeau.** L'usage est
-  fonctionnel, jamais décoratif.
+- **Le rose est la couleur dominante, le bleu reste discret.** Le rose porte les actions
+  principales et les en-têtes ; le bleu n'apparaît que sur les mises en avant secondaires
+  et les anneaux de focus, jamais en grande surface. Ces deux teintes sont fixées et ne se
+  discutent pas : `#EC4899` (rose) et `#3B82F6` (bleu).
+- **Le corps de l'interface est légèrement grisé, pas blanc pur.** Sur un fond blanc à
+  100 %, le rose et le bleu de marque s'écrasent visuellement. Un gris très léger
+  (`150 10% 97%` en clair) laisse le rose s'affirmer, pendant que les cartes restent en
+  blanc pur pour ressortir sur ce fond.
+- **Sur un aplat de couleur, le texte blanc est en gras.** Du texte blanc fin sur le rose
+  ou le bleu de marque n'atteint que 3,56:1 et 3,63:1 (calculé), sous le seuil de 4,5:1
+  exigé pour du texte courant. Le gras fait basculer ce texte dans la catégorie « grand
+  texte » du WCAG, où le seuil tombe à 3,0:1 — nos deux couleurs passent alors. La règle
+  est posée une fois pour toutes dans `apps/web/src/app/globals.css`, sur les jetons
+  `.text-primary-foreground` et `.text-accent-foreground`.
 - **Aucune police n'est téléchargée.** La pile `--font-sans` utilise la police du système.
   Une police web coûterait plusieurs centaines de kilooctets avant le premier affichage,
   ce qui est pénalisant sur les connexions lentes.
-- **Le rayon des angles est unique**, `--radius: 0.6rem`, pour une cohérence visuelle
-  sans réglage au cas par cas.
+
+Le rayon des angles est unique, `--radius: 0.6rem`, pour une cohérence visuelle sans
+réglage au cas par cas.
 
 Les montants s'affichent en francs CFA entiers, sans décimale, via le composant `MoneyXaf`.
 

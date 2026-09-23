@@ -62,7 +62,10 @@
   --popover-foreground: 150 8% 94%;
 
   --primary: 330 81% 60%;
-  --primary-foreground: 150 20% 8%;
+  /* Blanc en thème sombre comme en thème clair : le rose --primary est identique
+     dans les deux thèmes, il n'y a donc aucune raison d'y poser un texte sombre.
+     Un texte presque noir sur ce rose était illisible sur les boutons. */
+  --primary-foreground: 0 0% 100%;
 
   --secondary: 150 12% 16%;
   --secondary-foreground: 150 8% 94%;

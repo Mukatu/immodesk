@@ -22,6 +22,8 @@ export const MESSAGE_TEMPLATE_CODES = {
   PAYOUT_BANK_DETAILS_MISSING: 'PAYOUT_BANK_DETAILS_MISSING',
   // --- Phase 10 : abonnement SaaS ----------------------------------------
   SUBSCRIPTION_PAST_DUE_WARNING: 'SUBSCRIPTION_PAST_DUE_WARNING',
+  // --- Phase 11 : mise en service par vagues ----------------------------
+  GO_LIVE_ACTIVATED: 'GO_LIVE_ACTIVATED',
 } as const;
 
 export type MessageTemplateCode =

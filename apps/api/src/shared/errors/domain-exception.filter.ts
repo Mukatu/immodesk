@@ -42,6 +42,14 @@ export class DomainExceptionFilter implements ExceptionFilter {
       this.logger.debug?.(`${request.method} ${request.url} -> ${status} ${body.code}`);
     }
 
+    // Retry-After n a de sens que sur un refus temporaire. Le gel en lecture
+    // seule le porte systematiquement (contrat de la phase 11) : sans lui, un
+    // client ne sait pas s il doit reessayer dans une seconde ou dans une heure.
+    const retryAfter = body.details?.retryAfterSeconds;
+    if (typeof retryAfter === 'number' && Number.isFinite(retryAfter)) {
+      response.setHeader('Retry-After', String(Math.max(1, Math.trunc(retryAfter))));
+    }
+
     response.status(status).json(body);
   }
 

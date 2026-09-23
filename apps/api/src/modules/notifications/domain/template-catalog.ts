@@ -273,6 +273,26 @@ export const SYSTEM_TEMPLATES: readonly SystemTemplate[] = [
     providerTemplateLang: null,
     variables: ['organizationName', 'amount', 'deadline'],
   },
+  /**
+   * Phase 11 — activation d'une vague de mise en service.
+   *
+   * SMS UNIQUEMENT, et c'est délibéré : un modèle WhatsApp doit être approuvé
+   * par Meta avant tout envoi (voir `providerTemplateName` ci-dessus), et le
+   * compte WhatsApp Business n'est pas encore ouvert. Déclarer ici un modèle
+   * WhatsApp non approuvé produirait un envoi rejeté par le fournisseur.
+   * `notification-delivery.service.ts` saute simplement un canal sans modèle
+   * (`if (!template) continue;`), donc la remise se fait par SMS sans erreur.
+   * Ajouter l'entrée WHATSAPP le jour où le modèle est approuvé suffira.
+   */
+  {
+    code: MESSAGE_TEMPLATE_CODES.GO_LIVE_ACTIVATED,
+    channel: 'SMS',
+    name: 'Mise en service activee (SMS)',
+    body: 'Immodesk : votre agence {{organizationName}} est activee (vague {{wave}}). Toutes les fonctions sont disponibles.',
+    providerTemplateName: null,
+    providerTemplateLang: null,
+    variables: ['organizationName', 'wave'],
+  },
 ];
 
 export function systemTemplate(code: string, channel: string): SystemTemplate | null {

@@ -173,6 +173,106 @@ export class OtpAuthService {
   }
 
   /**
+   * Demande d'un code `SENSITIVE_ACTION` pour l'utilisateur CONNECTÉ.
+   *
+   * POURQUOI CETTE MÉTHODE EXISTE : le contrat de la phase 11 impose l'en-tête
+   * `X-Otp-Code` sur `POST /v1/organizations/{id}/security/revoke-all` mais
+   * n'ouvre AUCUNE route pour obtenir ce code, et `requestOtp` est câblée en
+   * dur sur `purpose = 'LOGIN'`. Sans ce chemin, la révocation globale
+   * d'organisation serait une route impossible à appeler. Divergence assumée
+   * avec la table de routes du contrat, au motif qu'une exigence sans moyen
+   * de la satisfaire n'en est pas une.
+   *
+   * À la différence de `requestOtp`, le numéro n'est PAS fourni par
+   * l'appelant : il est lu sur le compte authentifié. Laisser choisir le
+   * numéro permettrait de faire envoyer un code d'action sensible à un tiers.
+   * Aucune session n'est ouverte : seule la confirmation compte.
+   */
+  async requestSensitiveActionOtp(
+    userId: string,
+    channel: NotificationChannel = 'WHATSAPP',
+  ): Promise<OtpRequestResult> {
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+      select: { id: true, phone_e164: true },
+    });
+    if (!user) throw new DomainError('IAM.UNAUTHENTICATED');
+
+    const phone = user.phone_e164;
+    const policy = this.policy;
+    const now = new Date();
+
+    const last = await this.prisma.otp_codes.findFirst({
+      where: { phone_e164: phone, purpose: 'SENSITIVE_ACTION' },
+      orderBy: { created_at: 'desc' },
+      select: { created_at: true },
+    });
+    if (last) {
+      const remaining = resendCooldownRemaining(last.created_at, now, policy);
+      if (remaining > 0) {
+        throw new DomainError('IAM.OTP_RESEND_TOO_SOON', { retryAfterSeconds: remaining });
+      }
+    }
+
+    const code = generateOtpCode(policy.codeLength);
+    const requestId = newId();
+
+    // Un seul code vivant par numéro pour ce motif à un instant donné.
+    await this.prisma.otp_codes.updateMany({
+      where: {
+        phone_e164: phone,
+        purpose: 'SENSITIVE_ACTION',
+        consumed_at: null,
+        expires_at: { gt: now },
+      },
+      data: { expires_at: now },
+    });
+
+    await this.prisma.otp_codes.create({
+      data: {
+        id: requestId,
+        user_id: user.id,
+        phone_e164: phone,
+        purpose: 'SENSITIVE_ACTION',
+        delivery: channel === 'WHATSAPP' ? 'WHATSAPP' : 'SMS',
+        code_hash: hashOtpCode(code, phone, this.config.OTP_PEPPER),
+        attempts: 0,
+        max_attempts: policy.maxAttempts,
+        expires_at: otpExpiresAt(now, policy),
+        request_ip: null,
+      },
+    });
+
+    const organizationId = await this.resolveTraceOrganization(user.id);
+    const channelOrder = otpChannelOrder(channel === 'SMS' ? 'SMS' : 'WHATSAPP');
+    const variables = { code, minutes: String(Math.round(policy.ttlSeconds / 60)) };
+
+    if (organizationId) {
+      await this.notifier.enqueue({
+        organizationId,
+        templateCode: MESSAGE_TEMPLATE_CODES.OTP_CODE,
+        channelOrder,
+        recipient: { phone, userId: user.id },
+        variables,
+        relatedEntity: { type: 'otp_codes', id: requestId },
+      });
+    } else {
+      this.sendOtpWithoutTrace(phone, channelOrder, variables).catch((error: Error) =>
+        this.logger.error(`Envoi OTP direct en échec pour ${maskPhone(phone)} : ${error.message}`),
+      );
+    }
+
+    this.logger.log(`Code d'action sensible émis pour ${maskPhone(phone)}.`);
+
+    return {
+      requestId,
+      channel,
+      expiresInSeconds: policy.ttlSeconds,
+      resendAfterSeconds: policy.resendAfterSeconds,
+    };
+  }
+
+  /**
    * Envoi direct (WhatsApp d'abord, SMS en repli), hors pipeline, pour les
    * numéros sans organisation connue : voir le commentaire de `requestOtp`.
    * Le code n'est jamais journalisé ici — seuls `FakeWhatsAppProvider` et

@@ -150,7 +150,9 @@ CREATE TYPE storage_provider AS ENUM ('R2', 'S3', 'LOCAL');
 CREATE TYPE webhook_source AS ENUM ('CINETPAY', 'PAWAPAY', 'MTN_MOMO', 'AIRTEL_MONEY', 'WHATSAPP_CLOUD', 'SMS_GATEWAY', 'OTHER');
 CREATE TYPE webhook_status AS ENUM ('RECEIVED', 'PROCESSING', 'PROCESSED', 'IGNORED', 'FAILED');
 CREATE TYPE sync_batch_status AS ENUM ('RECEIVED', 'VALIDATING', 'APPLIED', 'PARTIALLY_APPLIED', 'REJECTED', 'FAILED');
-CREATE TYPE audit_action AS ENUM ('CREATE', 'UPDATE', 'DELETE', 'STATE_TRANSITION', 'LOGIN', 'EXPORT', 'IMPORT');
+-- `ACCESS_DENIED` (phase 11) : un refus d'accès est une ligne d'audit à part
+-- entière, que rien ne peut supprimer. Ajoutée par la migration 6.
+CREATE TYPE audit_action AS ENUM ('CREATE', 'UPDATE', 'DELETE', 'STATE_TRANSITION', 'LOGIN', 'EXPORT', 'IMPORT', 'ACCESS_DENIED');
 CREATE TYPE subscription_status AS ENUM ('TRIALING', 'ACTIVE', 'PAST_DUE', 'SUSPENDED', 'CANCELLED', 'EXPIRED');
 CREATE TYPE billing_interval AS ENUM ('MONTHLY', 'QUARTERLY', 'ANNUAL');
 

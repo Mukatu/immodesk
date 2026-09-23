@@ -205,18 +205,20 @@ Scénario: Rotation du refresh token
 
 ## 0.8 Livrables et critères de sortie
 
+> État vérifié contre le dépôt le 23 septembre 2026. Les éléments d'infrastructure et de comptes tiers restent décochés : rien dans le dépôt ne permet de les attester.
+
 - [ ] Monorepo publié sur GitHub avec protection de la branche principale et revue obligatoire.
 - [ ] `docker compose up` démarre l'ensemble de la pile locale et exécute les migrations et les données de démonstration.
 - [ ] Pipeline CI vert : lint, typecheck, tests unitaires, tests d'intégration, build des trois applications.
 - [ ] Environnements `dev`, `staging`, `prod` provisionnés (région Europe-Paris), avec secrets gérés hors du dépôt.
 - [ ] Sauvegarde PostgreSQL quotidienne chiffrée configurée et **restauration testée au moins une fois** sur staging.
 - [ ] GlitchTip et Grafana/Prometheus branchés sur l'API et le web.
-- [ ] Politique RLS active sur toutes les tables du périmètre de la phase, suite de tests d'isolation verte.
-- [ ] Authentification OTP complète (WhatsApp par défaut, repli SMS automatique), rotation de refresh token, révocation, limitation de débit.
-- [ ] Design system publié (tokens, composants de base, formatage des montants XAF sans décimale).
+- [x] Politique RLS active sur toutes les tables du périmètre de la phase, suite de tests d'isolation verte.
+- [x] Authentification OTP complète (WhatsApp par défaut, repli SMS automatique), rotation de refresh token, révocation, limitation de débit.
+- [x] Design system publié (tokens, composants de base, formatage des montants XAF sans décimale).
 - [ ] `openapi.json` généré automatiquement, clients TypeScript et Dart générés et publiés dans `packages/shared`.
 - [ ] Table `feature_flags` opérationnelle avec au moins un flag de démonstration lisible côté web et mobile.
-- [ ] Registre des décisions d'architecture (ADR) initialisé avec les décisions de la phase.
+- [x] Registre des décisions d'architecture (ADR) initialisé avec les décisions de la phase.
 - [ ] Démarches Mobile Money et WhatsApp Business **lancées dès le jour 1 et tracées** avec un référent nommé et une date de relance ; téléphone Android passerelle et carte SIM MTN acquis.
 
 ## 0.9 Durée et charge
@@ -397,14 +399,16 @@ Scénario: Suppression logique d'un lot occupé
 
 ## 1.8 Livrables et critères de sortie
 
-- [ ] Toutes les tables de la phase migrées via Prisma, avec index et contraintes d'unicité documentés.
-- [ ] RLS active et testée sur `landlords`, `tenants`, `guarantors`, `contact_channels`, `properties`, `units`, `bank_accounts`, `documents`.
+> État vérifié contre le dépôt le 23 septembre 2026. Les éléments d'infrastructure et de comptes tiers restent décochés : rien dans le dépôt ne permet de les attester.
+
+- [x] Toutes les tables de la phase migrées via Prisma, avec index et contraintes d'unicité documentés.
+- [x] RLS active et testée sur `landlords`, `tenants`, `guarantors`, `contact_channels`, `properties`, `units`, `bank_accounts`, `documents`.
 - [ ] Endpoints publiés dans l'OpenAPI et clients régénérés.
-- [ ] Écrans web de gestion du portefeuille complets et conformes au design system.
+- [x] Écrans web de gestion du portefeuille complets et conformes au design system.
 - [ ] Import initial d'au moins une agence pilote réelle réalisé et validé par elle.
-- [ ] Téléversement de documents opérationnel avec URL signées et limite de taille appliquée.
-- [ ] Suppression logique effective sur les entités de référence, aucune suppression physique possible via l'API.
-- [ ] Journalisation `audit_logs` sur création, modification et suppression logique de chaque entité de la phase.
+- [x] Téléversement de documents opérationnel avec URL signées et limite de taille appliquée.
+- [x] Suppression logique effective sur les entités de référence, aucune suppression physique possible via l'API.
+- [x] Journalisation `audit_logs` sur création, modification et suppression logique de chaque entité de la phase.
 - [ ] Documentation utilisateur courte (2 pages) « saisir mon portefeuille ».
 
 ## 1.9 Durée et charge
@@ -577,13 +581,15 @@ Scénario: Génération immuable du contrat de bail
 
 ## 2.8 Livrables et critères de sortie
 
-- [ ] Machine à états du bail implémentée, documentée et couverte par des tests de transitions invalides.
-- [ ] Contrôle de chevauchement de baux garanti par une contrainte en base et non seulement applicative.
-- [ ] Dépôt de garantie avec mouvements append-only et solde calculé, jamais recalculé à la volée sans traçabilité.
-- [ ] Génération du contrat PDF en worker BullMQ, avec versionnage et empreinte.
+> État vérifié contre le dépôt le 23 septembre 2026. Les éléments d'infrastructure et de comptes tiers restent décochés : rien dans le dépôt ne permet de les attester.
+
+- [x] Machine à états du bail implémentée, documentée et couverte par des tests de transitions invalides.
+- [x] Contrôle de chevauchement de baux garanti par une contrainte en base et non seulement applicative.
+- [x] Dépôt de garantie avec mouvements append-only et solde calculé, jamais recalculé à la volée sans traçabilité.
+- [x] Génération du contrat PDF en worker BullMQ, avec versionnage et empreinte.
 - [ ] Gabarit de contrat validé par un conseil juridique local pour le bail d'habitation et pour le bail commercial.
-- [ ] Numérotation des baux via `sequences`, sans trou ni doublon sous charge concurrente (test de 100 créations simultanées).
-- [ ] Écrans web complets, y compris la prévisualisation PDF.
+- [x] Numérotation des baux via `sequences`, sans trou ni doublon sous charge concurrente (test de 100 créations simultanées).
+- [x] Écrans web complets, y compris la prévisualisation PDF.
 - [ ] Documentation utilisateur « créer et gérer un bail ».
 
 ## 2.9 Durée et charge
@@ -822,11 +828,13 @@ Scénario: Vérification publique d'une quittance par QR code
 
 ## 3.8 Livrables et critères de sortie
 
-- [ ] Cron de facturation en travail répétable BullMQ, idempotent, avec rapport d'exécution consultable.
-- [ ] Contrainte d'unicité `(lease_id, period)` sur `rent_invoices` en base.
-- [ ] Séparation facture/paiement respectée : aucun montant payé stocké directement sur la facture, seulement dérivé des affectations.
-- [ ] Immutabilité garantie : `audit_logs` et `payment_allocations` strictement append-only ; `payments`, `receipts` et `cash_receipts` sans DELETE et avec colonnes financières verrouillées par le trigger `guard_financial_row` (seules les colonnes de workflow sont modifiables). Test d'intégration prouvant le rejet d'un UPDATE de montant et d'un DELETE.
-- [ ] Chaîne complète des espèces opérationnelle : reçu signé numéroté → détention démarcheur → remise → contrôle → écart.
+> État vérifié contre le dépôt le 23 septembre 2026. Les éléments d'infrastructure, de comptes tiers et de mise en production réelle restent décochés : rien dans le dépôt ne permet de les attester.
+
+- [x] Cron de facturation en travail répétable BullMQ, idempotent, avec rapport d'exécution consultable.
+- [x] Contrainte d'unicité `(lease_id, period)` sur `rent_invoices` en base.
+- [x] Séparation facture/paiement respectée : aucun montant payé stocké directement sur la facture, seulement dérivé des affectations.
+- [x] Immutabilité garantie : `audit_logs` et `payment_allocations` strictement append-only ; `payments`, `receipts` et `cash_receipts` sans DELETE et avec colonnes financières verrouillées par le trigger `guard_financial_row` (seules les colonnes de workflow sont modifiables). Test d'intégration prouvant le rejet d'un UPDATE de montant et d'un DELETE.
+- [x] Chaîne complète des espèces opérationnelle : reçu signé numéroté → détention démarcheur → remise → contrôle → écart.
 - [ ] Quittance PDF avec QR code et route publique de vérification en production.
 - [ ] Au moins deux templates WhatsApp approuvés et utilisés en production, avec repli SMS automatique via la passerelle Android en cas d'échec (SMS contenant un lien vers le PDF de la quittance et sa page de vérification QR, un SMS ne pouvant transporter de pièce jointe).
 - [ ] Tests terrain réalisés avec au moins deux démarcheurs réels et compte rendu écrit.
@@ -1085,12 +1093,14 @@ Les routes exactes, les rôles et les formats font foi dans `docs/api/phase4-con
 
 ## 4.8 Livrables et critères de sortie
 
-- [ ] Mode Mobile Money déclaré livré en priorité : déclaration par référence de transaction, validation manuelle ou rapprochement, transaction DECLARED → SUCCEEDED ou REJECTED ; paiement créé CONFIRMED à la validation, zéro commission, activable indépendamment de l'agrégateur.
-- [ ] Interface `MobileMoneyProvider` documentée, avec l'adaptateur CinetPay et un simulateur utilisable en CI (sous-module agrégateur, conditionné à la signature du contrat — son retard ne bloque pas le pilote qui peut fonctionner avec le seul mode déclaré).
-- [ ] Aucune confirmation de paiement possible sur la seule base d'un webhook : la re-interrogation est obligatoire et testée.
-- [ ] `webhook_events` alimenté systématiquement, avec rejeu possible et sans effet de bord.
-- [ ] Travail répétable de réconciliation des transactions en attente, avec repli exponentiel et clôture automatique.
-- [ ] Déclaration de virement complète, avec référence structurée réutilisée par le rapprochement de la phase 6.
+> État vérifié contre le dépôt le 23 septembre 2026. Les éléments d'infrastructure, de comptes tiers et de mise en production réelle restent décochés : rien dans le dépôt ne permet de les attester.
+
+- [x] Mode Mobile Money déclaré livré en priorité : déclaration par référence de transaction, validation manuelle ou rapprochement, transaction DECLARED → SUCCEEDED ou REJECTED ; paiement créé CONFIRMED à la validation, zéro commission, activable indépendamment de l'agrégateur.
+- [x] Interface `MobileMoneyProvider` documentée, avec l'adaptateur CinetPay et un simulateur utilisable en CI (sous-module agrégateur, conditionné à la signature du contrat — son retard ne bloque pas le pilote qui peut fonctionner avec le seul mode déclaré).
+- [x] Aucune confirmation de paiement possible sur la seule base d'un webhook : la re-interrogation est obligatoire et testée.
+- [x] `webhook_events` alimenté systématiquement, avec rejeu possible et sans effet de bord.
+- [x] Travail répétable de réconciliation des transactions en attente, avec repli exponentiel et clôture automatique.
+- [x] Déclaration de virement complète, avec référence structurée réutilisée par le rapprochement de la phase 6.
 - [ ] Activation par `feature_flags` par pays et par organisation, vérifiée sur deux organisations distinctes.
 - [ ] 20 paiements réels réussis en production sur petits montants, procès-verbal signé par le PO.
 - [ ] Grille de frais documentée et affichée au locataire avant validation.
@@ -1310,13 +1320,15 @@ Scénario: Chiffrement local et périmètre restreint du mode démarcheur
 
 ## 5.8 Livrables et critères de sortie
 
-- [ ] Application Flutter fonctionnelle intégralement hors ligne pour le rôle COLLECTOR (consultation de tournée, encaissement, état des lieux).
-- [ ] Base locale Drift chiffrée au repos, activée par défaut sur tout appareil.
-- [ ] Outbox avec `client_ref` ULID garantissant l'idempotence, validée par des tests de double envoi automatisés.
-- [ ] SyncEngine bidirectionnel opérationnel, avec traitement par lots tracé dans `sync_batches` côté serveur.
-- [ ] Stratégie de résolution de conflits documentée et implémentée pour chaque type d'entité synchronisée.
-- [ ] Signature tactile et capture photo compressée fonctionnelles hors ligne, avec seuil de poids de fichier respecté.
-- [ ] Mode démarcheur restreignant strictement le périmètre de données accessible au rôle COLLECTOR sur mobile.
+> État vérifié contre le dépôt le 23 septembre 2026. Les éléments de terrain pilote restent décochés : rien dans le dépôt ne permet de les attester.
+
+- [x] Application Flutter fonctionnelle intégralement hors ligne pour le rôle COLLECTOR (consultation de tournée, encaissement, état des lieux).
+- [x] Base locale Drift chiffrée au repos, activée par défaut sur tout appareil.
+- [x] Outbox avec `client_ref` ULID garantissant l'idempotence, validée par des tests de double envoi automatisés.
+- [x] SyncEngine bidirectionnel opérationnel, avec traitement par lots tracé dans `sync_batches` côté serveur.
+- [x] Stratégie de résolution de conflits documentée et implémentée pour chaque type d'entité synchronisée.
+- [x] Signature tactile et capture photo compressée fonctionnelles hors ligne, avec seuil de poids de fichier respecté.
+- [x] Mode démarcheur restreignant strictement le périmètre de données accessible au rôle COLLECTOR sur mobile.
 - [ ] Tests terrain réalisés à Brazzaville avec au moins deux démarcheurs réels en conditions de réseau dégradé, compte rendu écrit.
 - [ ] Procédure écrite de résolution manuelle des conflits de synchronisation remise aux agences pilotes.
 
@@ -1530,13 +1542,15 @@ Scénario: Rejet d'un chèque impayé et réouverture de la facture
 
 ## 6.8 Livrables et critères de sortie
 
+> État vérifié contre le dépôt le 23 septembre 2026. Les éléments de validation sur données réelles, d'usage pilote et de mise en production restent décochés : rien dans le dépôt ne permet de les attester.
+
 - [ ] Adaptateurs opérationnels pour BGFI, LCB, Ecobank et UBA, plus un parseur MT940 générique, validés sur des fichiers réels.
-- [ ] Contrainte empêchant le double import d'un même relevé sur une même période et un même compte.
+- [x] Contrainte empêchant le double import d'un même relevé sur une même période et un même compte.
 - [ ] Moteur de rapprochement exact et de suggestion en production, taux de rapprochement automatique mesuré sur le relevé pilote.
 - [ ] Écran de validation des suggestions utilisé en routine par au moins un `ACCOUNTANT` pilote.
-- [ ] Rapprochement manuel disponible et tracé dans `audit_logs`, avec possibilité d'annulation.
-- [ ] Cycle de vie du chèque complet (REGISTERED → DEPOSITED → CLEARED ou REJECTED) tracé de bout en bout.
-- [ ] Rejet de chèque déclenchant automatiquement la réouverture de la facture concernée.
+- [x] Rapprochement manuel disponible et tracé dans `audit_logs`, avec possibilité d'annulation.
+- [x] Cycle de vie du chèque complet (REGISTERED → DEPOSITED → CLEARED ou REJECTED) tracé de bout en bout.
+- [x] Rejet de chèque déclenchant automatiquement la réouverture de la facture concernée.
 - [ ] Tests terrain réalisés avec des relevés réels d'au moins deux banques et un cycle complet de chèque, compte rendu écrit.
 
 ## 6.9 Durée et charge
@@ -1810,20 +1824,22 @@ Scénario: Invitation du bailleur et accès au portail en lecture seule
 
 ## 7.8 Livrables et critères de sortie
 
-- [ ] Cycle de vie complet d'un mandat de gestion (création, modification, résiliation) opérationnel.
-- [ ] Calcul automatique de la commission sur les loyers confirmés, sans intervention manuelle.
-- [ ] Campagne mensuelle de génération des relevés de gérance, idempotente, avec rapport d'exécution.
-- [ ] Relevé de gérance PDF conforme, avec lignes détaillées et solde net vérifiable.
-- [ ] Circuit de reversement avec étape de validation distincte de l'exécution, tracé dans `audit_logs`.
+> État vérifié contre le dépôt le 23 septembre 2026. Les éléments de pilote diaspora, de mesure terrain et de procédure écrite restent décochés : rien dans le dépôt ne permet de les attester.
+
+- [x] Cycle de vie complet d'un mandat de gestion (création, modification, résiliation) opérationnel.
+- [x] Calcul automatique de la commission sur les loyers confirmés, sans intervention manuelle.
+- [x] Campagne mensuelle de génération des relevés de gérance, idempotente, avec rapport d'exécution.
+- [x] Relevé de gérance PDF conforme, avec lignes détaillées et solde net vérifiable.
+- [x] Circuit de reversement avec étape de validation distincte de l'exécution, tracé dans `audit_logs`.
 - [ ] Reversement international ou mobile money international opérationnel pour au moins un bailleur en diaspora pilote.
-- [ ] Espace bailleur (web ou mobile) permettant la consultation des relevés et des reversements à distance.
+- [x] Espace bailleur (web ou mobile) permettant la consultation des relevés et des reversements à distance.
 - [ ] Procédure écrite de traitement d'un solde négatif et d'un mandat résilié en cours de mois.
 - [ ] Un mois complet de gérance d'une agence pilote clôturé de bout en bout, diaspora incluse.
 - [ ] Type d'organisation `INDEPENDENT_MANAGER` disponible à la création, avec plan tarifaire dédié et onboarding mobile mesuré à moins de 10 minutes sur un échantillon d'utilisateurs pilotes.
-- [ ] Commission par défaut de 10 % (`RATE_BPS_ON_RENT_COLLECTED`, 1000 bps) appliquée automatiquement à la création d'un mandat, modifiable manuellement par mandat.
-- [ ] Invitation du bailleur par WhatsApp opérationnelle, avec suivi de l'état d'activation dans `message_logs`.
-- [ ] Portail bailleur en lecture seule ouvert, donnant accès aux encaissements, quittances, relevés de gérance et reversements, sans aucune action d'écriture possible.
-- [ ] Session du compte bailleur scopée à `landlords.user_id`, sans rôle `organization_members`, couverte par la suite de tests d'isolation.
+- [x] Commission par défaut de 10 % (`RATE_BPS_ON_RENT_COLLECTED`, 1000 bps) appliquée automatiquement à la création d'un mandat, modifiable manuellement par mandat.
+- [x] Invitation du bailleur par WhatsApp opérationnelle, avec suivi de l'état d'activation dans `message_logs`.
+- [x] Portail bailleur en lecture seule ouvert, donnant accès aux encaissements, quittances, relevés de gérance et reversements, sans aucune action d'écriture possible.
+- [x] Session du compte bailleur scopée à `landlords.user_id`, sans rôle `organization_members`, couverte par la suite de tests d'isolation.
 
 ## 7.9 Durée et charge
 
@@ -2048,13 +2064,15 @@ Scénario: Génération d'une demande de maintenance depuis un état des lieux
 
 ## 8.8 Livrables et critères de sortie
 
-- [ ] Formulaire d'état des lieux pièce par pièce opérationnel en ligne (mobile) et en consultation (web), avec verrouillage à la signature.
-- [ ] Écran de comparaison entrée/sortie produisant une proposition de retenue sur dépôt exploitable par un `MANAGER`.
-- [ ] Compteurs et relevés opérationnels avec contrôle de cohérence des index et historique consultable.
+> État vérifié contre le dépôt le 23 septembre 2026. Les éléments propres à l'agence pilote et aux tests terrain restent décochés : rien dans le dépôt ne permet de les attester.
+
+- [x] Formulaire d'état des lieux pièce par pièce opérationnel en ligne (mobile) et en consultation (web), avec verrouillage à la signature.
+- [x] Écran de comparaison entrée/sortie produisant une proposition de retenue sur dépôt exploitable par un `MANAGER`.
+- [x] Compteurs et relevés opérationnels avec contrôle de cohérence des index et historique consultable.
 - [ ] Au moins une grille tarifaire par fournisseur (eau, électricité) paramétrée pour l'agence pilote dans `utility_tariffs`.
-- [ ] Campagne de refacturation des charges idempotente, produisant des lignes dans `invoice_lines` sans double comptage.
-- [ ] Cycle complet d'une demande de maintenance opérationnel, de la création à la clôture, avec historique dans `maintenance_updates`.
-- [ ] Conversion d'un poste d'état des lieux dégradé en demande de maintenance disponible pour un `MANAGER`.
+- [x] Campagne de refacturation des charges idempotente, produisant des lignes dans `invoice_lines` sans double comptage.
+- [x] Cycle complet d'une demande de maintenance opérationnel, de la création à la clôture, avec historique dans `maintenance_updates`.
+- [x] Conversion d'un poste d'état des lieux dégradé en demande de maintenance disponible pour un `MANAGER`.
 - [ ] Tests terrain réalisés avec au moins deux démarcheurs réels et compte rendu écrit.
 - [ ] Un mois complet de relevés et de refacturation traité de bout en bout pour l'agence pilote.
 
@@ -2249,14 +2267,16 @@ Portail locataire :
 
 ## 9.8 Livrables et critères de sortie
 
-- [ ] dunning_rules et penalty_rules configurables par organisation via l'API et l'écran web
-- [ ] cron dunning_runs quotidien opérationnel avec idempotence garantie par contrainte unique
-- [ ] cron de facturation de la phase 3 étendu pour injecter les pénalités, sans régression sur son comportement existant
-- [ ] quatre tableaux de bord (recouvrement, impayés, vacance, modes de paiement) filtrables par immeuble, période et bailleur
+> État vérifié contre le dépôt le 23 septembre 2026. Les éléments de test terrain pilote restent décochés : rien dans le dépôt ne permet de les attester.
+
+- [x] dunning_rules et penalty_rules configurables par organisation via l'API et l'écran web
+- [x] cron dunning_runs quotidien opérationnel avec idempotence garantie par contrainte unique
+- [x] cron de facturation de la phase 3 étendu pour injecter les pénalités, sans régression sur son comportement existant
+- [x] quatre tableaux de bord (recouvrement, impayés, vacance, modes de paiement) filtrables par immeuble, période et bailleur
 - [ ] exports CSV et Excel fonctionnels sur les listes principales et sur chaque tableau de bord
-- [ ] audit_logs alimenté pour toute création ou modification de dunning_rules et penalty_rules
-- [ ] rapport d'exécution consultable pour chaque dunning_run
-- [ ] documentation OpenAPI à jour pour tous les nouveaux endpoints
+- [x] audit_logs alimenté pour toute création ou modification de dunning_rules et penalty_rules
+- [x] rapport d'exécution consultable pour chaque dunning_run
+- [x] documentation OpenAPI à jour pour tous les nouveaux endpoints
 - [ ] jeu de tests unitaires, intégration, concurrence et e2e passant en CI
 - [ ] test terrain réalisé avec l'agence pilote sur un cycle de facturation complet
 
@@ -2559,22 +2579,24 @@ Tables mobilisées, toutes issues du référentiel canonique : `subscription_pla
 
 ## 10.8 Livrables et critères de sortie
 
+> État vérifié contre le dépôt le 23 septembre 2026. Les éléments de pilote terrain, de décision commerciale et de mise en production réelle restent décochés : rien dans le dépôt ne permet de les attester.
+
 - [ ] Catalogue `subscription_plans` configuré et publié pour au moins deux offres.
-- [ ] Cycle de vie `subscriptions` implémenté avec les statuts TRIALING, ACTIVE, PAST_DUE, SUSPENDED, CANCELLED.
-- [ ] Paiement d'abonnement par Mobile Money avec re-interrogation systématique du statut avant toute confirmation.
+- [x] Cycle de vie `subscriptions` implémenté avec les statuts TRIALING, ACTIVE, PAST_DUE, SUSPENDED, CANCELLED.
+- [x] Paiement d'abonnement par Mobile Money avec re-interrogation systématique du statut avant toute confirmation.
 - [ ] Cron de suspension automatique avec délai de grâce configurable et restriction progressive : lecture seule puis blocage.
-- [ ] Assistant d'onboarding guidé de bout en bout : organisation, premier bien, premier bail, première invitation.
-- [ ] Import de portefeuille CSV avec validation ligne à ligne et rapport d'erreurs exploitable, archivé dans `documents`.
+- [x] Assistant d'onboarding guidé de bout en bout : organisation, premier bien, premier bail, première invitation.
+- [x] Import de portefeuille CSV avec validation ligne à ligne et rapport d'erreurs exploitable, archivé dans `documents`.
 - [ ] Portail locataire ouvert en production, web et mobile, avec authentification OTP scopée aux baux.
-- [ ] Paiement en ligne, téléchargement de quittance et déclaration de virement disponibles côté locataire.
+- [x] Paiement en ligne, téléchargement de quittance et déclaration de virement disponibles côté locataire.
 - [ ] Pilote Brazzaville exécuté sur sa durée complète, indicateurs mesurés chaque semaine.
 - [ ] Décision go/no-go documentée et validée par le comité produit.
 - [ ] Programme `referral_programs` configuré (taux en bps, durée en mois, montant minimum de versement) et publié.
-- [ ] Parcours partenaire complet opérationnel : inscription, génération du code, saisie du code à l'inscription d'une organisation, enregistrement d'immeuble avec confirmation OTP du bailleur.
-- [ ] Qualification automatique du parrainage à la première facture d'abonnement payée, sans intervention manuelle.
+- [x] Parcours partenaire complet opérationnel : inscription, génération du code, saisie du code à l'inscription d'une organisation, enregistrement d'immeuble avec confirmation OTP du bailleur.
+- [x] Qualification automatique du parrainage à la première facture d'abonnement payée, sans intervention manuelle.
 - [ ] Tableau de bord partenaire en production, exposant filleuls, statuts et commissions par statut.
-- [ ] Cycle complet des commissions ACCRUED → APPROVED → PAID → REVERSED implémenté et testé, avec campagne mensuelle d'approbation et versement groupé Mobile Money.
-- [ ] Règles anti-abus vérifiées et testées : interdiction de l'auto-parrainage, unicité du parrain actif par organisation, vérification d'identité légère avant tout versement, plafond mensuel par partenaire.
+- [x] Cycle complet des commissions ACCRUED → APPROVED → PAID → REVERSED implémenté et testé, avec campagne mensuelle d'approbation et versement groupé Mobile Money.
+- [x] Règles anti-abus vérifiées et testées : interdiction de l'auto-parrainage, unicité du parrain actif par organisation, vérification d'identité légère avant tout versement, plafond mensuel par partenaire.
 
 ## 10.9 Durée et charge
 
@@ -2816,6 +2838,8 @@ Scénario: Bascule commerciale progressive et retour arrière
   - session de formation réelle d'une agence non pilote avec le seul matériel de formation, sans intervention de l'équipe produit, et mesure du temps avant premier encaissement autonome.
 
 ## 11.8 Livrables et critères de sortie
+
+> État vérifié contre le dépôt le 23 septembre 2026. La phase 11 n'a fait l'objet, à ce stade, que de l'écriture de son contrat d'API : aucune des six routes distinctives (`/status`, `/legal`, registre des traitements, consentements locataire, révocation globale, mode lecture seule) n'existe dans le code. Rien ci-dessous n'est coché.
 
 - [ ] Rapport d'audit de sécurité externe remis, périmètre couvrant API, web, mobile, webhooks et RLS PostgreSQL.
 - [ ] **Zéro finding CRITIQUE ou ÉLEVÉ ouvert**, chacun clos par un contre-test du cabinet ; findings MOYENS assortis d'un plan daté.
@@ -3066,6 +3090,8 @@ Chaque indicateur est chiffré en fin d'étape et **repris tel quel** comme vale
 
 # Checklist de démarrage — jour 1 à jour 10
 
+> État vérifié contre le dépôt le 23 septembre 2026. Cette checklist mélange des actions de code (vérifiables) et des démarches de comptes, d'infrastructure et d'exploitation (non vérifiables depuis le dépôt) : ces dernières restent décochées par prudence, y compris quand une décision produit connexe a par ailleurs été prise.
+
 ## J1 — Démarches à délai long, à lancer avant tout code
 
 Ces quatre chantiers conditionnent des phases très tardives (3 et 4) mais leurs délais externes se comptent en semaines. Ils démarrent le premier jour, avant même que le socle technique n'existe.
@@ -3102,10 +3128,10 @@ Ces quatre chantiers conditionnent des phases très tardives (3 et 4) mais leurs
 
 ## J3-J5 — Dépôt et structure
 
-- [ ] Monorepo initialisé : `apps/api`, `apps/web`, `apps/mobile`, `packages/shared`, `infra/`, `docs/`.
-- [ ] Conventions posées : TypeScript strict, lint, formatage, conventions de commit, modèle de PR.
+- [x] Monorepo initialisé : `apps/api`, `apps/web`, `apps/mobile`, `packages/shared`, `infra/`, `docs/`.
+- [x] Conventions posées : TypeScript strict, lint, formatage, conventions de commit, modèle de PR.
 - [ ] Protection de la branche `main` : revue obligatoire, CI verte requise, pas de poussée directe.
-- [ ] Squelette NestJS en Clean Architecture, Prisma initialisé, première migration (`organizations`, `users`, `feature_flags`, `sequences`, `audit_logs`).
+- [x] Squelette NestJS en Clean Architecture, Prisma initialisé, première migration (`organizations`, `users`, `feature_flags`, `sequences`, `audit_logs`).
 - [ ] Décisions structurantes matérialisées dès le premier commit : montants BIGINT XAF, UUID v7, `organization_id`/`created_at`/`updated_at` partout.
 - [ ] Docker Compose local : PostgreSQL 16, Redis, API, web.
 
@@ -3119,7 +3145,7 @@ Ces quatre chantiers conditionnent des phases très tardives (3 et 4) mais leurs
 
 ## J8-J10 — Vérification de bout en bout
 
-- [ ] Row Level Security active et vérifiée par un test automatisé d'isolation entre deux organisations.
+- [x] Row Level Security active et vérifiée par un test automatisé d'isolation entre deux organisations.
 - [ ] Authentification téléphone + OTP fonctionnelle sur un numéro congolais réel (MTN et Airtel), JWT 15 min et refresh rotatif 30 j vérifiés.
 - [ ] Contrat OpenAPI 3.1 généré et publié en artefact de CI.
 - [ ] GlitchTip et supervision remontant des événements réels depuis les trois environnements.

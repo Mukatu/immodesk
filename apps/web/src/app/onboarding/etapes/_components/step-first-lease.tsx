@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/business/empty-state';
 import { MoneyInput } from '@/components/business/money-input';
 import { useUnits } from '@/lib/api/hooks/use-units';
@@ -40,7 +41,22 @@ export function StepFirstLease({ organizationId, onDone, onSkip }: StepFirstLeas
   const [rentAmount, setRentAmount] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  if (loadingUnits || loadingTenants) return null;
+  // Un squelette, et non `null` : cette etape charge deux listes (lots et
+  // locataires) avant de pouvoir afficher son formulaire. Rendre `null` laissait
+  // une carte entierement vide le temps des deux requetes — plus d'une seconde
+  // sur un reseau lent — ce qui donne l'impression que l'ecran est casse.
+  if (loadingUnits || loadingTenants) {
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-10 w-40" />
+      </div>
+    );
+  }
 
   if (units.length === 0 || tenants.length === 0) {
     return (

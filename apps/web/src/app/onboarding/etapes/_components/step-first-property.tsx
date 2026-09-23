@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/business/empty-state';
 import { useLandlords } from '@/lib/api/hooks/use-landlords';
 import { useOnboardingFirstProperty } from '@/lib/api/hooks/use-onboarding-wizard';
@@ -37,7 +38,21 @@ export function StepFirstProperty({ organizationId, onDone, onSkip }: StepFirstP
   const [city, setCity] = React.useState('Brazzaville');
   const [error, setError] = React.useState<string | null>(null);
 
-  if (isLoading) return null;
+  // Un squelette, et non `null` : rendre `null` laissait une carte vide le temps
+  // du chargement des bailleurs, ce qui donne l'impression que l'ecran est casse
+  // (voir le commentaire equivalent dans step-first-lease.tsx).
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-16 w-full" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+        <Skeleton className="h-10 w-40" />
+      </div>
+    );
+  }
 
   if (landlords.length === 0) {
     return (

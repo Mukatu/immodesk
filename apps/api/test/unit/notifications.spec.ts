@@ -73,7 +73,25 @@ describe('Modèles et SMS', () => {
     // Phase 7 : + LANDLORD_PORTAL_INVITE, OWNER_STATEMENT_READY,
     // PAYOUT_BANK_DETAILS_MISSING (WhatsApp + SMS chacun) : 20 + 6 = 26.
     // Phase 10 : + SUBSCRIPTION_PAST_DUE_WARNING (WhatsApp + SMS) : 26 + 2 = 28.
-    expect(SYSTEM_TEMPLATES).toHaveLength(28);
+    // Phase 11 : + GO_LIVE_ACTIVATED, en SMS SEUL (aucun modele WhatsApp
+    // approuve par Meta pour ce code) : 28 + 1 = 29. Le total est donc impair.
+    expect(SYSTEM_TEMPLATES).toHaveLength(29);
+  });
+
+  it('tient le SMS de mise en service en GSM-7 et en deux segments', () => {
+    // Volontairement SMS SEUL : aucun modèle WhatsApp n'est déclaré pour ce
+    // code, faute d'approbation Meta. `notification-delivery.service.ts`
+    // saute un canal sans modèle, la remise se fait donc par SMS.
+    expect(systemTemplate('GO_LIVE_ACTIVATED', 'WHATSAPP')).toBeNull();
+    const sms = systemTemplate('GO_LIVE_ACTIVATED', 'SMS')!;
+    const text = toGsm7(
+      renderTemplate(sms.body, {
+        organizationName: 'Agence Kinsoundi Immobilier et Patrimoine',
+        wave: 'pilote-1',
+      }),
+    );
+    expect(text).not.toMatch(/[^\x20-\x7e]/);
+    expect(smsSegments(text)).toBeLessThanOrEqual(2);
   });
 
   it('translittère en GSM-7 et tient la quittance en deux segments', () => {

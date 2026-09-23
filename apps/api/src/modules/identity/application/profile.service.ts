@@ -12,6 +12,14 @@ export interface UserView {
   locale: string;
   timezone: string;
   createdAt: string;
+  /**
+   * Administrateur de la plateforme Immodesk (l'editeur), et non de
+   * l'organisation cliente. Expose au client pour qu'il puisse masquer le
+   * back-office : sans ce drapeau, l'interface ne disposait que du role OWNER
+   * de l'organisation, que tout client proprietaire possede.
+   * L'autorisation reelle reste serveur (PlatformAdminGuard).
+   */
+  isPlatformAdmin: boolean;
 }
 
 export interface OrganizationView {
@@ -62,6 +70,7 @@ export class ProfileService {
         email: true,
         locale: true,
         created_at: true,
+        is_platform_admin: true,
       },
     });
     if (!user) throw new DomainError('IAM.UNAUTHENTICATED');
@@ -77,6 +86,7 @@ export class ProfileService {
       // fait foi (voir README, section « Profil utilisateur »).
       timezone: await this.resolveTimezone(userId),
       createdAt: user.created_at.toISOString(),
+      isPlatformAdmin: user.is_platform_admin,
     };
   }
 

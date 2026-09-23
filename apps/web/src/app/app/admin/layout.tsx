@@ -26,12 +26,16 @@ const ADMIN_NAV = [
  */
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { currentOrganization, status } = useAuth();
-  const isOwner = currentOrganization?.role === 'OWNER';
+  const { user, status } = useAuth();
+  // `users.is_platform_admin` : le drapeau de l'editeur, et non le role dans
+  // l'organisation cliente. Le filtre precedent portait sur OWNER, que tout
+  // client proprietaire de sa structure possede — il laissait donc passer
+  // n'importe quel client arrivant par l'adresse directe.
+  const isPlatformAdmin = user?.isPlatformAdmin ?? false;
 
   if (status === 'loading') return null;
 
-  if (!isOwner) {
+  if (!isPlatformAdmin) {
     return (
       <EmptyState
         icon={ShieldAlert}

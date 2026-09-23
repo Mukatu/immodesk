@@ -38,6 +38,8 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   ownerOnly?: boolean;
+  /** Réservé aux administrateurs de la plateforme Immodesk (l'éditeur). */
+  platformOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -102,10 +104,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/app/equipe', label: 'Équipe', icon: Users },
       { href: '/app/abonnement', label: 'Abonnement', icon: Wallet2 },
       { href: '/partenaire', label: 'Devenir partenaire', icon: UserPlus },
-      // Réservé au rôle OWNER : même restriction que le back-office lui-même
-      // (apps/web/src/app/app/admin/layout.tsx), une approximation documentée en
-      // l'absence de rôle « plateforme/staff » dans le contrat.
-      { href: '/app/admin', label: 'Back-office', icon: ShieldCheck, ownerOnly: true },
+      // Outil de l'éditeur, pas du client : réservé aux administrateurs de la
+      // plateforme (`users.is_platform_admin`), et non au rôle OWNER — que tout
+      // client propriétaire de son organisation possède, et qui faisait donc
+      // apparaître cette entrée chez chacun d'eux.
+      { href: '/app/admin', label: 'Back-office', icon: ShieldCheck, platformOnly: true },
     ],
   },
 ];
@@ -148,6 +151,12 @@ function writeStoredOpenGroup(label: string | null): void {
 
 export interface SidebarNavListProps {
   isOwner: boolean;
+  /**
+   * Administrateur de la plateforme Immodesk (l'éditeur), et non de l'organisation
+   * cliente. Facultatif et faux par défaut : une entrée réservée à la plateforme
+   * reste ainsi masquée tant que l'appelant ne la fournit pas explicitement.
+   */
+  isPlatformAdmin?: boolean;
   /** Mode réduit (icônes seules) : n'a de sens que pour la sidebar de bureau, jamais en Sheet mobile. */
   collapsed?: boolean;
   onNavigate?: () => void;
@@ -157,6 +166,7 @@ export interface SidebarNavListProps {
 /** Liste de navigation partagée entre la sidebar de bureau et le tiroir mobile. */
 export function SidebarNavList({
   isOwner,
+  isPlatformAdmin = false,
   collapsed = false,
   onNavigate,
   className,
@@ -183,7 +193,9 @@ export function SidebarNavList({
   return (
     <nav aria-label="Navigation principale" className={cn('flex flex-1 flex-col gap-1', className)}>
       {NAV_GROUPS.map((group, groupIndex) => {
-        const items = group.items.filter((item) => !item.ownerOnly || isOwner);
+        const items = group.items.filter(
+          (item) => (!item.ownerOnly || isOwner) && (!item.platformOnly || isPlatformAdmin),
+        );
         if (items.length === 0) {
           return null;
         }

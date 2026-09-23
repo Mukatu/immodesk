@@ -165,6 +165,13 @@ jobs:
         working-directory: apps/mobile
         run: flutter test
 
+      # Build debug (pas --release, qui exigerait la clé de signature) pour
+      # détecter une régression qui casse la compilation, ce que analyze et
+      # test ne voient pas.
+      - name: Build
+        working-directory: apps/mobile
+        run: flutter build apk --debug
+
   schema-check:
     runs-on: ubuntu-latest
     services:

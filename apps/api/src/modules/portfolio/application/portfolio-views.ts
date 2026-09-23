@@ -18,7 +18,7 @@ export interface PropertyRow {
   latitude: unknown;
   longitude: unknown;
   land_title_reference: string | null;
-  parcel_number: string | null;
+  occupancy_permit: string | null;
   built_year: number | null;
   total_area_sqm: unknown;
   floors_count: number | null;
@@ -54,7 +54,7 @@ export interface PropertyView {
   latitude: number | null;
   longitude: number | null;
   landTitleReference: string | null;
-  parcelNumber: string | null;
+  occupancyPermit: string | null;
   builtYear: number | null;
   totalAreaSqm: number | null;
   floorsCount: number | null;
@@ -97,7 +97,7 @@ export function toPropertyView(row: PropertyRow): PropertyView {
     latitude: toNumberOrNull(row.latitude),
     longitude: toNumberOrNull(row.longitude),
     landTitleReference: row.land_title_reference,
-    parcelNumber: row.parcel_number,
+    occupancyPermit: row.occupancy_permit,
     builtYear: row.built_year,
     totalAreaSqm: toNumberOrNull(row.total_area_sqm),
     floorsCount: row.floors_count,

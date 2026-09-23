@@ -1,1 +1,7 @@
-pnpm lint-staged
+# Appel direct par node plutot que via pnpm : sur un poste ou pnpm est
+# indisponible (executable non signe refuse par Smart App Control sous
+# Windows 11, par exemple), le crochet echouait et rendait tout commit
+# impossible. node vit dans Program Files et reste toujours executable.
+# Le garde-fou est inchange : c'est le meme lint-staged, avec la meme
+# configuration, qui passe prettier sur les fichiers indexes.
+node node_modules/lint-staged/bin/lint-staged.js

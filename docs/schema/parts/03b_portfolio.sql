@@ -18,7 +18,7 @@ CREATE TABLE properties (
     latitude             NUMERIC(9,6),
     longitude            NUMERIC(9,6),
     land_title_reference TEXT,
-    parcel_number        TEXT,
+    occupancy_permit     TEXT,
     built_year           SMALLINT,
     total_area_sqm       NUMERIC(10,2) CHECK (total_area_sqm IS NULL OR total_area_sqm > 0),
     floors_count         SMALLINT CHECK (floors_count IS NULL OR floors_count >= 0),

@@ -51,7 +51,7 @@ const schema = z.object({
   landmark: z.string().optional(),
   city: z.string().min(1, 'Ville requise.'),
   landTitleReference: z.string().optional(),
-  parcelNumber: z.string().optional(),
+  occupancyPermit: z.string().optional(),
   builtYear: z.string().optional(),
   totalAreaSqm: z.string().optional(),
   floorsCount: z.string().optional(),
@@ -78,7 +78,7 @@ const DEFAULT_VALUES: FormValues = {
   landmark: '',
   city: 'Brazzaville',
   landTitleReference: '',
-  parcelNumber: '',
+  occupancyPermit: '',
   builtYear: '',
   totalAreaSqm: '',
   floorsCount: '',
@@ -155,7 +155,7 @@ export default function NouvelImmeublePage() {
         landmark: values.landmark || undefined,
         city: values.city || undefined,
         landTitleReference: values.landTitleReference || undefined,
-        parcelNumber: values.parcelNumber || undefined,
+        occupancyPermit: values.occupancyPermit || undefined,
         builtYear: values.builtYear ? Number(values.builtYear) : undefined,
         totalAreaSqm: values.totalAreaSqm ? Number(values.totalAreaSqm) : undefined,
         floorsCount: values.floorsCount ? Number(values.floorsCount) : undefined,
@@ -331,14 +331,14 @@ export default function NouvelImmeublePage() {
                 />
                 <FormField
                   control={form.control}
-                  name="parcelNumber"
+                  name="occupancyPermit"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel htmlFor="parcelNumber">
+                      <FormLabel htmlFor="occupancyPermit">
                         Permis d&apos;occuper (optionnel)
                       </FormLabel>
                       <FormControl>
-                        <Input id="parcelNumber" {...field} />
+                        <Input id="occupancyPermit" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

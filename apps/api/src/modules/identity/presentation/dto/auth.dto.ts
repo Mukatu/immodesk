@@ -75,6 +75,11 @@ export class UserDto {
   @ApiProperty({ example: 'fr-CG' }) locale!: string;
   @ApiProperty({ example: 'Africa/Brazzaville' }) timezone!: string;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
+  @ApiProperty({
+    description:
+      "Administrateur de la plateforme Immodesk (l'editeur), et non de l'organisation cliente. Sert a masquer le back-office cote interface ; l'autorisation reelle reste serveur (PlatformAdminGuard).",
+  })
+  isPlatformAdmin!: boolean;
 }
 
 export class OrganizationDto {

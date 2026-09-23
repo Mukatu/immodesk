@@ -17,6 +17,13 @@ export interface User {
   locale: 'fr-CG';
   timezone: 'Africa/Brazzaville';
   createdAt: string;
+  /**
+   * Administrateur de la plateforme Immodesk (l'éditeur), et non de
+   * l'organisation cliente. Seul critère valable pour afficher le back-office :
+   * le rôle OWNER ne dit que « propriétaire de son organisation », ce que tout
+   * client est. L'autorisation réelle reste côté serveur.
+   */
+  isPlatformAdmin: boolean;
 }
 
 export interface Organization {

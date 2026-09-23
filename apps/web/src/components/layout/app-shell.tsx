@@ -58,6 +58,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, status, logout, currentOrganization } = useAuth();
   const isOwner = currentOrganization?.role === 'OWNER';
+  // Drapeau de l'editeur, distinct du role dans l'organisation cliente : c'est
+  // lui, et lui seul, qui decide de l'affichage du back-office.
+  const isPlatformAdmin = user?.isPlatformAdmin ?? false;
 
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
@@ -100,7 +103,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <Brand collapsed={collapsed} />
           <div className="flex-1 overflow-y-auto px-2 pb-4">
-            <SidebarNavList isOwner={isOwner} collapsed={collapsed} />
+            <SidebarNavList
+              isOwner={isOwner}
+              isPlatformAdmin={isPlatformAdmin}
+              collapsed={collapsed}
+            />
           </div>
         </aside>
 
@@ -111,7 +118,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SheetHeader>
             <Brand collapsed={false} />
             <div className="flex-1 overflow-y-auto border-t border-border px-2 py-4">
-              <SidebarNavList isOwner={isOwner} onNavigate={() => setMobileNavOpen(false)} />
+              <SidebarNavList
+                isOwner={isOwner}
+                isPlatformAdmin={isPlatformAdmin}
+                onNavigate={() => setMobileNavOpen(false)}
+              />
             </div>
           </SheetContent>
         </Sheet>

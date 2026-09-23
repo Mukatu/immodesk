@@ -72,7 +72,15 @@ interface MockUser {
   locale: 'fr-CG';
   timezone: 'Africa/Brazzaville';
   createdAt: string;
+  isPlatformAdmin: boolean;
 }
+
+/**
+ * Numéro traité comme administrateur de la plateforme dans les simulations, afin
+ * que le back-office soit exerçable en local. Aucun autre compte de démonstration
+ * ne l'est : c'est le comportement attendu côté client.
+ */
+const PLATFORM_ADMIN_PHONE = '+242066000900';
 
 interface MockOrganization {
   id: string;
@@ -192,6 +200,7 @@ export function findOrCreateUser(phone: string): MockUser {
     locale: 'fr-CG',
     timezone: 'Africa/Brazzaville',
     createdAt: new Date().toISOString(),
+    isPlatformAdmin: phone === PLATFORM_ADMIN_PHONE,
   };
   users.set(user.id, user);
   return user;

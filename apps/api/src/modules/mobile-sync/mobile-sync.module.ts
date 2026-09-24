@@ -4,6 +4,7 @@ import { SyncOperationRegistry } from './domain/operation-registry';
 import { CashReceiptOperationHandler } from './application/cash-receipt-operation.handler';
 import { DocumentOperationHandler } from './application/document-operation.handler';
 import { InspectionOperationHandler } from './application/inspection-operation.handler';
+import { InspectionSubmitOperationHandler } from './application/inspection-submit-operation.handler';
 import { MaintenanceUpdateOperationHandler } from './application/maintenance-update-operation.handler';
 import { MeterReadingOperationHandler } from './application/meter-reading-operation.handler';
 import { MobileConfigService } from './application/mobile-config.service';
@@ -40,6 +41,15 @@ import { SyncPullController } from './presentation/sync-pull.controller';
  * aucune contrainte d'unicité sur `client_ref` dans le DDL fermé de la
  * phase 8.
  *
+ * Un QUATRIEME type a ete ajoute depuis, `INSPECTION_SUBMIT` : le depot
+ * COMPOSITE d un etat des lieux realise hors ligne (en-tete, postes, photos et
+ * signature en une operation). Il deroge au principe enonce ci-dessus pour
+ * `INSPECTION`, et c est assume : un constat se fait sur le terrain sans
+ * reseau, ses postes et ses signatures forment un tout indivisible, et le
+ * mobile le composait deja ainsi alors que le serveur ne le connaissait pas —
+ * tout lot en contenant un etait refuse en bloc, encaissements compris. La
+ * justification complete est dans `inspection-submit-operation.handler.ts`.
+ *
  * `cash`, `documents`, `audit`, `inspections`, `meters` et `maintenance` sont
  * `@Global()` : leurs services sont injectables ici sans import de module,
  * comme `payments` dans `cash`.
@@ -56,6 +66,7 @@ import { SyncPullController } from './presentation/sync-pull.controller';
     CashReceiptOperationHandler,
     DocumentOperationHandler,
     InspectionOperationHandler,
+    InspectionSubmitOperationHandler,
     MeterReadingOperationHandler,
     MaintenanceUpdateOperationHandler,
     {
@@ -64,13 +75,15 @@ import { SyncPullController } from './presentation/sync-pull.controller';
         cash: CashReceiptOperationHandler,
         document: DocumentOperationHandler,
         inspection: InspectionOperationHandler,
+        inspectionSubmit: InspectionSubmitOperationHandler,
         meterReading: MeterReadingOperationHandler,
         maintenanceUpdate: MaintenanceUpdateOperationHandler,
-      ) => [cash, document, inspection, meterReading, maintenanceUpdate],
+      ) => [cash, document, inspection, inspectionSubmit, meterReading, maintenanceUpdate],
       inject: [
         CashReceiptOperationHandler,
         DocumentOperationHandler,
         InspectionOperationHandler,
+        InspectionSubmitOperationHandler,
         MeterReadingOperationHandler,
         MaintenanceUpdateOperationHandler,
       ],

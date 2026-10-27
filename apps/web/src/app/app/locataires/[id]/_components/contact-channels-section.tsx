@@ -157,7 +157,7 @@ function CreateChannelDialog({
                       onChange={(e) => field.onChange(e.target.checked)}
                     />
                   </FormControl>
-                  <FormLabel htmlFor="channel-isPrimary" className="!mt-0">
+                  <FormLabel htmlFor="channel-isPrimary" className="mt-0!">
                     Canal préféré pour ce type
                   </FormLabel>
                 </FormItem>

@@ -44,7 +44,7 @@ export function TariffRow({
       role="row"
       className="flex flex-wrap items-center gap-4 rounded-md border border-border p-3"
     >
-      <div role="cell" className="min-w-[10rem] flex-1 space-y-0.5">
+      <div role="cell" className="min-w-40 flex-1 space-y-0.5">
         <p className="font-medium">{tariff.label}</p>
         <p className="text-xs text-muted-foreground">{TARIFF_BASIS_LABELS[basis]}</p>
       </div>

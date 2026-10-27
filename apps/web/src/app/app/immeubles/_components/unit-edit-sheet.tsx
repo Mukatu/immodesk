@@ -345,7 +345,7 @@ export function UnitEditSheet({ unit }: UnitEditSheetProps) {
                         onChange={(event) => field.onChange(event.target.checked)}
                       />
                     </FormControl>
-                    <FormLabel htmlFor="unit-furnished" className="!mt-0">
+                    <FormLabel htmlFor="unit-furnished" className="mt-0!">
                       Meublé
                     </FormLabel>
                   </FormItem>
@@ -363,7 +363,7 @@ export function UnitEditSheet({ unit }: UnitEditSheetProps) {
                         onChange={(event) => field.onChange(event.target.checked)}
                       />
                     </FormControl>
-                    <FormLabel htmlFor="unit-meter" className="!mt-0">
+                    <FormLabel htmlFor="unit-meter" className="mt-0!">
                       Compteur privatif
                     </FormLabel>
                   </FormItem>

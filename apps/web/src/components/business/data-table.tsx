@@ -205,7 +205,7 @@ export function DataTable<TData extends RowData>({
                       type="button"
                       onClick={() => onRowSelect(row.original)}
                       aria-label={getRowLabel?.(row.original) ?? 'Voir le détail de cette ligne'}
-                      className="flex size-8 items-center justify-center rounded-sm text-muted-foreground/0 transition-colors duration-[130ms] group-hover:text-muted-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex size-8 items-center justify-center rounded-sm text-muted-foreground/0 transition-colors duration-130 group-hover:text-muted-foreground focus-visible:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <ChevronRight aria-hidden="true" className="size-4" />
                     </button>
@@ -261,7 +261,7 @@ export function DataTable<TData extends RowData>({
                     type="button"
                     onClick={() => onRowSelect(row.original)}
                     aria-label={getRowLabel?.(row.original) ?? 'Voir le détail de cette ligne'}
-                    className="flex size-11 shrink-0 items-center justify-center rounded-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex size-11 shrink-0 items-center justify-center rounded-sm text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <ChevronRight aria-hidden="true" className="size-5" />
                   </button>

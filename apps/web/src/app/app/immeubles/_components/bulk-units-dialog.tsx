@@ -347,7 +347,7 @@ export function BulkUnitsDialog({ propertyId }: BulkUnitsDialogProps) {
                       onChange={(event) => field.onChange(event.target.checked)}
                     />
                   </FormControl>
-                  <FormLabel htmlFor="bulk-furnished" className="!mt-0">
+                  <FormLabel htmlFor="bulk-furnished" className="mt-0!">
                     Meublé
                   </FormLabel>
                 </FormItem>

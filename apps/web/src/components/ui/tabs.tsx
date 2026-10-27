@@ -72,9 +72,9 @@ export function TabsTrigger({ value, className, children, ...props }: TabsTrigge
       tabIndex={selected ? 0 : -1}
       onClick={() => ctx.setValue(value)}
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
         selected
-          ? 'bg-background text-foreground shadow-sm'
+          ? 'bg-background text-foreground shadow-xs'
           : 'hover:bg-background/50 hover:text-foreground',
         className,
       )}
@@ -98,7 +98,7 @@ export function TabsContent({ value, className, ...props }: TabsContentProps) {
       id={`${ctx.idPrefix}-panel-${value}`}
       aria-labelledby={`${ctx.idPrefix}-tab-${value}`}
       tabIndex={0}
-      className={cn('focus-visible:outline-none', className)}
+      className={cn('focus-visible:outline-hidden', className)}
       {...props}
     />
   );

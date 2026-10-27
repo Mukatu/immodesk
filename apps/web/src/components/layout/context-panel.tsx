@@ -288,7 +288,7 @@ function ContextBlockView({ block, onAction }: { block: ContextBlock; onAction: 
                 key={i}
                 type="button"
                 onClick={item.onSelect}
-                className="rounded-sm px-2 py-1.5 text-left text-sm font-medium text-primary transition-colors duration-[130ms] hover:bg-background"
+                className="rounded-sm px-2 py-1.5 text-left text-sm font-medium text-primary transition-colors duration-130 hover:bg-background"
               >
                 {item.label}
               </button>

@@ -401,7 +401,7 @@ export default function NouvelImmeublePage() {
                           onChange={(event) => field.onChange(event.target.checked)}
                         />
                       </FormControl>
-                      <FormLabel htmlFor="hasWater" className="!mt-0">
+                      <FormLabel htmlFor="hasWater" className="mt-0!">
                         Eau courante
                       </FormLabel>
                     </FormItem>
@@ -419,7 +419,7 @@ export default function NouvelImmeublePage() {
                           onChange={(event) => field.onChange(event.target.checked)}
                         />
                       </FormControl>
-                      <FormLabel htmlFor="hasElectricity" className="!mt-0">
+                      <FormLabel htmlFor="hasElectricity" className="mt-0!">
                         Électricité
                       </FormLabel>
                     </FormItem>
@@ -437,7 +437,7 @@ export default function NouvelImmeublePage() {
                           onChange={(event) => field.onChange(event.target.checked)}
                         />
                       </FormControl>
-                      <FormLabel htmlFor="hasBorehole" className="!mt-0">
+                      <FormLabel htmlFor="hasBorehole" className="mt-0!">
                         Forage
                       </FormLabel>
                     </FormItem>
@@ -455,7 +455,7 @@ export default function NouvelImmeublePage() {
                           onChange={(event) => field.onChange(event.target.checked)}
                         />
                       </FormControl>
-                      <FormLabel htmlFor="hasGenerator" className="!mt-0">
+                      <FormLabel htmlFor="hasGenerator" className="mt-0!">
                         Groupe électrogène
                       </FormLabel>
                     </FormItem>
@@ -473,7 +473,7 @@ export default function NouvelImmeublePage() {
                           onChange={(event) => field.onChange(event.target.checked)}
                         />
                       </FormControl>
-                      <FormLabel htmlFor="hasSolarPanels" className="!mt-0">
+                      <FormLabel htmlFor="hasSolarPanels" className="mt-0!">
                         Panneaux solaires
                       </FormLabel>
                     </FormItem>
@@ -491,7 +491,7 @@ export default function NouvelImmeublePage() {
                           onChange={(event) => field.onChange(event.target.checked)}
                         />
                       </FormControl>
-                      <FormLabel htmlFor="isFurnished" className="!mt-0">
+                      <FormLabel htmlFor="isFurnished" className="mt-0!">
                         Meublé
                       </FormLabel>
                     </FormItem>

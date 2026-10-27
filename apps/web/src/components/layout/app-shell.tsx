@@ -128,7 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Sheet>
 
         <div className="flex min-h-screen flex-1 flex-col">
-          <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+          <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
             <div className="flex items-center justify-between gap-4 px-4 py-3">
               <div className="flex items-center gap-2">
                 <Button

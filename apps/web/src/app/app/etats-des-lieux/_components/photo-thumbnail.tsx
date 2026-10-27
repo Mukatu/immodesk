@@ -41,7 +41,7 @@ export function PhotoThumbnail({ documentId, label }: PhotoThumbnailProps) {
         onClick={handleOpen}
         disabled={isLoading}
         aria-label={`Voir la photo — ${label}`}
-        className="flex size-16 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+        className="flex size-16 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
       >
         <ImageIcon className="size-6" aria-hidden="true" />
       </button>

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../../generated/prisma/client';
+import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { PrismaService, type TenantClient } from '../../../shared/prisma/prisma.service';
 import { AuditService } from '../../audit/application/audit.service';
@@ -308,7 +309,7 @@ export class LeaseDailyService {
       return [];
     }
     if (!this.admin) {
-      this.admin = new PrismaClient({ datasources: { db: { url: adminUrl } }, log: ['error'] });
+      this.admin = createPrismaClient(adminUrl, ['error']);
       await this.admin.$connect();
     }
 

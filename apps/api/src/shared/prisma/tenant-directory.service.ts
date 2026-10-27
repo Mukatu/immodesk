@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client';
+import { createPrismaClient } from './create-prisma-client';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/config.schema';
 import type { MemberRole } from '../tenant/tenant-context';
@@ -76,7 +77,7 @@ export class TenantDirectoryService implements OnModuleInit, OnModuleDestroy {
   constructor(@Inject(APP_CONFIG) config: AppConfig) {
     const url = config.DATABASE_ADMIN_URL ?? config.DATABASE_URL;
     this.privileged = Boolean(config.DATABASE_ADMIN_URL);
-    this.client = new PrismaClient({ datasources: { db: { url } }, log: ['error'] });
+    this.client = createPrismaClient(url);
   }
 
   async onModuleInit(): Promise<void> {

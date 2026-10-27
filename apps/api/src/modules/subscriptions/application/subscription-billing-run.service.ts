@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../../generated/prisma/client';
+import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { formatXaf } from '../../../shared/money/amount';
 import { normalizePhoneE164 } from '../../../shared/phone/e164';
@@ -119,7 +120,7 @@ export class SubscriptionBillingRunService {
       this.logger.warn('DATABASE_ADMIN_URL absent : cron abonnement désactivé.');
       return [];
     }
-    this.admin ??= new PrismaClient({ datasources: { db: { url: adminUrl } }, log: ['error'] });
+    this.admin ??= createPrismaClient(adminUrl, ['error']);
     return this.admin.$queryRawUnsafe<SubscriptionCandidateRow[]>(
       `SELECT id, organization_id FROM subscriptions WHERE status NOT IN ('CANCELLED', 'EXPIRED')`,
     );

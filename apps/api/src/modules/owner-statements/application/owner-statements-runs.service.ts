@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../../generated/prisma/client';
+import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
 import type Redis from 'ioredis';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
@@ -187,7 +188,7 @@ export class OwnerStatementsRunsService implements OnModuleDestroy {
       this.logger.warn('DATABASE_ADMIN_URL absent : cron agence désactivé.');
       return [];
     }
-    this.admin ??= new PrismaClient({ datasources: { db: { url: adminUrl } }, log: ['error'] });
+    this.admin ??= createPrismaClient(adminUrl, ['error']);
     const rows = await this.admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
       `SELECT DISTINCT organization_id FROM management_mandates
         WHERE status IN ('ACTIVE', 'TERMINATED') AND payout_day = $1`,

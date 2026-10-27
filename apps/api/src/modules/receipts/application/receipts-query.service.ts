@@ -1,5 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../../generated/prisma/client';
+import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { toJsonAmount } from '../../../shared/money/amount';
@@ -124,7 +125,7 @@ export class ReceiptsQueryService implements OnModuleDestroy {
     if (!isVerificationTokenShape(token)) throw new DomainError('RECEIPTS.NOT_FOUND');
     const adminUrl = this.config.get('DATABASE_ADMIN_URL');
     if (!adminUrl) throw new DomainError('RECEIPTS.NOT_FOUND');
-    this.admin ??= new PrismaClient({ datasources: { db: { url: adminUrl } }, log: ['error'] });
+    this.admin ??= createPrismaClient(adminUrl, ['error']);
     const rows = await this.admin.$queryRawUnsafe<Array<Record<string, any>>>(
       `SELECT r.receipt_number, r.issue_date, r.period_start, r.period_end, r.total_amount, r.status::text AS status,
               t.party_type AS t_party_type, t.first_name AS t_first_name, t.last_name AS t_last_name,

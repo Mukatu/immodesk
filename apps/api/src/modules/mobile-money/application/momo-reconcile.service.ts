@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../../generated/prisma/client';
+import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
@@ -104,7 +105,7 @@ export class MomoReconcileService {
     const adminUrl = this.config.get('DATABASE_ADMIN_URL');
     if (!adminUrl)
       throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'DATABASE_ADMIN_URL absent' });
-    this.admin ??= new PrismaClient({ datasources: { db: { url: adminUrl } }, log: ['error'] });
+    this.admin ??= createPrismaClient(adminUrl, ['error']);
     return this.admin;
   }
 }

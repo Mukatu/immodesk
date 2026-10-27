@@ -15,7 +15,7 @@
  * d'un jeu de données de démonstration.
  */
 import { createHash } from 'node:crypto';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../src/generated/prisma/client';
 import { v7 as uuidv7 } from 'uuid';
 
 export interface Phase6Report {

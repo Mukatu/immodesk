@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client';
+import { createPrismaClient } from '../../src/shared/prisma/create-prisma-client';
 import { v7 as uuidv7 } from 'uuid';
 import { createApp } from '../../src/bootstrap';
 import {
@@ -24,10 +25,7 @@ export async function startTestApp(): Promise<TestContext> {
   await app.listen(0, '127.0.0.1');
 
   const address = app.getHttpServer().address() as { port: number };
-  const admin = new PrismaClient({
-    datasources: { db: { url: process.env.DATABASE_ADMIN_URL as string } },
-    log: ['error'],
-  });
+  const admin = createPrismaClient(process.env.DATABASE_ADMIN_URL as string, ['error']);
   await admin.$connect();
 
   return {

@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client';
+import { createPrismaClient } from '../../src/shared/prisma/create-prisma-client';
 import { v7 as uuidv7 } from 'uuid';
 import './helpers';
 import { buildInsert, listTenantTables, planMinimalRow, type Anchors } from './rls-matrix';
@@ -177,14 +178,8 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
   const skipped: Array<{ table: string; reason: string }> = [];
 
   beforeAll(async () => {
-    admin = new PrismaClient({
-      datasources: { db: { url: process.env.DATABASE_ADMIN_URL as string } },
-      log: [],
-    });
-    app = new PrismaClient({
-      datasources: { db: { url: process.env.DATABASE_URL as string } },
-      log: [],
-    });
+    admin = createPrismaClient(process.env.DATABASE_ADMIN_URL as string, []);
+    app = createPrismaClient(process.env.DATABASE_URL as string, []);
     await Promise.all([admin.$connect(), app.$connect()]);
 
     orgA = await createFixture(admin, 'A');
@@ -276,10 +271,7 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
 
   it('rend une connexion neuve totalement aveugle sans contexte', async () => {
     // Cas déterministe : un client qui n'a jamais posé de contexte.
-    const fresh = new PrismaClient({
-      datasources: { db: { url: process.env.DATABASE_URL as string } },
-      log: [],
-    });
+    const fresh = createPrismaClient(process.env.DATABASE_URL as string, []);
     try {
       await fresh.$connect();
       for (const table of ['organizations', 'organization_members', 'audit_logs']) {

@@ -2,7 +2,7 @@
  * Suite du portefeuille de démonstration : lots, locataires, garants,
  * canaux de contact et comptes de règlement.
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../src/generated/prisma/client';
 import { v7 as uuidv7 } from 'uuid';
 
 /** 4 lots occupés sur 12 : taux d'occupation de 3333 bps (33,33 %). */

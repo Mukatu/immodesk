@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../../generated/prisma/client';
+import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { notifyManagers } from '../../../shared/notify/notify-managers';
@@ -93,7 +94,7 @@ export class CheckAlertsService {
       this.logger.warn('DATABASE_ADMIN_URL absent : alerte chèques désactivée.');
       return [];
     }
-    this.admin ??= new PrismaClient({ datasources: { db: { url: adminUrl } }, log: ['error'] });
+    this.admin ??= createPrismaClient(adminUrl, ['error']);
     const rows = await this.admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
       `SELECT DISTINCT organization_id FROM bank_checks
         WHERE status = 'DEPOSITED' AND deposit_date IS NOT NULL`,

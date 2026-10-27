@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef } from '@/components/business/data-table';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';

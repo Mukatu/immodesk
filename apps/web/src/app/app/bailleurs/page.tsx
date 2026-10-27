@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { type ColumnDef } from '@tanstack/react-table';
+import { type ColumnDef } from '@/components/business/data-table';
 import { Plus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';

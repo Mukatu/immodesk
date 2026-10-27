@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { type ColumnDef } from '@tanstack/react-table';
+import { type ColumnDef } from '@/components/business/data-table';
 import { Trash2, UserPlus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

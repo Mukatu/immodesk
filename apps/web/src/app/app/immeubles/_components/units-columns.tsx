@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef } from '@/components/business/data-table';
 
 import { MoneyXaf } from '@/components/business/money-xaf';
 import { UNIT_TYPE_LABELS } from '@/lib/enum-labels';

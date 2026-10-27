@@ -1,6 +1,13 @@
 'use client';
 
-import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
+import {
+  flexRender,
+  columnVisibilityFeature,
+  tableFeatures,
+  useTable,
+  type ColumnDef as TanstackColumnDef,
+  type RowData,
+} from '@tanstack/react-table';
 import { ChevronRight } from 'lucide-react';
 
 import {
@@ -16,6 +23,18 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/business/empty-state';
 import { cn } from '@/lib/utils';
+
+/** Tableau minimal : aucune fonctionnalité optionnelle (tri, filtre, pagination client) n'est
+ * utilisée, la pagination est par curseur côté serveur. Le modèle de lignes de base est intégré. */
+const features = tableFeatures({ columnVisibilityFeature });
+
+/** `ColumnDef` de react-table 9, figé sur les fonctionnalités de `DataTable` : les écrans
+ * continuent d'écrire `ColumnDef<Ligne>[]`. */
+export type ColumnDef<TData extends RowData, TValue = unknown> = TanstackColumnDef<
+  typeof features,
+  TData,
+  TValue
+>;
 
 /** Éléments interactifs déjà présents dans une cellule (lien de la référence, badge cliquable…) :
  * un clic ou une touche sur l'un d'eux ne doit pas aussi ouvrir le panneau contextuel. */
@@ -48,8 +67,8 @@ export interface CursorPageInfo {
   hasNextPage: boolean;
 }
 
-export interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+export interface DataTableProps<TData extends RowData> {
+  columns: ColumnDef<TData>[];
   data: TData[];
   isLoading?: boolean;
   emptyTitle?: string;
@@ -86,7 +105,7 @@ export interface DataTableProps<TData, TValue> {
   getRowLabel?: (row: TData) => string;
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends RowData>({
   columns,
   data,
   isLoading = false,
@@ -99,11 +118,11 @@ export function DataTable<TData, TValue>({
   getRowClassName,
   onRowSelect,
   getRowLabel,
-}: DataTableProps<TData, TValue>) {
-  const table = useReactTable({
+}: DataTableProps<TData>) {
+  const table = useTable({
+    features,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
   });
 
   if (isLoading) {

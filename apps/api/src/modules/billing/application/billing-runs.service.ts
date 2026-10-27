@@ -1,6 +1,4 @@
 import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import type { PrismaClient } from '../../../generated/prisma/client';
-import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
 import type Redis from 'ioredis';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
@@ -10,6 +8,7 @@ import { businessToday } from '../../../shared/time/business-date';
 import { parseIsoDate } from '../../leases/domain/calendar';
 import { BillingEngineService } from './billing-engine.service';
 import { InvoiceNoticeService } from './invoice-notice.service';
+import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 /** Rapport d'une campagne, conservé 7 jours dans Redis. */
 export const BILLING_RUN_TTL_SECONDS = 7 * 86_400;
@@ -39,9 +38,9 @@ export interface BillingRunReport {
 export class BillingRunsService implements OnModuleDestroy {
   private readonly logger = new Logger(BillingRunsService.name);
   private readonly inflight = new Map<string, Promise<void>>();
-  private admin: PrismaClient | null = null;
 
   constructor(
+    private readonly prisma: PrismaService,
     private readonly engine: BillingEngineService,
     private readonly notices: InvoiceNoticeService,
     private readonly config: AppConfigService,
@@ -50,8 +49,6 @@ export class BillingRunsService implements OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await Promise.allSettled([...this.inflight.values()]);
-    if (this.admin) await this.admin.$disconnect();
-    this.admin = null;
   }
 
   async start(
@@ -174,13 +171,12 @@ export class BillingRunsService implements OnModuleDestroy {
    * baux. Toutes les écritures repassent par `withTenant`, donc par la RLS.
    */
   private async organizationsWithBillableLeases(): Promise<string[]> {
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl) {
+    const admin = this.prisma.adminClient();
+    if (!admin) {
       this.logger.warn('DATABASE_ADMIN_URL absent : cron de facturation désactivé.');
       return [];
     }
-    this.admin ??= createPrismaClient(adminUrl, ['error']);
-    const rows = await this.admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
+    const rows = await admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
       `SELECT DISTINCT organization_id FROM leases
         WHERE deleted_at IS NULL AND status IN ('ACTIVE', 'NOTICE_GIVEN')`,
     );

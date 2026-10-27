@@ -1,7 +1,4 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import type { PrismaClient } from '../../../generated/prisma/client';
-import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
-import { AppConfigService } from '../../../shared/config/config.module';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { notifyManagers } from '../../../shared/notify/notify-managers';
 import { toJsonAmount } from '../../../shared/money/amount';
@@ -29,11 +26,9 @@ interface DueCheckRow {
 @Injectable()
 export class CheckAlertsService {
   private readonly logger = new Logger(CheckAlertsService.name);
-  private admin: PrismaClient | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly config: AppConfigService,
     @Optional()
     @Inject(NOTIFICATION_ENQUEUER)
     private readonly enqueuer: NotificationEnqueuer | null = null,
@@ -89,13 +84,12 @@ export class CheckAlertsService {
 
   /** Organisations portant au moins un chèque `DEPOSITED`, hors RLS. */
   private async organizationsWithDepositedChecks(): Promise<string[]> {
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl) {
+    const admin = this.prisma.adminClient();
+    if (!admin) {
       this.logger.warn('DATABASE_ADMIN_URL absent : alerte chèques désactivée.');
       return [];
     }
-    this.admin ??= createPrismaClient(adminUrl, ['error']);
-    const rows = await this.admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
+    const rows = await admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
       `SELECT DISTINCT organization_id FROM bank_checks
         WHERE status = 'DEPOSITED' AND deposit_date IS NOT NULL`,
     );

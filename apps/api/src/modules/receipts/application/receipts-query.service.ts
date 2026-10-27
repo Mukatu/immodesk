@@ -1,6 +1,4 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import type { PrismaClient } from '../../../generated/prisma/client';
-import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { toJsonAmount } from '../../../shared/money/amount';
@@ -47,17 +45,12 @@ export interface ReceiptVerificationView {
  */
 @Injectable()
 export class ReceiptsQueryService implements OnModuleDestroy {
-  private admin: PrismaClient | null = null;
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: AppConfigService,
   ) {}
 
-  async onModuleDestroy(): Promise<void> {
-    await this.admin?.$disconnect();
-    this.admin = null;
-  }
+  async onModuleDestroy(): Promise<void> {}
 
   async list(
     organizationId: string,
@@ -123,10 +116,9 @@ export class ReceiptsQueryService implements OnModuleDestroy {
 
   async verifyPublic(token: string): Promise<ReceiptVerificationView> {
     if (!isVerificationTokenShape(token)) throw new DomainError('RECEIPTS.NOT_FOUND');
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl) throw new DomainError('RECEIPTS.NOT_FOUND');
-    this.admin ??= createPrismaClient(adminUrl, ['error']);
-    const rows = await this.admin.$queryRawUnsafe<Array<Record<string, any>>>(
+    const admin = this.prisma.adminClient();
+    if (!admin) throw new DomainError('RECEIPTS.NOT_FOUND');
+    const rows = await admin.$queryRawUnsafe<Array<Record<string, any>>>(
       `SELECT r.receipt_number, r.issue_date, r.period_start, r.period_end, r.total_amount, r.status::text AS status,
               t.party_type AS t_party_type, t.first_name AS t_first_name, t.last_name AS t_last_name,
               t.company_name AS t_company_name,

@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { PrismaClient } from '../../../generated/prisma/client';
-import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { newId } from '../../../shared/ids/uuid';
@@ -43,7 +42,6 @@ export interface WebhookListFilters {
 @Injectable()
 export class WebhookEventsService {
   private readonly logger = new Logger(WebhookEventsService.name);
-  private admin: PrismaClient | null = null;
 
   constructor(
     private readonly config: AppConfigService,
@@ -180,10 +178,9 @@ export class WebhookEventsService {
   }
 
   private adminClient(): PrismaClient {
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl)
+    const admin = this.prisma.adminClient();
+    if (!admin)
       throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'DATABASE_ADMIN_URL absent' });
-    this.admin ??= createPrismaClient(adminUrl, ['error']);
-    return this.admin;
+    return admin;
   }
 }

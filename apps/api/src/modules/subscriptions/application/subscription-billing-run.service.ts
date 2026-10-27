@@ -1,6 +1,4 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import type { PrismaClient } from '../../../generated/prisma/client';
-import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { formatXaf } from '../../../shared/money/amount';
 import { normalizePhoneE164 } from '../../../shared/phone/e164';
@@ -86,7 +84,6 @@ function ownerDisplayName(owner: SubscriptionOwnerRow): string {
 @Injectable()
 export class SubscriptionBillingRunService {
   private readonly logger = new Logger(SubscriptionBillingRunService.name);
-  private admin: PrismaClient | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -115,13 +112,12 @@ export class SubscriptionBillingRunService {
   }
 
   private async loadCandidates(): Promise<SubscriptionCandidateRow[]> {
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl) {
+    const admin = this.prisma.adminClient();
+    if (!admin) {
       this.logger.warn('DATABASE_ADMIN_URL absent : cron abonnement désactivé.');
       return [];
     }
-    this.admin ??= createPrismaClient(adminUrl, ['error']);
-    return this.admin.$queryRawUnsafe<SubscriptionCandidateRow[]>(
+    return admin.$queryRawUnsafe<SubscriptionCandidateRow[]>(
       `SELECT id, organization_id FROM subscriptions WHERE status NOT IN ('CANCELLED', 'EXPIRED')`,
     );
   }

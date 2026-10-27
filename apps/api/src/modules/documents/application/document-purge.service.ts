@@ -1,6 +1,4 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import type { PrismaClient } from '../../../generated/prisma/client';
-import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { AuditService } from '../../audit/application/audit.service';
@@ -43,7 +41,6 @@ export interface PurgeReport {
 export class DocumentPurgeService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DocumentPurgeService.name);
   private timer: NodeJS.Timeout | null = null;
-  private admin: PrismaClient | null = null;
   private running = false;
 
   constructor(
@@ -69,7 +66,6 @@ export class DocumentPurgeService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     if (this.timer) clearInterval(this.timer);
-    if (this.admin) await this.admin.$disconnect();
   }
 
   /**
@@ -116,20 +112,16 @@ export class DocumentPurgeService implements OnModuleInit, OnModuleDestroy {
    * par `withTenant` et donc par la RLS.
    */
   private async findCandidates(): Promise<PurgeCandidate[]> {
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl) {
+    const admin = this.prisma.adminClient();
+    if (!admin) {
       this.logger.warn('DATABASE_ADMIN_URL absent : purge des documents désactivée.');
       return [];
-    }
-    if (!this.admin) {
-      this.admin = createPrismaClient(adminUrl, ['error']);
-      await this.admin.$connect();
     }
 
     const graceHours = this.config.get('DOCUMENTS_PURGE_GRACE_HOURS');
     const batchSize = this.config.get('DOCUMENTS_PURGE_BATCH_SIZE');
 
-    return this.admin.$queryRawUnsafe<PurgeCandidate[]>(
+    return admin.$queryRawUnsafe<PurgeCandidate[]>(
       `SELECT id, organization_id, object_key, file_name
          FROM documents
         WHERE deleted_at IS NOT NULL

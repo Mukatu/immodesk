@@ -1,7 +1,5 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { PrismaClient } from '../../../generated/prisma/client';
-import { createPrismaClient } from '../../../shared/prisma/create-prisma-client';
-import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
 import type { TenantClient } from '../../../shared/prisma/prisma.service';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
@@ -24,10 +22,8 @@ import type { MomoTransactionView } from './momo-views';
 @Injectable()
 export class MomoVerificationService {
   private readonly logger = new Logger(MomoVerificationService.name);
-  private admin: PrismaClient | null = null;
 
   constructor(
-    private readonly config: AppConfigService,
     private readonly prisma: PrismaService,
     private readonly queries: MomoQueryService,
     private readonly registry: MobileMoneyProviderRegistry,
@@ -234,10 +230,9 @@ export class MomoVerificationService {
   }
 
   adminClient(): PrismaClient {
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl)
+    const admin = this.prisma.adminClient();
+    if (!admin)
       throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'DATABASE_ADMIN_URL absent' });
-    this.admin ??= createPrismaClient(adminUrl, ['error']);
-    return this.admin;
+    return admin;
   }
 }

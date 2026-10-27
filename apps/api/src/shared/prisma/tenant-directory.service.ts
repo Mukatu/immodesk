@@ -1,8 +1,6 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import type { PrismaClient } from '../../generated/prisma/client';
-import { createPrismaClient } from './create-prisma-client';
-import { APP_CONFIG } from '../config/config.module';
-import type { AppConfig } from '../config/config.schema';
+import { PrismaService } from './prisma.service';
 import type { MemberRole } from '../tenant/tenant-context';
 
 export interface MembershipRow {
@@ -69,28 +67,27 @@ export interface InvitationLookupRow {
  * applicative : les lectures transverses renvoient alors des listes vides.
  */
 @Injectable()
-export class TenantDirectoryService implements OnModuleInit, OnModuleDestroy {
+export class TenantDirectoryService implements OnModuleInit {
   private readonly logger = new Logger(TenantDirectoryService.name);
   private readonly client: PrismaClient;
   private readonly privileged: boolean;
 
-  constructor(@Inject(APP_CONFIG) config: AppConfig) {
-    const url = config.DATABASE_ADMIN_URL ?? config.DATABASE_URL;
-    this.privileged = Boolean(config.DATABASE_ADMIN_URL);
-    this.client = createPrismaClient(url);
+  /**
+   * Réutilise le client d'administration PARTAGÉ de `PrismaService` (un seul
+   * pool par processus) ; à défaut, la connexion applicative.
+   */
+  constructor(prisma: PrismaService) {
+    const admin = prisma.adminClient();
+    this.privileged = admin !== null;
+    this.client = admin ?? prisma;
   }
 
-  async onModuleInit(): Promise<void> {
-    await this.client.$connect();
+  onModuleInit(): void {
     if (!this.privileged) {
       this.logger.warn(
         "DATABASE_ADMIN_URL absent : l'annuaire multi-tenant est dégradé (liste d'organisations vide).",
       );
     }
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.client.$disconnect();
   }
 
   /** Adhésions actives d'un utilisateur, toutes organisations confondues. */

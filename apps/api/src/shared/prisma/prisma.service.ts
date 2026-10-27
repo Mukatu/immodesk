@@ -50,7 +50,21 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleDestroy(): Promise<void> {
+    await this.adminInstance?.$disconnect();
+    this.adminInstance = null;
     await this.$disconnect();
+  }
+
+  /**
+   * Client d'administration (`BYPASSRLS`) PARTAGÉ : une seule instance, donc un
+   * seul pool de connexions, pour tout le processus. `null` si
+   * `DATABASE_ADMIN_URL` n'est pas défini. Fermé avec ce service.
+   */
+  adminClient(): PrismaClient | null {
+    const adminUrl = this.config.DATABASE_ADMIN_URL;
+    if (!adminUrl) return null;
+    this.adminInstance ??= createPrismaClient(adminUrl);
+    return this.adminInstance;
   }
 
   /**
@@ -152,11 +166,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    * `withAdmin` pour rester mockable, exactement comme `withUser`.
    */
   async withAdmin<T>(fn: (tx: PrismaClient) => Promise<T>): Promise<T> {
-    const adminUrl = this.config.DATABASE_ADMIN_URL;
-    if (!adminUrl) {
+    const admin = this.adminClient();
+    if (!admin) {
       throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'DATABASE_ADMIN_URL absent' });
     }
-    this.adminInstance ??= createPrismaClient(adminUrl);
-    return fn(this.adminInstance);
+    return fn(admin);
   }
 }

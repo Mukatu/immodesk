@@ -11,9 +11,91 @@ updates:
         update-types:
           - minor
           - patch
-      major:
+      # Montées majeures, regroupées par domaine
+      nest:
+        patterns:
+          - '@nestjs/*'
+          - 'nestjs-pino'
         update-types:
           - major
+      prisma:
+        patterns:
+          - 'prisma'
+          - '@prisma/*'
+        update-types:
+          - major
+      web-ui:
+        patterns:
+          - 'next'
+          - 'eslint-config-next'
+          - 'tailwindcss'
+          - 'tailwind-merge'
+          - 'lucide-react'
+          - '@tanstack/*'
+          - 'sonner'
+          - '@hookform/*'
+        update-types:
+          - major
+      test:
+        patterns:
+          - 'jest'
+          - '@types/jest'
+          - 'vitest'
+          - '@vitejs/*'
+          - 'jsdom'
+          - '@testing-library/*'
+          - 'msw'
+        update-types:
+          - major
+      lint:
+        patterns:
+          - 'eslint'
+          - '@eslint/*'
+        update-types:
+          - major
+      validation:
+        patterns:
+          - 'zod'
+        update-types:
+          - major
+      runtime:
+        patterns:
+          - 'pino'
+          - 'pino-http'
+          - 'ioredis'
+          - 'uuid'
+        update-types:
+          - major
+      tooling:
+        patterns:
+          - '@commitlint/*'
+          - 'lint-staged'
+          - 'dotenv'
+          - 'tsup'
+          - '@types/node'
+        update-types:
+          - major
+    # Mises à jour majeures écartées : ces écosystèmes ne suivent pas encore.
+    # ts-jest et typescript-eslint bloquent TypeScript 7, @nestjs/swagger aussi ;
+    # eslint-plugin-jsx-a11y bloque ESLint 10 ; @nestjs/throttler bloque NestJS 12.
+    ignore:
+      - dependency-name: 'typescript'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'eslint'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: '@eslint/js'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: '@nestjs/*'
+        update-types:
+          - 'version-update:semver-major'
+      # Aligné sur la version majeure de Node de la CI (node-version: 24 dans
+      # .github/workflows/ci.yml) : les majeures de @types/node suivent Node.
+      - dependency-name: '@types/node'
+        versions:
+          - '>=25'
     open-pull-requests-limit: 5
 
   # Actions GitHub des workflows, regroupées en une seule PR

@@ -286,9 +286,18 @@ describe('Phase 3 — paiements, imputations, avoirs et contre-passation', () =>
   });
 
   it('refuse en SQL brut la modification d’un montant et la suppression d’un paiement', async () => {
-    const payment = await ctx.admin.payments.findFirst({
+    // Cible déterministe : un paiement qui possède au moins une imputation. Un findFirst
+    // sans tri pouvait retomber sur un paiement sans imputation (rejeté, en attente),
+    // et l'UPDATE sur payment_allocations touchait alors 0 ligne sans déclencher le trigger.
+    const allocation = await ctx.admin.payment_allocations.findFirst({
       where: { organization_id: agency.organizationId },
+      orderBy: [{ created_at: 'asc' }, { id: 'asc' }],
     });
+    expect(allocation).toBeDefined();
+    expect(allocation).not.toBeNull();
+    const payment = await ctx.admin.payments.findUnique({ where: { id: allocation?.payment_id } });
+    expect(payment).toBeDefined();
+    expect(payment).not.toBeNull();
     await expect(
       ctx.admin.$executeRawUnsafe(
         `UPDATE payments SET amount = amount + 1 WHERE id = $1::uuid`,

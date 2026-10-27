@@ -12,12 +12,24 @@ import type { MemberRole } from '../../../shared/tenant/tenant-context';
  * donc sa promesse — voir le compte rendu de la phase 8 pour le constat.
  */
 export type SyncOperationType =
-  'CASH_RECEIPT' | 'DOCUMENT' | 'INSPECTION' | 'METER_READING' | 'MAINTENANCE_UPDATE';
+  | 'CASH_RECEIPT'
+  | 'DOCUMENT'
+  | 'INSPECTION'
+  // Depot COMPOSITE d un etat des lieux realise hors ligne (en-tete, postes,
+  // photos et signature en une operation). Le mobile le composait deja alors
+  // que le serveur ne le connaissait pas : tout lot en contenant un etait
+  // refuse en bloc, encaissements compris. Voir
+  // `inspection-submit-operation.handler.ts` pour la divergence assumee avec
+  // le principe « un lot ne porte jamais une operation composite ».
+  | 'INSPECTION_SUBMIT'
+  | 'METER_READING'
+  | 'MAINTENANCE_UPDATE';
 
 export const SYNC_OPERATION_TYPES: readonly SyncOperationType[] = [
   'CASH_RECEIPT',
   'DOCUMENT',
   'INSPECTION',
+  'INSPECTION_SUBMIT',
   'METER_READING',
   'MAINTENANCE_UPDATE',
 ];

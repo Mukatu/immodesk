@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, type Resolver } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 
@@ -15,6 +15,7 @@ import {
   BankTransferFields,
   MobileMoneyAggregatorFields,
   MobileMoneyDeclaredFields,
+  type PaymentMethodsFormInput,
   type PaymentMethodsFormValues,
 } from './_components/payment-methods-fields';
 
@@ -43,9 +44,8 @@ export default function ParametresPaiementsPage() {
   const updateSettings = useUpdatePaymentMethods(currentOrganizationId ?? '');
   const isOwner = currentOrganization?.role === 'OWNER';
 
-  const form = useForm<PaymentMethodsFormValues>({
-    // z.coerce.number() a une entrée « unknown » en zod 4 : on aligne sur le type de sortie.
-    resolver: zodResolver(schema) as unknown as Resolver<PaymentMethodsFormValues>,
+  const form = useForm<PaymentMethodsFormInput, unknown, PaymentMethodsFormValues>({
+    resolver: zodResolver(schema),
     values: settings
       ? {
           mobileMoneyDeclaredEnabled: settings.mobileMoneyDeclared.enabled,

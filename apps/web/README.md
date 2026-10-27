@@ -135,7 +135,7 @@ e2e/                       Scénarios Playwright : phase 0 (login OTP → créat
   accessible au JavaScript du navigateur.
 - L'access token vit uniquement en mémoire côté client (`src/lib/api/token-store.ts`) : perdu au
   rechargement de page, il est alors regénéré silencieusement via le refresh token.
-- `middleware.ts` protège `/app/**` et `/onboarding/**` (présence du cookie de session uniquement ;
+- `proxy.ts` (ex-middleware, renommé en Next 16) protège `/app/**` et `/onboarding/**` (présence du cookie de session uniquement ;
   l'autorisation réelle reste côté API et RLS PostgreSQL).
 
 ## Client API

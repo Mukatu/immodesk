@@ -63,7 +63,7 @@ export default function ConnexionLocatairePage() {
       await verifyOtp(step.phone, code);
       // Posé avant la navigation : un `useEffect` (tenant-session-flag.tsx)
       // arriverait trop tard, après que router.push ait déjà traversé le
-      // middleware (voir tenant-portal-cookie.ts).
+      // proxy (voir tenant-portal-cookie.ts).
       writeTenantPortalSessionFlag();
       router.push('/locataire');
     } catch (err) {

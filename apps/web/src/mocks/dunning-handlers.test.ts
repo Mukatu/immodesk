@@ -25,7 +25,7 @@ const TIMESTAMP = DUNNING_REFERENCE_TODAY.toISOString();
 
 const server = setupServer(...dunningRunHandlers);
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }));
 afterEach(() => {
   server.resetHandlers();
   dunningRuns.clear();

@@ -14,11 +14,10 @@ type PuppeteerModule = typeof import('puppeteer');
  * passant par le registre de modules de l'exécutant — celui de Node en
  * production, celui de Jest en test. Or :
  *
- *   * le runtime CommonJS de Jest 29 ne sait pas charger un module ESM et
- *     échoue dès l'analyse du fichier ;
- *   * `import()` dynamique, dans le contexte VM de Jest, exige le drapeau
- *     `--experimental-vm-modules`, que l'on ne veut pas imposer à toute la
- *     suite d'intégration pour un seul paquet.
+ *   * depuis Jest 30, le runtime CommonJS ne charge un module ESM que sous le
+ *     drapeau `--experimental-vm-modules`, posé par le script `test:integration`
+ *     (Node 22.3+ pour `getBuiltinModule`, Node 24.9+ pour `require(esm)`) ;
+ *   * sans ce drapeau, `import()` dynamique échoue dans le contexte VM de Jest.
  *
  * La solution est `process.getBuiltinModule('module')` (Node 22.3+), qui rend
  * le module natif LUI-MÊME, hors de tout registre de test — `require('node:

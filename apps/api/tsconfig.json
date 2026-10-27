@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "nodenext",
     "target": "ES2023",
     "lib": ["ES2023"],
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
     "declaration": false,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -13,9 +13,10 @@
     "resolveJsonModule": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
+    "rootDir": "./",
     "incremental": true,
     "skipLibCheck": true,
+    "types": ["node", "jest"],
     "isolatedModules": true,
     "strict": true,
     "noImplicitAny": true,
@@ -31,7 +32,7 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src/**/*.ts", "test/**/*.ts", "prisma/*.ts", "scripts/**/*.ts"],

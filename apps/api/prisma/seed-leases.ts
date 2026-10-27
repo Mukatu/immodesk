@@ -9,7 +9,7 @@
  * locataires de Poto-Poto, Bacongo et Makélékélé.
  */
 import type { Prisma, PrismaClient } from '@prisma/client';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../src/shared/ids/uuid';
 import { DEFAULT_CONTRACT_TEMPLATE } from '../src/modules/pdf/domain/contract-template';
 
 export interface LeasesReport {

@@ -1,4 +1,4 @@
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import { MomoReconcileService } from '../../src/modules/mobile-money/application/momo-reconcile.service';
 import { api, startTestApp, stopTestApp, type TestContext } from './helpers';
 import {

@@ -7,7 +7,7 @@
  * donc pas se placer dans un unique contexte de tenant.
  */
 import { PrismaClient } from '@prisma/client';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../src/shared/ids/uuid';
 import { seedBilling } from './seed-billing';
 import { seedLeases } from './seed-leases';
 import { seedPhase4 } from './seed-phase4';

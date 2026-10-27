@@ -11,7 +11,7 @@ const PROTECTED_PREFIXES = ['/app', '/onboarding'];
 /** `/portail/activer` reste public : c'est le point d'entrée avant toute session portail. */
 const PORTAL_PUBLIC_PREFIX = '/portail/activer';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   if (
@@ -27,7 +27,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Portail locataire : session OTP sans cookie serveur (voir tenant-auth-context.tsx).
-  // Le middleware ne peut donc pas lire l'access token — il lit uniquement le
+  // Le proxy ne peut donc pas lire l'access token — il lit uniquement le
   // drapeau non sensible posé côté client (voir tenant-portal-cookie.ts).
   if (
     pathname === '/locataire' ||

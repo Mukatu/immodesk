@@ -9,7 +9,7 @@ import {
 } from '@/app/locataire/_lib/tenant-portal-cookie';
 
 /**
- * Ne rend rien : pose ou retire le cookie non sensible que `middleware.ts`
+ * Ne rend rien : pose ou retire le cookie non sensible que `proxy.ts`
  * lit pour protéger `/locataire/*` (voir tenant-portal-cookie.ts pour le
  * pourquoi — la session réelle vit uniquement en mémoire/`sessionStorage`,
  * jamais en cookie). Couvre les changements de statut hors navigation

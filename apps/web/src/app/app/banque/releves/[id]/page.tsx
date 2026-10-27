@@ -143,9 +143,7 @@ export default function RelevesBancaireDetailPage() {
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
 
   // Cf. apps/web/src/app/app/baux/page.tsx (modèle).
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedLineId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedLineId !== null) setSelectedLineId(null);
 
   function handleRowSelect(line: StatementLine) {
     setSelectedLineId(line.id);

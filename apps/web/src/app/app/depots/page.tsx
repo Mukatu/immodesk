@@ -88,9 +88,7 @@ export default function DepotsPage() {
     setPreviousCursors([]);
   }
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedDepositId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedDepositId !== null) setSelectedDepositId(null);
 
   function handleRowSelect(deposit: DepositSummary) {
     setSelectedDepositId(deposit.id);

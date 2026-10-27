@@ -46,9 +46,7 @@ export default function ImmeubleDetailPage() {
   const { data: property, isLoading, error } = useProperty(id);
   const unitColumns = React.useMemo(() => createUnitColumns(), []);
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedUnitId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedUnitId !== null) setSelectedUnitId(null);
 
   function handleUnitRowSelect(unit: Unit) {
     setSelectedUnitId(unit.id);

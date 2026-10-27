@@ -58,9 +58,7 @@ export default function DunningHistoryPage() {
   const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
 
   // Cf. apps/web/src/app/app/baux/page.tsx (modèle).
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedRunId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedRunId !== null) setSelectedRunId(null);
 
   function handleRowSelect(run: DunningRun) {
     setSelectedRunId(run.id);

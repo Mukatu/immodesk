@@ -591,9 +591,7 @@ export default function RapprochementBancairePage() {
   const accounts = useBankAccounts();
 
   // Cf. apps/web/src/app/app/baux/page.tsx (modèle).
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setContextLineId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && contextLineId !== null) setContextLineId(null);
 
   function handleRowSelect(line: StatementLine) {
     setContextLineId(line.id);

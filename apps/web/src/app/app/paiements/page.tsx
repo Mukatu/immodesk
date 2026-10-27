@@ -71,9 +71,7 @@ export default function PaiementsPage() {
     });
   }
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedPaymentId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedPaymentId !== null) setSelectedPaymentId(null);
 
   function handleRowSelect(payment: PaymentSummary) {
     setSelectedPaymentId(payment.id);

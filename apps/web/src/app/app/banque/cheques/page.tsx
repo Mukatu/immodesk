@@ -52,9 +52,7 @@ export default function ChequesPage() {
 
   // Cf. apps/web/src/app/app/baux/page.tsx (modèle) : la ligne dont le panneau
   // contextuel affiche le détail reste visuellement repérable tant qu'il reste ouvert.
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedCheckId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedCheckId !== null) setSelectedCheckId(null);
 
   function handleRowSelect(check: BankCheck) {
     setSelectedCheckId(check.id);

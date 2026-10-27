@@ -122,6 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydratation de la session au montage depuis le serveur (cookie de rafraîchissement), asynchrone
     void hydrate();
   }, [hydrate]);
 

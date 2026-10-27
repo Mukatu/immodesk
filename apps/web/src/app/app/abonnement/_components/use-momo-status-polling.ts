@@ -17,12 +17,20 @@ export function useMomoStatusPolling(transactionId: string | null, initialStatus
   const [secondsRemaining, setSecondsRemaining] = React.useState(POLL_INTERVAL_SECONDS);
   const refresh = useRefreshMomoTransaction(transactionId ?? '');
   const refreshRef = React.useRef(refresh);
-  refreshRef.current = refresh;
-
   React.useEffect(() => {
+    refreshRef.current = refresh;
+  });
+
+  // Réinitialise le suivi quand la transaction ou son statut initial change (pendant le rendu).
+  const [synced, setSynced] = React.useState<{
+    transactionId: string | null;
+    initialStatus: MomoStatus;
+  } | null>(null);
+  if (synced?.transactionId !== transactionId || synced.initialStatus !== initialStatus) {
+    setSynced({ transactionId, initialStatus });
     setStatus(initialStatus);
     setSecondsRemaining(POLL_INTERVAL_SECONDS);
-  }, [transactionId, initialStatus]);
+  }
 
   const isWaiting = Boolean(transactionId) && WAITING_STATUSES.includes(status);
 
@@ -31,7 +39,6 @@ export function useMomoStatusPolling(transactionId: string | null, initialStatus
 
     let cancelled = false;
     let remaining = POLL_INTERVAL_SECONDS;
-    setSecondsRemaining(remaining);
 
     const tick = window.setInterval(() => {
       remaining -= 1;

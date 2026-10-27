@@ -84,17 +84,17 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Stockage objet compatible S3 pour les tests du module documents.
-      # Lancé en étape (et non en service) car l'image officielle exige la
-      # commande `server /data`, que les services GitHub Actions ne permettent pas.
+      # Image Bitnami (Docker Hub, sans authentification) : quay.io/minio et
+      # docker.io/minio ne sont plus accessibles anonymement. Le bucket est créé
+      # par MINIO_DEFAULT_BUCKETS, donc plus besoin du client mc.
       - name: Start MinIO
         run: |
-          docker run -d --name minio -p 9000:9000             -e MINIO_ROOT_USER=immodesk -e MINIO_ROOT_PASSWORD=immodesk123             quay.io/minio/minio:latest server /data
+          docker run -d --name minio -p 9000:9000             -e MINIO_ROOT_USER=immodesk -e MINIO_ROOT_PASSWORD=immodesk123             -e MINIO_DEFAULT_BUCKETS=immodesk             docker.io/bitnamilegacy/minio:2025.7.23-debian-12-r0
           for i in $(seq 1 30); do
             if curl -sf http://localhost:9000/minio/health/live >/dev/null; then echo "MinIO prêt"; break; fi
             sleep 2
           done
           curl -sf http://localhost:9000/minio/health/live >/dev/null || { echo "MinIO indisponible"; docker logs minio; exit 1; }
-          docker run --rm --network host --entrypoint sh quay.io/minio/mc:latest -c             "mc alias set local http://localhost:9000 immodesk immodesk123 && mc mb --ignore-existing local/immodesk"
 
       # postgresql-client (psql) is preinstalled on GitHub's ubuntu-latest
       # runners, so no apt-get install step is needed here.
@@ -144,6 +144,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Gradle 8.14 / AGP 8.11 / Kotlin 2.2.20 ne savent pas analyser le JDK 25
+      # présent par défaut sur le runner ; on épingle le JDK 17.
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
       # Aligned with the local toolchain (Flutter 3.41.6 / Dart 3.11.4); the
       # dependency pins in apps/mobile/pubspec.yaml assume this exact SDK.

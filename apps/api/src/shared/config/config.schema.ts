@@ -267,6 +267,31 @@ export const configSchema = z
     REFERRAL_DEFAULT_PROGRAM_CODE: z.string().default('IMD-STD'),
 
     // --- Observabilité ---------------------------------------------------
+    // --- Phase 11 : sécurité, reprise d'activité, vie privée, go-live ---
+    READ_ONLY_MODE_BOOTSTRAP: booleanish.default(false),
+    ADMIN_DB_ROLE: z.string().default('immodesk_admin'),
+    ADMIN_DB_POOL_MAX: z.coerce.number().int().positive().default(4),
+    SECURITY_API_KEY_ROTATION_GRACE_HOURS: z.coerce.number().int().positive().default(24),
+    SECURITY_MAX_API_KEYS_PER_ORG: z.coerce.number().int().positive().default(10),
+    SECURITY_REVOKE_ALL_REQUIRES_OTP: booleanish.default(true),
+    SECURITY_ACCESS_TOKEN_GRACE_SECONDS: z.coerce.number().int().positive().default(900),
+    SECURITY_DENIAL_LOOKBACK_DAYS: z.coerce.number().int().positive().default(365),
+    PRIVACY_PURGE_CRON_ENABLED: booleanish.default(true),
+    PRIVACY_RETENTION_IDENTITY_MONTHS: z.coerce.number().int().positive().default(60),
+    PRIVACY_RETENTION_MESSAGE_LOGS_DAYS: z.coerce.number().int().positive().default(365),
+    PRIVACY_RETENTION_NOTIFICATIONS_DAYS: z.coerce.number().int().positive().default(365),
+    PRIVACY_RETENTION_AUDIT_MONTHS: z.coerce.number().int().positive().default(120),
+    PRIVACY_RETENTION_FINANCIAL_YEARS: z.coerce.number().int().positive().default(10),
+    PRIVACY_ANONYMIZED_PHONE: z.string().default('+242000000000'),
+    PRIVACY_ANONYMIZED_NAME: z.string().default('Tiers anonymisé'),
+    PRIVACY_EXPORT_RETENTION_DAYS: z.coerce.number().int().positive().default(7),
+    PRIVACY_EXPORT_LINK_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+    PRIVACY_LEGAL_VERSION: z.string().default('2026-09'),
+    PRIVACY_DPO_CONTACT: z.string().optional(),
+    GO_LIVE_WAVE_MAX_ORGANIZATIONS: z.coerce.number().int().positive().default(25),
+    GO_LIVE_ANOMALY_DENIALS_PER_DAY: z.coerce.number().int().positive().default(20),
+    STATUS_PAGE_ENABLED: booleanish.default(true),
+
     SENTRY_DSN: z.string().optional(),
     SWAGGER_ENABLED: booleanish.default(true),
   })

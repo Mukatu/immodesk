@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Optional, Inject, Injectable } from '@nestjs/common';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
@@ -14,6 +14,10 @@ import {
   type ExportDashboardKind,
   type ExportKind,
 } from '../presentation/dto/reporting.dto';
+import {
+  EXPORT_STATUS_FALLBACKS,
+  type ExportStatusFallback,
+} from '../../../shared/exports/export-status-fallback.port';
 import { EXPORT_QUEUE, type ExportQueuePort } from '../domain/export-queue.port';
 import { ArrearsDashboardService } from './arrears-dashboard.service';
 import { CollectionRateDashboardService } from './collection-rate-dashboard.service';
@@ -95,6 +99,11 @@ export class ExportsService {
     private readonly vacancy: VacancyDashboardService,
     private readonly paymentMethods: PaymentMethodsDashboardService,
     @Inject(EXPORT_QUEUE) private readonly queue: ExportQueuePort,
+    // Files d autres modules (phase 11 : exports de conformite). Optionnel :
+    // aucun module producteur n est requis pour que les exports CSV marchent.
+    @Optional()
+    @Inject(EXPORT_STATUS_FALLBACKS)
+    private readonly fallbacks: ExportStatusFallback[] | null = null,
   ) {}
 
   async create(
@@ -135,7 +144,18 @@ export class ExportsService {
    * introuvable (404, jamais 403 — même convention que pour un document).
    */
   async jobStatus(organizationId: string, jobId: string): Promise<ExportJobStatusView> {
-    const view = await this.queue.status(jobId);
+    let view: Awaited<ReturnType<ExportQueuePort['status']>> = await this.queue.status(jobId);
+    // Le contrat interdit une route de suivi jumelle : les travaux des autres
+    // modules se consultent donc ICI (voir le port partage).
+    if (!view) {
+      for (const fallback of this.fallbacks ?? []) {
+        const found = await fallback.status(jobId);
+        if (found) {
+          view = found;
+          break;
+        }
+      }
+    }
     if (!view || view.organizationId !== organizationId) {
       throw new DomainError('EXPORTS.JOB_NOT_FOUND', { jobId });
     }

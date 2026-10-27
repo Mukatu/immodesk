@@ -35,6 +35,8 @@ import { PortfolioImportsModule } from './modules/portfolio-imports/portfolio-im
 import { ReceiptsModule } from './modules/receipts/receipts.module';
 import { ReconciliationModule } from './modules/reconciliation/reconciliation.module';
 import { ReferralModule } from './modules/referral/referral.module';
+import { PrivacyModule } from './modules/privacy/privacy.module';
+import { SecurityModule } from './modules/security/security.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { TenantAuthModule } from './modules/tenant-auth/tenant-auth.module';
 import { TenantPortalModule } from './modules/tenant-portal/tenant-portal.module';
@@ -48,6 +50,8 @@ import { AppConfigModule } from './shared/config/config.module';
 import { DomainExceptionFilter } from './shared/errors/domain-exception.filter';
 import { AppLoggerModule } from './shared/logger/logger.module';
 import { PrismaModule } from './shared/prisma/prisma.module';
+import { ReadOnlyGuard } from './shared/read-only/read-only.guard';
+import { ReadOnlyModule } from './shared/read-only/read-only.module';
 import { RedisModule } from './shared/redis/redis.module';
 import { AppThrottlerModule } from './shared/throttler/throttler.module';
 import { OrganizationGuard } from './shared/tenant/organization.guard';
@@ -67,6 +71,7 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     PrismaModule,
     RedisModule,
     AppThrottlerModule,
+    ReadOnlyModule,
     AuditModule,
     NotificationsModule,
     IdentityModule,
@@ -169,11 +174,26 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     TenantAuthModule,
     TenantPortalModule,
     ReferralModule,
+    // Phase 11 — centre de securite. Aucune table propre : il lit
+    // `refresh_tokens`, `api_keys` et `audit_logs`, tous possedes par
+    // d autres modules. Il consomme `OtpAuthService` (identity, `@Global()`)
+    // pour delivrer le code d action sensible qu exige la revocation globale.
+    SecurityModule,
+    // Phase 11 — conformite des donnees personnelles : exports, effacement,
+    // registre des traitements, parametres et portail locataire. Aucune table
+    // propre : l effacement anonymise des tiers existants et journalise dans
+    // `audit_logs`, qui n est jamais touche.
+    PrivacyModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: OrganizationGuard },
+    // Apres les gardes d identite : inutile de consulter l etat du gel pour une
+    // requete qui sera de toute facon refusee faute d authentification ou de
+    // role. Refuse les ecritures par 503 PLATFORM.READ_ONLY pendant un gel,
+    // sauf la liste limitative du contrat (phase 11).
+    { provide: APP_GUARD, useClass: ReadOnlyGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
     { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
   ],

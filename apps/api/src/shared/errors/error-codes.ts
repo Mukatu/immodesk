@@ -6,6 +6,55 @@
  * Référence : docs/api/phase0-contract.md.
  */
 export const ERROR_CATALOG = {
+  // --- Domaine SECURITY (phase 11 : centre de sécurité) -----------------
+  'SECURITY.SESSION_NOT_FOUND': { status: 404, message: 'Session introuvable.' },
+  'SECURITY.API_KEY_NOT_FOUND': { status: 404, message: 'Clé d’API introuvable.' },
+  'SECURITY.API_KEY_REVOKED': {
+    status: 409,
+    message:
+      'Cette clé d’API est déjà révoquée : créez-en une nouvelle plutôt que de la faire tourner.',
+  },
+  'SECURITY.API_KEY_LIMIT_REACHED': {
+    status: 409,
+    message: 'Nombre maximal de clés d’API atteint pour cette organisation.',
+  },
+  'SECURITY.SENSITIVE_ACTION_OTP_REQUIRED': {
+    status: 403,
+    message: 'Cette action exige une confirmation par code à usage unique.',
+  },
+
+  // --- Domaine PRIVACY (phase 11 : données personnelles) ----------------
+  'PRIVACY.SUBJECT_NOT_FOUND': { status: 404, message: 'Personne concernée introuvable.' },
+  'PRIVACY.SUBJECT_TYPE_INVALID': { status: 422, message: 'Type de personne concernée invalide.' },
+  'PRIVACY.ERASURE_NOT_ELIGIBLE': {
+    status: 409,
+    message: 'Cet effacement est irrecevable : des obligations de conservation s’y opposent.',
+  },
+  'PRIVACY.ERASURE_ALREADY_RUNNING': {
+    status: 409,
+    message: 'Un effacement est déjà en cours pour cette personne.',
+  },
+  'PRIVACY.EXPORT_ALREADY_RUNNING': {
+    status: 409,
+    message: 'Un export est déjà en cours pour cette organisation.',
+  },
+  'PRIVACY.CONSENT_VERSION_UNKNOWN': {
+    status: 422,
+    message: 'Version des mentions légales inconnue.',
+  },
+  'PRIVACY.LAST_CHANNEL_PROTECTED': {
+    status: 422,
+    message: 'Impossible de fermer le dernier canal joignable : vous ne seriez plus atteignable.',
+  },
+  'PRIVACY.REGISTER_UNAVAILABLE': {
+    status: 503,
+    message: 'Registre des traitements indisponible.',
+  },
+  'PRIVACY.CONSENT_REQUIRED': {
+    status: 403,
+    message: 'Acceptez les mentions légales en vigueur pour continuer.',
+  },
+
   // --- Domaine IAM (authentification, jetons, clés d'API) ---------------
   'IAM.OTP_INVALID': { status: 401, message: 'Code incorrect.' },
   'IAM.OTP_EXPIRED': { status: 401, message: 'Ce code a expiré. Demandez-en un nouveau.' },
@@ -539,6 +588,34 @@ export const ERROR_CATALOG = {
     status: 500,
     message: "Contexte d'organisation absent : requête refusée.",
   },
+  // 503 et non 403 : un 403 dirait « votre rôle ne le permet pas », et le
+  // client mobile en déduirait que sa saisie est perdue — il pourrait purger
+  // sa file hors ligne. Un 503 assorti de Retry-After dit la vérité (le
+  // service est gelé, réessayez) et préserve la file locale, ce que la
+  // phase 5 exige. Arbitrage 12 du contrat de la phase 11.
+  'PLATFORM.READ_ONLY': {
+    status: 503,
+    message: 'Plateforme temporairement en lecture seule. Réessayez plus tard.',
+  },
+  'PLATFORM.READ_ONLY_ALREADY_SET': {
+    status: 409,
+    message: 'La plateforme est déjà en lecture seule.',
+  },
+  'PLATFORM.FLAG_KEY_UNKNOWN': { status: 404, message: 'Clé de drapeau inconnue.' },
+  'PLATFORM.SECURITY_CLEARANCE_MISSING': {
+    status: 409,
+    message: 'Mise en service impossible : la clôture de l’audit de sécurité n’est pas prononcée.',
+  },
+  'PLATFORM.WAVE_UNKNOWN': { status: 404, message: 'Vague de mise en service inconnue.' },
+  'PLATFORM.WAVE_TOO_LARGE': {
+    status: 422,
+    message: 'Vague trop large : réduisez le nombre d’organisations.',
+  },
+  'PLATFORM.INCIDENT_ALREADY_OPEN': {
+    status: 409,
+    message: 'Un incident est déjà ouvert : mettez-le à jour plutôt que d’en déclarer un second.',
+  },
+  'PLATFORM.INCIDENT_NOT_FOUND': { status: 404, message: 'Aucun incident en cours.' },
 
   // --- Domaine AGENCY (mandats, dépenses, commissions, relevés, reversements,
   // portail bailleur, phase 7) --------------------------------------------

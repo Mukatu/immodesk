@@ -7932,8 +7932,604 @@
             }
           }
         },
+        "summary": "Sonde de vivacité",
+        "tags": ["Plateforme"]
+      }
+    },
+    "/v1/health/ready": {
+      "get": {
+        "description": "Vérifie séparément la base, Redis, le stockage objet et l’agrégateur Mobile Money. Répond 503 dès qu’une dépendance indispensable manque (docs/api/phase11-contract.md, § 11.F).",
+        "operationId": "HealthController_ready",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            }
+          }
+        },
         "summary": "Sonde de disponibilité",
         "tags": ["Plateforme"]
+      }
+    },
+    "/v1/status": {
+      "get": {
+        "description": "Source du bandeau permanent (`readOnly`) : sondes de disponibilité, incident courant, maintenance annoncée. Ne nomme aucune organisation ni aucun tiers.",
+        "operationId": "PlatformPublicController_getStatus",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "État public de la plateforme",
+        "tags": ["Plateforme"]
+      }
+    },
+    "/v1/legal": {
+      "get": {
+        "operationId": "PlatformPublicController_getLegal",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalTermsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Mentions légales et politique de confidentialité",
+        "tags": ["Plateforme"]
+      }
+    },
+    "/v1/admin/read-only-mode": {
+      "post": {
+        "operationId": "PlatformAdminController_setReadOnlyMode",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetReadOnlyModeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadOnlyStateResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PLATFORM.READ_ONLY_ALREADY_SET"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bascule en lecture seule (§ 11.C)",
+        "tags": ["Plateforme — administration"]
+      }
+    },
+    "/v1/admin/feature-flags": {
+      "get": {
+        "operationId": "PlatformAdminController_listFeatureFlags",
+        "parameters": [
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "organizationId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Liste paginée des drapeaux",
+        "tags": ["Plateforme — administration"]
+      }
+    },
+    "/v1/admin/feature-flags/{key}": {
+      "post": {
+        "operationId": "PlatformAdminController_updateFeatureFlag",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFeatureFlagBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateFeatureFlagResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PLATFORM.FLAG_KEY_UNKNOWN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crée ou met à jour un drapeau",
+        "tags": ["Plateforme — administration"]
+      }
+    },
+    "/v1/admin/go-live/waves/{wave}/activate": {
+      "post": {
+        "operationId": "PlatformAdminController_activateWave",
+        "parameters": [
+          {
+            "name": "wave",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateWaveBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivateWaveResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PLATFORM.SECURITY_CLEARANCE_MISSING"
+          },
+          "422": {
+            "description": "PLATFORM.WAVE_TOO_LARGE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Active une vague de go-live",
+        "tags": ["Plateforme — administration"]
+      }
+    },
+    "/v1/admin/go-live/waves/{wave}/rollback": {
+      "post": {
+        "operationId": "PlatformAdminController_rollbackWave",
+        "parameters": [
+          {
+            "name": "wave",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RollbackWaveResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PLATFORM.WAVE_UNKNOWN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retour arrière d’une vague de go-live",
+        "tags": ["Plateforme — administration"]
+      }
+    },
+    "/v1/admin/go-live/board": {
+      "get": {
+        "operationId": "PlatformAdminController_board",
+        "parameters": [
+          {
+            "name": "wave",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["MIGRATED", "PENDING", "ANOMALY"]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoLiveBoardDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PLATFORM.WAVE_UNKNOWN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tableau de suivi du go-live, entièrement dérivé",
+        "tags": ["Plateforme — administration"]
+      }
+    },
+    "/v1/admin/incidents": {
+      "post": {
+        "operationId": "PlatformAdminController_declareIncident",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeclareIncidentBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformIncidentDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PLATFORM.INCIDENT_ALREADY_OPEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Déclare un incident de plateforme",
+        "tags": ["Plateforme — administration"]
+      }
+    },
+    "/v1/admin/incidents/current/updates": {
+      "post": {
+        "operationId": "PlatformAdminController_addIncidentUpdate",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddIncidentUpdateBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformIncidentDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PLATFORM.INCIDENT_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ajoute une mise à jour à l’incident courant",
+        "tags": ["Plateforme — administration"]
+      }
+    },
+    "/v1/admin/incidents/current/resolve": {
+      "post": {
+        "operationId": "PlatformAdminController_resolveIncident",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformIncidentDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PLATFORM.INCIDENT_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Résout l’incident courant",
+        "tags": ["Plateforme — administration"]
       }
     },
     "/v1/subscription-plans": {
@@ -16928,6 +17524,1140 @@
         "summary": "Abonnements PAST_DUE, proches de la suspension",
         "tags": ["Apport d’affaires — administration plateforme"]
       }
+    },
+    "/v1/me/security/sessions": {
+      "get": {
+        "operationId": "SessionsController_list",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sessions actives de l’utilisateur connecté",
+        "tags": ["Sécurité — sessions"]
+      }
+    },
+    "/v1/me/security/sessions/{id}": {
+      "delete": {
+        "description": "Idempotent : révoquer une famille déjà révoquée renvoie 204, jamais une erreur.",
+        "operationId": "SessionsController_revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": "SECURITY.SESSION_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Révoquer une session (famille entière)",
+        "tags": ["Sécurité — sessions"]
+      }
+    },
+    "/v1/me/security/sessions/revoke-all": {
+      "post": {
+        "description": "Déconnecte l’utilisateur de tous ses appareils et de toutes ses organisations. Un jeton d’accès déjà délivré reste valable jusqu’à `accessTokenGraceSeconds`.",
+        "operationId": "SessionsController_revokeAll",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokeAllSessionsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Révocation globale personnelle",
+        "tags": ["Sécurité — sessions"]
+      }
+    },
+    "/v1/me/security/otp": {
+      "post": {
+        "description": "Envoie un code à 6 chiffres sur le numéro du compte connecté, à présenter dans l’en-tête `X-Otp-Code` d’une action sensible (révocation globale d’organisation). Reste accessible pendant un gel en lecture seule, sans quoi la révocation — elle-même autorisée pendant un gel — serait impossible à déclencher.",
+        "operationId": "SensitiveActionOtpController_request",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SensitiveActionOtpRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SensitiveActionOtpResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "IAM.RATE_LIMITED ou IAM.OTP_RESEND_TOO_SOON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Demander un code de confirmation pour action sensible",
+        "tags": ["Sécurité — sessions"]
+      }
+    },
+    "/v1/organizations/{id}/security": {
+      "get": {
+        "operationId": "SecurityController_get",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityCenterDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Centre de sécurité de l’organisation",
+        "tags": ["Sécurité — organisation"]
+      }
+    },
+    "/v1/organizations/{id}/security/api-keys": {
+      "get": {
+        "operationId": "SecurityController_listApiKeys",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lister les clés d’API",
+        "tags": ["Sécurité — organisation"]
+      },
+      "post": {
+        "description": "Le secret n’est rendu qu’une seule fois, dans cette réponse.",
+        "operationId": "SecurityController_createApiKey",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyCreatedResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "SECURITY.API_KEY_LIMIT_REACHED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Créer une clé d’API",
+        "tags": ["Sécurité — organisation"]
+      }
+    },
+    "/v1/organizations/{id}/security/api-keys/{keyId}/rotate": {
+      "post": {
+        "description": "Reprend nom, scopes et adresses autorisées. L’ancienne clé reste ACTIVE jusqu’à `SECURITY_API_KEY_ROTATION_GRACE_HOURS` (0 = coupure immédiate).",
+        "operationId": "SecurityController_rotateApiKey",
+        "parameters": [
+          {
+            "name": "keyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyRotatedResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SECURITY.API_KEY_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "SECURITY.API_KEY_REVOKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Faire tourner une clé d’API",
+        "tags": ["Sécurité — organisation"]
+      }
+    },
+    "/v1/organizations/{id}/security/api-keys/{keyId}": {
+      "delete": {
+        "operationId": "SecurityController_revokeApiKey",
+        "parameters": [
+          {
+            "name": "keyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": "SECURITY.API_KEY_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Révoquer une clé d’API",
+        "tags": ["Sécurité — organisation"]
+      }
+    },
+    "/v1/organizations/{id}/security/revoke-all": {
+      "post": {
+        "description": "Déconnecte tous les membres actifs et révoque toutes les clés d’API.",
+        "operationId": "SecurityController_revokeAll",
+        "parameters": [
+          {
+            "name": "X-Otp-Code",
+            "in": "header",
+            "description": "Code à usage unique, motif SENSITIVE_ACTION.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgRevokeAllResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SECURITY.SENSITIVE_ACTION_OTP_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Révocation globale de l’organisation",
+        "tags": ["Sécurité — organisation"]
+      }
+    },
+    "/v1/organizations/{id}/security/access-denials": {
+      "get": {
+        "description": "Fenêtre bornée par SECURITY_DENIAL_LOOKBACK_DAYS.",
+        "operationId": "SecurityController_listAccessDenials",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "IAM.FORBIDDEN",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessDenialPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Journal des accès refusés",
+        "tags": ["Sécurité — organisation"]
+      }
+    },
+    "/v1/organizations/{id}/audit-logs": {
+      "get": {
+        "description": "Filtrable par acteur, entité, opération, période et action ; paginé au curseur. `previousState`/`newState` sont renvoyés tels quels.",
+        "operationId": "AuditLogsController_list",
+        "parameters": [
+          {
+            "name": "actorUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "operation",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE",
+                "STATE_TRANSITION",
+                "LOGIN",
+                "EXPORT",
+                "IMPORT",
+                "ACCESS_DENIED"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Journal d'audit",
+        "tags": ["Sécurité — audit"]
+      }
+    },
+    "/v1/organizations/{id}/data-export": {
+      "post": {
+        "description": "Tout ce que porte `organization_id` (tables métier, journaux, documents), archivé en ZIP (un CSV par table + `manifest.json`). `202 { jobId }` ; `409 PRIVACY.EXPORT_ALREADY_RUNNING` si un export est déjà en cours pour cette organisation.",
+        "operationId": "OrganizationDataExportController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "{ jobId }"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Export de réversibilité de l'organisation",
+        "tags": ["Vie privée — export"]
+      }
+    },
+    "/v1/privacy/subject-exports": {
+      "post": {
+        "operationId": "SubjectExportsController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubjectRefDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "{ jobId }"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Export des données d'une personne (tenant, landlord, guarantor ou user)",
+        "tags": ["Vie privée — export"]
+      }
+    },
+    "/v1/privacy/erasure-requests/preview": {
+      "post": {
+        "description": "Liste exacte de ce qui serait anonymisé, supprimé et conservé — même discipline que `dryRun` (phase 9). `404 PRIVACY.SUBJECT_NOT_FOUND` ; `422 PRIVACY.SUBJECT_TYPE_INVALID`.",
+        "operationId": "ErasureRequestsController_preview",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubjectRefDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ErasurePreview"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Simule un effacement sans rien écrire",
+        "tags": ["Vie privée — effacement"]
+      }
+    },
+    "/v1/privacy/erasure-requests": {
+      "post": {
+        "description": "`409 PRIVACY.ERASURE_NOT_ELIGIBLE` avec le motif dans `details` ; `409 PRIVACY.ERASURE_ALREADY_RUNNING` si un effacement est déjà en cours sur ce tiers. Exécution idempotente : un tiers déjà anonymisé n’est jamais réécrit.",
+        "operationId": "ErasureRequestsController_create",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubjectRefDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "{ jobId }"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Demande un effacement (recevabilité vérifiée avant toute écriture)",
+        "tags": ["Vie privée — effacement"]
+      }
+    },
+    "/v1/privacy/erasure-requests/{jobId}": {
+      "get": {
+        "operationId": "ErasureRequestsController_report",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ErasureReport"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rapport d'un effacement de fond",
+        "tags": ["Vie privée — effacement"]
+      }
+    },
+    "/v1/privacy/processing-register": {
+      "get": {
+        "operationId": "ProcessingRegisterController_get",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Si présent et que l’appelant en est membre, joint la section `organization` (DPO, durées).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ProcessingRegister"
+          },
+          "503": {
+            "description": "PRIVACY.REGISTER_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registre des traitements",
+        "tags": ["Vie privée — registre"]
+      }
+    },
+    "/v1/organizations/{id}/privacy-settings": {
+      "get": {
+        "operationId": "PrivacySettingsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PrivacySettings"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Paramètres de conformité (durées de conservation, référent DPO)",
+        "tags": ["Vie privée — paramètres"]
+      },
+      "patch": {
+        "operationId": "PrivacySettingsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacySettingsPatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PrivacySettings"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Met à jour les paramètres de conformité",
+        "tags": ["Vie privée — paramètres"]
+      }
+    },
+    "/v1/tenant/privacy/me": {
+      "get": {
+        "operationId": "TenantPrivacyController_me",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "TenantPrivacyState"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "État de confidentialité du locataire connecté",
+        "tags": ["Portail locataire — vie privée"]
+      }
+    },
+    "/v1/tenant/privacy/consents": {
+      "post": {
+        "operationId": "TenantPrivacyController_acceptConsent",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantConsentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "{ legalVersion, acceptedAt }"
+          },
+          "422": {
+            "description": "PRIVACY.CONSENT_VERSION_UNKNOWN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accepte les mentions légales en vigueur",
+        "tags": ["Portail locataire — vie privée"]
+      }
+    },
+    "/v1/tenant/privacy/channels/{id}": {
+      "patch": {
+        "operationId": "TenantPrivacyController_updateChannel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantChannelPatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ContactChannel"
+          },
+          "422": {
+            "description": "PRIVACY.LAST_CHANNEL_PROTECTED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ouvre ou ferme un canal de contact",
+        "tags": ["Portail locataire — vie privée"]
+      }
+    },
+    "/v1/tenant/privacy/erasure-requests": {
+      "post": {
+        "description": "Notifie les OWNER de chaque organisation et journalise la demande ; la validation reste au gestionnaire.",
+        "operationId": "TenantPrivacyController_requestErasure",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "{ requestRef }"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Demande un effacement (une demande, jamais une exécution)",
+        "tags": ["Portail locataire — vie privée"]
+      }
     }
   },
   "info": {
@@ -17398,9 +19128,22 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "isPlatformAdmin": {
+            "type": "boolean",
+            "description": "Administrateur de la plateforme Immodesk (l'editeur), et non de l'organisation cliente. Sert a masquer le back-office cote interface ; l'autorisation reelle reste serveur (PlatformAdminGuard)."
           }
         },
-        "required": ["id", "phone", "fullName", "email", "locale", "timezone", "createdAt"]
+        "required": [
+          "id",
+          "phone",
+          "fullName",
+          "email",
+          "locale",
+          "timezone",
+          "createdAt",
+          "isPlatformAdmin"
+        ]
       },
       "OrganizationDto": {
         "type": "object",
@@ -26320,6 +28063,462 @@
         },
         "required": ["status", "checks"]
       },
+      "ReadOnlyStateDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "object",
+            "nullable": true
+          },
+          "since": {
+            "type": "object",
+            "nullable": true
+          },
+          "expectedEndAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "incidentRef": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": ["enabled", "reason", "since", "expectedEndAt", "incidentRef"]
+      },
+      "PlatformHealthChecksDto": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string"
+          },
+          "redis": {
+            "type": "string"
+          },
+          "storage": {
+            "type": "string"
+          },
+          "mobileMoney": {
+            "type": "string"
+          }
+        },
+        "required": ["database", "redis", "storage", "mobileMoney"]
+      },
+      "IncidentUpdateEntryDto": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["at", "message"]
+      },
+      "PlatformIncidentDto": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["MINOR", "MAJOR", "CRITICAL"]
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "resolvedAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "updates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncidentUpdateEntryDto"
+            }
+          }
+        },
+        "required": ["reference", "title", "severity", "startedAt", "resolvedAt", "updates"]
+      },
+      "PlannedMaintenanceDto": {
+        "type": "object",
+        "properties": {
+          "startsAt": {
+            "type": "string"
+          },
+          "endsAt": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["startsAt", "endsAt", "message"]
+      },
+      "PlatformStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ok", "degraded", "down"]
+          },
+          "readOnly": {
+            "$ref": "#/components/schemas/ReadOnlyStateDto"
+          },
+          "checks": {
+            "$ref": "#/components/schemas/PlatformHealthChecksDto"
+          },
+          "incident": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlatformIncidentDto"
+              }
+            ]
+          },
+          "plannedMaintenance": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlannedMaintenanceDto"
+              }
+            ]
+          }
+        },
+        "required": ["status", "readOnly", "checks"]
+      },
+      "LegalDocumentDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": ["TERMS", "PRIVACY_POLICY"]
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "title", "body", "updatedAt"]
+      },
+      "LegalTermsDto": {
+        "type": "object",
+        "properties": {
+          "legalVersion": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string",
+            "enum": ["fr-CG"]
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LegalDocumentDto"
+            }
+          },
+          "dpoContact": {
+            "type": "object",
+            "nullable": true
+          },
+          "supportContact": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": ["legalVersion", "publishedAt", "locale", "documents"]
+      },
+      "SetReadOnlyModeDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Obligatoire à l’activation."
+          },
+          "expectedEndAt": {
+            "type": "string"
+          },
+          "incidentRef": {
+            "type": "string"
+          }
+        },
+        "required": ["enabled"]
+      },
+      "ReadOnlyStateResponseDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "object",
+            "nullable": true
+          },
+          "since": {
+            "type": "object",
+            "nullable": true
+          },
+          "expectedEndAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "incidentRef": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": ["enabled", "reason", "since", "expectedEndAt", "incidentRef"]
+      },
+      "FeatureFlagDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "rolloutPercentage": {
+            "type": "number"
+          },
+          "payload": {
+            "type": "object"
+          },
+          "startsAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "endsAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "key", "isEnabled", "rolloutPercentage", "payload", "updatedAt"]
+      },
+      "FeatureFlagListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlagDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "UpdateFeatureFlagBodyDto": {
+        "type": "object",
+        "properties": {
+          "organizationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Absent : drapeau global."
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "rolloutPercentage": {
+            "type": "number"
+          },
+          "payload": {
+            "type": "object"
+          },
+          "startsAt": {
+            "type": "string"
+          },
+          "endsAt": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateFeatureFlagResponseDto": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlagDto"
+            }
+          }
+        },
+        "required": ["updated", "items"]
+      },
+      "ActivateWaveBodyDto": {
+        "type": "object",
+        "properties": {
+          "organizationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": ["organizationIds"]
+      },
+      "ActivateWaveResponseDto": {
+        "type": "object",
+        "properties": {
+          "wave": {
+            "type": "string"
+          },
+          "activated": {
+            "type": "number"
+          },
+          "skipped": {
+            "type": "number"
+          },
+          "notified": {
+            "type": "number"
+          }
+        },
+        "required": ["wave", "activated", "skipped", "notified"]
+      },
+      "RollbackWaveResponseDto": {
+        "type": "object",
+        "properties": {
+          "wave": {
+            "type": "string"
+          },
+          "reverted": {
+            "type": "number"
+          }
+        },
+        "required": ["wave", "reverted"]
+      },
+      "GoLiveBoardCountsDto": {
+        "type": "object",
+        "properties": {
+          "migrated": {
+            "type": "number"
+          },
+          "pending": {
+            "type": "number"
+          },
+          "anomaly": {
+            "type": "number"
+          }
+        },
+        "required": ["migrated", "pending", "anomaly"]
+      },
+      "GoLiveBoardItemDto": {
+        "type": "object",
+        "properties": {
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "legalName": {
+            "type": "string"
+          },
+          "wave": {
+            "type": "object",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": ["MIGRATED", "PENDING", "ANOMALY"]
+          },
+          "activatedAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "subscriptionStatus": {
+            "type": "object",
+            "nullable": true
+          },
+          "anomalies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["organizationId", "legalName", "status", "anomalies"]
+      },
+      "GoLiveBoardDto": {
+        "type": "object",
+        "properties": {
+          "wave": {
+            "type": "object",
+            "nullable": true
+          },
+          "counts": {
+            "$ref": "#/components/schemas/GoLiveBoardCountsDto"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GoLiveBoardItemDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["counts", "items", "pageInfo"]
+      },
+      "DeclareIncidentBodyDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["MINOR", "MAJOR", "CRITICAL"]
+          }
+        },
+        "required": ["title", "severity"]
+      },
+      "AddIncidentUpdateBodyDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["message"]
+      },
       "SubscribeDto": {
         "type": "object",
         "properties": {
@@ -31388,6 +33587,560 @@
           }
         },
         "required": ["items", "pageInfo"]
+      },
+      "SessionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "familyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "userAgent": {
+            "type": "string",
+            "nullable": true
+          },
+          "ipAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isCurrent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "familyId",
+          "deviceLabel",
+          "userAgent",
+          "ipAddress",
+          "issuedAt",
+          "expiresAt",
+          "isCurrent"
+        ]
+      },
+      "SessionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "RevokeAllSessionsResponseDto": {
+        "type": "object",
+        "properties": {
+          "revokedSessions": {
+            "type": "number",
+            "example": 3
+          },
+          "accessTokenGraceSeconds": {
+            "type": "number",
+            "example": 900
+          }
+        },
+        "required": ["revokedSessions", "accessTokenGraceSeconds"]
+      },
+      "SensitiveActionOtpRequestDto": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS"],
+            "default": "WHATSAPP",
+            "description": "Canal de remise. WhatsApp par défaut, repli SMS automatique."
+          }
+        }
+      },
+      "SensitiveActionOtpResponseDto": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "Identifiant de la demande (ligne `otp_codes`)."
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["WHATSAPP", "SMS"]
+          },
+          "expiresInSeconds": {
+            "type": "number",
+            "description": "Durée de validité du code, en secondes."
+          },
+          "resendAfterSeconds": {
+            "type": "number",
+            "description": "Délai avant une nouvelle demande, en secondes."
+          }
+        },
+        "required": ["requestId", "channel", "expiresInSeconds", "resendAfterSeconds"]
+      },
+      "SecurityCenterMemberDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["OWNER", "MANAGER", "ACCOUNTANT", "COLLECTOR", "VIEWER"]
+          },
+          "activeSessions": {
+            "type": "number",
+            "example": 2
+          },
+          "lastLoginAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": ["userId", "displayName", "role", "activeSessions", "lastLoginAt"]
+      },
+      "ApiKeySummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "keyPrefix": {
+            "type": "string",
+            "example": "imk_a1b2c3d4"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowedIps": {
+            "nullable": true,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "REVOKED"]
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "keyPrefix",
+          "scopes",
+          "allowedIps",
+          "status",
+          "lastUsedAt",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "AccessDenialDto": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actorUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "actorLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "apiKeyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "ipAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "method": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "IAM.FORBIDDEN"
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "occurredAt",
+          "actorUserId",
+          "actorLabel",
+          "apiKeyId",
+          "ipAddress",
+          "method",
+          "path",
+          "code",
+          "entityType",
+          "entityId",
+          "requestId"
+        ]
+      },
+      "SecurityCenterDto": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SecurityCenterMemberDto"
+            }
+          },
+          "apiKeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiKeySummaryDto"
+            }
+          },
+          "recentDenials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessDenialDto"
+            }
+          },
+          "readOnly": {
+            "$ref": "#/components/schemas/ReadOnlyStateDto"
+          }
+        },
+        "required": ["members", "apiKeys", "recentDenials", "readOnly"]
+      },
+      "ApiKeyListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiKeySummaryDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "CreateApiKeyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Export comptable Sage"
+          },
+          "scopes": {
+            "example": ["payments:read"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowedIps": {
+            "example": ["41.79.0.0/16"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["name"]
+      },
+      "ApiKeyCreatedResponseDto": {
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "$ref": "#/components/schemas/ApiKeySummaryDto"
+          },
+          "secret": {
+            "type": "string",
+            "description": "Secret rendu une seule fois, jamais relisible ensuite."
+          }
+        },
+        "required": ["apiKey", "secret"]
+      },
+      "ApiKeyRotatedResponseDto": {
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "$ref": "#/components/schemas/ApiKeySummaryDto"
+          },
+          "secret": {
+            "type": "string",
+            "description": "Secret rendu une seule fois, jamais relisible ensuite."
+          },
+          "previousKeyExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["apiKey", "secret", "previousKeyExpiresAt"]
+      },
+      "OrgRevokeAllResponseDto": {
+        "type": "object",
+        "properties": {
+          "revokedSessions": {
+            "type": "number",
+            "example": 3
+          },
+          "accessTokenGraceSeconds": {
+            "type": "number",
+            "example": 900
+          },
+          "revokedApiKeys": {
+            "type": "number",
+            "example": 3
+          },
+          "affectedMembers": {
+            "type": "number",
+            "example": 5
+          }
+        },
+        "required": [
+          "revokedSessions",
+          "accessTokenGraceSeconds",
+          "revokedApiKeys",
+          "affectedMembers"
+        ]
+      },
+      "AccessDenialPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessDenialDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "AuditLogEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "DELETE",
+              "STATE_TRANSITION",
+              "LOGIN",
+              "EXPORT",
+              "IMPORT",
+              "ACCESS_DENIED"
+            ]
+          },
+          "operation": {
+            "type": "string"
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "actorLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "actorRole": {
+            "type": "string",
+            "nullable": true
+          },
+          "previousState": {
+            "type": "object",
+            "nullable": true
+          },
+          "newState": {
+            "type": "object",
+            "nullable": true
+          },
+          "changedFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ipAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "occurredAt",
+          "action",
+          "operation",
+          "entityType",
+          "entityId",
+          "actorUserId",
+          "actorLabel",
+          "actorRole",
+          "previousState",
+          "newState",
+          "changedFields",
+          "ipAddress",
+          "requestId"
+        ]
+      },
+      "AuditLogPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLogEntryDto"
+            }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfoDto"
+          }
+        },
+        "required": ["items", "pageInfo"]
+      },
+      "SubjectRefDto": {
+        "type": "object",
+        "properties": {
+          "subjectType": {
+            "type": "string",
+            "enum": ["tenant", "landlord", "guarantor", "user"]
+          },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["subjectType", "subjectId"]
+      },
+      "PrivacySettingsPatchDto": {
+        "type": "object",
+        "properties": {
+          "identityMonths": {
+            "type": "number"
+          },
+          "messageLogsDays": {
+            "type": "number"
+          },
+          "notificationsDays": {
+            "type": "number"
+          },
+          "auditLogsMonths": {
+            "type": "number"
+          },
+          "financialYears": {
+            "type": "number"
+          },
+          "dpoName": {
+            "type": "object"
+          },
+          "dpoContact": {
+            "type": "object"
+          },
+          "legalVersion": {
+            "type": "string"
+          }
+        }
+      },
+      "TenantConsentDto": {
+        "type": "object",
+        "properties": {
+          "legalVersion": {
+            "type": "string",
+            "description": "Version des mentions légales acceptée (doit être la version courante)."
+          }
+        },
+        "required": ["legalVersion"]
+      },
+      "TenantChannelPatchDto": {
+        "type": "object",
+        "properties": {
+          "optIn": {
+            "type": "boolean",
+            "description": "Consentement à être contacté sur ce canal."
+          }
+        },
+        "required": ["optIn"]
       }
     }
   }

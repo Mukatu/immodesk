@@ -13,7 +13,7 @@ import { useAuth } from '@/lib/auth/auth-context';
  * Espace partenaire (apport d'affaires) : session Immodesk normale (même
  * jeton que /app), pas un portail à jeton séparé — la route
  * `/referral-partners` exige seulement un utilisateur authentifié (contrat,
- * section « Apport d'affaires »). `middleware.ts` (hors périmètre de cet
+ * section « Apport d'affaires »). `proxy.ts` (hors périmètre de cet
  * agent) ne protège que /app, /onboarding et /portail : la garde ici est donc
  * assurée côté client, comme pour /onboarding avant lui.
  *

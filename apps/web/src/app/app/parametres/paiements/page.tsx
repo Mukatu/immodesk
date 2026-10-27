@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 
@@ -44,7 +44,8 @@ export default function ParametresPaiementsPage() {
   const isOwner = currentOrganization?.role === 'OWNER';
 
   const form = useForm<PaymentMethodsFormValues>({
-    resolver: zodResolver(schema),
+    // z.coerce.number() a une entrée « unknown » en zod 4 : on aligne sur le type de sortie.
+    resolver: zodResolver(schema) as unknown as Resolver<PaymentMethodsFormValues>,
     values: settings
       ? {
           mobileMoneyDeclaredEnabled: settings.mobileMoneyDeclared.enabled,

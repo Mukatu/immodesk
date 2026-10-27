@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 
@@ -46,7 +46,8 @@ export default function ParametresRapprochementPage() {
   const [error, setError] = React.useState<string | null>(null);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    // z.coerce.number() a une entrée « unknown » en zod 4 : on aligne sur le type de sortie.
+    resolver: zodResolver(schema) as unknown as Resolver<FormValues>,
     values: settings
       ? {
           suggestionThreshold: settings.suggestionThreshold,

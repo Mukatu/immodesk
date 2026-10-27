@@ -6,6 +6,6 @@
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.E2E_MOCK === '1') {
     const { mockServer } = await import('@/mocks/node-server');
-    mockServer.listen({ onUnhandledRequest: 'bypass' });
+    mockServer.listen({ onUnhandledFrame: 'bypass' });
   }
 }

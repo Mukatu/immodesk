@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef } from '@/components/business/data-table';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge, type BadgeProps } from '@/components/ui/badge';

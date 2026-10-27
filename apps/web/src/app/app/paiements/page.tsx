@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef } from '@/components/business/data-table';
 
 import { PageHeader } from '@/components/business/page-header';
 import { DataTable } from '@/components/business/data-table';

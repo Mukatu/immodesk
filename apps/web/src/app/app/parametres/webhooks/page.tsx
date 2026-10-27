@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ShieldAlert } from 'lucide-react';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef } from '@/components/business/data-table';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/business/page-header';

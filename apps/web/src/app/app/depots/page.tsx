@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { type ColumnDef } from '@tanstack/react-table';
+import { type ColumnDef } from '@/components/business/data-table';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';

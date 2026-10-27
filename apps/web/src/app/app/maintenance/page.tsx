@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
-import { type ColumnDef } from '@tanstack/react-table';
+import { type ColumnDef } from '@/components/business/data-table';
 import { PlusCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';

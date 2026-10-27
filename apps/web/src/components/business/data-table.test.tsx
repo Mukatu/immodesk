@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef } from '@/components/business/data-table';
 
 import { DataTable } from '@/components/business/data-table';
 

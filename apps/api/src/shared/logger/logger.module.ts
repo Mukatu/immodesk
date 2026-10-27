@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
+import type { IncomingMessage } from 'node:http';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/config.schema';
 
@@ -16,7 +17,7 @@ import type { AppConfig } from '../config/config.schema';
       useFactory: (config: AppConfig) => ({
         pinoHttp: {
           level: config.LOG_LEVEL,
-          genReqId: (req: { headers: Record<string, unknown> }) =>
+          genReqId: (req: IncomingMessage) =>
             (req.headers['x-request-id'] as string | undefined) ?? randomUUID(),
           customProps: () => ({ service: 'immodesk-api' }),
           redact: {
@@ -31,7 +32,7 @@ import type { AppConfig } from '../config/config.schema';
             censor: '[expurgé]',
           },
           autoLogging: {
-            ignore: (req: { url?: string }) => req.url === '/v1/health',
+            ignore: (req: IncomingMessage) => req.url === '/v1/health',
           },
           transport:
             config.NODE_ENV === 'development'

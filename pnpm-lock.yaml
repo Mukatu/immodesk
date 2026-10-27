@@ -176,14 +176,14 @@ importers:
         specifier: ^5.4.2
         version: 5.11.1(supports-color@8.1.1)
       nestjs-pino:
-        specifier: ^4.3.0
-        version: 4.6.1(@nestjs/common@11.2.8(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(pino-http@10.5.0)(pino@9.14.0)(rxjs@7.8.2)
+        specifier: ^5.3.1
+        version: 5.3.1(@nestjs/common@11.2.8(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.2.8)(pino-http@11.0.0)(pino@10.4.0)(rxjs@7.8.2)
       pino:
-        specifier: ^9.6.0
-        version: 9.14.0
+        specifier: ^10.0.0
+        version: 10.4.0
       pino-http:
-        specifier: ^10.4.0
-        version: 10.5.0
+        specifier: ^11.0.0
+        version: 11.0.0
       puppeteer:
         specifier: ^25.16.0
         version: 25.16.0
@@ -208,7 +208,7 @@ importers:
         version: 9.39.5
       '@nestjs/cli':
         specifier: ^11.0.0
-        version: 11.0.24(@types/node@24.19.2)(esbuild@0.27.7)(prettier@3.9.10)(uglify-js@3.19.3)
+        version: 11.0.24(@types/node@24.19.2)(esbuild@0.27.7)(postcss@8.5.31)(prettier@3.9.10)(uglify-js@3.19.3)
       '@nestjs/schematics':
         specifier: ^11.0.0
         version: 11.1.0(chokidar@4.0.3)(prettier@3.9.10)(typescript@5.9.3)
@@ -414,7 +414,7 @@ importers:
     devDependencies:
       tsup:
         specifier: ^9.0.0
-        version: 9.0.0(jiti@2.7.0)(tsx@4.23.15)(typescript@5.9.3)(yaml@2.9.0)
+        version: 9.0.0(jiti@2.7.0)(postcss@8.5.31)(tsx@4.23.15)(typescript@5.9.3)(yaml@2.9.0)
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -5430,13 +5430,14 @@ packages:
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
 
-  nestjs-pino@4.6.1:
-    resolution: {integrity: sha512-nuARXa0xpdJ1lY2+fgycIQr6H3g0VgqAWNK3xMYjOFcj2DoPETNXj0lV3Y86nRuI7BUfQp5PGiVoZvT4dTWbpQ==}
-    engines: {node: '>= 14'}
+  nestjs-pino@5.3.1:
+    resolution: {integrity: sha512-tL3fFSY38Wuv3VS4dCo+zlHVt1xU7+RSXnlgenyTvfy74GLBLgisqvG+76983ilf2C2uFkPe68qUapXCYnoSoA==}
+    engines: {node: '>=22.12.0'}
     peerDependencies:
-      '@nestjs/common': ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
-      pino: ^7.5.0 || ^8.0.0 || ^9.0.0 || ^10.0.0
-      pino-http: ^6.4.0 || ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
+      '@nestjs/common': ^11.0.8 || ^12.0.2
+      '@nestjs/core': ^11.0.8 || ^12.0.2
+      pino: ^10.0.0
+      pino-http: ^11.0.0
       rxjs: ^7.1.0
 
   next-themes@0.4.6:
@@ -5672,14 +5673,11 @@ packages:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
 
-  pino-abstract-transport@2.0.0:
-    resolution: {integrity: sha512-F63x5tizV6WCh4R6RHyi2Ml+M70DNRXt/+HANowMflpgGFMAym/VKm6G7ZOQRjqN7XbGxK1Lg9t6ZrtzOaivMw==}
-
   pino-abstract-transport@3.0.0:
     resolution: {integrity: sha512-wlfUczU+n7Hy/Ha5j9a/gZNy7We5+cXp8YL+X+PG8S0KXxw7n/JXA3c46Y0zQznIJ83URJiwy7Lh56WLokNuxg==}
 
-  pino-http@10.5.0:
-    resolution: {integrity: sha512-hD91XjgaKkSsdn8P7LaebrNzhGTdB086W3pyPihX0EzGPjq5uBJBXo4N5guqNaK6mUjg9aubMF7wDViYek9dRA==}
+  pino-http@11.0.0:
+    resolution: {integrity: sha512-wqg5XIAGRRIWtTk8qPGxkbrfiwEWz1lgedVLvhLALudKXvg1/L2lTFgTGPJ4Z2e3qcRmxoFxDuSdMdMGNM6I1g==}
 
   pino-pretty@13.2.0:
     resolution: {integrity: sha512-jjghD1ML+Di/WxjJDz6j6Y4FT7hIXOlb8h27AyJ+ohtAXJXH4PS/xkv7si+RCCIW59HMgZsMKTDgzdr0RhuRrg==}
@@ -5688,8 +5686,8 @@ packages:
   pino-std-serializers@7.1.0:
     resolution: {integrity: sha512-BndPH67/JxGExRgiX1dX0w1FvZck5Wa4aal9198SrRhZjH3GxKQUKIBnYJTdj2HDN3UQAS06HlfcSbQj2OHmaw==}
 
-  pino@9.14.0:
-    resolution: {integrity: sha512-8OEwKp5juEvb/MjpIc4hjqfgCNysrS94RIOMXYvpYCdm/jglrKEiAYmiumbmGhCvs+IcInsphYDFwqrjr7398w==}
+  pino@10.4.0:
+    resolution: {integrity: sha512-bk1ZMTwG/Vymx+zPoa28MhNzucFvXJWp3csrSuxuHPSMeUettaCoQ5Jvg07mtC4JGNpcfTwz41oVCnNgBK9+vA==}
     hasBin: true
 
   pirates@4.0.7:
@@ -5950,9 +5948,8 @@ packages:
     resolution: {integrity: sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==}
     engines: {node: '>= 20.19.0'}
 
-  real-require@0.2.0:
-    resolution: {integrity: sha512-57frrGM/OCTLqLOAh0mhVA9VBMHd+9U7Zb2THMGdBUoZVOtGbJzjxsYGDJ3A9AYYCP4hn6y1TVbaOfzWtm5GFg==}
-    engines: {node: '>= 12.13.0'}
+  real-require@1.0.0:
+    resolution: {integrity: sha512-P4nbQYQfePJxRSmY+v/KINxVucm4NF3p3s7pJveMTtom52FR4YGltUQLB8idDXwDDWW+eYrWDFbuzUnjoWHF7g==}
 
   redent@3.0.0:
     resolution: {integrity: sha512-6tDA8g98We0zd0GvVeMT9arEOnTw9qM03L9cJXaCjrip1OO764RDBLBfrB4cwzNGDj5OA5ioymC9GkizgWJDUg==}
@@ -6460,8 +6457,9 @@ packages:
   thenify@3.3.1:
     resolution: {integrity: sha512-RVZSIV5IG10Hk3enotrhvz0T9em6cyHBLkH/YAZuKqd8hRkKhSfCGIcP2KUY0EPxndzANBmNllzWPwak+bheSw==}
 
-  thread-stream@3.2.0:
-    resolution: {integrity: sha512-zLBvqpwr4Esa0kRjcrzGU6zL25lePWaCLMx0RQFrmteozIfeNdaMLpG5U7PeHzvlFkAWaRKA9/KVW4F60iB+qw==}
+  thread-stream@4.2.0:
+    resolution: {integrity: sha512-e2zZ96wSChazBsbENf/Pcm/4swHt2cEKQ92rhUjkL9GCKiTDJIaTBenjE/m9DXi0QBmTMDkFDdOomUy20A1tDQ==}
+    engines: {node: '>=20'}
 
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
@@ -8481,7 +8479,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.3
     optional: true
 
-  '@nestjs/cli@11.0.24(@types/node@24.19.2)(esbuild@0.27.7)(prettier@3.9.10)(uglify-js@3.19.3)':
+  '@nestjs/cli@11.0.24(@types/node@24.19.2)(esbuild@0.27.7)(postcss@8.5.31)(prettier@3.9.10)(uglify-js@3.19.3)':
     dependencies:
       '@angular-devkit/core': 19.2.27(chokidar@4.0.3)
       '@angular-devkit/schematics': 19.2.27(chokidar@4.0.3)
@@ -8492,14 +8490,14 @@ snapshots:
       chokidar: 4.0.3
       cli-table3: 0.6.5
       commander: 4.1.1
-      fork-ts-checker-webpack-plugin: 9.1.0(typescript@5.9.3)(webpack@5.106.2(esbuild@0.27.7)(uglify-js@3.19.3))
+      fork-ts-checker-webpack-plugin: 9.1.0(typescript@5.9.3)(webpack@5.106.2(esbuild@0.27.7)(postcss@8.5.31)(uglify-js@3.19.3))
       glob: 13.0.6
       node-emoji: 1.11.0
       ora: 5.4.1
       tsconfig-paths: 4.2.0
       tsconfig-paths-webpack-plugin: 4.2.0
       typescript: 5.9.3
-      webpack: 5.106.2(esbuild@0.27.7)(uglify-js@3.19.3)
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.31)(uglify-js@3.19.3)
       webpack-node-externals: 3.0.0
     transitivePeerDependencies:
       - '@minify-html/node'
@@ -11336,7 +11334,7 @@ snapshots:
     dependencies:
       is-callable: 1.2.7
 
-  fork-ts-checker-webpack-plugin@9.1.0(typescript@5.9.3)(webpack@5.106.2(esbuild@0.27.7)(uglify-js@3.19.3)):
+  fork-ts-checker-webpack-plugin@9.1.0(typescript@5.9.3)(webpack@5.106.2(esbuild@0.27.7)(postcss@8.5.31)(uglify-js@3.19.3)):
     dependencies:
       '@babel/code-frame': 7.29.7
       chalk: 4.1.2
@@ -11351,7 +11349,7 @@ snapshots:
       semver: 7.8.5
       tapable: 2.3.3
       typescript: 5.9.3
-      webpack: 5.106.2(esbuild@0.27.7)(uglify-js@3.19.3)
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.31)(uglify-js@3.19.3)
 
   form-data@4.0.6:
     dependencies:
@@ -12524,11 +12522,12 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  nestjs-pino@4.6.1(@nestjs/common@11.2.8(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(pino-http@10.5.0)(pino@9.14.0)(rxjs@7.8.2):
+  nestjs-pino@5.3.1(@nestjs/common@11.2.8(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.2.8)(pino-http@11.0.0)(pino@10.4.0)(rxjs@7.8.2):
     dependencies:
       '@nestjs/common': 11.2.8(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1)
-      pino: 9.14.0
-      pino-http: 10.5.0
+      '@nestjs/core': 11.2.8(@nestjs/common@11.2.8(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/platform-express@11.2.8)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      pino: 10.4.0
+      pino-http: 11.0.0
       rxjs: 7.8.2
 
   next-themes@0.4.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
@@ -12762,18 +12761,14 @@ snapshots:
 
   picomatch@4.0.7: {}
 
-  pino-abstract-transport@2.0.0:
-    dependencies:
-      split2: 4.2.0
-
   pino-abstract-transport@3.0.0:
     dependencies:
       split2: 4.2.0
 
-  pino-http@10.5.0:
+  pino-http@11.0.0:
     dependencies:
       get-caller-file: 2.0.5
-      pino: 9.14.0
+      pino: 10.4.0
       pino-std-serializers: 7.1.0
       process-warning: 5.1.0
 
@@ -12795,19 +12790,19 @@ snapshots:
 
   pino-std-serializers@7.1.0: {}
 
-  pino@9.14.0:
+  pino@10.4.0:
     dependencies:
       '@pinojs/redact': 0.4.0
       atomic-sleep: 1.0.0
       on-exit-leak-free: 2.1.2
-      pino-abstract-transport: 2.0.0
+      pino-abstract-transport: 3.0.0
       pino-std-serializers: 7.1.0
       process-warning: 5.1.0
       quick-format-unescaped: 4.0.4
-      real-require: 0.2.0
+      real-require: 1.0.0
       safe-stable-stringify: 2.5.0
       sonic-boom: 4.2.1
-      thread-stream: 3.2.0
+      thread-stream: 4.2.0
 
   pirates@4.0.7: {}
 
@@ -12862,11 +12857,12 @@ snapshots:
       tsx: 4.23.15
       yaml: 2.9.0
 
-  postcss-load-config@6.0.1(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0):
+  postcss-load-config@6.0.1(jiti@2.7.0)(postcss@8.5.31)(tsx@4.23.15)(yaml@2.9.0):
     dependencies:
       lilconfig: 3.1.3
     optionalDependencies:
       jiti: 2.7.0
+      postcss: 8.5.31
       tsx: 4.23.15
       yaml: 2.9.0
 
@@ -13067,7 +13063,7 @@ snapshots:
 
   readdirp@5.1.1: {}
 
-  real-require@0.2.0: {}
+  real-require@1.0.0: {}
 
   redent@3.0.0:
     dependencies:
@@ -13668,15 +13664,16 @@ snapshots:
 
   tapable@2.3.3: {}
 
-  terser-webpack-plugin@5.6.1(esbuild@0.27.7)(uglify-js@3.19.3)(webpack@5.106.2(esbuild@0.27.7)(uglify-js@3.19.3)):
+  terser-webpack-plugin@5.6.1(esbuild@0.27.7)(postcss@8.5.31)(uglify-js@3.19.3)(webpack@5.106.2(esbuild@0.27.7)(postcss@8.5.31)(uglify-js@3.19.3)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       jest-worker: 27.5.1
       schema-utils: 4.4.0
       terser: 5.51.2
-      webpack: 5.106.2(esbuild@0.27.7)(uglify-js@3.19.3)
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.31)(uglify-js@3.19.3)
     optionalDependencies:
       esbuild: 0.27.7
+      postcss: 8.5.31
       uglify-js: 3.19.3
 
   terser@5.51.2:
@@ -13700,9 +13697,9 @@ snapshots:
     dependencies:
       any-promise: 1.3.0
 
-  thread-stream@3.2.0:
+  thread-stream@4.2.0:
     dependencies:
-      real-require: 0.2.0
+      real-require: 1.0.0
 
   tinybench@2.9.0: {}
 
@@ -13828,7 +13825,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  tsup@9.0.0(jiti@2.7.0)(tsx@4.23.15)(typescript@5.9.3)(yaml@2.9.0):
+  tsup@9.0.0(jiti@2.7.0)(postcss@8.5.31)(tsx@4.23.15)(typescript@5.9.3)(yaml@2.9.0):
     dependencies:
       bundle-require: 5.1.0(esbuild@0.28.2)
       cac: 7.1.0
@@ -13839,7 +13836,7 @@ snapshots:
       joycon: 3.1.1
       obug: 3.0.0
       picocolors: 1.1.1
-      postcss-load-config: 6.0.1(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)
+      postcss-load-config: 6.0.1(jiti@2.7.0)(postcss@8.5.31)(tsx@4.23.15)(yaml@2.9.0)
       resolve-from: 5.0.0
       rollup: 4.65.0
       source-map-js: 1.2.2
@@ -13848,6 +13845,7 @@ snapshots:
       tinyglobby: 0.2.17
       tree-kill: 1.2.2
     optionalDependencies:
+      postcss: 8.5.31
       typescript: 5.9.3
     transitivePeerDependencies:
       - jiti
@@ -14192,7 +14190,7 @@ snapshots:
 
   webpack-sources@3.5.1: {}
 
-  webpack@5.106.2(esbuild@0.27.7)(uglify-js@3.19.3):
+  webpack@5.106.2(esbuild@0.27.7)(postcss@8.5.31)(uglify-js@3.19.3):
     dependencies:
       '@types/eslint-scope': 3.7.7
       '@types/estree': 1.0.9
@@ -14215,7 +14213,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 4.4.0
       tapable: 2.3.3
-      terser-webpack-plugin: 5.6.1(esbuild@0.27.7)(uglify-js@3.19.3)(webpack@5.106.2(esbuild@0.27.7)(uglify-js@3.19.3))
+      terser-webpack-plugin: 5.6.1(esbuild@0.27.7)(postcss@8.5.31)(uglify-js@3.19.3)(webpack@5.106.2(esbuild@0.27.7)(postcss@8.5.31)(uglify-js@3.19.3))
       watchpack: 2.5.2
       webpack-sources: 3.5.1
     transitivePeerDependencies:

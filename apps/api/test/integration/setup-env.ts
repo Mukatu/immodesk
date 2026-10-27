@@ -17,7 +17,8 @@ import { resolve } from 'node:path';
 for (const candidate of ['.env.test', '.env']) {
   const path = resolve(__dirname, '../../', candidate);
   if (existsSync(path)) {
-    loadEnv({ path, override: false });
+    // quiet : dotenv 17+ affiche par defaut un message a chaque chargement.
+    loadEnv({ path, override: false, quiet: true });
   }
 }
 

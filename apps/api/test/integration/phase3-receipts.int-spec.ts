@@ -225,8 +225,18 @@ describe('Phase 3 — quittance, vérification publique, messagerie et webhooks'
       ).status,
     ).toBe(403);
 
+    // Quittance QUI : seul message dont l'envoi a été attendu au premier test.
+    // Les messages de reçu espèces partent en asynchrone et sont réservés au
+    // test suivant ; sans filtre, la première ligne SENT venue pouvait être
+    // l'un d'eux et passer à DELIVERED ici.
     const log = await ctx.admin.message_logs.findFirstOrThrow({
-      where: { organization_id: agency.organizationId, channel: 'WHATSAPP', status: 'SENT' },
+      where: {
+        organization_id: agency.organizationId,
+        channel: 'WHATSAPP',
+        status: 'SENT',
+        template_code: 'RECEIPT_ISSUED',
+      },
+      orderBy: { created_at: 'asc' },
     });
     const body = JSON.stringify({
       entry: [
@@ -273,14 +283,19 @@ describe('Phase 3 — quittance, vérification publique, messagerie et webhooks'
   });
 
   it('échec WhatsApp signalé par webhook → repli SMS ; webhook SMS signé', async () => {
-    const log = await ctx.admin.message_logs.findFirstOrThrow({
-      where: {
-        organization_id: agency.organizationId,
-        channel: 'WHATSAPP',
-        status: 'SENT',
-        template_code: 'CASH_RECEIPT_ISSUED',
-      },
-    });
+    // L'envoi du message de reçu espèces est asynchrone (file BullMQ) : on
+    // attend qu'au moins un soit parti plutôt que de supposer qu'il l'est.
+    const log = await waitFor(() =>
+      ctx.admin.message_logs.findFirst({
+        where: {
+          organization_id: agency.organizationId,
+          channel: 'WHATSAPP',
+          status: 'SENT',
+          template_code: 'CASH_RECEIPT_ISSUED',
+        },
+        orderBy: { created_at: 'asc' },
+      }),
+    );
     const body = JSON.stringify({
       entry: [
         {

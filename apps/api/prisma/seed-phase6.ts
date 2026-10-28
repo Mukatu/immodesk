@@ -16,7 +16,7 @@
  */
 import { createHash } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../src/shared/ids/uuid';
 
 export interface Phase6Report {
   bankStatements: number;

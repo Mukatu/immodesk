@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import { seedLeases, type BulkPortfolio } from './phase3-fixtures';
 
 export interface SeededInvoice {

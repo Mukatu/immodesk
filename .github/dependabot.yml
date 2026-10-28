@@ -76,19 +76,16 @@ updates:
         update-types:
           - major
     # Mises à jour majeures écartées : ces écosystèmes ne suivent pas encore.
-    # ts-jest et typescript-eslint bloquent TypeScript 7, @nestjs/swagger aussi ;
-    # eslint-plugin-jsx-a11y bloque ESLint 10 ; @nestjs/throttler bloque NestJS 12.
+    # ts-jest et typescript-eslint bloquent TypeScript 7 (TypeScript 6 est suivi) ;
+    # eslint-plugin-jsx-a11y bloque ESLint 10.
     ignore:
       - dependency-name: 'typescript'
-        update-types:
-          - 'version-update:semver-major'
+        versions:
+          - '>=7'
       - dependency-name: 'eslint'
         update-types:
           - 'version-update:semver-major'
       - dependency-name: '@eslint/js'
-        update-types:
-          - 'version-update:semver-major'
-      - dependency-name: '@nestjs/*'
         update-types:
           - 'version-update:semver-major'
       # Aligné sur la version majeure de Node de la CI (node-version: 24 dans

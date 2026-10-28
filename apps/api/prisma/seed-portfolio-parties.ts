@@ -3,7 +3,7 @@
  * canaux de contact et comptes de règlement.
  */
 import type { PrismaClient } from '@prisma/client';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../src/shared/ids/uuid';
 
 /** 4 lots occupés sur 12 : taux d'occupation de 3333 bps (33,33 %). */
 const OCCUPIED_UNITS = new Set(['A1', 'A2', 'A5', 'A9']);

@@ -6,6 +6,12 @@ import { newId } from '../../../shared/ids/uuid';
 import { webhookBodyHash } from '../../mobile-money/domain/webhook-signature';
 import type { RawWebhook } from '../../mobile-money/domain/ports';
 import { MobileMoneyProviderRegistry } from '../../mobile-money/infrastructure/mobile-money-provider.registry';
+import {
+  MOMO_WEBHOOK_AMBIGUOUS,
+  MOMO_WEBHOOK_UNRESOLVED,
+  resolveMomoExternalReference,
+  type MomoReferenceResolution,
+} from '../../mobile-money/infrastructure/momo-reference-resolver';
 import { SubscriptionPaymentsService } from './subscription-payments.service';
 
 type HeaderMap = Record<string, string | string[] | undefined>;
@@ -63,21 +69,24 @@ export class SubscriptionWebhookIngestService {
       provider.code === 'CINETPAY' ? 'x-token' : 'x-simulator-signature',
     );
 
-    let merchantReference: string | null = null;
+    let externalReference: string | null = null;
     let state: string | null = null;
     let eventId: string | undefined;
     try {
       const parsed = provider.parseWebhook(raw);
-      merchantReference = parsed.merchantReference;
+      externalReference = parsed.externalReference || null;
       state = parsed.state;
       eventId = parsed.eventId;
     } catch {
       // Corps illisible : persisté quand même, pour l'expertise en cas de litige.
     }
 
-    const organizationId = merchantReference
-      ? await this.resolveOrganization(merchantReference)
-      : null;
+    // Rattachement par la clé fournisseur unique (migration 9), jamais par
+    // `merchant_reference`, numérotée par organisation : échec fermé si ambigu.
+    const resolution: MomoReferenceResolution = externalReference
+      ? await resolveMomoExternalReference(this.adminClient(), externalReference)
+      : { kind: 'UNKNOWN' };
+    const organizationId = resolution.kind === 'RESOLVED' ? resolution.organizationId : null;
     const source = provider.code === 'CINETPAY' ? 'CINETPAY' : 'OTHER';
 
     const { id, duplicate } = await this.persist({
@@ -99,21 +108,24 @@ export class SubscriptionWebhookIngestService {
       this.logger.warn(`SUBSCRIPTIONS.WEBHOOK_SIGNATURE_INVALID event=${id}`);
       return;
     }
-    if (!organizationId || !merchantReference) {
-      await this.markStatus(id, 'FAILED', 'Référence marchande introuvable.');
+    if (resolution.kind !== 'RESOLVED') {
+      const ambiguous = resolution.kind === 'AMBIGUOUS';
+      await this.markStatus(
+        id,
+        'FAILED',
+        ambiguous ? MOMO_WEBHOOK_AMBIGUOUS : MOMO_WEBHOOK_UNRESOLVED,
+      );
+      if (ambiguous) {
+        this.logger.warn(
+          `${MOMO_WEBHOOK_AMBIGUOUS} event=${id} candidates=${resolution.candidates}`,
+        );
+      }
       return;
     }
-    const transaction = await this.adminClient().mobile_money_transactions.findFirst({
-      where: { merchant_reference: merchantReference, organization_id: organizationId },
-      select: { id: true },
-    });
-    if (!transaction) {
-      await this.markStatus(id, 'FAILED', 'Transaction Mobile Money introuvable.');
-      return;
-    }
+    const { transactionId } = resolution;
     await this.markStatus(id, 'PROCESSING');
-    await this.payments.verifyStatus(organizationId, transaction.id);
-    await this.markStatus(id, 'PROCESSED', undefined, 'mobile_money_transactions', transaction.id);
+    await this.payments.verifyStatus(resolution.organizationId, transactionId);
+    await this.markStatus(id, 'PROCESSED', undefined, 'mobile_money_transactions', transactionId);
   }
 
   private headerValue(headers: HeaderMap, name: string): string | null {
@@ -194,14 +206,6 @@ export class SubscriptionWebhookIngestService {
       relatedEntityId ?? null,
       errorMessage ?? null,
     );
-  }
-
-  private async resolveOrganization(merchantReference: string): Promise<string | null> {
-    const rows = await this.adminClient().$queryRawUnsafe<Array<{ organization_id: string }>>(
-      `SELECT organization_id FROM mobile_money_transactions WHERE merchant_reference = $1 LIMIT 1`,
-      merchantReference,
-    );
-    return rows[0]?.organization_id ?? null;
   }
 
   private adminClient(): PrismaClient {

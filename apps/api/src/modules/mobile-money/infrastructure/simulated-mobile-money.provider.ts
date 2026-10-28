@@ -90,9 +90,11 @@ export class SimulatedMobileMoneyProvider implements MobileMoneyProvider {
       amount?: string;
       currency?: string;
     };
+    // Le champ du corps garde son nom historique (`merchantReference`), mais
+    // porte la clé envoyée à `initiate`, c'est-à-dire l'`external_reference`.
     return {
       eventId: body.eventId,
-      merchantReference: body.merchantReference,
+      externalReference: body.merchantReference,
       providerReference: body.providerReference,
       state: body.status,
       amount: body.amount ? BigInt(body.amount) : undefined,

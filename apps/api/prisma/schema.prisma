@@ -1450,6 +1450,8 @@ model mobile_money_transactions {
   provider_transaction_id                                    String?
   aggregator_transaction_id                                  String?
   merchant_reference                                         String
+  /// Clé transmise au fournisseur, unique sur toute la plateforme (migration 9).
+  external_reference                                         String?                 @unique(map: "momo_external_ref_uk")
   payer_msisdn                                               String
   payee_msisdn                                               String?
   amount                                                     BigInt

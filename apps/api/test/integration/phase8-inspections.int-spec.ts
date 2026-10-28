@@ -1,4 +1,4 @@
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import { api, startTestApp, stopTestApp, type TestContext } from './helpers';
 import { addMember, createAgency, dropOrganization, isoDate, type Agency } from './phase3-fixtures';
 import { seedLeases, type BulkPortfolio } from './phase3-fixtures';

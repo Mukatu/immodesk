@@ -1,8 +1,10 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/config.schema';
 import { DomainError } from '../errors/domain-error';
+import { createPrismaClient } from './create-prisma-client';
 import { currentTenant, requireTenant } from '../tenant/tenant-context';
 
 /** Client transactionnel Prisma exposé aux dépôts. */
@@ -37,7 +39,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {
     super({
-      datasources: { db: { url: config.DATABASE_URL } },
+      adapter: new PrismaPg({ connectionString: config.DATABASE_URL }),
       log: config.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
     });
   }
@@ -48,7 +50,21 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleDestroy(): Promise<void> {
+    await this.adminInstance?.$disconnect();
+    this.adminInstance = null;
     await this.$disconnect();
+  }
+
+  /**
+   * Client d'administration (`BYPASSRLS`) PARTAGÉ : une seule instance, donc un
+   * seul pool de connexions, pour tout le processus. `null` si
+   * `DATABASE_ADMIN_URL` n'est pas défini. Fermé avec ce service.
+   */
+  adminClient(): PrismaClient | null {
+    const adminUrl = this.config.DATABASE_ADMIN_URL;
+    if (!adminUrl) return null;
+    this.adminInstance ??= createPrismaClient(adminUrl);
+    return this.adminInstance;
   }
 
   /**
@@ -150,14 +166,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    * `withAdmin` pour rester mockable, exactement comme `withUser`.
    */
   async withAdmin<T>(fn: (tx: PrismaClient) => Promise<T>): Promise<T> {
-    const adminUrl = this.config.DATABASE_ADMIN_URL;
-    if (!adminUrl) {
+    const admin = this.adminClient();
+    if (!admin) {
       throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'DATABASE_ADMIN_URL absent' });
     }
-    this.adminInstance ??= new PrismaClient({
-      datasources: { db: { url: adminUrl } },
-      log: ['error'],
-    });
-    return fn(this.adminInstance);
+    return fn(admin);
   }
 }

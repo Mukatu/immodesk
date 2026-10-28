@@ -3128,9 +3128,9 @@ BEGIN
         -- Les tables dont organization_id est nullable portent aussi des lignes
         -- globales (drapeaux système, webhooks non encore rattachés à un tenant).
         IF r.is_nullable = 'YES' THEN
-            v_using := '(organization_id IS NULL OR organization_id = current_setting(''app.current_organization_id'', true)::uuid)';
+            v_using := '(organization_id IS NULL OR organization_id = NULLIF(current_setting(''app.current_organization_id'', true), '''')::uuid)';
         ELSE
-            v_using := '(organization_id = current_setting(''app.current_organization_id'', true)::uuid)';
+            v_using := '(organization_id = NULLIF(current_setting(''app.current_organization_id'', true), '''')::uuid)';
         END IF;
 
         EXECUTE format(
@@ -3148,8 +3148,8 @@ ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organizations FORCE ROW LEVEL SECURITY;
 CREATE POLICY org_isolation ON organizations
     AS PERMISSIVE FOR ALL TO immodesk_app
-    USING (id = current_setting('app.current_organization_id', true)::uuid)
-    WITH CHECK (id = current_setting('app.current_organization_id', true)::uuid);
+    USING (id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid)
+    WITH CHECK (id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
 COMMENT ON POLICY org_isolation ON organizations IS
     'Isolation multi-tenant : une transaction ne voit que l''organisation positionnée dans app.current_organization_id.';
 
@@ -3158,14 +3158,39 @@ COMMENT ON POLICY org_isolation ON organizations IS
 -- restent accessibles au rôle applicatif, l'autorisation étant assurée
 -- par la couche applicative (JWT + organization_members).
 
--- feature_flags : lecture des drapeaux globaux autorisée à tous les tenants,
--- écriture réservée aux drapeaux du tenant courant.
-CREATE POLICY global_flags_readonly ON feature_flags
-    AS RESTRICTIVE FOR UPDATE TO immodesk_app
-    USING (organization_id IS NOT NULL);
-CREATE POLICY global_flags_no_delete ON feature_flags
-    AS RESTRICTIVE FOR DELETE TO immodesk_app
-    USING (organization_id IS NOT NULL);
+-- Lignes globales (organization_id NULL) en LECTURE SEULE pour immodesk_app
+-- (migration 8_rls_global_rows_readonly) : écriture réservée à immodesk_admin.
+-- feature_flags -------------------------------------------------------
+DROP POLICY IF EXISTS org_isolation ON feature_flags;
+
+CREATE POLICY org_isolation_select ON feature_flags
+    AS PERMISSIVE FOR SELECT TO immodesk_app
+    USING (organization_id IS NULL
+           OR organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
+CREATE POLICY org_isolation_insert ON feature_flags
+    AS PERMISSIVE FOR INSERT TO immodesk_app
+    WITH CHECK (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
+CREATE POLICY org_isolation_update ON feature_flags
+    AS PERMISSIVE FOR UPDATE TO immodesk_app
+    USING (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid)
+    WITH CHECK (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
+CREATE POLICY org_isolation_delete ON feature_flags
+    AS PERMISSIVE FOR DELETE TO immodesk_app
+    USING (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
+
+COMMENT ON POLICY org_isolation_select ON feature_flags IS
+    'Lecture des drapeaux globaux (organization_id NULL) et de ceux du tenant courant. Les lignes globales ne sont écrites que par immodesk_admin.';
+
+-- webhook_events ------------------------------------------------------
+DROP POLICY IF EXISTS org_isolation ON webhook_events;
+
+CREATE POLICY org_isolation ON webhook_events
+    AS PERMISSIVE FOR ALL TO immodesk_app
+    USING (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid)
+    WITH CHECK (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
+
+COMMENT ON POLICY org_isolation ON webhook_events IS
+    'Isolation multi-tenant stricte : les lignes globales (organization_id NULL) sont invisibles du rôle applicatif ; ingestion et rattachement via immodesk_admin.';
 
 COMMENT ON POLICY org_isolation ON organization_settings IS
     'Isolation multi-tenant : une transaction ne voit que les lignes de l''organisation positionnée dans app.current_organization_id.';
@@ -3216,8 +3241,8 @@ COMMENT ON POLICY active_programs_readonly ON referral_programs IS
 -- Fiche partenaire : chaque utilisateur ne voit et ne gère que la sienne.
 CREATE POLICY partner_self ON referral_partners
     AS PERMISSIVE FOR ALL TO immodesk_app
-    USING (user_id = current_setting('app.current_user_id', true)::uuid)
-    WITH CHECK (user_id = current_setting('app.current_user_id', true)::uuid);
+    USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid)
+    WITH CHECK (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
 COMMENT ON POLICY partner_self ON referral_partners IS
     'Un utilisateur ne voit que sa propre fiche partenaire. La vérification d''identité (verified_at, status ACTIVE) est appliquée par immodesk_admin.';
 
@@ -3226,9 +3251,9 @@ COMMENT ON POLICY partner_self ON referral_partners IS
 CREATE POLICY partner_self ON referrals
     AS PERMISSIVE FOR ALL TO immodesk_app
     USING (partner_id = (SELECT id FROM referral_partners
-                          WHERE user_id = current_setting('app.current_user_id', true)::uuid))
+                          WHERE user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid))
     WITH CHECK (partner_id = (SELECT id FROM referral_partners
-                               WHERE user_id = current_setting('app.current_user_id', true)::uuid));
+                               WHERE user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid));
 COMMENT ON POLICY partner_self ON referrals IS
     'Cloisonnement par partenaire : un apporteur ne voit que ses filleuls. L''unicité du parrain et l''interdiction d''auto-parrainage sont assurées par referrals_org_uk et le trigger forbid_self_referral.';
 
@@ -3237,7 +3262,7 @@ COMMENT ON POLICY partner_self ON referrals IS
 CREATE POLICY partner_self ON referral_commissions
     AS PERMISSIVE FOR SELECT TO immodesk_app
     USING (partner_id = (SELECT id FROM referral_partners
-                          WHERE user_id = current_setting('app.current_user_id', true)::uuid));
+                          WHERE user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid));
 COMMENT ON POLICY partner_self ON referral_commissions IS
     'Le partenaire consulte ses commissions ; il ne peut ni les créer ni les modifier (écritures financières réservées à immodesk_admin, colonnes verrouillées par guard_financial_row).';
 
@@ -3245,7 +3270,7 @@ COMMENT ON POLICY partner_self ON referral_commissions IS
 CREATE POLICY partner_self ON referral_payouts
     AS PERMISSIVE FOR SELECT TO immodesk_app
     USING (partner_id = (SELECT id FROM referral_partners
-                          WHERE user_id = current_setting('app.current_user_id', true)::uuid));
+                          WHERE user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid));
 COMMENT ON POLICY partner_self ON referral_payouts IS
     'Le partenaire suit ses versements Mobile Money ; l''ordonnancement et l''exécution des paiements relèvent d''immodesk_admin.';
 -- =====================================================================

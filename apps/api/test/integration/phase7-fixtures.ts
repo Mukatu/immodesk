@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client';
 import { api, readOtpCode, resetOtpLimits, uniquePhone, type TestContext } from './helpers';
 import type { Agency } from './phase3-fixtures';
 

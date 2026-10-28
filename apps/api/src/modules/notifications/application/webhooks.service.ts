@@ -1,5 +1,5 @@
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../../generated/prisma/client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { newId } from '../../../shared/ids/uuid';
@@ -44,8 +44,6 @@ const TIMESTAMP_COLUMN: Readonly<Record<string, string>> = {
  */
 @Injectable()
 export class WebhooksService implements OnModuleDestroy {
-  private admin: PrismaClient | null = null;
-
   constructor(
     private readonly config: AppConfigService,
     private readonly prisma: PrismaService,
@@ -54,10 +52,7 @@ export class WebhooksService implements OnModuleDestroy {
     @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
   ) {}
 
-  async onModuleDestroy(): Promise<void> {
-    await this.admin?.$disconnect();
-    this.admin = null;
-  }
+  async onModuleDestroy(): Promise<void> {}
 
   verifyChallenge(
     mode: string | undefined,
@@ -219,11 +214,10 @@ export class WebhooksService implements OnModuleDestroy {
   }
 
   private adminClient(): PrismaClient {
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl)
+    const admin = this.prisma.adminClient();
+    if (!admin)
       throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'DATABASE_ADMIN_URL absent' });
-    this.admin ??= new PrismaClient({ datasources: { db: { url: adminUrl } }, log: ['error'] });
-    return this.admin;
+    return admin;
   }
 }
 

@@ -6,7 +6,7 @@
  * par `next_sequence` comme en production. Décor : les deux baux actifs A1 et
  * A2 de la phase 2 (Résidence Mpila).
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../src/generated/prisma/client';
 import { randomBytes } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 import { SYSTEM_TEMPLATES } from '../src/modules/notifications/domain/template-catalog';

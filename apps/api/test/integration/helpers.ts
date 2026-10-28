@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client';
+import { PrismaService } from '../../src/shared/prisma/prisma.service';
 import { v7 as uuidv7 } from 'uuid';
 import { createApp } from '../../src/bootstrap';
 import {
@@ -24,11 +25,8 @@ export async function startTestApp(): Promise<TestContext> {
   await app.listen(0, '127.0.0.1');
 
   const address = app.getHttpServer().address() as { port: number };
-  const admin = new PrismaClient({
-    datasources: { db: { url: process.env.DATABASE_ADMIN_URL as string } },
-    log: ['error'],
-  });
-  await admin.$connect();
+  // Client d'administration partagé de l'application : un seul pool de plus.
+  const admin = app.get(PrismaService).adminClient() as PrismaClient;
 
   return {
     app,
@@ -41,7 +39,6 @@ export async function startTestApp(): Promise<TestContext> {
 }
 
 export async function stopTestApp(ctx: TestContext): Promise<void> {
-  await ctx.admin.$disconnect();
   await ctx.app.close();
 }
 

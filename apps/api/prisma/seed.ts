@@ -6,7 +6,8 @@
  * BYPASSRLS) car il crée des lignes dans plusieurs organisations et ne peut
  * donc pas se placer dans un unique contexte de tenant.
  */
-import { PrismaClient } from '@prisma/client';
+import 'dotenv/config';
+import { createPrismaClient } from '../src/shared/prisma/create-prisma-client';
 import { v7 as uuidv7 } from 'uuid';
 import { seedBilling } from './seed-billing';
 import { seedLeases } from './seed-leases';
@@ -15,16 +16,12 @@ import { seedPhase6 } from './seed-phase6';
 import { seedPhase8 } from './seed-phase8';
 import { seedPortfolio } from './seed-portfolio';
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url:
-        process.env.DATABASE_ADMIN_URL ??
-        process.env.DATABASE_URL ??
-        'postgresql://immodesk:immodesk@localhost:5440/immodesk',
-    },
-  },
-});
+const prisma = createPrismaClient(
+  process.env.DATABASE_ADMIN_URL ??
+    process.env.DATABASE_URL ??
+    'postgresql://immodesk:immodesk@localhost:5440/immodesk',
+  [],
+);
 
 const ORGANIZATION_SLUG = 'agence-mpila-immo';
 const OWNER_PHONE = '+242066000001';

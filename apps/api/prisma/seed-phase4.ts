@@ -8,7 +8,7 @@
  * BGFI de l'agence, tous deux semés en phase 1.
  */
 import { createHash } from 'node:crypto';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../src/generated/prisma/client';
 import { v7 as uuidv7 } from 'uuid';
 
 export interface Phase4Report {

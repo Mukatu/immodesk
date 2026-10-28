@@ -40,7 +40,6 @@ RUN pnpm exec prisma generate && pnpm exec nest build
 FROM deps AS prod-deps
 WORKDIR /repo
 RUN pnpm install --filter @immodesk/api --frozen-lockfile --prod
-COPY --from=build /repo/node_modules/.prisma /repo/node_modules/.prisma
 
 # ---------------------------------------------------------------------
 # Étape 4 — image d'exécution
@@ -60,6 +59,7 @@ COPY --from=build /repo/apps/api/dist /app/dist
 # Le schéma et les migrations accompagnent l'image : `prisma migrate deploy`
 # doit pouvoir être lancé depuis le conteneur.
 COPY --from=build /repo/apps/api/prisma /app/prisma
+COPY --from=build /repo/apps/api/prisma.config.ts /app/prisma.config.ts
 COPY --from=build /repo/apps/api/package.json /app/package.json
 
 # L'API ne tourne jamais en root.

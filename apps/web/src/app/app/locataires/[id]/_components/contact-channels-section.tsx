@@ -71,11 +71,13 @@ function CreateChannelDialog({
     defaultValues: DEFAULT_VALUES,
   });
 
+  const [wasOpen, setWasOpen] = React.useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setServerError(null);
+  }
   React.useEffect(() => {
-    if (open) {
-      form.reset(DEFAULT_VALUES);
-      setServerError(null);
-    }
+    if (open) form.reset(DEFAULT_VALUES);
   }, [open, form]);
 
   async function onSubmit(values: FormValues) {

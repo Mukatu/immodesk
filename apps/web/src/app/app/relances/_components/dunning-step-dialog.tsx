@@ -72,24 +72,28 @@ export function DunningStepDialog({ open, onOpenChange, rule }: DunningStepDialo
   const [escalateToLegal, setEscalateToLegal] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (!open) return;
-    setName(rule?.name ?? '');
-    setStepOrder(String(rule?.stepOrder ?? 1));
-    setTriggerType(rule?.triggerType ?? 'DAYS_AFTER_DUE');
-    setOffsetDays(String(rule?.offsetDays ?? 5));
-    setChannel(rule?.channel ?? 'WHATSAPP');
-    setFallbackChannel(rule?.fallbackChannel ?? 'SMS');
-    setMinBalanceAmount(String(rule?.minBalanceAmount ?? 0));
-    setSendHourLocal(String(rule?.sendHourLocal ?? 9));
-    setSkipWeekends(rule?.skipWeekends ?? true);
-    setNotifyLandlord(rule?.notifyLandlord ?? false);
-    setNotifyCollector(rule?.notifyCollector ?? false);
-    setApplyPenalty(rule?.applyPenalty ?? false);
-    setPenaltyRuleId(rule?.penaltyRuleId ?? '');
-    setEscalateToLegal(rule?.escalateToLegal ?? false);
-    setError(null);
-  }, [open, rule]);
+  // Réinitialise le formulaire à l'ouverture (ou quand la règle change) pendant le rendu.
+  const [synced, setSynced] = React.useState<{ open: boolean; rule: typeof rule } | null>(null);
+  if (synced?.open !== open || synced.rule !== rule) {
+    setSynced({ open, rule });
+    if (open) {
+      setName(rule?.name ?? '');
+      setStepOrder(String(rule?.stepOrder ?? 1));
+      setTriggerType(rule?.triggerType ?? 'DAYS_AFTER_DUE');
+      setOffsetDays(String(rule?.offsetDays ?? 5));
+      setChannel(rule?.channel ?? 'WHATSAPP');
+      setFallbackChannel(rule?.fallbackChannel ?? 'SMS');
+      setMinBalanceAmount(String(rule?.minBalanceAmount ?? 0));
+      setSendHourLocal(String(rule?.sendHourLocal ?? 9));
+      setSkipWeekends(rule?.skipWeekends ?? true);
+      setNotifyLandlord(rule?.notifyLandlord ?? false);
+      setNotifyCollector(rule?.notifyCollector ?? false);
+      setApplyPenalty(rule?.applyPenalty ?? false);
+      setPenaltyRuleId(rule?.penaltyRuleId ?? '');
+      setEscalateToLegal(rule?.escalateToLegal ?? false);
+      setError(null);
+    }
+  }
 
   const pending = createRule.isPending || updateRule.isPending;
 

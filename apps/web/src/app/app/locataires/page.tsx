@@ -85,9 +85,7 @@ export default function LocatairesPage() {
 
   // Bonus : cf. commentaire équivalent dans /app/baux/page.tsx — liseré `bg-accent`
   // synchronisé avec l'état ouvert/fermé du panneau non modal.
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedTenantId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedTenantId !== null) setSelectedTenantId(null);
 
   function handleRowSelect(tenant: Tenant) {
     setSelectedTenantId(tenant.id);

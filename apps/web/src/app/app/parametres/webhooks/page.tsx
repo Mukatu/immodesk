@@ -55,9 +55,7 @@ export default function ParametresWebhooksPage() {
   const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
   const [selectedEventId, setSelectedEventId] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedEventId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedEventId !== null) setSelectedEventId(null);
 
   function handleRowSelect(event: WebhookEvent) {
     setSelectedEventId(event.id);

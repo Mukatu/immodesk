@@ -88,11 +88,9 @@ export default function MaintenancePage() {
     return map;
   }, [members]);
 
+  if (!isContextPanelOpen && selectedRequestId !== null) setSelectedRequestId(null);
   React.useEffect(() => {
-    if (!isContextPanelOpen) {
-      setSelectedRequestId(null);
-      selectedRequestIdRef.current = null;
-    }
+    if (!isContextPanelOpen) selectedRequestIdRef.current = null;
   }, [isContextPanelOpen]);
 
   function resetPaging() {

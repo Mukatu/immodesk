@@ -118,10 +118,12 @@ export function DocumentUploader({
 
   useEffect(() => {
     if (!previewFile || previewFile.type === 'application/pdf') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- l'URL d'objet est une ressource externe créée puis révoquée par cet effet
       setPreviewUrl(null);
       return;
     }
     const url = URL.createObjectURL(previewFile);
+
     setPreviewUrl(url);
     return () => {
       URL.revokeObjectURL(url);

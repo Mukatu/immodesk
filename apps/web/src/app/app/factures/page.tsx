@@ -185,9 +185,7 @@ export default function FacturesPage() {
     });
   }
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedInvoiceId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedInvoiceId !== null) setSelectedInvoiceId(null);
 
   function handleRowSelect(invoice: InvoiceSummary) {
     setSelectedInvoiceId(invoice.id);

@@ -32,10 +32,16 @@ async function copyToClipboard(value: string, label: string) {
   }
 }
 
+const subscribeNever = () => () => {};
+
 /** Affiche le code de parrainage et les supports à partager, une fois l'inscription acceptée. */
 export function PartnerShareCard({ partner }: { partner: ReferralPartner }) {
-  const [origin, setOrigin] = React.useState('');
-  React.useEffect(() => setOrigin(window.location.origin), []);
+  // Vide côté serveur / à l'hydratation, origine du navigateur ensuite.
+  const origin = React.useSyncExternalStore(
+    subscribeNever,
+    () => window.location.origin,
+    () => '',
+  );
   const referralLink = origin ? `${origin}/onboarding/organisation?code=${partner.code}` : '';
 
   return (

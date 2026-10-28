@@ -300,9 +300,7 @@ export default function BailleursPage() {
 
   const { data, isLoading } = useLandlords({ q: debouncedSearch, city: debouncedCity });
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedLandlordId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedLandlordId !== null) setSelectedLandlordId(null);
 
   function handleRowSelect(landlord: Landlord) {
     setSelectedLandlordId(landlord.id);

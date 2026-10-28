@@ -35,9 +35,7 @@ export default function SynchronisationAppareilsPage() {
   const { data, isLoading } = useSyncDevices();
   const devices = data?.items ?? [];
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedDeviceId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedDeviceId !== null) setSelectedDeviceId(null);
 
   function handleRowSelect(device: DeviceStatus) {
     setSelectedDeviceId(device.deviceId);

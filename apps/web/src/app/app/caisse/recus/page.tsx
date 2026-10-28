@@ -114,9 +114,7 @@ export default function RecusCaissePage() {
     });
   }
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedReceiptId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedReceiptId !== null) setSelectedReceiptId(null);
 
   async function handleDownloadPdf(receiptId: string) {
     try {

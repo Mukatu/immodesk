@@ -40,16 +40,20 @@ export default function ParametresContratPage() {
   const [showOhadaBlock, setShowOhadaBlock] = React.useState(false);
   const [footerText, setFooterText] = React.useState('');
 
-  React.useEffect(() => {
-    if (!template) return;
-    setHeaderTitle(template.headerTitle);
-    setLessorBlock(template.lessorBlock);
-    setClauses(template.optionalClauses);
-    setLegalMentions(template.legalMentions);
-    setSignatureCity(template.signatureCity);
-    setShowOhadaBlock(template.showOhadaBlock);
-    setFooterText(template.footerText ?? '');
-  }, [template]);
+  // Ajuste l'état pendant le rendu quand le modèle chargé change (pas d'effet).
+  const [syncedTemplate, setSyncedTemplate] = React.useState<typeof template>(undefined);
+  if (template !== syncedTemplate) {
+    setSyncedTemplate(template);
+    if (template) {
+      setHeaderTitle(template.headerTitle);
+      setLessorBlock(template.lessorBlock);
+      setClauses(template.optionalClauses);
+      setLegalMentions(template.legalMentions);
+      setSignatureCity(template.signatureCity);
+      setShowOhadaBlock(template.showOhadaBlock);
+      setFooterText(template.footerText ?? '');
+    }
+  }
 
   function addClause() {
     setClauses((prev) => [...prev, { key: newClauseKey(), title: '', body: '', enabled: true }]);

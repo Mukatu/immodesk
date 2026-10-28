@@ -147,9 +147,7 @@ export default function BauxPage() {
   // repérable (liseré `bg-accent`, même codage que l'item actif de la sidebar) tant que
   // le panneau reste ouvert — utile puisqu'il est non modal et qu'on peut continuer à
   // parcourir/scroller la liste pendant qu'il affiche encore la ligne précédente.
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedLeaseId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedLeaseId !== null) setSelectedLeaseId(null);
 
   function handleRowSelect(lease: LeaseSummary) {
     setSelectedLeaseId(lease.id);

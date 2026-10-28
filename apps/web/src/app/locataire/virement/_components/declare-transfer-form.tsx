@@ -53,16 +53,16 @@ export function DeclareTransferForm() {
 
   // Présélectionne le compte quand la liste arrive (ou change de bail) : un
   // seul compte de destination existe le plus souvent (arbitrage phase 4).
-  React.useEffect(() => {
+  // Clé sur la liste brute (stable) : `bankAccounts` ci-dessus est un nouveau tableau à chaque rendu.
+  const [syncedAccounts, setSyncedAccounts] = React.useState<{ list: unknown } | null>(null);
+  if (syncedAccounts?.list !== instructions?.bankAccounts) {
+    setSyncedAccounts({ list: instructions?.bankAccounts });
     if (bankAccounts.length === 0) {
       setBeneficiaryBankAccountId('');
-      return;
-    }
-    if (!bankAccounts.some((a) => a.id === beneficiaryBankAccountId) && bankAccounts[0]) {
+    } else if (!bankAccounts.some((a) => a.id === beneficiaryBankAccountId) && bankAccounts[0]) {
       setBeneficiaryBankAccountId(bankAccounts[0].id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bankAccounts]);
+  }
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;

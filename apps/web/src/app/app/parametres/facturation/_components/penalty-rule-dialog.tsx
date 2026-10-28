@@ -41,17 +41,21 @@ export function PenaltyRuleDialog({ open, onOpenChange, rule, onCreate }: Penalt
   const [isDefault, setIsDefault] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (!open) return;
-    setName(rule?.name ?? '');
-    setBasis(rule?.basis ?? 'RATE_BPS_PER_MONTH');
-    setRate(String(rule?.rateBps ?? 100));
-    setFlatAmount(String(rule?.flatAmount ?? 0));
-    setGraceDays(String(rule?.graceDays ?? 5));
-    setIsActive(rule?.isActive ?? true);
-    setIsDefault(rule?.isDefault ?? false);
-    setError(null);
-  }, [open, rule]);
+  // Réinitialise le formulaire à l'ouverture (ou quand la règle change) pendant le rendu.
+  const [synced, setSynced] = React.useState<{ open: boolean; rule: typeof rule } | null>(null);
+  if (synced?.open !== open || synced.rule !== rule) {
+    setSynced({ open, rule });
+    if (open) {
+      setName(rule?.name ?? '');
+      setBasis(rule?.basis ?? 'RATE_BPS_PER_MONTH');
+      setRate(String(rule?.rateBps ?? 100));
+      setFlatAmount(String(rule?.flatAmount ?? 0));
+      setGraceDays(String(rule?.graceDays ?? 5));
+      setIsActive(rule?.isActive ?? true);
+      setIsDefault(rule?.isDefault ?? false);
+      setError(null);
+    }
+  }
 
   const usesRate = RATE_BASES.includes(basis);
 

@@ -60,7 +60,9 @@ export function ConflictResolutionDialog({
   const [error, setError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  React.useEffect(() => {
+  const [wasOpen, setWasOpen] = React.useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
       setDecision('APPLY');
       setInvoiceId(KEEP_ORIGINAL_VALUE);
@@ -68,7 +70,7 @@ export function ConflictResolutionDialog({
       setReason('');
       setError(null);
     }
-  }, [open]);
+  }
 
   const discardBlocked = decision === 'DISCARD' && !reason.trim();
   const submitDisabled = isSubmitting || discardBlocked;

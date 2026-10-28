@@ -22,8 +22,24 @@ export interface PaymentMethodsFormValues {
   pendingExpiryMinutes: number;
 }
 
+/** Entrée du formulaire : `z.coerce.number()` accepte `unknown` en zod 4. */
+export type PaymentMethodsFormInput = Omit<
+  PaymentMethodsFormValues,
+  | 'mobileMoneyAggregatorFeeRatePercent'
+  | 'mobileMoneyAggregatorMinAmount'
+  | 'mobileMoneyAggregatorMaxAmount'
+  | 'pendingExpiryMinutes'
+> &
+  Record<
+    | 'mobileMoneyAggregatorFeeRatePercent'
+    | 'mobileMoneyAggregatorMinAmount'
+    | 'mobileMoneyAggregatorMaxAmount'
+    | 'pendingExpiryMinutes',
+    unknown
+  >;
+
 interface SectionProps {
-  form: UseFormReturn<PaymentMethodsFormValues>;
+  form: UseFormReturn<PaymentMethodsFormInput, unknown, PaymentMethodsFormValues>;
   /** Écran en lecture seule (rôle courant différent de OWNER). */
   readOnly: boolean;
 }

@@ -15,6 +15,7 @@ import {
   BankTransferFields,
   MobileMoneyAggregatorFields,
   MobileMoneyDeclaredFields,
+  type PaymentMethodsFormInput,
   type PaymentMethodsFormValues,
 } from './_components/payment-methods-fields';
 
@@ -43,7 +44,7 @@ export default function ParametresPaiementsPage() {
   const updateSettings = useUpdatePaymentMethods(currentOrganizationId ?? '');
   const isOwner = currentOrganization?.role === 'OWNER';
 
-  const form = useForm<PaymentMethodsFormValues>({
+  const form = useForm<PaymentMethodsFormInput, unknown, PaymentMethodsFormValues>({
     resolver: zodResolver(schema),
     values: settings
       ? {

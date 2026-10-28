@@ -30,7 +30,7 @@ const step1Schema = z.object({
 
 const step2Schema = z.object({
   rentAmount: z
-    .number({ invalid_type_error: 'Le loyer est requis.' })
+    .number({ error: 'Le loyer est requis.' })
     .positive('Le loyer doit être supérieur à zéro.'),
   paymentDueDay: z
     .number()

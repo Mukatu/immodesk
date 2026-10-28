@@ -45,7 +45,7 @@ export default function ParametresRapprochementPage() {
   const updateSettings = useUpdateReconciliationSettings(currentOrganizationId ?? '');
   const [error, setError] = React.useState<string | null>(null);
 
-  const form = useForm<FormValues>({
+  const form = useForm<z.input<typeof schema>, unknown, FormValues>({
     resolver: zodResolver(schema),
     values: settings
       ? {
@@ -154,7 +154,7 @@ export default function ParametresRapprochementPage() {
                 <Label htmlFor="bounceFeeAmount">Frais de rejet de chèque</Label>
                 <MoneyInput
                   id="bounceFeeAmount"
-                  value={watch('bounceFeeAmount')}
+                  value={Number(watch('bounceFeeAmount') ?? 0)}
                   onValueChange={(value) => setValue('bounceFeeAmount', value ?? 0)}
                 />
                 <p className="text-xs text-muted-foreground">

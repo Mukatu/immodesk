@@ -26,7 +26,8 @@ export async function startTestApp(): Promise<TestContext> {
 
   const address = app.getHttpServer().address() as { port: number };
   // Client d'administration partagé de l'application : un seul pool de plus.
-  const admin = app.get(PrismaService).adminClient() as PrismaClient;
+  const admin = app.get(PrismaService).adminClient();
+  if (!admin) throw new Error("DATABASE_ADMIN_URL requis pour les tests d'intégration");
 
   return {
     app,

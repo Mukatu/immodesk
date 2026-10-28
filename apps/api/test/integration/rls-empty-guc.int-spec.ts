@@ -42,11 +42,14 @@ describe('RLS : contexte vidé sur une connexion de pool réutilisée', () => {
 
   it('lit les drapeaux globaux sans erreur après un contexte libéré', async () => {
     await withContext();
+    // Peu importe que la ligne existe : seule l'absence d'erreur est vérifiée.
     await expect(
-      app.$transaction((tx) =>
-        tx.feature_flags.findFirst({ where: { organization_id: null, key: 'read_only_mode' } }),
-      ),
-    ).resolves.toBeDefined();
+      app
+        .$transaction((tx) =>
+          tx.feature_flags.findFirst({ where: { organization_id: null, key: 'read_only_mode' } }),
+        )
+        .then(() => 'ok'),
+    ).resolves.toBe('ok');
   });
 
   it('reste aveugle (zéro ligne, sans erreur) sur les tables à tenant et à utilisateur', async () => {

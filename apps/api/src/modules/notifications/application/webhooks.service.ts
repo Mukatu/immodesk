@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { PrismaClient } from '../../../generated/prisma/client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
@@ -43,7 +43,7 @@ const TIMESTAMP_COLUMN: Readonly<Record<string, string>> = {
  * unique par source — un rejeu du fournisseur ne retraite rien.
  */
 @Injectable()
-export class WebhooksService implements OnModuleDestroy {
+export class WebhooksService {
   constructor(
     private readonly config: AppConfigService,
     private readonly prisma: PrismaService,
@@ -51,8 +51,6 @@ export class WebhooksService implements OnModuleDestroy {
     @Inject(WHATSAPP_PROVIDER) private readonly whatsapp: WhatsAppProvider,
     @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
   ) {}
-
-  async onModuleDestroy(): Promise<void> {}
 
   verifyChallenge(
     mode: string | undefined,

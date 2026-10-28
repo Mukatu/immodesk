@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { toJsonAmount } from '../../../shared/money/amount';
@@ -44,13 +44,11 @@ export interface ReceiptVerificationView {
  * téléphone ni l'adresse du locataire, seulement son nom.
  */
 @Injectable()
-export class ReceiptsQueryService implements OnModuleDestroy {
+export class ReceiptsQueryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: AppConfigService,
   ) {}
-
-  async onModuleDestroy(): Promise<void> {}
 
   async list(
     organizationId: string,

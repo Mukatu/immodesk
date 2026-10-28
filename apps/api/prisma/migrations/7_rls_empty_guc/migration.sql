@@ -47,5 +47,17 @@ BEGIN
         END IF;
         EXECUTE v_sql;
     END LOOP;
+
+    -- Garde-fou : si le format de pg_get_expr diffère et que rien n'a été
+    -- réécrit, la migration échoue au lieu de passer silencieusement.
+    -- Idempotent : relancée, plus aucune occurrence nue ne subsiste.
+    IF EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public'
+          AND (qual ~ 'current_setting\(''app\.[a-z_]+''::text, true\)\)::uuid'
+               OR with_check ~ 'current_setting\(''app\.[a-z_]+''::text, true\)\)::uuid')
+    ) THEN
+        RAISE EXCEPTION 'Migration 7 : des policies utilisent encore current_setting(...)::uuid sans NULLIF';
+    END IF;
 END
 $$;

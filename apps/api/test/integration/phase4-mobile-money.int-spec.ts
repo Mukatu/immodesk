@@ -1,4 +1,5 @@
 import { newId as uuidv7 } from '../../src/shared/ids/uuid';
+import { MobileMoneyProviderRegistry } from '../../src/modules/mobile-money/infrastructure/mobile-money-provider.registry';
 import { MomoReconcileService } from '../../src/modules/mobile-money/application/momo-reconcile.service';
 import { api, startTestApp, stopTestApp, type TestContext } from './helpers';
 import {
@@ -173,6 +174,50 @@ describe('Phase 4 — Mobile Money agrégateur (simulateur)', () => {
     const { payment } = await initiate(5, '06');
     await waitPaymentStatus(payment.id, 'CONFIRMED');
   }, 20_000);
+
+  it('…06 bis : webhook traité pendant l’initiation (transaction encore INITIATED) — jamais perdu', async () => {
+    // Déterministe : le webhook est posté et son job de vérification exécuté
+    // AVANT que l'appel d'initiation ne rende la main. Le job de vérification
+    // ne doit ni être ignoré ni consommer sa clé d'idempotence en pure perte.
+    const provider = ctx.app.get(MobileMoneyProviderRegistry).forCode('SIMULATOR');
+    const original = provider.initiate.bind(provider);
+    const spy = jest.spyOn(provider, 'initiate').mockImplementation(async (input) => {
+      const result = await original(input);
+      const { body, signature } = signSimulatorWebhook(ctx, {
+        // Identifiant unique : les références marchandes sont numérotées par
+        // organisation, donc réutilisées d'une organisation à l'autre.
+        eventId: `${input.externalReference}:SUCCEEDED:${uuidv7()}`,
+        merchantReference: input.externalReference,
+        providerReference: input.externalReference,
+        status: 'SUCCEEDED',
+        amount: input.amount.toString(),
+        currency: 'XAF',
+      });
+      expect((await postSimulatorWebhook(ctx, body, signature)).status).toBe(200);
+      await waitFor(async () => {
+        const row = await ctx.admin.mobile_money_transactions.findFirst({
+          where: {
+            organization_id: agency.organizationId,
+            merchant_reference: input.externalReference,
+          },
+        });
+        return row?.status === 'SUCCEEDED' ? row : null;
+      }, 8_000);
+      return result;
+    });
+    try {
+      const { transaction, payment } = await initiate(1, '01');
+      await waitPaymentStatus(payment.id, 'CONFIRMED');
+      const row = await ctx.admin.mobile_money_transactions.findUniqueOrThrow({
+        where: { id: transaction.id },
+      });
+      // La réponse d'initiation, arrivée après, ne régresse pas l'état.
+      expect(row.status).toBe('SUCCEEDED');
+      expect(row.aggregator_transaction_id).not.toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  }, 30_000);
 
   it('signature de webhook invalide : persistée, ignorée, sans aucun effet', async () => {
     const { transaction } = await initiate(6, '03'); // ne recevra jamais de webhook légitime

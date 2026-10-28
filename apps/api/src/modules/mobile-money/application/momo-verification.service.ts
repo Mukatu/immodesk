@@ -74,7 +74,10 @@ export class MomoVerificationService {
       let receiptIds: string[] = [];
       await this.prisma.withTenant(organizationId, null, async (tx) => {
         const row = await this.queries.lock(tx, transactionId);
-        if (row.channel !== 'AGGREGATOR' || row.status !== 'PENDING') return;
+        // INITIATED est vérifiable : un webhook peut précéder la réponse
+        // d'initiation, et l'ignorer (en consommant la clé d'idempotence du
+        // job) perdrait la confirmation jusqu'au rattrapage.
+        if (row.channel !== 'AGGREGATOR' || !['INITIATED', 'PENDING'].includes(row.status)) return;
         const providerRef = row.aggregator_transaction_id ?? row.merchant_reference;
         const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
         const status = await provider.getStatus(providerRef);

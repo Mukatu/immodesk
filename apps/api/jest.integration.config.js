@@ -10,6 +10,8 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
+  globalSetup: '<rootDir>/test/integration/global-setup.ts',
+  globalTeardown: '<rootDir>/test/integration/global-teardown.ts',
   setupFiles: ['<rootDir>/test/integration/setup-env.ts'],
   testTimeout: 60_000,
   maxWorkers: 1,

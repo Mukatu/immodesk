@@ -464,8 +464,9 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
     }
   });
 
-  it('laisse passer les drapeaux globaux mais interdit de les modifier', async () => {
+  it('laisse lire les drapeaux globaux mais interdit de les écrire (INSERT, UPDATE, DELETE)', async () => {
     const globalKey = `rls.global.${Math.random().toString(36).slice(2, 8)}`;
+    const insertedKey = `rls.insert.${Math.random().toString(36).slice(2, 8)}`;
     await admin.$executeRawUnsafe(
       `INSERT INTO feature_flags (id, organization_id, key, is_enabled) VALUES ($1::uuid, NULL, $2, true)`,
       uuidv7(),
@@ -473,8 +474,8 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
     );
 
     try {
-      // `feature_flags.organization_id` est NULLABLE : la policy autorise
-      // la lecture des lignes globales par tous les tenants.
+      // Lecture : les lignes globales restent visibles de tous les tenants
+      // (ReadOnlyService, FeatureFlagsService).
       const fromA = await asOrganization(app, orgA, (tx) =>
         tx.$queryRawUnsafe<Array<{ key: string }>>(
           `SELECT key FROM feature_flags WHERE key = $1`,
@@ -483,7 +484,7 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
       );
       expect(fromA).toHaveLength(1);
 
-      // Mais une policy RESTRICTIVE interdit d'y toucher.
+      // Écriture : ni UPDATE ni DELETE ne touchent une ligne globale.
       const updated = await asOrganization(app, orgA, (tx) =>
         tx.$executeRawUnsafe(
           `UPDATE feature_flags SET is_enabled = false WHERE key = $1`,
@@ -496,8 +497,152 @@ describe('Isolation multi-tenant (Row Level Security)', () => {
         tx.$executeRawUnsafe(`DELETE FROM feature_flags WHERE key = $1`, globalKey),
       );
       expect(deleted).toBe(0);
+
+      // Ni rendre globale une ligne du tenant en passant organization_id à NULL.
+      await asOrganization(app, orgA, (tx) =>
+        tx.$executeRawUnsafe(
+          `INSERT INTO feature_flags (id, organization_id, key, is_enabled) VALUES ($1::uuid, $2::uuid, $3, true)`,
+          uuidv7(),
+          orgA.organizationId,
+          insertedKey,
+        ),
+      );
+      await expect(
+        asOrganization(app, orgA, (tx) =>
+          tx.$executeRawUnsafe(
+            `UPDATE feature_flags SET organization_id = NULL WHERE key = $1`,
+            insertedKey,
+          ),
+        ),
+      ).rejects.toThrow();
+
+      // INSERT d'un drapeau global (ex. read_only_mode) : refusé, avec ou sans contexte.
+      await expect(
+        asOrganization(app, orgA, (tx) =>
+          tx.$executeRawUnsafe(
+            `INSERT INTO feature_flags (id, organization_id, key, is_enabled) VALUES ($1::uuid, NULL, $2, true)`,
+            uuidv7(),
+            `rls.forged.${Math.random().toString(36).slice(2, 8)}`,
+          ),
+        ),
+      ).rejects.toThrow();
+      await expect(
+        app.$executeRawUnsafe(
+          `INSERT INTO feature_flags (id, organization_id, key, is_enabled) VALUES ($1::uuid, NULL, $2, true)`,
+          uuidv7(),
+          `rls.forged.${Math.random().toString(36).slice(2, 8)}`,
+        ),
+      ).rejects.toThrow();
+
+      // Le drapeau global d'origine est resté intact.
+      const [still] = await admin.$queryRawUnsafe<Array<{ is_enabled: boolean }>>(
+        `SELECT is_enabled FROM feature_flags WHERE key = $1`,
+        globalKey,
+      );
+      expect(still.is_enabled).toBe(true);
     } finally {
-      await admin.$executeRawUnsafe(`DELETE FROM feature_flags WHERE key = $1`, globalKey);
+      await admin.$executeRawUnsafe(`DELETE FROM feature_flags WHERE key = ANY($1::text[])`, [
+        globalKey,
+        insertedKey,
+      ]);
+    }
+  });
+
+  it('garde les drapeaux du tenant écrivables par le tenant', async () => {
+    const key = `rls.own.${Math.random().toString(36).slice(2, 8)}`;
+    try {
+      await asOrganization(app, orgA, (tx) =>
+        tx.$executeRawUnsafe(
+          `INSERT INTO feature_flags (id, organization_id, key, is_enabled) VALUES ($1::uuid, $2::uuid, $3, true)`,
+          uuidv7(),
+          orgA.organizationId,
+          key,
+        ),
+      );
+      const updated = await asOrganization(app, orgA, (tx) =>
+        tx.$executeRawUnsafe(`UPDATE feature_flags SET is_enabled = false WHERE key = $1`, key),
+      );
+      expect(updated).toBe(1);
+      // L'autre tenant ne le voit ni ne le modifie.
+      const fromB = await asOrganization(app, orgB, (tx) =>
+        tx.$executeRawUnsafe(`UPDATE feature_flags SET is_enabled = true WHERE key = $1`, key),
+      );
+      expect(fromB).toBe(0);
+      const deleted = await asOrganization(app, orgA, (tx) =>
+        tx.$executeRawUnsafe(`DELETE FROM feature_flags WHERE key = $1`, key),
+      );
+      expect(deleted).toBe(1);
+    } finally {
+      await admin.$executeRawUnsafe(`DELETE FROM feature_flags WHERE key = $1`, key);
+    }
+  });
+
+  it('rend les webhooks globaux invisibles et intouchables pour le rôle applicatif', async () => {
+    const extId = `rls-global-${Math.random().toString(36).slice(2, 10)}`;
+    const ownId = `rls-own-${Math.random().toString(36).slice(2, 10)}`;
+    const globalId = uuidv7();
+    const insertSql = `INSERT INTO webhook_events (id, organization_id, source, event_type, external_event_id)
+                       VALUES ($1::uuid, $2::uuid, 'CINETPAY'::webhook_source, 'test', $3)`;
+    await admin.$executeRawUnsafe(insertSql, globalId, null, extId);
+
+    try {
+      // Aucune lecture de ligne globale.
+      const seen = await asOrganization(app, orgA, (tx) =>
+        tx.$queryRawUnsafe<Array<{ id: string }>>(
+          `SELECT id FROM webhook_events WHERE id = $1::uuid`,
+          globalId,
+        ),
+      );
+      expect(seen).toEqual([]);
+
+      // Ni UPDATE ni DELETE (0 ligne touchée).
+      const updated = await asOrganization(app, orgA, (tx) =>
+        tx.$executeRawUnsafe(
+          `UPDATE webhook_events SET status = 'FAILED'::webhook_status WHERE id = $1::uuid`,
+          globalId,
+        ),
+      );
+      expect(updated).toBe(0);
+      const deleted = await asOrganization(app, orgA, (tx) =>
+        tx.$executeRawUnsafe(`DELETE FROM webhook_events WHERE id = $1::uuid`, globalId),
+      );
+      expect(deleted).toBe(0);
+
+      // Ni INSERT d'une ligne globale.
+      await expect(
+        asOrganization(app, orgA, (tx) =>
+          tx.$executeRawUnsafe(
+            insertSql,
+            uuidv7(),
+            null,
+            `rls-forged-${Math.random().toString(36).slice(2, 10)}`,
+          ),
+        ),
+      ).rejects.toThrow();
+
+      // La ligne globale est intacte côté admin.
+      const [row] = await admin.$queryRawUnsafe<Array<{ status: string }>>(
+        `SELECT status::text AS status FROM webhook_events WHERE id = $1::uuid`,
+        globalId,
+      );
+      expect(row.status).toBe('RECEIVED');
+
+      // Les lignes du tenant fonctionnent normalement.
+      await asOrganization(app, orgA, (tx) =>
+        tx.$executeRawUnsafe(insertSql, uuidv7(), orgA.organizationId, ownId),
+      );
+      const own = await asOrganization(app, orgA, (tx) =>
+        tx.$executeRawUnsafe(
+          `UPDATE webhook_events SET status = 'PROCESSED'::webhook_status WHERE external_event_id = $1`,
+          ownId,
+        ),
+      );
+      expect(own).toBe(1);
+    } finally {
+      await admin.$executeRawUnsafe(
+        `DELETE FROM webhook_events WHERE external_event_id = ANY($1::text[])`,
+        [extId, ownId],
+      );
     }
   });
 });

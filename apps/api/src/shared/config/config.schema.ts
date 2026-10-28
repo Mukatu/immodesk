@@ -64,6 +64,8 @@ export const configSchema = z
     // --- Base de données -------------------------------------------------
     DATABASE_URL: z.string().url(),
     DATABASE_ADMIN_URL: z.string().url().optional(),
+    // Taille maximale de chaque pool pg (client applicatif ET client admin).
+    DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(200).default(10),
 
     // --- Redis (cache, limitation de débit) -------------------------------
     REDIS_URL: z.string().url(),

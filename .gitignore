@@ -31,5 +31,5 @@ output_Prompts_Developpement_SaaS_Immobilier.md
 apps/web/playwright-report/
 apps/web/test-results/
 
-# Artefacts TypeScript incrementaux
-*.tsbuildinfo
+# Client Prisma généré
+apps/api/src/generated/

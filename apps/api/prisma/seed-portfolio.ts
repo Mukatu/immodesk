@@ -9,7 +9,7 @@
  * des ordres de grandeur réels du marché local (studio 60 000 à 90 000 FCFA,
  * appartement 120 000 à 180 000 FCFA par mois).
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../src/generated/prisma/client';
 import { newId as uuidv7 } from '../src/shared/ids/uuid';
 import { upsertBankAccounts, upsertTenants, upsertUnits } from './seed-portfolio-parties';
 

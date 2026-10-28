@@ -6,9 +6,6 @@
   "license": "UNLICENSED",
   "type": "commonjs",
   "main": "dist/main.js",
-  "prisma": {
-    "seed": "ts-node --transpile-only prisma/seed.ts"
-  },
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
@@ -19,7 +16,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest --config jest.unit.config.js",
     "test:watch": "jest --config jest.unit.config.js --watch",
-    "test:integration": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.integration.config.js --runInBand",
+    "test:integration": "node --max-old-space-size=6144 --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.integration.config.js --runInBand",
     "prisma:generate": "prisma generate",
     "prisma:pull": "prisma db pull",
     "prisma:resolve": "prisma migrate resolve --applied 0_init",
@@ -37,7 +34,8 @@
     "@nestjs/platform-express": "^11.2.8",
     "@nestjs/swagger": "^11.0.0",
     "@nestjs/throttler": "^6.7.1",
-    "@prisma/client": "^6.3.0",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "^7.10.1",
     "bullmq": "^6.4.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
@@ -69,7 +67,7 @@
     "jsqr": "^1.4.0",
     "pino-pretty": "^13.2.0",
     "pngjs": "^7.0.0",
-    "prisma": "^6.3.0",
+    "prisma": "^7.10.1",
     "supertest": "^7.3.1",
     "ts-jest": "^29.4.15",
     "ts-node": "^10.9.2",

@@ -3128,9 +3128,9 @@ BEGIN
         -- Les tables dont organization_id est nullable portent aussi des lignes
         -- globales (drapeaux système, webhooks non encore rattachés à un tenant).
         IF r.is_nullable = 'YES' THEN
-            v_using := '(organization_id IS NULL OR organization_id = current_setting(''app.current_organization_id'', true)::uuid)';
+            v_using := '(organization_id IS NULL OR organization_id = NULLIF(current_setting(''app.current_organization_id'', true), '''')::uuid)';
         ELSE
-            v_using := '(organization_id = current_setting(''app.current_organization_id'', true)::uuid)';
+            v_using := '(organization_id = NULLIF(current_setting(''app.current_organization_id'', true), '''')::uuid)';
         END IF;
 
         EXECUTE format(
@@ -3148,8 +3148,8 @@ ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organizations FORCE ROW LEVEL SECURITY;
 CREATE POLICY org_isolation ON organizations
     AS PERMISSIVE FOR ALL TO immodesk_app
-    USING (id = current_setting('app.current_organization_id', true)::uuid)
-    WITH CHECK (id = current_setting('app.current_organization_id', true)::uuid);
+    USING (id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid)
+    WITH CHECK (id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
 COMMENT ON POLICY org_isolation ON organizations IS
     'Isolation multi-tenant : une transaction ne voit que l''organisation positionnée dans app.current_organization_id.';
 
@@ -3216,8 +3216,8 @@ COMMENT ON POLICY active_programs_readonly ON referral_programs IS
 -- Fiche partenaire : chaque utilisateur ne voit et ne gère que la sienne.
 CREATE POLICY partner_self ON referral_partners
     AS PERMISSIVE FOR ALL TO immodesk_app
-    USING (user_id = current_setting('app.current_user_id', true)::uuid)
-    WITH CHECK (user_id = current_setting('app.current_user_id', true)::uuid);
+    USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid)
+    WITH CHECK (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
 COMMENT ON POLICY partner_self ON referral_partners IS
     'Un utilisateur ne voit que sa propre fiche partenaire. La vérification d''identité (verified_at, status ACTIVE) est appliquée par immodesk_admin.';
 
@@ -3226,9 +3226,9 @@ COMMENT ON POLICY partner_self ON referral_partners IS
 CREATE POLICY partner_self ON referrals
     AS PERMISSIVE FOR ALL TO immodesk_app
     USING (partner_id = (SELECT id FROM referral_partners
-                          WHERE user_id = current_setting('app.current_user_id', true)::uuid))
+                          WHERE user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid))
     WITH CHECK (partner_id = (SELECT id FROM referral_partners
-                               WHERE user_id = current_setting('app.current_user_id', true)::uuid));
+                               WHERE user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid));
 COMMENT ON POLICY partner_self ON referrals IS
     'Cloisonnement par partenaire : un apporteur ne voit que ses filleuls. L''unicité du parrain et l''interdiction d''auto-parrainage sont assurées par referrals_org_uk et le trigger forbid_self_referral.';
 
@@ -3237,7 +3237,7 @@ COMMENT ON POLICY partner_self ON referrals IS
 CREATE POLICY partner_self ON referral_commissions
     AS PERMISSIVE FOR SELECT TO immodesk_app
     USING (partner_id = (SELECT id FROM referral_partners
-                          WHERE user_id = current_setting('app.current_user_id', true)::uuid));
+                          WHERE user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid));
 COMMENT ON POLICY partner_self ON referral_commissions IS
     'Le partenaire consulte ses commissions ; il ne peut ni les créer ni les modifier (écritures financières réservées à immodesk_admin, colonnes verrouillées par guard_financial_row).';
 
@@ -3245,7 +3245,7 @@ COMMENT ON POLICY partner_self ON referral_commissions IS
 CREATE POLICY partner_self ON referral_payouts
     AS PERMISSIVE FOR SELECT TO immodesk_app
     USING (partner_id = (SELECT id FROM referral_partners
-                          WHERE user_id = current_setting('app.current_user_id', true)::uuid));
+                          WHERE user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid));
 COMMENT ON POLICY partner_self ON referral_payouts IS
     'Le partenaire suit ses versements Mobile Money ; l''ordonnancement et l''exécution des paiements relèvent d''immodesk_admin.';
 -- =====================================================================

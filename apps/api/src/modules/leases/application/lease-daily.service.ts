@@ -1,6 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-import { AppConfigService } from '../../../shared/config/config.module';
 import { PrismaService, type TenantClient } from '../../../shared/prisma/prisma.service';
 import { AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
@@ -38,18 +36,11 @@ const EMPTY_REPORT: LeaseDailyReport = {
 @Injectable()
 export class LeaseDailyService {
   private readonly logger = new Logger(LeaseDailyService.name);
-  private admin: PrismaClient | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
-    private readonly config: AppConfigService,
   ) {}
-
-  async disconnect(): Promise<void> {
-    if (this.admin) await this.admin.$disconnect();
-    this.admin = null;
-  }
 
   /** Un passage complet, toutes organisations confondues. */
   async runOnce(today: Date = startOfDay(new Date())): Promise<LeaseDailyReport> {
@@ -302,17 +293,13 @@ export class LeaseDailyService {
    * par `withTenant`, et donc par la RLS.
    */
   private async organizationsWithLeases(): Promise<string[]> {
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl) {
+    const admin = this.prisma.adminClient();
+    if (!admin) {
       this.logger.warn('DATABASE_ADMIN_URL absent : cron des baux désactivé.');
       return [];
     }
-    if (!this.admin) {
-      this.admin = new PrismaClient({ datasources: { db: { url: adminUrl } }, log: ['error'] });
-      await this.admin.$connect();
-    }
 
-    const rows = await this.admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
+    const rows = await admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
       `SELECT DISTINCT organization_id
          FROM leases
         WHERE deleted_at IS NULL

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../../generated/prisma/client';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { AuditService } from '../../audit/application/audit.service';

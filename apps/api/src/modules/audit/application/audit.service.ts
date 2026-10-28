@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../../generated/prisma/client';
 import { newId } from '../../../shared/ids/uuid';
 import { PrismaService, type TenantClient } from '../../../shared/prisma/prisma.service';
 import { currentTenant } from '../../../shared/tenant/tenant-context';

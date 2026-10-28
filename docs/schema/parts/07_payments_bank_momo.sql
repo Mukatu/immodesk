@@ -98,6 +98,7 @@ CREATE TABLE mobile_money_transactions (
     provider_transaction_id TEXT,
     aggregator_transaction_id TEXT,
     merchant_reference     TEXT NOT NULL,
+    external_reference     TEXT,
     payer_msisdn           TEXT NOT NULL,
     payee_msisdn           TEXT,
     amount                 BIGINT NOT NULL CHECK (amount >= 0),
@@ -119,11 +120,13 @@ CREATE TABLE mobile_money_transactions (
     created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT momo_merchant_ref_uk UNIQUE (organization_id, merchant_reference),
+    CONSTRAINT momo_external_ref_uk UNIQUE (external_reference),
     CONSTRAINT momo_provider_tx_uk UNIQUE (provider, provider_transaction_id),
     CONSTRAINT momo_msisdn_chk CHECK (payer_msisdn ~ '^\+[1-9][0-9]{7,14}$')
 );
 COMMENT ON TABLE mobile_money_transactions IS 'Transaction Mobile Money via agrégateur (CinetPay, PawaPay) ou opérateur direct (MTN MoMo, Airtel Money).';
-COMMENT ON COLUMN mobile_money_transactions.merchant_reference IS 'Référence marchande envoyée à l''agrégateur, clé d''idempotence de la demande de paiement.';
+COMMENT ON COLUMN mobile_money_transactions.merchant_reference IS 'Référence marchande lisible, numérotée par organisation (MMA-AAAAMM-NNNNN) : jamais transmise seule au fournisseur, elle n''est pas unique entre organisations.';
+COMMENT ON COLUMN mobile_money_transactions.external_reference IS 'Clé transmise au fournisseur (transaction_id CinetPay, référence du simulateur), unique sur toute la plateforme : sert à rattacher un webhook à une organisation sans ambiguïté. NULL pour une transaction déclarée, ou pour une transaction historique en collision (migration 9).';
 COMMENT ON COLUMN mobile_money_transactions.payer_msisdn IS 'Numéro du portefeuille débité, format E.164.';
 COMMENT ON COLUMN mobile_money_transactions.fee_amount IS 'Frais opérateur en XAF prélevés sur la transaction.';
 COMMENT ON COLUMN mobile_money_transactions.status_check_count IS 'Nombre de re-interrogations de statut : un webhook seul ne vaut jamais confirmation.';

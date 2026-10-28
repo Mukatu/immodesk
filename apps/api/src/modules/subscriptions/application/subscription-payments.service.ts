@@ -114,6 +114,8 @@ export class SubscriptionPaymentsService {
           channel: 'AGGREGATOR',
           status: 'INITIATED',
           merchant_reference: merchantReference,
+          // Clé fournisseur unique sur la plateforme (migration 9).
+          external_reference: transactionId,
           payer_msisdn: payerMsisdn,
           amount: invoice.total_amount,
         },
@@ -145,7 +147,7 @@ export class SubscriptionPaymentsService {
       currency: 'XAF',
       payerMsisdn: prepared.payerMsisdn,
       operator: prepared.operator,
-      externalReference: prepared.merchantReference,
+      externalReference: prepared.transactionId,
       description: `Abonnement Immodesk ${prepared.merchantReference}`,
       callbackUrl: '',
     });

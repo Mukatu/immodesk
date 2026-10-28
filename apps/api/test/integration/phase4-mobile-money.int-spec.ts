@@ -182,7 +182,7 @@ describe('Phase 4 — Mobile Money agrégateur (simulateur)', () => {
         await ctx.admin.mobile_money_transactions.findUniqueOrThrow({
           where: { id: transaction.id },
         })
-      ).merchant_reference,
+      ).external_reference as string,
       providerReference: transaction.id,
       status: 'SUCCEEDED',
       amount: '50000',
@@ -209,10 +209,11 @@ describe('Phase 4 — Mobile Money agrégateur (simulateur)', () => {
       where: { id: transaction.id },
     });
 
+    const externalReference = tx.external_reference as string;
     const { body, signature } = signSimulatorWebhook(ctx, {
-      eventId: `${tx.merchant_reference}:SUCCEEDED`,
-      merchantReference: tx.merchant_reference,
-      providerReference: tx.merchant_reference,
+      eventId: `${externalReference}:SUCCEEDED`,
+      merchantReference: externalReference,
+      providerReference: externalReference,
       status: 'SUCCEEDED',
       amount: tx.amount.toString(),
       currency: 'XAF',
@@ -230,7 +231,7 @@ describe('Phase 4 — Mobile Money agrégateur (simulateur)', () => {
     const receipts = await ctx.admin.receipts.count({ where: { payment_id: payment.id } });
     expect(receipts).toBe(1);
     const events = await ctx.admin.webhook_events.count({
-      where: { external_event_id: `${tx.merchant_reference}:SUCCEEDED` },
+      where: { external_event_id: `${externalReference}:SUCCEEDED` },
     });
     expect(events).toBe(1); // idempotence par external_event_id : un seul événement persisté
   }, 20_000);

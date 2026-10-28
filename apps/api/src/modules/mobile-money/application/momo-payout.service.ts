@@ -59,6 +59,9 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
         channel: 'AGGREGATOR',
         status: 'INITIATED',
         merchant_reference: input.externalReference,
+        // `REV-AAAAMM-NNNNN` est numérotée par organisation : la clé
+        // transmise au fournisseur est l'identifiant de la transaction.
+        external_reference: id,
         // Bénéficiaire du reversement, pas un payeur (voir domain/ports.ts).
         payer_msisdn: input.payerMsisdn,
         amount: input.amount,
@@ -71,7 +74,7 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
       currency: input.currency,
       payerMsisdn: input.payerMsisdn,
       operator,
-      externalReference: input.externalReference,
+      externalReference: id,
       description: input.description,
       callbackUrl: '',
     });

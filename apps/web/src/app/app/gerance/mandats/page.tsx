@@ -54,11 +54,9 @@ export default function MandatsPage() {
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
   const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
 
+  if (!isContextPanelOpen && selectedMandateId !== null) setSelectedMandateId(null);
   React.useEffect(() => {
-    if (!isContextPanelOpen) {
-      setSelectedMandateId(null);
-      selectedMandateIdRef.current = null;
-    }
+    if (!isContextPanelOpen) selectedMandateIdRef.current = null;
   }, [isContextPanelOpen]);
 
   function handleFilterChange(next: MandateStatus | 'ALL') {

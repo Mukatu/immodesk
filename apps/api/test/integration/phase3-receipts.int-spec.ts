@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import jsQR from 'jsqr';
 import { PNG } from 'pngjs';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import { FinancialPdfService } from '../../src/modules/pdf/application/financial-pdf.service';
 import { PdfBrowserService } from '../../src/modules/pdf/infrastructure/pdf-browser.service';
 import { api, startTestApp, stopTestApp, type TestContext } from './helpers';

@@ -41,9 +41,7 @@ export default function SynchronisationConflitsPage() {
 
   const selected = conflicts.find((c) => c.id === selectedId) ?? null;
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedContextId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedContextId !== null) setSelectedContextId(null);
 
   function handleRowSelect(conflict: SyncConflict) {
     setSelectedContextId(conflict.id);

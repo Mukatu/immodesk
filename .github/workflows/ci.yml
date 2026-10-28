@@ -202,3 +202,24 @@ jobs:
 
       - name: Load reference schema
         run: PGPASSWORD=immodesk psql -v ON_ERROR_STOP=1 -h localhost -U immodesk -d immodesk_test -f docs/schema/schema.sql
+
+      # Applique toutes les migrations Prisma sur une base vide, charge
+      # schema.sql sur une autre, puis compare les deux (pg_dump normalise
+      # + pg_policies). Le script cree et supprime ses propres bases jetables.
+      - name: Check migrations match schema.sql
+        env:
+          PGHOST: localhost
+          PGUSER: immodesk
+          PGPASSWORD: immodesk
+          PGDATABASE: immodesk_test
+        run: scripts/ci/check-schema-drift.sh drift
+
+      # Un GUC vide sur une connexion poolee reutilisee leve "invalid input
+      # syntax for type uuid" : toutes les policies doivent utiliser NULLIF.
+      - name: Guard RLS policies use NULLIF(current_setting())
+        env:
+          PGHOST: localhost
+          PGUSER: immodesk
+          PGPASSWORD: immodesk
+          PGDATABASE: immodesk_test
+        run: scripts/ci/check-schema-drift.sh nullif

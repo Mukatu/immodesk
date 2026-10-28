@@ -1,6 +1,6 @@
 import type { PrismaClient } from '../../src/generated/prisma/client';
 import { createPrismaClient } from '../../src/shared/prisma/create-prisma-client';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import './helpers';
 import { buildInsert, listTenantTables, planMinimalRow, type Anchors } from './rls-matrix';
 

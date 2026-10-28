@@ -42,9 +42,7 @@ export default function RemisesCaissePage() {
     return map;
   }, [collectorsData]);
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedRemittanceId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedRemittanceId !== null) setSelectedRemittanceId(null);
 
   function handleRowSelect(remittance: RemittanceSummary) {
     setSelectedRemittanceId(remittance.id);

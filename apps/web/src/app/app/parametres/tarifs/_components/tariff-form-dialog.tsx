@@ -88,14 +88,17 @@ export function TariffFormDialog({ state, properties, onClose }: TariffFormDialo
   const [values, setValues] = React.useState<FormValues>(EMPTY_VALUES);
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
+  // Réinitialise le formulaire quand l'état du dialogue change (pendant le rendu).
+  const [syncedState, setSyncedState] = React.useState<{ state: typeof state } | null>(null);
+  if (syncedState?.state !== state) {
+    setSyncedState({ state });
     if (state?.mode === 'edit') {
       setValues(valuesFromTariff(state.tariff));
     } else if (state?.mode === 'create') {
       setValues(EMPTY_VALUES);
     }
     setError(null);
-  }, [state]);
+  }
 
   const createTariff = useCreateUtilityTariff();
   const updateTariff = useUpdateUtilityTariff(isEdit ? state.tariff.id : '');

@@ -1,5 +1,5 @@
 import type { PrismaClient } from '../../src/generated/prisma/client';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import { api, login, uniquePhone, type TestContext } from './helpers';
 
 /** Signature PNG 1×1 valide, telle qu'un pad de signature la produirait. */

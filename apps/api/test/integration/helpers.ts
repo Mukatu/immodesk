@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import type { PrismaClient } from '../../src/generated/prisma/client';
 import { PrismaService } from '../../src/shared/prisma/prisma.service';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import { createApp } from '../../src/bootstrap';
 import {
   FakeSmsProvider,

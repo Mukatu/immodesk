@@ -43,10 +43,12 @@ function buildService(
     enqueue: jest.fn().mockResolvedValue({ notificationId: 'n1', created: true }),
   },
 ) {
+  const admin = { $queryRawUnsafe: jest.fn().mockResolvedValue(candidates) };
   const prisma = {
     withTenant: jest.fn((_org: string, _user: string | null, fn: (tx: unknown) => unknown) =>
       fn(tx),
     ),
+    adminClient: jest.fn(() => admin),
   };
   const config = {
     get: jest.fn((key: string) =>
@@ -74,9 +76,6 @@ function buildService(
     plans as never,
     enqueuer as never,
   );
-  (service as unknown as { admin: unknown }).admin = {
-    $queryRawUnsafe: jest.fn().mockResolvedValue(candidates),
-  };
   return { service, prisma, config, numbering, auditService, plans, enqueuer };
 }
 

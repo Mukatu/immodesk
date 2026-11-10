@@ -1,10 +1,10 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
 import { Queue, Worker } from 'bullmq';
 import type Redis from 'ioredis';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { createBullConnection } from '../../../shared/queue/bull-connection';
 import { DunningEngineService } from '../application/dunning-engine.service';
+import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 export const DUNNING_DAILY_QUEUE = 'dunning-daily';
 /** Identifiant FIXE du job répétable : N instances n'en créent qu'un. */
@@ -32,9 +32,9 @@ export class DunningCronScheduler implements OnModuleInit, OnModuleDestroy {
   private queue: Queue | null = null;
   private worker: Worker | null = null;
   private connection: Redis | null = null;
-  private admin: PrismaClient | null = null;
 
   constructor(
+    private readonly prisma: PrismaService,
     private readonly config: AppConfigService,
     private readonly engine: DunningEngineService,
   ) {}
@@ -69,7 +69,6 @@ export class DunningCronScheduler implements OnModuleInit, OnModuleDestroy {
     await this.worker?.close().catch(() => undefined);
     await this.queue?.close().catch(() => undefined);
     await this.connection?.quit().catch(() => undefined);
-    if (this.admin) await this.admin.$disconnect();
   }
 
   /**
@@ -80,13 +79,12 @@ export class DunningCronScheduler implements OnModuleInit, OnModuleDestroy {
    * `withTenant` (RLS).
    */
   async runAllOrganizations(now: Date = new Date()): Promise<{ organizations: number }> {
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl) {
+    const admin = this.prisma.adminClient();
+    if (!admin) {
       this.logger.warn('DATABASE_ADMIN_URL absent : cron de relance désactivé.');
       return { organizations: 0 };
     }
-    this.admin ??= new PrismaClient({ datasources: { db: { url: adminUrl } }, log: ['error'] });
-    const rows = await this.admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
+    const rows = await admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
       `SELECT DISTINCT organization_id FROM dunning_rules WHERE is_active`,
     );
     const maxPerHour = this.config.get('DUNNING_MAX_RUNS_PER_HOUR');

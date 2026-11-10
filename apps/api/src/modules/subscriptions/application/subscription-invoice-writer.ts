@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../generated/prisma/client';
 import { newId } from '../../../shared/ids/uuid';
 import { toIsoDate } from '../../leases/domain/calendar';
 import type { TenantClient } from '../../../shared/prisma/prisma.service';

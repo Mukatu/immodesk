@@ -18759,20 +18759,17 @@
             "type": "string"
           },
           "subject": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "body": {
             "type": "string"
           },
           "providerTemplateName": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "example": "receipt_ready_fr"
           },
           "providerTemplateLang": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "example": "fr"
           },
           "variables": {
@@ -18788,9 +18785,8 @@
             "type": "boolean"
           },
           "approvedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           }
         },
         "required": [
@@ -18828,16 +18824,13 @@
             "type": "string"
           },
           "subject": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "providerTemplateName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "providerTemplateLang": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "isActive": {
             "type": "boolean"
@@ -18872,9 +18865,8 @@
             "format": "uuid"
           },
           "notificationId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "channel": {
             "type": "string",
@@ -18889,20 +18881,17 @@
             "example": "meta-whatsapp"
           },
           "providerMessageId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "toAddress": {
             "type": "string",
             "example": "+242066200001"
           },
           "templateCode": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "contentPreview": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "costAmount": {
             "type": "integer",
@@ -18914,41 +18903,33 @@
             "format": "date-time"
           },
           "sentAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "deliveredAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "readAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "failedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "errorCode": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "errorMessage": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "relatedEntityType": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "relatedEntityId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           }
         },
         "required": [
@@ -18977,8 +18958,7 @@
         "type": "object",
         "properties": {
           "nextCursor": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "hasNextPage": {
             "type": "boolean"
@@ -19114,8 +19094,7 @@
             "example": "Jean Mabiala"
           },
           "email": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "locale": {
             "type": "string",
@@ -19160,8 +19139,7 @@
             "type": "string"
           },
           "tradeName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "slug": {
             "type": "string"
@@ -19171,19 +19149,16 @@
             "example": "Brazzaville"
           },
           "district": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "contactPhone": {
             "type": "string"
           },
           "contactEmail": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "logoUrl": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "status": {
             "type": "string",
@@ -19391,9 +19366,8 @@
             "description": "ISSUED directement, sinon DRAFT."
           },
           "defaultPenaltyRuleId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "applyPenalties": {
             "type": "boolean",
@@ -19561,8 +19535,7 @@
             "example": 5
           },
           "receiptFooterText": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "whatsappEnabled": {
             "type": "boolean"
@@ -19613,9 +19586,8 @@
             "type": "boolean"
           },
           "defaultPenaltyRuleId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "applyPenalties": {
             "type": "boolean"
@@ -19751,8 +19723,7 @@
             "maximum": 60
           },
           "receiptFooterText": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "whatsappEnabled": {
             "type": "boolean"
@@ -20316,68 +20287,53 @@
             "enum": ["INDIVIDUAL", "COMPANY"]
           },
           "firstName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "lastName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "companyName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "gender": {
             "type": "string",
             "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
           },
           "birthDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "nationality": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "idDocumentType": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "idDocumentNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "idDocumentExpiry": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "idDocumentId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "rccmNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "niuNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "secondaryPhone": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "email": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "addressLine": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "district": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "city": {
             "type": "string"
@@ -20386,16 +20342,14 @@
             "type": "string"
           },
           "defaultBankAccountId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "payoutMethod": {
             "type": "string",
             "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "propertiesCount": {
             "type": "number",
@@ -20410,8 +20364,7 @@
             "format": "date-time"
           },
           "deletedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -20459,8 +20412,7 @@
             "format": "uuid"
           },
           "code": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "name": {
             "type": "string"
@@ -20486,12 +20438,10 @@
             "type": "string"
           },
           "arrondissement": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "landmark": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "city": {
             "type": "string"
@@ -20500,32 +20450,25 @@
             "type": "string"
           },
           "latitude": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "longitude": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "landTitleReference": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "occupancyPermit": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "builtYear": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "totalAreaSqm": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "floorsCount": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "unitsCount": {
             "type": "number",
@@ -20556,20 +20499,16 @@
             }
           },
           "caretakerName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "caretakerPhone": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "coverDocumentId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -20580,8 +20519,7 @@
             "format": "date-time"
           },
           "deletedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -20654,8 +20592,7 @@
             "format": "date"
           },
           "endDate": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date"
           },
           "noticeDays": {
@@ -20674,22 +20611,19 @@
             ]
           },
           "commissionRateBps": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "minimum": 0,
-            "maximum": 10000,
-            "nullable": true
+            "maximum": 10000
           },
           "commissionFlatAmount": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "format": "int64",
-            "minimum": 0,
-            "nullable": true
+            "minimum": 0
           },
           "lettingFeeRateBps": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "minimum": 0,
-            "maximum": 10000,
-            "nullable": true
+            "maximum": 10000
           },
           "vatRateBps": {
             "type": "integer",
@@ -20700,27 +20634,22 @@
             "type": "number"
           },
           "payoutBankAccountId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "signedAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "terminatedAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "terminationReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "currency": {
             "type": "string",
@@ -21257,68 +21186,53 @@
             "example": "Bernadette Loemba"
           },
           "firstName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "lastName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "companyName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "gender": {
             "type": "string",
             "enum": ["MALE", "FEMALE", "UNSPECIFIED"]
           },
           "birthDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "birthPlace": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "nationality": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "idDocumentType": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "idDocumentNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "idDocumentExpiry": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "idDocumentId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "rccmNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "niuNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "profession": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "employerName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "monthlyIncome": {
-            "type": "integer",
-            "nullable": true,
+            "type": ["integer", "null"],
             "format": "int64",
             "example": 280000,
             "description": "Entier XAF, sans décimale — le franc CFA n’a pas de sous-unité."
@@ -21331,24 +21245,19 @@
             "type": "string"
           },
           "secondaryPhone": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "whatsappPhone": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "email": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "addressLine": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "district": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "city": {
             "type": "string"
@@ -21357,20 +21266,16 @@
             "type": "string"
           },
           "emergencyContactName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "emergencyContactPhone": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "clientRef": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -21381,8 +21286,7 @@
             "format": "date-time"
           },
           "deletedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -21655,9 +21559,8 @@
             "format": "uuid"
           },
           "tenantId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "partyType": {
             "type": "string",
@@ -21667,50 +21570,39 @@
             "type": "string"
           },
           "firstName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "lastName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "companyName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "relationship": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "idDocumentType": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "idDocumentNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "idDocumentId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "profession": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "employerName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "monthlyIncome": {
-            "type": "integer",
-            "nullable": true,
+            "type": ["integer", "null"],
             "format": "int64",
             "example": 600000
           },
           "guaranteeAmount": {
-            "type": "integer",
-            "nullable": true,
+            "type": ["integer", "null"],
             "format": "int64",
             "example": 1800000
           },
@@ -21722,16 +21614,13 @@
             "type": "string"
           },
           "email": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "addressLine": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "district": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "city": {
             "type": "string"
@@ -21740,8 +21629,7 @@
             "type": "string"
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -21752,8 +21640,7 @@
             "format": "date-time"
           },
           "deletedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -21892,8 +21779,7 @@
             "example": "+242066123456"
           },
           "label": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "isPrimary": {
             "type": "boolean"
@@ -21902,15 +21788,13 @@
             "type": "boolean"
           },
           "verifiedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "optIn": {
             "type": "boolean"
           },
           "optOutAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -22168,8 +22052,7 @@
             "format": "uuid"
           },
           "code": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "name": {
             "type": "string"
@@ -22201,8 +22084,7 @@
             "$ref": "#/components/schemas/OccupancyDto"
           },
           "coverDocumentId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -22248,8 +22130,7 @@
             "example": "A1"
           },
           "label": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "unitType": {
             "type": "string",
@@ -22271,24 +22152,19 @@
             "enum": ["AVAILABLE", "RESERVED", "OCCUPIED", "UNDER_MAINTENANCE", "UNAVAILABLE"]
           },
           "floorNumber": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "roomsCount": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "bedroomsCount": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "bathroomsCount": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "areaSqm": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "isFurnished": {
             "type": "boolean"
@@ -22320,8 +22196,7 @@
             "type": "object"
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -22332,8 +22207,7 @@
             "format": "date-time"
           },
           "deletedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -22373,8 +22247,7 @@
             "format": "uuid"
           },
           "code": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "name": {
             "type": "string"
@@ -22400,12 +22273,10 @@
             "type": "string"
           },
           "arrondissement": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "landmark": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "city": {
             "type": "string"
@@ -22414,32 +22285,25 @@
             "type": "string"
           },
           "latitude": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "longitude": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "landTitleReference": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "occupancyPermit": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "builtYear": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "totalAreaSqm": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "floorsCount": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "unitsCount": {
             "type": "number",
@@ -22470,20 +22334,16 @@
             }
           },
           "caretakerName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "caretakerPhone": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "coverDocumentId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -22494,8 +22354,7 @@
             "format": "date-time"
           },
           "deletedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "summary": {
             "$ref": "#/components/schemas/PropertySummaryDto"
@@ -22919,8 +22778,7 @@
             "example": "A1"
           },
           "label": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "unitType": {
             "type": "string",
@@ -22942,24 +22800,19 @@
             "enum": ["AVAILABLE", "RESERVED", "OCCUPIED", "UNDER_MAINTENANCE", "UNAVAILABLE"]
           },
           "floorNumber": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "roomsCount": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "bedroomsCount": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "bathroomsCount": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "areaSqm": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "isFurnished": {
             "type": "boolean"
@@ -22991,8 +22844,7 @@
             "type": "object"
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -23003,8 +22855,7 @@
             "format": "date-time"
           },
           "deletedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "property": {
             "$ref": "#/components/schemas/PropertySummaryDto"
@@ -23211,12 +23062,10 @@
             "enum": ["ORGANIZATION", "LANDLORD", "TENANT"]
           },
           "landlordId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "tenantId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "label": {
             "type": "string"
@@ -23228,36 +23077,29 @@
             "type": "string"
           },
           "branchName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "accountHolderName": {
             "type": "string"
           },
           "accountNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "ribKey": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "iban": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "swiftBic": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "momoProvider": {
-            "type": "string",
-            "nullable": true,
-            "enum": ["MTN_MOMO", "AIRTEL_MONEY", "CINETPAY", "PAWAPAY", "OTHER"]
+            "type": ["string", "null"],
+            "enum": ["MTN_MOMO", "AIRTEL_MONEY", "CINETPAY", "PAWAPAY", "OTHER", null]
           },
           "momoMsisdn": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "currency": {
             "type": "string",
@@ -23610,40 +23452,32 @@
             "description": "Taille constatée dans le stockage, pas celle annoncée par le client."
           },
           "widthPx": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "heightPx": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "pagesCount": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "relatedEntityType": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "relatedEntityId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "uploadedByUserId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "uploadedAt": {
             "type": "string",
             "format": "date-time"
           },
           "retentionUntil": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "deletedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -23679,12 +23513,10 @@
         "type": "object",
         "properties": {
           "downloadUrl": {
-            "type": "string",
-            "description": "URL signée valable 10 minutes."
+            "type": "string"
           },
           "expiresAt": {
-            "type": "string",
-            "format": "date-time"
+            "type": "string"
           }
         },
         "required": ["downloadUrl", "expiresAt"]
@@ -23831,8 +23663,7 @@
             "format": "uuid"
           },
           "reference": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "example": "BAIL-2026-00042"
           },
           "status": {
@@ -23852,16 +23683,13 @@
             "format": "date"
           },
           "endDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "moveInDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "moveOutDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "rentPeriod": {
             "type": "string",
@@ -23911,16 +23739,13 @@
             "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
           },
           "collectorUserId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "indexationRateBps": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "nextIndexationDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "noticeDays": {
             "type": "number",
@@ -23930,20 +23755,16 @@
             "type": "boolean"
           },
           "signedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "contractDocumentId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "terminatedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "terminationReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "balanceAmount": {
             "type": "integer",
@@ -23951,12 +23772,10 @@
             "example": 0
           },
           "clientRef": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -23967,8 +23786,7 @@
             "format": "date-time"
           },
           "deletedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -24023,8 +23841,7 @@
             "example": "A1"
           },
           "label": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": ["id", "code", "label"]
@@ -24069,8 +23886,7 @@
             "format": "uuid"
           },
           "reference": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "status": {
             "type": "string",
@@ -24098,8 +23914,7 @@
             "format": "date"
           },
           "endDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "rentAmount": {
             "type": "integer",
@@ -24161,12 +23976,10 @@
             "enum": ["PRIMARY_TENANT", "CO_TENANT", "GUARANTOR", "OCCUPANT"]
           },
           "tenantId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "guarantorId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "displayName": {
             "type": "string",
@@ -24180,8 +23993,7 @@
             "type": "boolean"
           },
           "signedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -24237,16 +24049,13 @@
             "example": 12000
           },
           "reason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "documentId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdByUserId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -24300,24 +24109,19 @@
             "format": "date"
           },
           "paymentId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "inspectionId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "reason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "reversalOfId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdByUserId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -24400,28 +24204,22 @@
             "example": "ORGANIZATION"
           },
           "monthsEquivalent": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "dueDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "fullyCollectedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "refundDueDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "refundedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "refundBankAccountId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "movements": {
             "type": "array",
@@ -24487,24 +24285,20 @@
             "example": "Contrat de bail BAIL-2026-00042 v1"
           },
           "effectiveDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "isSigned": {
             "type": "boolean"
           },
           "signedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "signatureHash": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "description": "SHA-256 du HTML source du contrat."
           },
           "generatedByJob": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -24550,8 +24344,7 @@
             "format": "uuid"
           },
           "reference": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "example": "BAIL-2026-00042"
           },
           "status": {
@@ -24571,16 +24364,13 @@
             "format": "date"
           },
           "endDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "moveInDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "moveOutDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "rentPeriod": {
             "type": "string",
@@ -24630,16 +24420,13 @@
             "enum": ["CASH", "MOBILE_MONEY", "BANK_TRANSFER", "BANK_CHECK"]
           },
           "collectorUserId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "indexationRateBps": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "nextIndexationDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "noticeDays": {
             "type": "number",
@@ -24649,20 +24436,16 @@
             "type": "boolean"
           },
           "signedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "contractDocumentId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "terminatedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "terminationReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "balanceAmount": {
             "type": "integer",
@@ -24670,12 +24453,10 @@
             "example": 0
           },
           "clientRef": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -24686,8 +24467,7 @@
             "format": "date-time"
           },
           "deletedAt": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "unit": {
             "type": "object"
@@ -24714,11 +24494,12 @@
             }
           },
           "deposit": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/DepositDetailDto"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -24990,8 +24771,7 @@
             "enum": ["INITIAL", "REVISION"]
           },
           "revisionId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": ["date", "rentAmount", "chargesAmount", "source", "revisionId"]
@@ -25198,8 +24978,7 @@
             "format": "uuid"
           },
           "leaseReference": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "tenant": {
             "$ref": "#/components/schemas/DepositTenantRefDto"
@@ -25229,8 +25008,7 @@
             "example": 150000
           },
           "refundDueDate": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -25349,8 +25127,7 @@
             "description": "Bloc bail commercial (Acte uniforme OHADA)."
           },
           "footerText": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -25400,8 +25177,7 @@
             "format": "uuid"
           },
           "reference": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "example": "BAIL-2026-00001"
           }
         },
@@ -25461,8 +25237,7 @@
             "format": "uuid"
           },
           "invoiceNumber": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "example": "LOY-202609-00001"
           },
           "status": {
@@ -25494,9 +25269,8 @@
             "format": "date"
           },
           "graceUntilDate": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date"
           },
           "totalAmount": {
             "type": "integer",
@@ -25576,8 +25350,7 @@
             "type": "string"
           },
           "description": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "quantity": {
             "type": "number",
@@ -25605,14 +25378,12 @@
             "type": "boolean"
           },
           "periodStart": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date"
           },
           "periodEnd": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date"
           },
           "position": {
             "type": "number"
@@ -25711,14 +25482,12 @@
             "format": "date"
           },
           "periodStart": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date"
           },
           "periodEnd": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date"
           },
           "totalAmount": {
             "type": "integer",
@@ -25733,19 +25502,16 @@
             "format": "uuid"
           },
           "invoiceId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "sentAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "sentChannel": {
-            "type": "string",
-            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
-            "nullable": true
+            "type": ["string", "null"],
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP", null]
           }
         },
         "required": [
@@ -25771,8 +25537,7 @@
             "format": "uuid"
           },
           "invoiceNumber": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "example": "LOY-202609-00001"
           },
           "status": {
@@ -25804,9 +25569,8 @@
             "format": "date"
           },
           "graceUntilDate": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date"
           },
           "totalAmount": {
             "type": "integer",
@@ -25853,23 +25617,19 @@
             "format": "date"
           },
           "issuedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "paidAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "cancelledAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "cancellationReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "lines": {
             "type": "array",
@@ -25884,22 +25644,21 @@
             }
           },
           "receipt": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/ReceiptSummaryDto"
+              },
+              {
+                "type": "null"
               }
             ]
           },
           "documentId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -26089,9 +25848,8 @@
         "type": "object",
         "properties": {
           "leaseId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "reason": {
             "type": "string"
@@ -26115,9 +25873,8 @@
             "format": "date-time"
           },
           "finishedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "created": {
             "type": "number"
@@ -26135,9 +25892,8 @@
             "type": "boolean"
           },
           "periodStart": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date"
           }
         },
         "required": [
@@ -26260,31 +26016,26 @@
             "enum": ["RATE_BPS_PER_DAY", "RATE_BPS_PER_MONTH", "FLAT_AMOUNT", "FLAT_AMOUNT_PER_DAY"]
           },
           "rateBps": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "flatAmount": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "format": "int64",
-            "example": 85000,
-            "nullable": true
+            "example": 85000
           },
           "graceDays": {
             "type": "number"
           },
           "capAmount": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "format": "int64",
-            "example": 85000,
-            "nullable": true
+            "example": 85000
           },
           "capRateBps": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "maxPeriods": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "appliesToCharges": {
             "type": "boolean"
@@ -26479,9 +26230,8 @@
             "example": 85000
           },
           "cappedBy": {
-            "type": "string",
-            "enum": ["AMOUNT", "RATE", "PERIODS"],
-            "nullable": true
+            "type": ["string", "null"],
+            "enum": ["AMOUNT", "RATE", "PERIODS", null]
           },
           "periods": {
             "type": "number"
@@ -26593,18 +26343,15 @@
             "format": "uuid"
           },
           "invoiceId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "invoiceNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "tenantCreditId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "amount": {
             "type": "integer",
@@ -26653,14 +26400,12 @@
             "example": "Alphonse Ngoma"
           },
           "remittanceId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "paymentId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           }
         },
         "required": [
@@ -26726,36 +26471,35 @@
             "format": "date"
           },
           "tenant": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/NamedTenantRefDto"
+              },
+              {
+                "type": "null"
               }
             ]
           },
           "lease": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/InvoiceLeaseRefDto"
+              },
+              {
+                "type": "null"
               }
             ]
           },
           "receivedByUserId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "reversalOfId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "externalReference": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "feeAmount": {
             "type": "integer",
@@ -26768,27 +26512,22 @@
             "example": 100000
           },
           "confirmedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "rejectedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "rejectionReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "reversedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "reversalReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "allocations": {
             "type": "array",
@@ -26797,11 +26536,12 @@
             }
           },
           "cashReceipt": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/CashReceiptSummaryDto"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -26812,12 +26552,10 @@
             }
           },
           "clientRef": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -26904,32 +26642,32 @@
             "format": "date"
           },
           "tenant": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/NamedTenantRefDto"
+              },
+              {
+                "type": "null"
               }
             ]
           },
           "lease": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/InvoiceLeaseRefDto"
+              },
+              {
+                "type": "null"
               }
             ]
           },
           "receivedByUserId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "reversalOfId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           }
         },
         "required": [
@@ -27021,9 +26759,8 @@
             "format": "uuid"
           },
           "leaseId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "status": {
             "type": "string",
@@ -27049,19 +26786,16 @@
             "example": 100000
           },
           "sourcePaymentId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "sourceInvoiceId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "expiresAt": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date"
           },
           "createdAt": {
             "type": "string",
@@ -27260,8 +26994,7 @@
             "format": "uuid"
           },
           "invoiceNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "amount": {
             "type": "integer",
@@ -27307,45 +27040,37 @@
             "example": "Alphonse Ngoma"
           },
           "remittanceId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "paymentId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "payerName": {
             "type": "string"
           },
           "payerPhone": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "purpose": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "leaseId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "signatureDocumentId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "signatureHash": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "description": "SHA-256 hexadécimal de la signature."
           },
           "documentId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "allocations": {
             "type": "array",
@@ -27354,17 +27079,14 @@
             }
           },
           "cancelledAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "cancellationReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "clientRef": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -27436,9 +27158,8 @@
             "type": "number"
           },
           "oldestReceiptAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "capAmount": {
             "type": "integer",
@@ -27449,9 +27170,8 @@
             "type": "boolean"
           },
           "lastRemittanceAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           }
         },
         "required": [
@@ -27545,8 +27265,7 @@
             "example": 100000
           },
           "varianceReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -27610,14 +27329,12 @@
             "format": "date-time"
           },
           "submittedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "verifiedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "items": {
             "type": "array",
@@ -27632,27 +27349,22 @@
             }
           },
           "verifiedByUserId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "rejectionReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "depositedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "depositBankAccountId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -27729,14 +27441,12 @@
             "format": "date-time"
           },
           "submittedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "verifiedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           }
         },
         "required": [
@@ -27865,14 +27575,12 @@
             "format": "date"
           },
           "periodStart": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date"
           },
           "periodEnd": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date"
           },
           "totalAmount": {
             "type": "integer",
@@ -27887,19 +27595,16 @@
             "format": "uuid"
           },
           "invoiceId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "sentAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "sentChannel": {
-            "type": "string",
-            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
-            "nullable": true
+            "type": ["string", "null"],
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP", null]
           },
           "rentAmount": {
             "type": "integer",
@@ -27926,18 +27631,15 @@
             "example": "https://app.immodesk.cg/verifier/3f9a…"
           },
           "documentId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "cancelledAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "cancellationReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "messageLogs": {
             "type": "array",
@@ -27982,8 +27684,7 @@
             "format": "date"
           },
           "period": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "example": "septembre 2026"
           },
           "totalAmount": {
@@ -28070,20 +27771,16 @@
             "type": "boolean"
           },
           "reason": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "since": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "expectedEndAt": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "incidentRef": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           }
         },
         "required": ["enabled", "reason", "since", "expectedEndAt", "incidentRef"]
@@ -28135,8 +27832,7 @@
             "type": "string"
           },
           "resolvedAt": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "updates": {
             "type": "array",
@@ -28176,20 +27872,22 @@
             "$ref": "#/components/schemas/PlatformHealthChecksDto"
           },
           "incident": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/PlatformIncidentDto"
+              },
+              {
+                "type": "null"
               }
             ]
           },
           "plannedMaintenance": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/PlannedMaintenanceDto"
+              },
+              {
+                "type": "null"
               }
             ]
           }
@@ -28235,12 +27933,10 @@
             }
           },
           "dpoContact": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "supportContact": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           }
         },
         "required": ["legalVersion", "publishedAt", "locale", "documents"]
@@ -28271,20 +27967,16 @@
             "type": "boolean"
           },
           "reason": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "since": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "expectedEndAt": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "incidentRef": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           }
         },
         "required": ["enabled", "reason", "since", "expectedEndAt", "incidentRef"]
@@ -28300,9 +27992,8 @@
             "type": "string"
           },
           "organizationId": {
-            "type": "object",
-            "format": "uuid",
-            "nullable": true
+            "type": ["object", "null"],
+            "format": "uuid"
           },
           "isEnabled": {
             "type": "boolean"
@@ -28314,12 +28005,10 @@
             "type": "object"
           },
           "startsAt": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "endsAt": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "updatedAt": {
             "type": "string"
@@ -28451,20 +28140,17 @@
             "type": "string"
           },
           "wave": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "status": {
             "type": "string",
             "enum": ["MIGRATED", "PENDING", "ANOMALY"]
           },
           "activatedAt": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "subscriptionStatus": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "anomalies": {
             "type": "array",
@@ -28479,8 +28165,7 @@
         "type": "object",
         "properties": {
           "wave": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "counts": {
             "$ref": "#/components/schemas/GoLiveBoardCountsDto"
@@ -28785,6 +28470,7 @@
               "CASH_RECEIPT",
               "DOCUMENT",
               "INSPECTION",
+              "INSPECTION_SUBMIT",
               "METER_READING",
               "MAINTENANCE_UPDATE"
             ]
@@ -28907,9 +28593,8 @@
             "format": "date-time"
           },
           "appliedAt": {
-            "type": "object",
-            "format": "date-time",
-            "nullable": true
+            "type": ["object", "null"],
+            "format": "date-time"
           },
           "results": {
             "type": "array",
@@ -28943,12 +28628,10 @@
             "type": "string"
           },
           "devicePlatform": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "appVersion": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "collectorUserId": {
             "type": "string"
@@ -28977,9 +28660,8 @@
             "format": "date-time"
           },
           "appliedAt": {
-            "type": "object",
-            "format": "date-time",
-            "nullable": true
+            "type": ["object", "null"],
+            "format": "date-time"
           }
         },
         "required": [
@@ -29145,18 +28827,15 @@
             "format": "date-time"
           },
           "resolvedAt": {
-            "type": "object",
-            "format": "date-time",
-            "nullable": true
+            "type": ["object", "null"],
+            "format": "date-time"
           },
           "resolution": {
-            "type": "string",
-            "enum": ["APPLIED", "DISCARDED"],
-            "nullable": true
+            "type": ["string", "null"],
+            "enum": ["APPLIED", "DISCARDED", null]
           },
           "resolutionReason": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           }
         },
         "required": [
@@ -29228,12 +28907,10 @@
             "type": "string"
           },
           "devicePlatform": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "appVersion": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "collector": {
             "type": "object",
@@ -29613,18 +29290,16 @@
             "type": "number"
           },
           "commissionRateBps": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "minimum": 0,
-            "maximum": 10000,
-            "nullable": true
+            "maximum": 10000
           },
           "startDate": {
             "type": "string",
             "format": "date"
           },
           "endDate": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date"
           }
         },
@@ -29719,16 +29394,14 @@
             "type": "boolean"
           },
           "invitedAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "activated": {
             "type": "boolean"
           },
           "userId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           }
         },
@@ -29768,8 +29441,7 @@
             "format": "date"
           },
           "endDate": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date"
           },
           "noticeDays": {
@@ -29788,22 +29460,19 @@
             ]
           },
           "commissionRateBps": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "minimum": 0,
-            "maximum": 10000,
-            "nullable": true
+            "maximum": 10000
           },
           "commissionFlatAmount": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "format": "int64",
-            "minimum": 0,
-            "nullable": true
+            "minimum": 0
           },
           "lettingFeeRateBps": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "minimum": 0,
-            "maximum": 10000,
-            "nullable": true
+            "maximum": 10000
           },
           "vatRateBps": {
             "type": "integer",
@@ -29814,27 +29483,22 @@
             "type": "number"
           },
           "payoutBankAccountId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "signedAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "terminatedAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "terminationReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "currency": {
             "type": "string",
@@ -30110,23 +29774,19 @@
             "format": "uuid"
           },
           "propertyId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "unitId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "leaseId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "landlordId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "category": {
@@ -30152,20 +29812,16 @@
             "type": "string"
           },
           "description": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "supplierName": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "supplierPhone": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "supplierNiu": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "amount": {
             "type": "integer",
@@ -30193,17 +29849,14 @@
             "type": "boolean"
           },
           "invoiceDocumentId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "clientRef": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "reference": {
             "type": "string"
@@ -30229,18 +29882,15 @@
             "example": "XAF"
           },
           "ownerStatementId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "approvedByUserId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "approvedAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "createdAt": {
@@ -30400,8 +30050,7 @@
             "format": "uuid"
           },
           "mandateId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "landlordId": {
@@ -30409,23 +30058,19 @@
             "format": "uuid"
           },
           "leaseId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "propertyId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "invoiceId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "paymentId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "status": {
@@ -30456,14 +30101,12 @@
             "example": 45000
           },
           "rateBps": {
-            "type": "integer",
-            "nullable": true,
+            "type": ["integer", "null"],
             "minimum": 0,
             "maximum": 10000
           },
           "flatAmount": {
-            "type": "integer",
-            "nullable": true,
+            "type": ["integer", "null"],
             "format": "int64",
             "minimum": 0,
             "example": 45000
@@ -30496,28 +30139,23 @@
             "example": "XAF"
           },
           "ownerStatementId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "accruedAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "settledAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "reversalOfId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "notes": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -30687,11 +30325,12 @@
             "$ref": "#/components/schemas/LandlordRefDto"
           },
           "property": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/PropertyRefDto"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -30732,18 +30371,15 @@
             "example": 450000
           },
           "issuedAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "sentAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "settledAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           }
         },
@@ -30809,8 +30445,7 @@
             "minimum": 0
           },
           "paidAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           }
         },
@@ -30834,11 +30469,12 @@
             "$ref": "#/components/schemas/LandlordRefDto"
           },
           "property": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/PropertyRefDto"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -30879,23 +30515,19 @@
             "example": 450000
           },
           "issuedAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "sentAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "settledAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "mandateId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "chargesCollectedAmount": {
@@ -30917,16 +30549,13 @@
             "minimum": 0
           },
           "occupancyRateBps": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "collectionRateBps": {
-            "type": "number",
-            "nullable": true
+            "type": ["number", "null"]
           },
           "documentId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "lines": {
@@ -30936,11 +30565,12 @@
             }
           },
           "payout": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/PayoutRefDto"
+              },
+              {
+                "type": "null"
               }
             ]
           }
@@ -31048,8 +30678,7 @@
             "type": "string"
           },
           "statementId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "landlordId": {
@@ -31086,42 +30715,34 @@
             "example": 450000
           },
           "bankAccountId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "momoTransactionId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "scheduledDate": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date"
           },
           "approvedByUserId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           },
           "approvedAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "paidAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           },
           "failureReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "proofDocumentId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           }
         },
@@ -31273,8 +30894,7 @@
             "type": "string"
           },
           "email": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "isDiaspora": {
             "type": "boolean"
@@ -31338,8 +30958,7 @@
             "format": "int64"
           },
           "paidAt": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "date-time"
           }
         },
@@ -31411,8 +31030,7 @@
             "$ref": "#/components/schemas/PortalUnitRefDto"
           },
           "invoiceNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -31462,8 +31080,7 @@
             "type": "string"
           },
           "documentId": {
-            "type": "string",
-            "nullable": true,
+            "type": ["string", "null"],
             "format": "uuid"
           }
         },
@@ -31615,8 +31232,7 @@
             "type": "boolean"
           },
           "lastReading": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           }
         },
         "required": ["propertyId", "meterType", "serialNumber", "id", "isActive", "lastReading"]
@@ -31640,9 +31256,8 @@
         "type": "object",
         "properties": {
           "unitId": {
-            "type": "object",
-            "format": "uuid",
-            "nullable": true
+            "type": ["object", "null"],
+            "format": "uuid"
           },
           "subscriberNumber": {
             "type": "string"
@@ -31660,9 +31275,8 @@
             "type": "number"
           },
           "tariffId": {
-            "type": "object",
-            "format": "uuid",
-            "nullable": true
+            "type": ["object", "null"],
+            "format": "uuid"
           },
           "isActive": {
             "type": "boolean"
@@ -31755,12 +31369,10 @@
             "format": "uuid"
           },
           "unitId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "leaseId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "previousIndex": {
             "type": "number"
@@ -31769,8 +31381,7 @@
             "type": "number"
           },
           "tariffId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "unitPriceAmount": {
             "type": "number"
@@ -31782,12 +31393,10 @@
             "type": "boolean"
           },
           "invoiceLineId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "recordedByUserId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -31979,9 +31588,8 @@
             "type": "number"
           },
           "effectiveTo": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date"
           },
           "isActive": {
             "type": "boolean"
@@ -32023,8 +31631,7 @@
             "format": "uuid"
           },
           "unitId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "reason": {
             "type": "string"
@@ -32455,9 +32062,8 @@
             "default": "WHATSAPP"
           },
           "fallbackChannel": {
-            "type": "string",
-            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
-            "nullable": true
+            "type": ["string", "null"],
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP", null]
           },
           "templateId": {
             "type": "string",
@@ -32563,9 +32169,8 @@
             "default": "WHATSAPP"
           },
           "fallbackChannel": {
-            "type": "string",
-            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
-            "nullable": true
+            "type": ["string", "null"],
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP", null]
           },
           "templateId": {
             "type": "string",
@@ -32643,9 +32248,8 @@
             "default": "WHATSAPP"
           },
           "fallbackChannel": {
-            "type": "string",
-            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP"],
-            "nullable": true
+            "type": ["string", "null"],
+            "enum": ["WHATSAPP", "SMS", "EMAIL", "PUSH", "IN_APP", null]
           },
           "templateId": {
             "type": "string",
@@ -32711,8 +32315,7 @@
             "format": "uuid"
           },
           "invoiceNumber": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": ["id", "invoiceNumber"]
@@ -32760,9 +32363,8 @@
             "format": "date-time"
           },
           "executedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "daysOverdue": {
             "type": "number"
@@ -32776,11 +32378,12 @@
             "type": "string"
           },
           "invoice": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/DunningRunInvoiceRefDto"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -32788,18 +32391,15 @@
             "$ref": "#/components/schemas/DunningRunTenantRefDto"
           },
           "notificationId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "messageLogId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "messageStatus": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "guarantorNotified": {
             "type": "boolean"
@@ -32813,12 +32413,10 @@
             "example": 50000
           },
           "skipReason": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "errorMessage": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -33228,8 +32826,7 @@
             "enum": ["PENDING_VERIFICATION", "ACTIVE", "SUSPENDED", "CLOSED"]
           },
           "displayName": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "totalAccruedAmount": {
             "type": "string",
@@ -33303,8 +32900,7 @@
             "format": "uuid"
           },
           "referredPropertyId": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "source": {
             "type": "string",
@@ -33315,16 +32911,13 @@
             "enum": ["PENDING", "QUALIFIED", "ACTIVE", "EXPIRED", "CANCELLED"]
           },
           "qualifiedAt": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "activatedAt": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "expiresAt": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "createdAt": {
             "type": "string"
@@ -33375,15 +32968,13 @@
             "enum": ["ACCRUED", "APPROVED", "PAID", "REVERSED", "CANCELLED"]
           },
           "periodMonth": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "accruedAt": {
             "type": "string"
           },
           "reversalOfId": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           }
         },
         "required": [
@@ -33539,8 +33130,7 @@
             "enum": ["PENDING", "APPROVED", "PROCESSING", "PAID", "FAILED", "CANCELLED"]
           },
           "msisdn": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "requestedAt": {
             "type": "string"
@@ -33600,16 +33190,13 @@
             "format": "uuid"
           },
           "deviceLabel": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "userAgent": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "ipAddress": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "issuedAt": {
             "type": "string",
@@ -33712,9 +33299,8 @@
             "example": 2
           },
           "lastLoginAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           }
         },
         "required": ["userId", "displayName", "role", "activeSessions", "lastLoginAt"]
@@ -33740,8 +33326,7 @@
             }
           },
           "allowedIps": {
-            "nullable": true,
-            "type": "array",
+            "type": ["array", "null"],
             "items": {
               "type": "string"
             }
@@ -33751,14 +33336,12 @@
             "enum": ["ACTIVE", "REVOKED"]
           },
           "lastUsedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "date-time"
           },
           "createdAt": {
             "type": "string",
@@ -33785,22 +33368,18 @@
             "format": "date-time"
           },
           "actorUserId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "actorLabel": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "apiKeyId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "ipAddress": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "method": {
             "type": "string"
@@ -33820,8 +33399,7 @@
             "format": "uuid"
           },
           "requestId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [
@@ -34012,25 +33590,20 @@
             "format": "uuid"
           },
           "actorUserId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": ["string", "null"],
+            "format": "uuid"
           },
           "actorLabel": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "actorRole": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "previousState": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "newState": {
-            "type": "object",
-            "nullable": true
+            "type": ["object", "null"]
           },
           "changedFields": {
             "type": "array",
@@ -34039,12 +33612,10 @@
             }
           },
           "ipAddress": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           },
           "requestId": {
-            "type": "string",
-            "nullable": true
+            "type": ["string", "null"]
           }
         },
         "required": [

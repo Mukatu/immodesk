@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client';
 
 /** Description d'une colonne telle que lue dans information_schema. */
 export interface ColumnInfo {

@@ -1,5 +1,4 @@
 import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
 import type Redis from 'ioredis';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
@@ -8,6 +7,7 @@ import { REDIS_CLIENT } from '../../../shared/redis/redis.module';
 import { businessToday, monthBounds } from '../../../shared/time/business-date';
 import { previousMonthPeriod } from '../domain/owner-statement-rules';
 import { OwnerStatementsCampaignService } from './owner-statements-campaign.service';
+import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 /** Rapport d'une campagne, conservé 7 jours dans Redis (même durée que `billing`). */
 export const OWNER_STATEMENT_RUN_TTL_SECONDS = 7 * 86_400;
@@ -35,9 +35,9 @@ export interface OwnerStatementRunReport {
 export class OwnerStatementsRunsService implements OnModuleDestroy {
   private readonly logger = new Logger(OwnerStatementsRunsService.name);
   private readonly inflight = new Map<string, Promise<void>>();
-  private admin: PrismaClient | null = null;
 
   constructor(
+    private readonly prisma: PrismaService,
     private readonly campaign: OwnerStatementsCampaignService,
     private readonly config: AppConfigService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
@@ -45,8 +45,6 @@ export class OwnerStatementsRunsService implements OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await Promise.allSettled([...this.inflight.values()]);
-    if (this.admin) await this.admin.$disconnect();
-    this.admin = null;
   }
 
   /** `POST /v1/owner-statements/runs` : période par défaut = mois civil précédent. */
@@ -182,13 +180,12 @@ export class OwnerStatementsRunsService implements OnModuleDestroy {
    * de RLS ici — toutes les écritures repassent par `withTenant`.
    */
   private async organizationsWithMandatesDueToday(today: Date): Promise<string[]> {
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl) {
+    const admin = this.prisma.adminClient();
+    if (!admin) {
       this.logger.warn('DATABASE_ADMIN_URL absent : cron agence désactivé.');
       return [];
     }
-    this.admin ??= new PrismaClient({ datasources: { db: { url: adminUrl } }, log: ['error'] });
-    const rows = await this.admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
+    const rows = await admin.$queryRawUnsafe<Array<{ organization_id: string }>>(
       `SELECT DISTINCT organization_id FROM management_mandates
         WHERE status IN ('ACTIVE', 'TERMINATED') AND payout_day = $1`,
       today.getUTCDate(),

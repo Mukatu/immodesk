@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { ThrottlerStorage } from '@nestjs/throttler';
-import type { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.module';
+
+type ThrottlerStorageRecord = Awaited<ReturnType<ThrottlerStorage['increment']>>;
 
 const PREFIX = 'immodesk:throttle';
 

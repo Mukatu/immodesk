@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client';
 import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import { api, login, uniquePhone, type TestContext } from './helpers';
 

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../../generated/prisma/client';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { newId } from '../../../shared/ids/uuid';
@@ -13,6 +13,7 @@ import {
   type MomoReferenceResolution,
 } from '../../mobile-money/infrastructure/momo-reference-resolver';
 import { SubscriptionPaymentsService } from './subscription-payments.service';
+import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 type HeaderMap = Record<string, string | string[] | undefined>;
 
@@ -46,9 +47,9 @@ function parseJson(raw: Buffer): unknown {
 @Injectable()
 export class SubscriptionWebhookIngestService {
   private readonly logger = new Logger(SubscriptionWebhookIngestService.name);
-  private admin: PrismaClient | null = null;
 
   constructor(
+    private readonly prisma: PrismaService,
     private readonly config: AppConfigService,
     private readonly registry: MobileMoneyProviderRegistry,
     private readonly payments: SubscriptionPaymentsService,
@@ -209,10 +210,9 @@ export class SubscriptionWebhookIngestService {
   }
 
   private adminClient(): PrismaClient {
-    const adminUrl = this.config.get('DATABASE_ADMIN_URL');
-    if (!adminUrl)
+    const admin = this.prisma.adminClient();
+    if (!admin)
       throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'DATABASE_ADMIN_URL absent' });
-    this.admin ??= new PrismaClient({ datasources: { db: { url: adminUrl } }, log: ['error'] });
-    return this.admin;
+    return admin;
   }
 }

@@ -47,9 +47,7 @@ export default function RelevesPage() {
   const [runId, setRunId] = React.useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedStatementId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedStatementId !== null) setSelectedStatementId(null);
 
   const startRun = useStartOwnerStatementRun();
   const runQuery = useOwnerStatementRun(runId);

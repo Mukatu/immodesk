@@ -29,9 +29,11 @@ export function ExportButton({ kind, filters, label = 'Exporter (CSV)' }: Export
     if (!jobQuery.data) return;
     if (jobQuery.data.status === 'DONE' && jobQuery.data.downloadUrl) {
       toast.success('Export prêt.', { description: jobQuery.data.downloadUrl });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- l'arrêt du suivi est indissociable de la notification, déclenchée par l'arrivée de la réponse serveur
       setJobId(null);
     } else if (jobQuery.data.status === 'FAILED') {
       toast.error(jobQuery.data.error ?? genericErrorMessage);
+
       setJobId(null);
     }
   }, [jobQuery.data]);

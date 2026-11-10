@@ -69,11 +69,14 @@ export function TenantAuthProvider({ children }: { children: React.ReactNode }) 
     const stored = readStoredSession();
     if (!stored) {
       resetTenantTokenStore();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- lecture de sessionStorage (système externe) après hydratation, volontairement hors rendu
       setStatus('anonymous');
       return;
     }
     setTenantAccessToken(stored.accessToken);
+
     setTenant(stored.tenant);
+
     setStatus('authenticated');
   }, []);
 

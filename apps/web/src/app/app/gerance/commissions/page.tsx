@@ -42,9 +42,7 @@ export default function CommissionsPage() {
   const [mandateId, setMandateId] = React.useState('ALL');
   const [period, setPeriod] = React.useState('');
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedCommissionId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedCommissionId !== null) setSelectedCommissionId(null);
 
   const { data: mandates } = useMandates({ limit: 100 });
   const { data } = useCommissions({

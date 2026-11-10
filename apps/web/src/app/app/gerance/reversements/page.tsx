@@ -40,9 +40,7 @@ export default function ReversementsPage() {
   const [status, setStatus] = React.useState<PayoutStatus | 'ALL'>('ALL');
   const { data, isLoading } = useOwnerPayouts({ status: status === 'ALL' ? undefined : status });
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedPayoutId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedPayoutId !== null) setSelectedPayoutId(null);
 
   const columns = React.useMemo<ColumnDef<Payout>[]>(
     () => [

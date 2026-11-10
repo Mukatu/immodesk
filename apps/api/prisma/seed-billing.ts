@@ -8,7 +8,7 @@
  */
 import type { PrismaClient } from '../src/generated/prisma/client';
 import { randomBytes } from 'node:crypto';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../src/shared/ids/uuid';
 import { SYSTEM_TEMPLATES } from '../src/modules/notifications/domain/template-catalog';
 import { cashReceiptPrefix } from '../src/modules/numbering/domain/sequence-kind';
 import { mergeOperationalSettings } from '../src/shared/settings/operational-settings';

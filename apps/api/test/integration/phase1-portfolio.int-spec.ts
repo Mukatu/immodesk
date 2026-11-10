@@ -1,4 +1,4 @@
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import {
   api,
   cleanupUser,

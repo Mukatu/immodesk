@@ -43,11 +43,14 @@ export function ApplyCreditDialog({ tenantId, credit, onOpenChange }: ApplyCredi
   const [amount, setAmount] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
+  // Réinitialise le formulaire quand le crédit ciblé change (pendant le rendu).
+  const [synced, setSynced] = React.useState<{ credit: typeof credit } | null>(null);
+  if (synced?.credit !== credit) {
+    setSynced({ credit });
     setInvoiceId('');
     setAmount(credit ? String(credit.remainingAmount) : '');
     setError(null);
-  }, [credit]);
+  }
 
   async function handleApply() {
     if (!invoiceId) {

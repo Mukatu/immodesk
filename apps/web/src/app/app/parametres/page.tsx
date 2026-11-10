@@ -61,13 +61,16 @@ export default function ParametresPage() {
   const [graceDays, setGraceDays] = React.useState(3);
   const [footerText, setFooterText] = React.useState('');
 
-  React.useEffect(() => {
+  // Ajuste l'état pendant le rendu quand les réglages chargés changent (pas d'effet).
+  const [syncedSettings, setSyncedSettings] = React.useState<typeof settings>(undefined);
+  if (settings !== syncedSettings) {
+    setSyncedSettings(settings);
     if (settings) {
       setDueDay(settings.defaultPaymentDueDay);
       setGraceDays(settings.defaultGraceDays);
       setFooterText(settings.receiptFooterText ?? '');
     }
-  }, [settings]);
+  }
 
   async function onSubmitIdentity(values: IdentityValues) {
     try {

@@ -77,9 +77,7 @@ export default function MobileMoneyJournalPage() {
     });
   }
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedTransactionId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedTransactionId !== null) setSelectedTransactionId(null);
 
   function handleRowSelect(transaction: MomoTransaction) {
     setSelectedTransactionId(transaction.id);

@@ -24,13 +24,16 @@ const THEME_OPTIONS = [
  * thème effectif dépend de `localStorage` et de `prefers-color-scheme`, inconnus du rendu
  * serveur.
  */
+const subscribeNever = () => () => {};
+
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Faux côté serveur / à l'hydratation, vrai ensuite : évite l'écart d'hydratation du thème.
+  const mounted = React.useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
 
   const current = THEME_OPTIONS.find((option) => option.value === theme) ?? THEME_OPTIONS[2];
   const CurrentIcon = current.icon;

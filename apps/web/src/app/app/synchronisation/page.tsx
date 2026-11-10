@@ -50,9 +50,7 @@ export default function SynchronisationPage() {
 
   // Même bonus que /app/baux : la ligne dont le panneau contextuel affiche le
   // résumé reste repérable tant qu'il reste ouvert.
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedContextBatchId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedContextBatchId !== null) setSelectedContextBatchId(null);
 
   function handleRowSelect(batch: SyncBatchSummary) {
     setSelectedContextBatchId(batch.id);

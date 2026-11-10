@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import type { PrismaClient } from '../../src/generated/prisma/client';
 import { PrismaService } from '../../src/shared/prisma/prisma.service';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import { createApp } from '../../src/bootstrap';
 import {
   FakeSmsProvider,
@@ -26,7 +26,8 @@ export async function startTestApp(): Promise<TestContext> {
 
   const address = app.getHttpServer().address() as { port: number };
   // Client d'administration partagé de l'application : un seul pool de plus.
-  const admin = app.get(PrismaService).adminClient() as PrismaClient;
+  const admin = app.get(PrismaService).adminClient();
+  if (!admin) throw new Error("DATABASE_ADMIN_URL requis pour les tests d'intégration");
 
   return {
     app,

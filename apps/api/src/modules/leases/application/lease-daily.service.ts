@@ -42,8 +42,6 @@ export class LeaseDailyService {
     private readonly auditService: AuditService,
   ) {}
 
-  async disconnect(): Promise<void> {}
-
   /** Un passage complet, toutes organisations confondues. */
   async runOnce(today: Date = startOfDay(new Date())): Promise<LeaseDailyReport> {
     const organizationIds = await this.organizationsWithLeases();

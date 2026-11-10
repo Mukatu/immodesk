@@ -47,9 +47,7 @@ export default function ImmeublesPage() {
     [propertiesLookupQuery.data],
   );
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedUnitId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedUnitId !== null) setSelectedUnitId(null);
 
   function handleUnitRowSelect(unit: Unit) {
     setSelectedUnitId(unit.id);

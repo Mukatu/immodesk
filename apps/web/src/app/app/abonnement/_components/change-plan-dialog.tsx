@@ -42,12 +42,15 @@ export function ChangePlanDialog({
 
   const plans = data?.items ?? [];
 
-  React.useEffect(() => {
+  // Réinitialise à l'ouverture (ou quand le plan courant change) pendant le rendu.
+  const [synced, setSynced] = React.useState<{ open: boolean; planId: string | null } | null>(null);
+  if (synced?.open !== open || synced.planId !== currentPlanId) {
+    setSynced({ open, planId: currentPlanId });
     if (open) {
       setSelectedPlanId(currentPlanId);
       setError(null);
     }
-  }, [open, currentPlanId]);
+  }
 
   async function handleConfirm() {
     if (!selectedPlanId) {

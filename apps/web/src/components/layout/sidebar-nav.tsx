@@ -179,6 +179,7 @@ export function SidebarNavList({
   const [openGroup, setOpenGroup] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lecture de localStorage (système externe) après hydratation, volontairement hors rendu
     setOpenGroup(readStoredOpenGroup());
   }, []);
 

@@ -193,9 +193,7 @@ export default function EquipePage() {
   const revokeInvitation = useRevokeInvitation(orgId);
   const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedMemberId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedMemberId !== null) setSelectedMemberId(null);
 
   function handleMemberSelect(member: Member) {
     setSelectedMemberId(member.id);

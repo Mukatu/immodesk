@@ -10,7 +10,7 @@
  * appartement 120 000 à 180 000 FCFA par mois).
  */
 import type { PrismaClient } from '../src/generated/prisma/client';
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../src/shared/ids/uuid';
 import { upsertBankAccounts, upsertTenants, upsertUnits } from './seed-portfolio-parties';
 
 export interface PortfolioReport {

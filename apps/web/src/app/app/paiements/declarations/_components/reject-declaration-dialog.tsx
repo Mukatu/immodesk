@@ -32,12 +32,14 @@ export function RejectDeclarationDialog({ onReject, onRejected }: RejectDeclarat
   const [error, setError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  React.useEffect(() => {
+  const [wasOpen, setWasOpen] = React.useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
       setReason('');
       setError(null);
     }
-  }, [open]);
+  }
 
   async function handleConfirm() {
     if (!reason.trim()) {

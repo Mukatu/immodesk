@@ -1,4 +1,4 @@
-import { v7 as uuidv7 } from 'uuid';
+import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import { AppConfigService } from '../../src/shared/config/config.module';
 import { signHmac } from '../../src/modules/mobile-money/domain/webhook-signature';
 import { api, type TestContext } from './helpers';

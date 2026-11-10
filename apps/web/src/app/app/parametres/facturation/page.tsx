@@ -17,7 +17,12 @@ import {
 } from '@/lib/api/hooks/use-organizations';
 import { usePenaltyRules } from '@/lib/api/hooks/use-penalty-rules';
 import { PenaltyRulesSection } from './_components/penalty-rules-section';
-import { BillingFields, CashFields, MessagingFields } from './_components/settings-fields';
+import {
+  BillingFields,
+  CashFields,
+  MessagingFields,
+  type SettingsFormInput,
+} from './_components/settings-fields';
 
 const schema = z.object({
   generateDaysBefore: z.coerce.number().int().min(0).max(30),
@@ -41,7 +46,7 @@ export default function ParametresFacturationPage() {
   const { data: penaltyRulesData } = usePenaltyRules();
   const updateSettings = useUpdateOrganizationSettings(currentOrganizationId);
 
-  const form = useForm<FormValues>({
+  const form = useForm<SettingsFormInput, unknown, FormValues>({
     resolver: zodResolver(schema),
     values: settings
       ? {

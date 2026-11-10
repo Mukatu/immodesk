@@ -56,9 +56,7 @@ export default function QuittancesPage() {
     setPreviousCursors([]);
   }
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedReceiptId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedReceiptId !== null) setSelectedReceiptId(null);
 
   function handleRowSelect(receipt: ReceiptSummary) {
     setSelectedReceiptId(receipt.id);

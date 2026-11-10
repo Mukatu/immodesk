@@ -66,9 +66,7 @@ export default function MessagesPage() {
   const retryMessage = useRetryMessageLog();
 
   // Cf. apps/web/src/app/app/baux/page.tsx (modèle).
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedLogId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedLogId !== null) setSelectedLogId(null);
 
   async function handleRetry(id: string) {
     try {

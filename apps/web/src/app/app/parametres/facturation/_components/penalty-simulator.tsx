@@ -37,16 +37,14 @@ export function PenaltySimulator({ rules }: PenaltySimulatorProps) {
   const [result, setResult] = React.useState<SimulatePenaltyResult | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  const simulate = useSimulatePenaltyRule(ruleId || activeRules[0]?.id || '');
-
-  React.useEffect(() => {
-    if (!ruleId && activeRules[0]) setRuleId(activeRules[0].id);
-  }, [activeRules, ruleId]);
+  // Règle par défaut dérivée (première règle active) tant que rien n'est choisi.
+  const selectedRuleId = ruleId || activeRules[0]?.id || '';
+  const simulate = useSimulatePenaltyRule(selectedRuleId);
 
   async function handleSimulate() {
     setError(null);
     setResult(null);
-    if (!ruleId) {
+    if (!selectedRuleId) {
       setError('Sélectionnez une règle active.');
       return;
     }
@@ -81,7 +79,7 @@ export function PenaltySimulator({ rules }: PenaltySimulatorProps) {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="simulator-rule">Règle</Label>
-            <Select value={ruleId} onValueChange={setRuleId}>
+            <Select value={selectedRuleId} onValueChange={setRuleId}>
               <SelectTrigger id="simulator-rule">
                 <SelectValue placeholder="Choisir une règle" />
               </SelectTrigger>

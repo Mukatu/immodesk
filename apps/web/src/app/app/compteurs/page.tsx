@@ -65,9 +65,7 @@ export default function CompteursPage() {
     setPreviousCursors([]);
   }
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedMeterId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedMeterId !== null) setSelectedMeterId(null);
 
   function handleRowSelect(meter: Meter) {
     setSelectedMeterId(meter.id);

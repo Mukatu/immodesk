@@ -46,11 +46,12 @@ export default function MaintenanceDetailPage() {
   const [error, setError] = React.useState<string | null>(null);
   const now = new Date();
 
+  const assignedToUserId = request?.assignedToUserId;
   const assigneeName = React.useMemo(() => {
-    if (!request?.assignedToUserId) return 'Non affectée';
-    const member = members?.items.find((m) => m.user.id === request.assignedToUserId);
+    if (!assignedToUserId) return 'Non affectée';
+    const member = members?.items.find((m) => m.user.id === assignedToUserId);
     return member?.user.fullName ?? '—';
-  }, [members, request?.assignedToUserId]);
+  }, [members, assignedToUserId]);
 
   if (isLoading) {
     return (

@@ -55,9 +55,7 @@ export default function DepensesPage() {
   const [cursor, setCursor] = React.useState<string | undefined>(undefined);
   const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedExpenseId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedExpenseId !== null) setSelectedExpenseId(null);
 
   const { data: properties } = useProperties({ limit: 100 });
   const { data, isLoading } = useExpenses({

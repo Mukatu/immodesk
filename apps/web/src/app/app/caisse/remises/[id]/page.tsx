@@ -43,18 +43,22 @@ export default function RemiseDetailPage() {
   const [countedAmount, setCountedAmount] = React.useState('');
   const [checks, setChecks] = React.useState<Record<string, ItemCheck>>({});
 
-  React.useEffect(() => {
-    if (!remittance) return;
-    setCountedAmount(String(remittance.expectedAmount));
-    setChecks(
-      Object.fromEntries(
-        remittance.items.map((item) => [
-          item.cashReceiptId,
-          { isVerified: true, varianceReason: '' },
-        ]),
-      ),
-    );
-  }, [remittance]);
+  // Ajuste l'état pendant le rendu quand la remise chargée change (pas d'effet).
+  const [syncedRemittance, setSyncedRemittance] = React.useState<typeof remittance>(undefined);
+  if (remittance !== syncedRemittance) {
+    setSyncedRemittance(remittance);
+    if (remittance) {
+      setCountedAmount(String(remittance.expectedAmount));
+      setChecks(
+        Object.fromEntries(
+          remittance.items.map((item) => [
+            item.cashReceiptId,
+            { isVerified: true, varianceReason: '' },
+          ]),
+        ),
+      );
+    }
+  }
 
   if (isLoading) {
     return (

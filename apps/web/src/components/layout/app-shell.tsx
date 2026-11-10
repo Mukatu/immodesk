@@ -70,6 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // d'hydratation dès que localStorage contient une valeur différente du défaut.
   React.useEffect(() => {
     try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- lecture de localStorage (système externe) après hydratation, volontairement hors rendu
       setCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true');
     } catch {
       // Stockage indisponible (navigation privée stricte) : on reste en mode étendu.
@@ -88,9 +89,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  React.useEffect(() => {
+  // Referme le menu mobile à chaque navigation (ajustement pendant le rendu).
+  const [lastPathname, setLastPathname] = React.useState(pathname);
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
     setMobileNavOpen(false);
-  }, [pathname]);
+  }
 
   return (
     <ContextPanelProvider>

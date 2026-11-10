@@ -94,10 +94,17 @@ export class ExportWorker implements ExportQueuePort, OnModuleInit, OnModuleDest
 
   async status(jobId: string): Promise<ExportJobView | null> {
     if (!this.queue) return null;
-    const job = await this.queue.getJob(jobId);
+    const found = await this.queue.getJob(jobId);
+    if (!found) return null;
+    const organizationId = found.data.organizationId;
+    const state = await found.getState();
+    // `found` est un instantané pris AVANT `getState()` : si le travail se
+    // termine entre les deux, son `returnvalue`/`failedReason` sont encore
+    // vides alors que l'état est déjà `completed`/`failed`. On relit donc le
+    // travail une fois l'état terminal constaté.
+    const job =
+      state === 'completed' || state === 'failed' ? await this.queue.getJob(jobId) : found;
     if (!job) return null;
-    const organizationId = job.data.organizationId;
-    const state = await job.getState();
     if (state === 'completed') {
       return { organizationId, status: 'COMPLETED', result: job.returnvalue };
     }

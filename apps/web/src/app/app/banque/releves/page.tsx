@@ -105,9 +105,7 @@ export default function RelevesBancairesPage() {
   const [previousCursors, setPreviousCursors] = React.useState<string[]>([]);
 
   // Cf. apps/web/src/app/app/baux/page.tsx (modèle).
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedStatementId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedStatementId !== null) setSelectedStatementId(null);
 
   const { currentOrganizationId } = useAuth();
   // Tous les comptes de l'organisation (le compte crédité par les loyers peut

@@ -57,9 +57,7 @@ export default function EtatsDesLieuxPage() {
     setPreviousCursors([]);
   }
 
-  React.useEffect(() => {
-    if (!isContextPanelOpen) setSelectedInspectionId(null);
-  }, [isContextPanelOpen]);
+  if (!isContextPanelOpen && selectedInspectionId !== null) setSelectedInspectionId(null);
 
   function handleRowSelect(inspection: InspectionSummary) {
     setSelectedInspectionId(inspection.id);

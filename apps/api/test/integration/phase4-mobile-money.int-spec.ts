@@ -198,7 +198,7 @@ describe('Phase 4 — Mobile Money agrégateur (simulateur)', () => {
         const row = await ctx.admin.mobile_money_transactions.findFirst({
           where: {
             organization_id: agency.organizationId,
-            merchant_reference: input.externalReference,
+            external_reference: input.externalReference,
           },
         });
         return row?.status === 'SUCCEEDED' ? row : null;

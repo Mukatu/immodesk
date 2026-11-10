@@ -102,7 +102,12 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
   ): Promise<MobileMoneyPayoutResult> {
     const row = await tx.mobile_money_transactions.findFirst({
       where: { id: momoTransactionId },
-      select: { aggregator: true, aggregator_transaction_id: true, merchant_reference: true },
+      select: {
+        aggregator: true,
+        aggregator_transaction_id: true,
+        external_reference: true,
+        merchant_reference: true,
+      },
     });
     if (!row) {
       throw new DomainError('PLATFORM.NOT_FOUND', {
@@ -111,7 +116,8 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
       });
     }
     const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
-    const providerReference = row.aggregator_transaction_id ?? row.merchant_reference;
+    const providerReference =
+      row.aggregator_transaction_id ?? row.external_reference ?? row.merchant_reference;
     const status = await provider.getStatus(providerReference);
 
     await tx.mobile_money_transactions.update({

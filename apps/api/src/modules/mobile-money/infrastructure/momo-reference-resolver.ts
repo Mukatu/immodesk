@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../../generated/prisma/client';
 
 /**
  * Rattachement d'un webhook Mobile Money à SA transaction, donc à son

@@ -34,6 +34,7 @@ interface MobileMoneyTransactionRow {
   aggregator: string | null;
   aggregator_transaction_id: string | null;
   merchant_reference: string;
+  external_reference: string | null;
   amount: bigint;
 }
 
@@ -197,7 +198,7 @@ export class SubscriptionPaymentsService {
   async verifyStatus(organizationId: string, transactionId: string): Promise<void> {
     const paidEvent = await this.prisma.withTenant(organizationId, null, async (tx) => {
       const rows = await tx.$queryRawUnsafe<MobileMoneyTransactionRow[]>(
-        `SELECT id, organization_id, status, aggregator, aggregator_transaction_id, merchant_reference, amount
+        `SELECT id, organization_id, status, aggregator, aggregator_transaction_id, external_reference, merchant_reference, amount
            FROM mobile_money_transactions WHERE id = $1::uuid AND organization_id = $2::uuid FOR UPDATE`,
         transactionId,
         organizationId,
@@ -208,7 +209,8 @@ export class SubscriptionPaymentsService {
       const provider = this.registry.forCode(
         row.aggregator ?? this.config.get('MOMO_PROVIDER_DEFAULT'),
       );
-      const providerRef = row.aggregator_transaction_id ?? row.merchant_reference;
+      const providerRef =
+        row.aggregator_transaction_id ?? row.external_reference ?? row.merchant_reference;
       const status = await provider.getStatus(providerRef);
       await tx.mobile_money_transactions.update({
         where: { id: transactionId },

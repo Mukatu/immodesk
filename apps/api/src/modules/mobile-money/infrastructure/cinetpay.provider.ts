@@ -75,7 +75,7 @@ export class CinetPayProvider implements MobileMoneyProvider {
   parseWebhook(raw: RawWebhook): ParsedWebhook {
     const body = raw.body as CinetPayNotification;
     return {
-      merchantReference: body.cpm_trans_id,
+      externalReference: body.cpm_trans_id,
       providerReference: body.cpm_trans_id,
       state: body.cpm_result === '00' ? 'SUCCEEDED' : 'FAILED',
       amount: body.cpm_amount ? BigInt(Math.trunc(Number(body.cpm_amount))) : undefined,

@@ -129,6 +129,9 @@ export class MomoAggregatorService {
             channel: 'AGGREGATOR',
             status: 'INITIATED',
             merchant_reference: merchantRef,
+            // Clé fournisseur unique sur la plateforme (migration 9) :
+            // `merchantRef` est numérotée par organisation.
+            external_reference: transactionId,
             payer_msisdn: payerMsisdn,
             amount: input.amount,
             fee_bearer: aggregator.feeBearer,
@@ -156,7 +159,7 @@ export class MomoAggregatorService {
       currency: 'XAF',
       payerMsisdn,
       operator,
-      externalReference: merchantReference,
+      externalReference: transactionId,
       description: `Paiement Mobile Money ${merchantReference}`,
       callbackUrl: '',
     });

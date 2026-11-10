@@ -1642,6 +1642,7 @@ CREATE TABLE mobile_money_transactions (
     provider_transaction_id TEXT,
     aggregator_transaction_id TEXT,
     merchant_reference     TEXT NOT NULL,
+    external_reference     TEXT,
     payer_msisdn           TEXT NOT NULL,
     payee_msisdn           TEXT,
     amount                 BIGINT NOT NULL CHECK (amount >= 0),
@@ -1663,11 +1664,13 @@ CREATE TABLE mobile_money_transactions (
     created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT momo_merchant_ref_uk UNIQUE (organization_id, merchant_reference),
+    CONSTRAINT momo_external_ref_uk UNIQUE (external_reference),
     CONSTRAINT momo_provider_tx_uk UNIQUE (provider, provider_transaction_id),
     CONSTRAINT momo_msisdn_chk CHECK (payer_msisdn ~ '^\+[1-9][0-9]{7,14}$')
 );
 COMMENT ON TABLE mobile_money_transactions IS 'Transaction Mobile Money via agrégateur (CinetPay, PawaPay) ou opérateur direct (MTN MoMo, Airtel Money).';
-COMMENT ON COLUMN mobile_money_transactions.merchant_reference IS 'Référence marchande envoyée à l''agrégateur, clé d''idempotence de la demande de paiement.';
+COMMENT ON COLUMN mobile_money_transactions.merchant_reference IS 'Référence marchande lisible, numérotée par organisation (MMA-AAAAMM-NNNNN) : jamais transmise seule au fournisseur, elle n''est pas unique entre organisations.';
+COMMENT ON COLUMN mobile_money_transactions.external_reference IS 'Clé transmise au fournisseur (transaction_id CinetPay, référence du simulateur), unique sur toute la plateforme : sert à rattacher un webhook à une organisation sans ambiguïté. NULL pour une transaction déclarée, ou pour une transaction historique en collision (migration 9).';
 COMMENT ON COLUMN mobile_money_transactions.payer_msisdn IS 'Numéro du portefeuille débité, format E.164.';
 COMMENT ON COLUMN mobile_money_transactions.fee_amount IS 'Frais opérateur en XAF prélevés sur la transaction.';
 COMMENT ON COLUMN mobile_money_transactions.status_check_count IS 'Nombre de re-interrogations de statut : un webhook seul ne vaut jamais confirmation.';
@@ -3158,14 +3161,39 @@ COMMENT ON POLICY org_isolation ON organizations IS
 -- restent accessibles au rôle applicatif, l'autorisation étant assurée
 -- par la couche applicative (JWT + organization_members).
 
--- feature_flags : lecture des drapeaux globaux autorisée à tous les tenants,
--- écriture réservée aux drapeaux du tenant courant.
-CREATE POLICY global_flags_readonly ON feature_flags
-    AS RESTRICTIVE FOR UPDATE TO immodesk_app
-    USING (organization_id IS NOT NULL);
-CREATE POLICY global_flags_no_delete ON feature_flags
-    AS RESTRICTIVE FOR DELETE TO immodesk_app
-    USING (organization_id IS NOT NULL);
+-- Lignes globales (organization_id NULL) en LECTURE SEULE pour immodesk_app
+-- (migration 8_rls_global_rows_readonly) : écriture réservée à immodesk_admin.
+-- feature_flags -------------------------------------------------------
+DROP POLICY IF EXISTS org_isolation ON feature_flags;
+
+CREATE POLICY org_isolation_select ON feature_flags
+    AS PERMISSIVE FOR SELECT TO immodesk_app
+    USING (organization_id IS NULL
+           OR organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
+CREATE POLICY org_isolation_insert ON feature_flags
+    AS PERMISSIVE FOR INSERT TO immodesk_app
+    WITH CHECK (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
+CREATE POLICY org_isolation_update ON feature_flags
+    AS PERMISSIVE FOR UPDATE TO immodesk_app
+    USING (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid)
+    WITH CHECK (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
+CREATE POLICY org_isolation_delete ON feature_flags
+    AS PERMISSIVE FOR DELETE TO immodesk_app
+    USING (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
+
+COMMENT ON POLICY org_isolation_select ON feature_flags IS
+    'Lecture des drapeaux globaux (organization_id NULL) et de ceux du tenant courant. Les lignes globales ne sont écrites que par immodesk_admin.';
+
+-- webhook_events ------------------------------------------------------
+DROP POLICY IF EXISTS org_isolation ON webhook_events;
+
+CREATE POLICY org_isolation ON webhook_events
+    AS PERMISSIVE FOR ALL TO immodesk_app
+    USING (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid)
+    WITH CHECK (organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::uuid);
+
+COMMENT ON POLICY org_isolation ON webhook_events IS
+    'Isolation multi-tenant stricte : les lignes globales (organization_id NULL) sont invisibles du rôle applicatif ; ingestion et rattachement via immodesk_admin.';
 
 COMMENT ON POLICY org_isolation ON organization_settings IS
     'Isolation multi-tenant : une transaction ne voit que les lignes de l''organisation positionnée dans app.current_organization_id.';

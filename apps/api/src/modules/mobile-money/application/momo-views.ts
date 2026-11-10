@@ -17,6 +17,7 @@ export interface MomoTransactionRow {
   provider_transaction_id: string | null;
   aggregator_transaction_id: string | null;
   merchant_reference: string;
+  external_reference: string | null;
   payer_msisdn: string;
   payee_msisdn: string | null;
   amount: bigint;

@@ -13,7 +13,11 @@ export interface InitiatePaymentInput {
   currency: 'XAF';
   payerMsisdn: string;
   operator: 'MTN' | 'AIRTEL';
-  /** `merchant_reference` Immodesk : idempotent côté fournisseur. */
+  /**
+   * `external_reference` Immodesk : clé unique sur toute la plateforme,
+   * idempotente côté fournisseur. JAMAIS la `merchant_reference`, numérotée
+   * par organisation et donc partagée entre organisations.
+   */
   externalReference: string;
   description: string;
   callbackUrl: string;
@@ -46,8 +50,8 @@ export interface RawWebhook {
 export interface ParsedWebhook {
   /** Identifiant d'évènement fourni par le fournisseur, sinon calculé (SHA-256 du corps) en amont. */
   eventId?: string;
-  /** `merchant_reference` Immodesk, retrouvée dans le corps (externalReference envoyée à `initiate`). */
-  merchantReference: string;
+  /** `external_reference` Immodesk, retrouvée dans le corps (externalReference envoyée à `initiate`). */
+  externalReference: string;
   providerReference: string;
   state: 'PENDING' | 'SUCCEEDED' | 'FAILED';
   amount?: bigint;

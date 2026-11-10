@@ -75,7 +75,8 @@ export class MomoVerificationService {
         // d'initiation, et l'ignorer (en consommant la clé d'idempotence du
         // job) perdrait la confirmation jusqu'au rattrapage.
         if (row.channel !== 'AGGREGATOR' || !['INITIATED', 'PENDING'].includes(row.status)) return;
-        const providerRef = row.aggregator_transaction_id ?? row.merchant_reference;
+        const providerRef =
+          row.aggregator_transaction_id ?? row.external_reference ?? row.merchant_reference;
         const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
         const status = await provider.getStatus(providerRef);
         await tx.mobile_money_transactions.update({

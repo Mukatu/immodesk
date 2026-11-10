@@ -27,8 +27,15 @@ export interface SettingsFormValues {
   sendInvoiceIssued: boolean;
 }
 
+/** Entrée du formulaire : `z.coerce.number()` accepte `unknown` en zod 4. */
+export type SettingsFormInput = Omit<
+  SettingsFormValues,
+  'generateDaysBefore' | 'collectorHoldingCapAmount'
+> &
+  Record<'generateDaysBefore' | 'collectorHoldingCapAmount', unknown>;
+
 interface SectionProps {
-  form: UseFormReturn<SettingsFormValues>;
+  form: UseFormReturn<SettingsFormInput, unknown, SettingsFormValues>;
 }
 
 /** Section « Facturation » : génération automatique et pénalités par défaut. */

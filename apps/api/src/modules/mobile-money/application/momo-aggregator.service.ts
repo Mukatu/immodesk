@@ -162,15 +162,23 @@ export class MomoAggregatorService {
     });
 
     await this.prisma.withTenant(organizationId, reader.userId, async (tx) => {
+      // Le webhook du fournisseur peut avoir déjà été traité (transaction
+      // vérifiée puis confirmée) pendant l'appel d'initiation : la réponse
+      // tardive ne doit JAMAIS régresser l'état. On renseigne les références,
+      // et on ne passe INITIATED -> PENDING/FAILED que si la transaction n'a
+      // pas déjà quitté l'état INITIATED.
       await tx.mobile_money_transactions.update({
         where: { id: transactionId },
         data: {
-          status: result.state === 'FAILED' ? 'FAILED' : 'PENDING',
           aggregator_transaction_id: result.providerReference,
           raw_payload: (result.rawPayload ?? {}) as object,
         },
       });
-      if (result.state === 'FAILED') {
+      const moved = await tx.mobile_money_transactions.updateMany({
+        where: { id: transactionId, status: 'INITIATED' },
+        data: { status: result.state === 'FAILED' ? 'FAILED' : 'PENDING' },
+      });
+      if (result.state === 'FAILED' && moved.count > 0) {
         await tx.payments.update({
           where: { id: paymentId },
           data: {

@@ -7,7 +7,7 @@
  * démarcheur (phase 0). Dates toutes relatives à l'exécution du seed, pour
  * rester valides quel que soit le jour où il tourne.
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../src/generated/prisma/client';
 import { newId as uuidv7 } from '../src/shared/ids/uuid';
 
 export interface Phase8Report {

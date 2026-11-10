@@ -8,6 +8,8 @@ module.exports = {
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    // Client Prisma généré (nodenext) : imports relatifs en « .js » vers des .ts.
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
   globalSetup: '<rootDir>/test/integration/global-setup.ts',

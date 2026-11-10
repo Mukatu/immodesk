@@ -8,7 +8,7 @@
  * Le décor reprend celui de la phase 1 : Résidence Mpila, lots A1 à A12,
  * locataires de Poto-Poto, Bacongo et Makélékélé.
  */
-import type { Prisma, PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '../src/generated/prisma/client';
 import { newId as uuidv7 } from '../src/shared/ids/uuid';
 import { DEFAULT_CONTRACT_TEMPLATE } from '../src/modules/pdf/domain/contract-template';
 

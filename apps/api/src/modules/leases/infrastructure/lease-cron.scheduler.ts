@@ -79,7 +79,6 @@ export class LeaseCronScheduler implements OnModuleInit, OnModuleDestroy {
     await this.worker?.close().catch(() => undefined);
     await this.queue?.close().catch(() => undefined);
     await this.connection?.quit().catch(() => undefined);
-    await this.daily.disconnect();
   }
 
   /** Exécution immédiate, pour l'exploitation et les tests. */

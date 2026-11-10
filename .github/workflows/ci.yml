@@ -214,11 +214,9 @@ jobs:
           PGDATABASE: immodesk_test
         run: scripts/ci/check-schema-drift.sh drift
 
-      # TODO(#43) : retirer continue-on-error une fois les policies enveloppees
-      # dans NULLIF(current_setting(...)) (un GUC vide sur une connexion poolee
-      # reutilisee leve "invalid input syntax for type uuid").
+      # Un GUC vide sur une connexion poolee reutilisee leve "invalid input
+      # syntax for type uuid" : toutes les policies doivent utiliser NULLIF.
       - name: Guard RLS policies use NULLIF(current_setting())
-        continue-on-error: true
         env:
           PGHOST: localhost
           PGUSER: immodesk

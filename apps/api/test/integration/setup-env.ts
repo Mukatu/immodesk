@@ -6,10 +6,6 @@
  * démarrés. Aucune base n'est simulée : la RLS ne peut se vérifier que sur
  * un vrai PostgreSQL.
  */
-// `@prisma/client` charge `.env` dès son import ; cet import de tête déclenche
-// ce chargement AVANT que le corps du module ne pose les valeurs de test, qui
-// seraient sinon écrasées ensuite (notamment OTP_DEV_CODE).
-import '@prisma/client';
 import { config as loadEnv } from 'dotenv';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';

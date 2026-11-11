@@ -14,6 +14,7 @@ interface PendingRow {
   initiated_at: Date;
   status_checked_at: Date | null;
   status_check_count: number;
+  external_reference: string | null;
 }
 
 /**
@@ -36,7 +37,7 @@ export class MomoReconcileService {
   async reconcilePending(now: Date = new Date()): Promise<{ rechecked: number; expired: number }> {
     const admin = this.adminClient();
     const rows = await admin.$queryRawUnsafe<PendingRow[]>(
-      `SELECT id, organization_id, initiated_at, status_checked_at, status_check_count
+      `SELECT id, organization_id, initiated_at, status_checked_at, status_check_count, external_reference
          FROM mobile_money_transactions
         WHERE channel = 'AGGREGATOR' AND status = 'PENDING'
           AND initiated_at <= now() - interval '3 minutes'`,
@@ -54,6 +55,15 @@ export class MomoReconcileService {
       if (isExpired(row.initiated_at, now, pendingExpiryMinutes)) {
         await this.expire(row.organization_id, row.id);
         expired += 1;
+        continue;
+      }
+      // Ligne AGGREGATOR antérieure à la migration 9 : sans `external_reference`,
+      // aucune référence fournisseur sûre (voir `providerReferenceOf`). Elle ne
+      // peut qu'expirer, jamais être re-interrogée.
+      if (!row.external_reference) {
+        this.logger.warn(
+          `MOMO.RECONCILE_SKIPPED transaction=${row.id} : external_reference absente, fournisseur non interrogé`,
+        );
         continue;
       }
       if (isDueForRecheck(row.status_checked_at, row.initiated_at, row.status_check_count, now)) {

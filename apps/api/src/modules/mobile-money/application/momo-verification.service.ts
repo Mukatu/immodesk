@@ -5,11 +5,11 @@ import type { TenantClient } from '../../../shared/prisma/prisma.service';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
-import { IdempotencyService } from '../../platform/application/idempotency.service';
 import { RECEIPT_ISSUER, type ReceiptIssuer } from '../../payments/domain/ports';
 import { AllocationService } from '../../payments/application/allocation.service';
 import { PaymentsQueryService } from '../../payments/application/payments-query.service';
-import { computeFee } from '../domain/momo-rules';
+import { computeFee, providerConfirmsAmount, providerReferenceOf } from '../domain/momo-rules';
+import type { ProviderStatus } from '../domain/ports';
 import { MobileMoneyProviderRegistry } from '../infrastructure/mobile-money-provider.registry';
 import { MomoQueryService, type MomoReader } from './momo-query.service';
 import type { MomoTransactionView } from './momo-views';
@@ -27,7 +27,6 @@ export class MomoVerificationService {
     private readonly prisma: PrismaService,
     private readonly queries: MomoQueryService,
     private readonly registry: MobileMoneyProviderRegistry,
-    private readonly idempotency: IdempotencyService,
     private readonly paymentsQueries: PaymentsQueryService,
     private readonly allocation: AllocationService,
     private readonly auditService: AuditService,
@@ -39,80 +38,50 @@ export class MomoVerificationService {
     reader: MomoReader,
     id: string,
   ): Promise<MomoTransactionView> {
-    await this.verifyStatus(organizationId, id, true);
+    await this.verifyStatus(organizationId, id);
     return this.queries.get(organizationId, reader, id);
   }
 
-  async verifyStatus(organizationId: string, transactionId: string, force = false): Promise<void> {
-    const scope = `momo:verify-status:${transactionId}`;
-    let recordId: string | null = null;
-    if (!force) {
-      const lookup = await this.idempotency
-        .begin({
-          organizationId,
-          userId: null,
-          key: transactionId,
-          scope,
-          method: 'JOB',
-          path: scope,
-          requestHash: scope,
-        })
-        .catch((error: unknown) => {
-          if (error instanceof DomainError && error.code === 'PLATFORM.IDEMPOTENCY_IN_PROGRESS')
-            return null;
-          throw error;
-        });
-      if (!lookup) return;
-      if (lookup.replay) return;
-      recordId = lookup.recordId ?? null;
-    }
-
-    try {
-      let receiptIds: string[] = [];
-      await this.prisma.withTenant(organizationId, null, async (tx) => {
-        const row = await this.queries.lock(tx, transactionId);
-        // INITIATED est vérifiable : un webhook peut précéder la réponse
-        // d'initiation, et l'ignorer (en consommant la clé d'idempotence du
-        // job) perdrait la confirmation jusqu'au rattrapage.
-        if (row.channel !== 'AGGREGATOR' || !['INITIATED', 'PENDING'].includes(row.status)) return;
-        const providerRef =
-          row.aggregator_transaction_id ?? row.external_reference ?? row.merchant_reference;
-        const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
-        const status = await provider.getStatus(providerRef);
-        await tx.mobile_money_transactions.update({
-          where: { id: transactionId },
-          data: { status_checked_at: new Date(), status_check_count: { increment: 1 } },
-        });
-        if (status.state === 'FAILED') {
-          await this.markFailed(
-            tx,
-            organizationId,
-            row,
-            status.failureCode ?? null,
-            status.failureMessage ?? null,
-          );
-        } else if (status.state === 'SUCCEEDED') {
-          const outcome = await this.confirmOrMismatch(
-            tx,
-            organizationId,
-            row,
-            status.amount ?? row.amount,
-            status.feeAmount,
-          );
-          receiptIds = outcome.receiptIds;
-        }
+  /**
+   * Pas d'idempotence à réponse mémorisée ici : une première vérification
+   * PENDING ne doit jamais empêcher la suivante (webhook SUCCEEDED, rattrapage)
+   * d'interroger le fournisseur. `SELECT ... FOR UPDATE` sérialise déjà les
+   * appels concurrents, et un appel sur une transaction terminale est sans effet.
+   */
+  async verifyStatus(organizationId: string, transactionId: string): Promise<void> {
+    let receiptIds: string[] = [];
+    await this.prisma.withTenant(organizationId, null, async (tx) => {
+      const row = await this.queries.lock(tx, transactionId);
+      // INITIATED est vérifiable : un webhook peut précéder la réponse
+      // d'initiation.
+      if (row.channel !== 'AGGREGATOR' || !['INITIATED', 'PENDING'].includes(row.status)) return;
+      const providerRef = providerReferenceOf(row);
+      if (!providerRef) {
+        this.logger.warn(
+          `MOMO.VERIFY_SKIPPED transaction=${row.id} : external_reference absente (ligne antérieure à la migration 9), fournisseur non interrogé`,
+        );
+        return;
+      }
+      const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
+      const status = await provider.getStatus(providerRef);
+      await tx.mobile_money_transactions.update({
+        where: { id: transactionId },
+        data: { status_checked_at: new Date(), status_check_count: { increment: 1 } },
       });
-      await this.receipts?.scheduleGeneration(organizationId, receiptIds);
-    } finally {
-      if (recordId)
-        await this.idempotency.complete({
+      if (status.state === 'FAILED') {
+        await this.markFailed(
+          tx,
           organizationId,
-          userId: null,
-          recordId,
-          status: 200,
-          body: {},
-        });
-    }
+          row,
+          status.failureCode ?? null,
+          status.failureMessage ?? null,
+        );
+      } else if (status.state === 'SUCCEEDED') {
+        const outcome = await this.confirmOrMismatch(tx, organizationId, row, status);
+        receiptIds = outcome.receiptIds;
+      }
+    });
+    await this.receipts?.scheduleGeneration(organizationId, receiptIds);
   }
 
   private async markFailed(
@@ -158,13 +127,15 @@ export class MomoVerificationService {
       id: string;
       payment_id: string | null;
       amount: bigint;
+      currency: string;
       fee_bearer: string;
       invoice_id: string | null;
     },
-    confirmedAmount: bigint,
-    providerFee: bigint | undefined,
+    status: ProviderStatus,
   ): Promise<{ receiptIds: string[] }> {
-    if (confirmedAmount !== row.amount) {
+    const providerFee = status.feeAmount;
+    if (!providerConfirmsAmount(status, row)) {
+      const confirmedAmount = status.amount ?? null;
       if (row.payment_id) {
         await tx.payments.update({
           where: { id: row.payment_id },
@@ -177,10 +148,15 @@ export class MomoVerificationService {
         operation: AUDIT_OPERATIONS.MOMO_STATUS_MISMATCH,
         entityType: 'mobile_money_transactions',
         entityId: row.id,
-        newState: toJsonState({ expected: row.amount, confirmed: confirmedAmount }),
+        newState: toJsonState({
+          expected: row.amount,
+          confirmed: confirmedAmount,
+          expectedCurrency: row.currency,
+          confirmedCurrency: status.currency ?? null,
+        }),
       });
       this.logger.warn(
-        `MOMO.STATUS_MISMATCH transaction=${row.id} attendu=${row.amount} recu=${confirmedAmount}`,
+        `MOMO.STATUS_MISMATCH transaction=${row.id} attendu=${row.amount} ${row.currency} recu=${confirmedAmount ?? 'absent'} ${status.currency ?? 'devise absente'}`,
       );
       return { receiptIds: [] };
     }

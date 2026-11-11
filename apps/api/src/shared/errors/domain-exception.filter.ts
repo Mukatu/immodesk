@@ -31,13 +31,21 @@ export class DomainExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
     const requestId = (request.headers['x-request-id'] as string | undefined) ?? undefined;
 
-    const { status, body } = this.render(exception, requestId);
+    const rendered = this.render(exception, requestId);
+    const { status } = rendered;
+    let { body } = rendered;
+    // Lu AVANT le masquage : l'en-tete Retry-After survit aux 503 de gel.
+    const retryAfter = body.details.retryAfterSeconds;
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      // Les details d'une erreur serveur (variable absente, reseau interne...)
+      // ne sortent jamais : journalises ici, absents de la reponse HTTP.
       this.logger.error(
-        `${request.method} ${request.url} -> ${status} ${body.code}`,
+        `${request.method} ${request.url} -> ${status} ${body.code}` +
+          (Object.keys(body.details).length > 0 ? ` details=${JSON.stringify(body.details)}` : ''),
         exception instanceof Error ? exception.stack : String(exception),
       );
+      body = { ...body, details: requestId ? { requestId } : {} };
     } else {
       this.logger.debug?.(`${request.method} ${request.url} -> ${status} ${body.code}`);
     }
@@ -45,7 +53,6 @@ export class DomainExceptionFilter implements ExceptionFilter {
     // Retry-After n a de sens que sur un refus temporaire. Le gel en lecture
     // seule le porte systematiquement (contrat de la phase 11) : sans lui, un
     // client ne sait pas s il doit reessayer dans une seconde ou dans une heure.
-    const retryAfter = body.details?.retryAfterSeconds;
     if (typeof retryAfter === 'number' && Number.isFinite(retryAfter)) {
       response.setHeader('Retry-After', String(Math.max(1, Math.trunc(retryAfter))));
     }

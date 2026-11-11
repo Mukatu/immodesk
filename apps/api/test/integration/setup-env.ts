@@ -41,3 +41,8 @@ process.env.S3_BUCKET = process.env.S3_BUCKET ?? 'immodesk';
 process.env.S3_ACCESS_KEY = process.env.S3_ACCESS_KEY ?? 'immodesk';
 process.env.S3_SECRET_KEY = process.env.S3_SECRET_KEY ?? 'immodesk123';
 process.env.SWAGGER_ENABLED = 'false';
+
+// Les specs partagent l'IP 127.0.0.1 : la limite des webhooks est relevee pour
+// ne pas fausser les specs qui en postent beaucoup (webhooks-rate-limit la
+// rabaisse pour son propre test).
+process.env.RATE_LIMIT_WEBHOOK_PER_MINUTE = process.env.RATE_LIMIT_WEBHOOK_PER_MINUTE ?? '100000';

@@ -179,6 +179,11 @@ export const configSchema = z
     DOCUMENT_LINK_TTL_SECONDS: z.coerce.number().int().min(60).max(604_800).default(604_800),
     LINK_SIGNING_SECRET: z.string().min(16).default(DEV_SECRET_DEFAULTS.LINK_SIGNING_SECRET),
     RATE_LIMIT_PUBLIC_PER_MINUTE: z.coerce.number().int().positive().default(30),
+    // Webhooks publics (`/webhooks/*`) : requêtes par minute et par IP.
+    RATE_LIMIT_WEBHOOK_PER_MINUTE: z.coerce.number().int().positive().default(120),
+    // Nombre de reverse proxies de confiance devant l'API (0 = aucun). Sans
+    // lui, `req.ip` est l'IP du proxy et toute limite par IP est commune.
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
 
     // --- Facturation (phase 3) -------------------------------------------
     BILLING_CRON_ENABLED: booleanish.default(true),

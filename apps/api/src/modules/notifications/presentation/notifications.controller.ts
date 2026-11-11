@@ -12,11 +12,13 @@ import {
   Post,
   Query,
   Req,
+  UseGuards,
   type RawBodyRequest,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentTenant, Public, Roles } from '../../../shared/auth/auth.contracts';
+import { WebhookRateLimitGuard } from '../../../shared/throttler/webhook-rate-limit.guard';
 import type { TenantContext } from '../../../shared/tenant/tenant-context';
 import { ErrorResponseDto } from '../../identity/presentation/dto/auth.dto';
 import { ORG_HEADER } from '../../parties/presentation/landlords.controller';
@@ -127,6 +129,7 @@ export class NotificationsController {
 
 @ApiTags('Webhooks')
 @Controller('webhooks')
+@UseGuards(WebhookRateLimitGuard)
 export class WebhooksController {
   constructor(private readonly webhooks: WebhooksService) {}
 

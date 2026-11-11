@@ -1,7 +1,16 @@
-import { Controller, HttpCode, HttpStatus, Post, Req, type RawBodyRequest } from '@nestjs/common';
+import {
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  UseGuards,
+  type RawBodyRequest,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Public } from '../../../shared/auth/auth.contracts';
+import { WebhookRateLimitGuard } from '../../../shared/throttler/webhook-rate-limit.guard';
 import { SubscriptionWebhookIngestService } from '../application/subscription-webhook-ingest.service';
 
 /**
@@ -13,6 +22,7 @@ import { SubscriptionWebhookIngestService } from '../application/subscription-we
  */
 @ApiTags('Abonnement')
 @Controller('webhooks/mobile-money')
+@UseGuards(WebhookRateLimitGuard)
 export class SubscriptionWebhooksController {
   constructor(private readonly ingest: SubscriptionWebhookIngestService) {}
 

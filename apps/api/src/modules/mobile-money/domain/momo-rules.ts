@@ -105,3 +105,34 @@ export function quoteMomo(
 export function normalizeOperatorReference(raw: string): string {
   return raw.trim().replace(/\s+/g, '').toUpperCase();
 }
+
+/**
+ * Un SUCCEEDED fournisseur ne vaut confirmation que s'il annonce lui-même un
+ * montant ET une devise égaux à ceux de la transaction : l'omission d'un champ
+ * n'est jamais comblée par la valeur attendue.
+ */
+export function providerConfirmsAmount(
+  status: { amount?: bigint; currency?: string },
+  expected: { amount: bigint; currency: string },
+): boolean {
+  return (
+    status.amount !== undefined &&
+    status.currency !== undefined &&
+    status.amount === expected.amount &&
+    status.currency.toUpperCase() === expected.currency.toUpperCase()
+  );
+}
+
+/**
+ * Référence à interroger chez le fournisseur : jamais la `merchant_reference`,
+ * numérotée par organisation donc partagée entre organisations. `null` pour une
+ * ligne AGGREGATOR antérieure à la migration 9 (sans `external_reference`) :
+ * son `aggregator_transaction_id` peut reprendre l'ancienne référence partagée.
+ */
+export function providerReferenceOf(row: {
+  aggregator_transaction_id: string | null;
+  external_reference: string | null;
+}): string | null {
+  if (!row.external_reference) return null;
+  return row.aggregator_transaction_id ?? row.external_reference;
+}

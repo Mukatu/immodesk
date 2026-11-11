@@ -8,11 +8,16 @@ import { businessToday } from '../../../shared/time/business-date';
 import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
 import { NumberingService } from '../../numbering/application/numbering.service';
-import { detectOperator } from '../../mobile-money/domain/momo-rules';
+import {
+  detectOperator,
+  providerConfirmsAmount,
+  providerReferenceOf,
+} from '../../mobile-money/domain/momo-rules';
 import type {
   InitiatePaymentInput,
   InitiateResult,
   MobileMoneyProvider,
+  ProviderStatus,
 } from '../../mobile-money/domain/ports';
 import { MobileMoneyProviderRegistry } from '../../mobile-money/infrastructure/mobile-money-provider.registry';
 import {
@@ -36,6 +41,7 @@ interface MobileMoneyTransactionRow {
   merchant_reference: string;
   external_reference: string | null;
   amount: bigint;
+  currency: string;
 }
 
 /**
@@ -153,16 +159,22 @@ export class SubscriptionPaymentsService {
       callbackUrl: '',
     });
 
-    await this.prisma.withTenant(organizationId, userId, (tx) =>
-      tx.mobile_money_transactions.update({
+    await this.prisma.withTenant(organizationId, userId, async (tx) => {
+      // Un webhook peut avoir déjà fait avancer la transaction pendant l'appel
+      // d'initiation : on renseigne les références, mais on ne passe
+      // INITIATED -> PENDING/FAILED que si elle n'a pas quitté INITIATED.
+      await tx.mobile_money_transactions.update({
         where: { id: prepared.transactionId },
         data: {
-          status: initiated.state === 'FAILED' ? 'FAILED' : 'PENDING',
           aggregator_transaction_id: initiated.providerReference,
           raw_payload: (initiated.rawPayload ?? {}) as object,
         },
-      }),
-    );
+      });
+      await tx.mobile_money_transactions.updateMany({
+        where: { id: prepared.transactionId, status: 'INITIATED' },
+        data: { status: initiated.state === 'FAILED' ? 'FAILED' : 'PENDING' },
+      });
+    });
     if (initiated.state !== 'FAILED') {
       await this.verifyQueue.enqueue(
         { organizationId, transactionId: prepared.transactionId },
@@ -198,7 +210,7 @@ export class SubscriptionPaymentsService {
   async verifyStatus(organizationId: string, transactionId: string): Promise<void> {
     const paidEvent = await this.prisma.withTenant(organizationId, null, async (tx) => {
       const rows = await tx.$queryRawUnsafe<MobileMoneyTransactionRow[]>(
-        `SELECT id, organization_id, status, aggregator, aggregator_transaction_id, external_reference, merchant_reference, amount
+        `SELECT id, organization_id, status, aggregator, aggregator_transaction_id, external_reference, merchant_reference, amount, currency
            FROM mobile_money_transactions WHERE id = $1::uuid AND organization_id = $2::uuid FOR UPDATE`,
         transactionId,
         organizationId,
@@ -206,11 +218,16 @@ export class SubscriptionPaymentsService {
       const row = rows[0];
       if (!row || (row.status !== 'INITIATED' && row.status !== 'PENDING')) return null;
 
+      const providerRef = providerReferenceOf(row);
+      if (!providerRef) {
+        this.logger.warn(
+          `SUBSCRIPTIONS.MOMO_VERIFY_SKIPPED transaction=${row.id} : external_reference absente, fournisseur non interrogé`,
+        );
+        return null;
+      }
       const provider = this.registry.forCode(
         row.aggregator ?? this.config.get('MOMO_PROVIDER_DEFAULT'),
       );
-      const providerRef =
-        row.aggregator_transaction_id ?? row.external_reference ?? row.merchant_reference;
       const status = await provider.getStatus(providerRef);
       await tx.mobile_money_transactions.update({
         where: { id: transactionId },
@@ -218,7 +235,7 @@ export class SubscriptionPaymentsService {
       });
 
       if (status.state === 'SUCCEEDED') {
-        return this.confirmPayment(tx, organizationId, row, status.amount ?? row.amount);
+        return this.confirmPayment(tx, organizationId, row, status);
       } else if (status.state === 'FAILED') {
         await this.markFailed(tx, organizationId, row, status.failureCode, status.failureMessage);
       }
@@ -241,11 +258,11 @@ export class SubscriptionPaymentsService {
     tx: TenantClient,
     organizationId: string,
     row: MobileMoneyTransactionRow,
-    confirmedAmount: bigint,
+    status: ProviderStatus,
   ): Promise<PaidSubscriptionInvoiceEvent | null> {
-    if (confirmedAmount !== row.amount) {
+    if (!providerConfirmsAmount(status, row)) {
       this.logger.warn(
-        `SUBSCRIPTIONS.MOMO_STATUS_MISMATCH transaction=${row.id} attendu=${row.amount} recu=${confirmedAmount}`,
+        `SUBSCRIPTIONS.MOMO_STATUS_MISMATCH transaction=${row.id} attendu=${row.amount} ${row.currency} recu=${status.amount ?? 'absent'} ${status.currency ?? 'devise absente'}`,
       );
       return null;
     }

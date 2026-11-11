@@ -47,6 +47,10 @@ export async function createApp(): Promise<INestApplication> {
   app.useLogger(app.get(Logger));
 
   const config = app.get(AppConfigService);
+  // Derrière un reverse proxy, `req.ip` doit venir de X-Forwarded-For, sinon
+  // les limites par IP (webhooks, routes publiques) comptent l'IP du proxy.
+  const trustProxyHops = config.get('TRUST_PROXY_HOPS');
+  if (trustProxyHops > 0) app.set('trust proxy', trustProxyHops);
   const prefix = config.get('API_GLOBAL_PREFIX');
   app.setGlobalPrefix(prefix);
 

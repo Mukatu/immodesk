@@ -102,8 +102,8 @@ describe('Modèles et SMS', () => {
         period: 'septembre 2026',
         amount: '160 000 FCFA',
         pdfLink:
-          'https://api.immodesk.cg/v1/public/d/AZrVkJ3cR8e0bQp1mN2x4w-ZrVkJ3cR8e0bQp1mN2x4wAAAAAA.aBcDeFgHiJkLmNoP',
-        link: 'https://app.immodesk.cg/verifier/3f9a1c0b7e2d4f6a8b9c0d1e2f3a4b5c',
+          'https://api.immodesk.watuneed.fr/v1/public/d/AZrVkJ3cR8e0bQp1mN2x4w-ZrVkJ3cR8e0bQp1mN2x4wAAAAAA.aBcDeFgHiJkLmNoP',
+        link: 'https://immodesk.watuneed.fr/verifier/3f9a1c0b7e2d4f6a8b9c0d1e2f3a4b5c',
       }),
     );
     expect(text).toContain('160 000 FCFA');

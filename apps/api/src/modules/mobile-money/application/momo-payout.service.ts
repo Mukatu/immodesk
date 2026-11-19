@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { newId } from '../../../shared/ids/uuid';
 import type { TenantClient } from '../../../shared/prisma/prisma.service';
 import { readOperationalSettings } from '../../../shared/settings/operational-settings';
-import { detectOperator } from '../domain/momo-rules';
+import { detectOperator, providerConfirmsAmount, providerReferenceOf } from '../domain/momo-rules';
 import type {
   MobileMoneyPayoutInitiator,
   MobileMoneyPayoutInput,
@@ -83,10 +83,15 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
     // déjà résolu la transaction : re-interroger tout de suite évite
     // d'attendre inutilement un webhook qui, pour un décaissement, n'a pas
     // de route dédiée (voir la limitation documentée dans domain/ports.ts).
-    const resolved =
-      initiated.state === 'PENDING'
-        ? await this.safeGetStatus(provider, initiated.providerReference)
-        : initiated;
+    // Un SUCCEEDED d'initiation ne porte ni montant ni devise : il est
+    // re-vérifié par getStatus, et seul un statut conforme vaut SUCCEEDED.
+    const resolved: InitiateResult | ProviderStatus =
+      initiated.state === 'FAILED'
+        ? initiated
+        : withVerifiedAmount(await this.safeGetStatus(provider, initiated.providerReference), {
+            amount: input.amount,
+            currency: input.currency,
+          });
 
     await this.persistResult(tx, id, initiated, resolved);
     return {
@@ -103,6 +108,8 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
     const row = await tx.mobile_money_transactions.findFirst({
       where: { id: momoTransactionId },
       select: {
+        amount: true,
+        currency: true,
         aggregator: true,
         aggregator_transaction_id: true,
         external_reference: true,
@@ -116,9 +123,14 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
       });
     }
     const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
-    const providerReference =
-      row.aggregator_transaction_id ?? row.external_reference ?? row.merchant_reference;
-    const status = await provider.getStatus(providerReference);
+    const providerReference = providerReferenceOf(row);
+    if (!providerReference) {
+      throw new DomainError('MOMO.PROVIDER_UNAVAILABLE', {
+        reason: 'external_reference absente : référence fournisseur introuvable',
+        momoTransactionId,
+      });
+    }
+    const status = withVerifiedAmount(await provider.getStatus(providerReference), row);
 
     await tx.mobile_money_transactions.update({
       where: { id: momoTransactionId },
@@ -144,7 +156,7 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
   private async safeGetStatus(
     provider: MobileMoneyProvider,
     providerReference: string,
-  ): Promise<InitiateResult | ProviderStatus> {
+  ): Promise<ProviderStatus> {
     try {
       return await provider.getStatus(providerReference);
     } catch {
@@ -169,6 +181,21 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
       },
     });
   }
+}
+
+/**
+ * Un SUCCEEDED fournisseur sans montant ET devise égaux à la transaction
+ * n'est pas une confirmation : le décaissement reste PENDING.
+ */
+function withVerifiedAmount(
+  status: ProviderStatus,
+  expected: { amount: bigint; currency: string },
+): ProviderStatus {
+  if (status.state !== 'SUCCEEDED' || providerConfirmsAmount(status, expected)) return status;
+  new Logger(MomoPayoutService.name).warn(
+    `MOMO.STATUS_MISMATCH décaissement ${status.providerReference} attendu=${expected.amount} ${expected.currency} recu=${status.amount ?? 'absent'} ${status.currency ?? 'devise absente'}`,
+  );
+  return { ...status, state: 'PENDING' };
 }
 
 function toPortState(

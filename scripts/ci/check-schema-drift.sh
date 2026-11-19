@@ -13,6 +13,12 @@
 # PGDATABASE (base de maintenance pour CREATE DATABASE, defaut postgres). Deux bases jetables
 # (drift_migrations_<pid>, drift_schema_<pid>) sont creees puis supprimees ;
 # la base de developpement n'est jamais modifiee. Table _prisma_migrations exclue.
+#
+# PG_DUMP_CMD (optionnel) : commande pg_dump a utiliser, ex. un pg_dump de meme version
+# majeure que le serveur lance via `docker exec -i <conteneur> pg_dump -U immodesk`.
+# En CI, le pg_dump du runner (ubuntu-latest) evolue independamment du serveur postgres:16
+# et a produit des options d'attribut non deterministes (pg_attver) : on utilise donc
+# celui du conteneur du service. Defaut : pg_dump du PATH.
 set -euo pipefail
 
 MODE="${1:-drift}"
@@ -65,7 +71,8 @@ if [ "$MODE" = "nullif" ]; then
 fi
 
 dump() {
-  pg_dump --schema-only --no-owner --no-privileges --no-comments -d "$1" \
+  # shellcheck disable=SC2086  # PG_DUMP_CMD est volontairement decoupee en mots
+  ${PG_DUMP_CMD:-pg_dump} --schema-only --no-owner --no-privileges --no-comments -d "$1" \
     --exclude-table='_prisma_migrations' \
     | grep -v -E '^(--|SET |SELECT pg_catalog.set_config|\\restrict|\\unrestrict)' \
     | sed -E '/^\s*$/d' \

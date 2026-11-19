@@ -220,7 +220,7 @@ jobs:
           PG_CONTAINER="$(docker ps -q --filter ancestor=postgres:16 | head -n 1)"
           test -n "$PG_CONTAINER"
           export PG_DUMP_CMD="docker exec -i -e PGPASSWORD=immodesk $PG_CONTAINER pg_dump -U immodesk"
-          $PG_DUMP_CMD --version
+          docker exec "$PG_CONTAINER" pg_dump --version
           scripts/ci/check-schema-drift.sh drift
 
       # Un GUC vide sur une connexion poolee reutilisee leve "invalid input

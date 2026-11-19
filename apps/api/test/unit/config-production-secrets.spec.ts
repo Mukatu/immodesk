@@ -50,7 +50,7 @@ describe('configuration : secrets de développement en production', () => {
         ...BASE,
         ...PRODUCTION_SECRETS,
         NODE_ENV: 'production',
-        CORS_ALLOWED_ORIGINS: 'https://app.immodesk.cg',
+        CORS_ALLOWED_ORIGINS: 'https://immodesk.watuneed.fr',
       }),
     ).not.toThrow();
   });
@@ -60,11 +60,11 @@ describe('configuration : secrets de développement en production', () => {
     expect(empty.CORS_ALLOWED_ORIGINS).toBeUndefined();
     const listed = validateConfig({
       ...BASE,
-      CORS_ALLOWED_ORIGINS: 'https://app.immodesk.cg, https://portail.immodesk.cg',
+      CORS_ALLOWED_ORIGINS: 'https://immodesk.watuneed.fr, https://portail.immodesk.watuneed.fr',
     });
     expect(listed.CORS_ALLOWED_ORIGINS).toEqual([
-      'https://app.immodesk.cg',
-      'https://portail.immodesk.cg',
+      'https://immodesk.watuneed.fr',
+      'https://portail.immodesk.watuneed.fr',
     ]);
   });
 });
@@ -82,7 +82,7 @@ describe('configuration : CORS_ALLOWED_ORIGINS obligatoire en production', () =>
         ...BASE,
         ...PRODUCTION_SECRETS,
         NODE_ENV: 'production',
-        CORS_ALLOWED_ORIGINS: 'https://app.immodesk.cg',
+        CORS_ALLOWED_ORIGINS: 'https://immodesk.watuneed.fr',
       }),
     ).not.toThrow();
   });

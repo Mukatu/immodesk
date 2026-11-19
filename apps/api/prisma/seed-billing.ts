@@ -420,7 +420,7 @@ async function upsertReceipt(
   paymentId: string,
 ): Promise<void> {
   const token = randomBytes(16).toString('hex');
-  const url = `${process.env.PUBLIC_WEB_BASE_URL ?? 'https://app.immodesk.cg'}/verifier/${token}`;
+  const url = `${process.env.PUBLIC_WEB_BASE_URL ?? 'https://immodesk.watuneed.fr'}/verifier/${token}`;
   await prisma.receipts.create({
     data: {
       id: uuidv7(),

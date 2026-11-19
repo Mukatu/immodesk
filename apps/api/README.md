@@ -261,6 +261,8 @@ laisser Puppeteer télécharger son propre binaire à chaque build.
 | `DOCUMENT_LINK_TTL_SECONDS`                          | Validité des liens de PDF joints aux messages : 604 800 s (7 jours, plafond SigV4).                |
 | `LINK_SIGNING_SECRET`                                | Signature HMAC des liens courts `/v1/public/d/{token}`.                                            |
 | `RATE_LIMIT_PUBLIC_PER_MINUTE`                       | Débit des routes publiques (vérification, liens courts) : 30 / min / IP.                           |
+| `RATE_LIMIT_WEBHOOK_PER_MINUTE`                      | Débit des webhooks publics `/v1/webhooks/*` : 120 / min / IP.                                      |
+| `TRUST_PROXY_HOPS`                                   | Reverse proxies de confiance (0 par défaut) : à régler pour que `req.ip` soit l'IP du client réel. |
 
 #### Configurer Meta WhatsApp Cloud API
 

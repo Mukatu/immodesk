@@ -5,11 +5,13 @@ import {
   Param,
   Post,
   Req,
+  UseGuards,
   type RawBodyRequest,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Public } from '../../../shared/auth/auth.contracts';
+import { WebhookRateLimitGuard } from '../../../shared/throttler/webhook-rate-limit.guard';
 import { MomoWebhookIngestService } from '../application/momo-webhook-ingest.service';
 
 /**
@@ -19,6 +21,7 @@ import { MomoWebhookIngestService } from '../application/momo-webhook-ingest.ser
  */
 @ApiTags('Webhooks')
 @Controller('webhooks/mobile-money')
+@UseGuards(WebhookRateLimitGuard)
 export class MobileMoneyWebhooksController {
   constructor(private readonly ingest: MomoWebhookIngestService) {}
 

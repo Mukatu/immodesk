@@ -101,6 +101,8 @@ CREATE TYPE momo_provider AS ENUM ('MTN_MOMO', 'AIRTEL_MONEY', 'CINETPAY', 'PAWA
 CREATE TYPE momo_status AS ENUM ('INITIATED', 'PENDING', 'DECLARED', 'SUCCEEDED', 'FAILED', 'EXPIRED', 'CANCELLED', 'REJECTED', 'REFUNDED');
 -- Canal d'une transaction Mobile Money : poussée par un agrégateur, ou déclarée par le locataire après un transfert direct vers le numéro du bailleur.
 CREATE TYPE momo_channel AS ENUM ('AGGREGATOR', 'DECLARED');
+-- Usage d'une transaction Mobile Money : loyer encaissé, abonnement Immodesk, reversement à un bailleur.
+CREATE TYPE momo_purpose AS ENUM ('RENT_COLLECTION', 'SUBSCRIPTION', 'OWNER_PAYOUT');
 CREATE TYPE fee_bearer AS ENUM ('TENANT', 'ORGANIZATION', 'LANDLORD', 'SHARED');
 CREATE TYPE check_status AS ENUM ('RECEIVED', 'DEPOSITED', 'CLEARED', 'BOUNCED', 'CANCELLED', 'RETURNED');
 CREATE TYPE statement_format AS ENUM ('CSV', 'MT940', 'CAMT053', 'OFX', 'XLSX', 'PDF_OCR');
@@ -1663,14 +1665,18 @@ CREATE TABLE mobile_money_transactions (
     client_ref             TEXT,
     created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    purpose                momo_purpose NOT NULL,
     CONSTRAINT momo_merchant_ref_uk UNIQUE (organization_id, merchant_reference),
     CONSTRAINT momo_external_ref_uk UNIQUE (external_reference),
     CONSTRAINT momo_provider_tx_uk UNIQUE (provider, provider_transaction_id),
-    CONSTRAINT momo_msisdn_chk CHECK (payer_msisdn ~ '^\+[1-9][0-9]{7,14}$')
+    CONSTRAINT momo_msisdn_chk CHECK (payer_msisdn ~ '^\+[1-9][0-9]{7,14}$'),
+    CONSTRAINT momo_purpose_direction_ck CHECK ((purpose = 'OWNER_PAYOUT') = (direction = 'OUTBOUND')),
+    CONSTRAINT momo_purpose_subscription_ck CHECK (purpose <> 'SUBSCRIPTION' OR (payment_id IS NULL AND tenant_id IS NULL))
 );
 COMMENT ON TABLE mobile_money_transactions IS 'Transaction Mobile Money via agrégateur (CinetPay, PawaPay) ou opérateur direct (MTN MoMo, Airtel Money).';
 COMMENT ON COLUMN mobile_money_transactions.merchant_reference IS 'Référence marchande lisible, numérotée par organisation (MMA-AAAAMM-NNNNN) : jamais transmise seule au fournisseur, elle n''est pas unique entre organisations.';
 COMMENT ON COLUMN mobile_money_transactions.external_reference IS 'Clé transmise au fournisseur (transaction_id CinetPay, référence du simulateur), unique sur toute la plateforme : sert à rattacher un webhook à une organisation sans ambiguïté. NULL pour une transaction déclarée, ou pour une transaction historique en collision (migration 9).';
+COMMENT ON COLUMN mobile_money_transactions.purpose IS 'Usage de la transaction : RENT_COLLECTION (loyer encaissé), SUBSCRIPTION (abonnement Immodesk réglé par une organisation), OWNER_PAYOUT (reversement à un bailleur). Route les webhooks, le rejeu et le rattrapage vers le bon traitement.';
 COMMENT ON COLUMN mobile_money_transactions.payer_msisdn IS 'Numéro du portefeuille débité, format E.164.';
 COMMENT ON COLUMN mobile_money_transactions.fee_amount IS 'Frais opérateur en XAF prélevés sur la transaction.';
 COMMENT ON COLUMN mobile_money_transactions.status_check_count IS 'Nombre de re-interrogations de statut : un webhook seul ne vaut jamais confirmation.';

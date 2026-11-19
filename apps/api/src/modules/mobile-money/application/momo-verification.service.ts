@@ -11,6 +11,7 @@ import { PaymentsQueryService } from '../../payments/application/payments-query.
 import { computeFee, providerConfirmsAmount, providerReferenceOf } from '../domain/momo-rules';
 import type { ProviderStatus } from '../domain/ports';
 import { MobileMoneyProviderRegistry } from '../infrastructure/mobile-money-provider.registry';
+import { MomoPayoutService } from './momo-payout.service';
 import { MomoQueryService, type MomoReader } from './momo-query.service';
 import type { MomoTransactionView } from './momo-views';
 
@@ -29,6 +30,7 @@ export class MomoVerificationService {
     private readonly registry: MobileMoneyProviderRegistry,
     private readonly paymentsQueries: PaymentsQueryService,
     private readonly allocation: AllocationService,
+    private readonly payouts: MomoPayoutService,
     private readonly auditService: AuditService,
     @Optional() @Inject(RECEIPT_ISSUER) private readonly receipts: ReceiptIssuer | null = null,
   ) {}
@@ -52,6 +54,20 @@ export class MomoVerificationService {
     let receiptIds: string[] = [];
     await this.prisma.withTenant(organizationId, null, async (tx) => {
       const row = await this.queries.lock(tx, transactionId);
+      // Garde-fou : un abonnement n'est jamais traité ici (sa facture ne serait
+      // pas payée). Un reversement est délégué au décaissement.
+      if (row.purpose === 'SUBSCRIPTION') {
+        this.logger.warn(
+          `MOMO.VERIFY_PURPOSE_MISMATCH transaction=${row.id} purpose=${row.purpose} : ignorée par le flux loyer`,
+        );
+        return;
+      }
+      if (row.purpose === 'OWNER_PAYOUT') {
+        if (row.channel === 'AGGREGATOR' && ['INITIATED', 'PENDING'].includes(row.status)) {
+          await this.payouts.refreshPayoutStatus(tx, transactionId);
+        }
+        return;
+      }
       // INITIATED est vérifiable : un webhook peut précéder la réponse
       // d'initiation.
       if (row.channel !== 'AGGREGATOR' || !['INITIATED', 'PENDING'].includes(row.status)) return;

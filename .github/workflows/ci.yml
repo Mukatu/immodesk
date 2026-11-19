@@ -116,6 +116,7 @@ jobs:
           S3_BUCKET: immodesk
           S3_ACCESS_KEY: immodesk
           S3_SECRET_KEY: immodesk123
+          MOMO_WEBHOOK_BASE_URL: http://localhost:3000
         run: pnpm --filter @immodesk/api test:integration
 
   web-build:

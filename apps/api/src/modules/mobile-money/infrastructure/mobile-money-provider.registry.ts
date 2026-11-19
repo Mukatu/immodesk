@@ -23,4 +23,11 @@ export class MobileMoneyProviderRegistry {
     if (normalized === 'SIMULATOR') return this.simulator;
     throw new DomainError('PLATFORM.NOT_FOUND', { resource: 'mobile-money-provider', code });
   }
+
+  /** Fournisseur d'un événement déjà journalisé (`webhook_events.source`), pour le rejeu. */
+  forWebhookSource(source: string): MobileMoneyProvider {
+    if (source === 'CINETPAY') return this.cinetpay;
+    if (source === 'OTHER') return this.simulator;
+    throw new DomainError('PLATFORM.NOT_FOUND', { resource: 'mobile-money-provider', source });
+  }
 }

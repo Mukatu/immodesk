@@ -47,7 +47,8 @@ export class WebhookEventsController {
     @CurrentTenant() tenant: TenantContext,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<void> {
-    await this.events.logReplay(tenant.organizationId, tenant.userId, id);
+    // Le rejeu d'abord : un événement non signé est refusé (409), sans audit de succès.
     await this.ingest.replay(tenant.organizationId, tenant.userId, id);
+    await this.events.logReplay(tenant.organizationId, tenant.userId, id);
   }
 }

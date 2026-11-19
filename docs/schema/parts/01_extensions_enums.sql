@@ -101,6 +101,8 @@ CREATE TYPE momo_provider AS ENUM ('MTN_MOMO', 'AIRTEL_MONEY', 'CINETPAY', 'PAWA
 CREATE TYPE momo_status AS ENUM ('INITIATED', 'PENDING', 'DECLARED', 'SUCCEEDED', 'FAILED', 'EXPIRED', 'CANCELLED', 'REJECTED', 'REFUNDED');
 -- Canal d'une transaction Mobile Money : poussée par un agrégateur, ou déclarée par le locataire après un transfert direct vers le numéro du bailleur.
 CREATE TYPE momo_channel AS ENUM ('AGGREGATOR', 'DECLARED');
+-- Usage d'une transaction Mobile Money : loyer encaissé, abonnement Immodesk, reversement à un bailleur.
+CREATE TYPE momo_purpose AS ENUM ('RENT_COLLECTION', 'SUBSCRIPTION', 'OWNER_PAYOUT');
 CREATE TYPE fee_bearer AS ENUM ('TENANT', 'ORGANIZATION', 'LANDLORD', 'SHARED');
 CREATE TYPE check_status AS ENUM ('RECEIVED', 'DEPOSITED', 'CLEARED', 'BOUNCED', 'CANCELLED', 'RETURNED');
 CREATE TYPE statement_format AS ENUM ('CSV', 'MT940', 'CAMT053', 'OFX', 'XLSX', 'PDF_OCR');

@@ -14,6 +14,28 @@ const optionalText = z
   .optional()
   .transform((value) => (value === undefined || value.trim() === '' ? undefined : value.trim()));
 
+/** https, hôte ni local ni en adresse privée : joignable depuis Internet. */
+function isPublicHttpsUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'https:') return false;
+  const host = url.hostname.toLowerCase();
+  return !(
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.local') ||
+    host === '[::1]' ||
+    /^(0|10|127)\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /^169\.254\./.test(host)
+  );
+}
+
 /**
  * Valeurs de développement des secrets. Publiques par construction (dépôt,
  * `.env.example`) : en production, la validation refuse qu'elles subsistent.
@@ -352,6 +374,22 @@ export const configSchema = z
         path: ['CINETPAY_API_KEY'],
         message:
           'CINETPAY_API_KEY, CINETPAY_SITE_ID et CINETPAY_SECRET_KEY sont obligatoires lorsque MOMO_PROVIDER_DEFAULT vaut CINETPAY.',
+      });
+    }
+    // Tout agrégateur réel (autre que le simulateur) rappelle l'API à
+    // l'adresse `notify_url` fournie à chaque transaction, construite depuis
+    // MOMO_WEBHOOK_BASE_URL : en production, l'URL doit être publique et en
+    // https, sinon aucun webhook n'arrive.
+    if (
+      cfg.NODE_ENV === 'production' &&
+      (cfg.MOMO_PROVIDER_DEFAULT !== 'SIMULATOR' || cfg.CINETPAY_API_KEY) &&
+      !isPublicHttpsUrl(cfg.MOMO_WEBHOOK_BASE_URL)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['MOMO_WEBHOOK_BASE_URL'],
+        message:
+          "MOMO_WEBHOOK_BASE_URL doit être une URL https publique en production lorsqu'un agrégateur Mobile Money réel est activé : c'est l'URL de l'API vue par le fournisseur (ex. https://api.immodesk.cg), pas localhost.",
       });
     }
     // Sans liste explicite, `bootstrap.ts` reflète toute origine avec les

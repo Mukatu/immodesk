@@ -100,6 +100,37 @@ export class WebhookEventsService {
     return { id: rows[0]?.id ?? id, duplicate: false };
   }
 
+  /**
+   * Webhook NON signé : un seul INSERT, sans organisation, sans corps, sans
+   * analyse ni résolution. Seuls l'empreinte SHA-256 et la taille du corps
+   * sont conservées ; le préfixe `unsigned:` empêche un tiers de « réserver »
+   * l'identifiant d'un événement légitime.
+   */
+  async persistUnsigned(input: {
+    source: string;
+    requestPath: string;
+    sourceIp: string | null;
+    bodySha256: string;
+    bodyBytes: number;
+    userAgent: string | null;
+  }): Promise<void> {
+    await this.adminClient().$executeRawUnsafe(
+      `INSERT INTO webhook_events (id, organization_id, source, event_type, status, external_event_id,
+                                   signature_header, signature_valid, request_path, source_ip, headers,
+                                   raw_payload, error_message, processed_at)
+       VALUES ($1::uuid, NULL, $2::webhook_source, 'momo.signature_invalid', 'IGNORED', $3,
+               NULL, false, $4, $5::inet, $6::jsonb, $7::jsonb, 'MOMO.WEBHOOK_SIGNATURE_INVALID', now())
+       ON CONFLICT (source, external_event_id) DO NOTHING`,
+      newId(),
+      input.source,
+      `unsigned:${input.bodySha256}`,
+      input.requestPath,
+      input.sourceIp,
+      JSON.stringify(input.userAgent ? { 'user-agent': input.userAgent.slice(0, 256) } : {}),
+      JSON.stringify({ bodySha256: input.bodySha256, bodyBytes: input.bodyBytes }),
+    );
+  }
+
   async markStatus(
     id: string,
     status: 'PROCESSING' | 'PROCESSED' | 'IGNORED' | 'FAILED',

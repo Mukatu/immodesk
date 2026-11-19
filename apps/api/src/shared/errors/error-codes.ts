@@ -399,6 +399,10 @@ export const ERROR_CATALOG = {
   },
   'WEBHOOKS.SIGNATURE_INVALID': { status: 401, message: 'Signature du webhook invalide.' },
   'WEBHOOKS.VERIFY_TOKEN_INVALID': { status: 403, message: 'Jeton de vérification invalide.' },
+  'WEBHOOKS.REPLAY_NOT_ALLOWED': {
+    status: 409,
+    message: 'Un événement non signé ne peut pas être rejoué.',
+  },
   'WEBHOOKS.EVENT_NOT_FOUND': { status: 404, message: 'Événement de webhook introuvable.' },
   'PUBLIC.LINK_INVALID': { status: 404, message: 'Lien invalide ou expiré.' },
 

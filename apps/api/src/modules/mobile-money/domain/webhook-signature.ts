@@ -1,5 +1,10 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
+/** Vrai pour un objet JSON (ni `null`, ni tableau, ni scalaire). */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /** Comparaison en temps constant de deux chaînes (signatures, jetons). */
 export function safeEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);

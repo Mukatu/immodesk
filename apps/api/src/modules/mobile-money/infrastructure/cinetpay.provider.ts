@@ -17,7 +17,7 @@ import type {
   ProviderStatus,
   RawWebhook,
 } from '../domain/ports';
-import { safeEqual, signHmac } from '../domain/webhook-signature';
+import { isRecord, safeEqual, signHmac } from '../domain/webhook-signature';
 
 /**
  * Adaptateur CinetPay (contrat phase 4, § « CinetPay »). Écrit et testable
@@ -29,11 +29,18 @@ import { safeEqual, signHmac } from '../domain/webhook-signature';
 @Injectable()
 export class CinetPayProvider implements MobileMoneyProvider {
   readonly code = 'CINETPAY' as const;
+  readonly signatureHeader = 'x-token';
+  readonly webhookSource = 'CINETPAY' as const;
   private readonly logger = new Logger(CinetPayProvider.name);
 
   constructor(private readonly config: AppConfigService) {}
 
   async initiate(input: InitiatePaymentInput): Promise<InitiateResult> {
+    // Échec fermé, avant tout appel : sans `notify_url`, CinetPay ne rappellerait
+    // jamais l'API et le payeur recevrait un push pour un paiement jamais confirmé.
+    if (!input.callbackUrl) {
+      throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'notify_url absent' });
+    }
     const body = {
       apikey: this.requireKey('CINETPAY_API_KEY'),
       site_id: this.requireKey('CINETPAY_SITE_ID'),
@@ -73,28 +80,41 @@ export class CinetPayProvider implements MobileMoneyProvider {
   }
 
   parseWebhook(raw: RawWebhook): ParsedWebhook {
-    const body = raw.body as CinetPayNotification;
+    const body = raw.body;
+    if (!isRecord(body) || typeof body.cpm_trans_id !== 'string' || body.cpm_trans_id === '') {
+      throw new DomainError('VALIDATION.INVALID_PAYLOAD', { reason: 'cpm_trans_id absent' });
+    }
     return {
       externalReference: body.cpm_trans_id,
       providerReference: body.cpm_trans_id,
       state: body.cpm_result === '00' ? 'SUCCEEDED' : 'FAILED',
       amount: body.cpm_amount ? BigInt(Math.trunc(Number(body.cpm_amount))) : undefined,
-      currency: body.cpm_currency,
+      currency: typeof body.cpm_currency === 'string' ? body.cpm_currency : undefined,
     };
   }
 
   verifyWebhook(raw: RawWebhook): boolean {
-    const header = raw.headers['x-token'];
-    const token = Array.isArray(header) ? header[0] : header;
-    if (!token) return false;
-    const body = raw.body as CinetPayNotification;
-    const expected = signHmac(
-      cinetpaySignaturePayload(body),
-      this.requireKey('CINETPAY_SECRET_KEY'),
-    );
-    // Temps constant : une comparaison `===` s'arrête au premier octet
-    // différent et laisse mesurer, octet par octet, la signature attendue.
-    return safeEqual(token, expected);
+    // Ne jette jamais (contrat du port) : un corps `null`, un secret absent ou
+    // tout autre défaut valent « non signé », jamais une erreur 500.
+    try {
+      const header = raw.headers[this.signatureHeader];
+      const token = Array.isArray(header) ? header[0] : header;
+      if (!token || !isRecord(raw.body)) return false;
+      const secret = this.config.get('CINETPAY_SECRET_KEY');
+      if (!secret) {
+        this.logger.error('CINETPAY_SECRET_KEY absent : webhook non vérifiable, refusé.');
+        return false;
+      }
+      const expected = signHmac(
+        cinetpaySignaturePayload(raw.body as unknown as CinetPayNotification),
+        secret,
+      );
+      // Temps constant : une comparaison `===` s'arrête au premier octet
+      // différent et laisse mesurer, octet par octet, la signature attendue.
+      return safeEqual(token, expected);
+    } catch {
+      return false;
+    }
   }
 
   private async post<T>(path: string, body: Record<string, unknown>): Promise<T> {

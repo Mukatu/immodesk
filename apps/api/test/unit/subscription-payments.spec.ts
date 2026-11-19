@@ -413,3 +413,12 @@ describe('SubscriptionPaymentsService — intégrité de la vérification', () =
     expect(updateData).not.toHaveProperty('status');
   });
 });
+
+describe('SubscriptionPaymentsService.verifyStatus : garde purpose', () => {
+  it("le SELECT FOR UPDATE ne retient que purpose = 'SUBSCRIPTION'", async () => {
+    const tx = fakeTx();
+    const { service } = buildService(tx);
+    await service.verifyStatus('org-1', 'txn-1');
+    expect(tx.$queryRawUnsafe.mock.calls[0]?.[0]).toContain("purpose = 'SUBSCRIPTION'");
+  });
+});

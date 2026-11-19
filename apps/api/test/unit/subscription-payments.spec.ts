@@ -15,7 +15,11 @@ function fakeTx(overrides: Record<string, unknown> = {}) {
   const base = {
     subscription_invoices: { findFirst: jest.fn(), update: jest.fn() },
     subscriptions: { findUnique: jest.fn().mockResolvedValue(null), update: jest.fn() },
-    mobile_money_transactions: { create: jest.fn(), update: jest.fn() },
+    mobile_money_transactions: {
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
     $queryRawUnsafe: jest.fn().mockResolvedValue([]),
   };
   return { ...base, ...overrides };
@@ -171,8 +175,10 @@ describe('SubscriptionPaymentsService.verifyStatus — re-interrogation, jamais 
     status: 'PENDING',
     aggregator: 'SIMULATOR',
     aggregator_transaction_id: 'ref-1',
+    external_reference: 'txn-1',
     merchant_reference: 'MOMO-202609-00001',
     amount: 10_000n,
+    currency: 'XAF',
     ...overrides,
   });
 
@@ -205,10 +211,14 @@ describe('SubscriptionPaymentsService.verifyStatus — re-interrogation, jamais 
         findUnique: jest.fn().mockResolvedValue(subscription),
         update: jest.fn(),
       },
-      mobile_money_transactions: { create: jest.fn(), update: jest.fn() },
+      mobile_money_transactions: { create: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
     });
     const { service, provider, referralQualification } = buildService(tx);
-    (provider.getStatus as jest.Mock).mockResolvedValue({ state: 'SUCCEEDED', amount: 10_000n });
+    (provider.getStatus as jest.Mock).mockResolvedValue({
+      state: 'SUCCEEDED',
+      amount: 10_000n,
+      currency: 'XAF',
+    });
 
     await service.verifyStatus('org-1', 'txn-1');
 
@@ -286,7 +296,11 @@ describe('SubscriptionPaymentsService.verifyStatus — re-interrogation, jamais 
       subscription_invoices: { findFirst: jest.fn().mockResolvedValue(invoice), update: jest.fn() },
     });
     const { service, provider, referralQualification } = buildService(tx);
-    (provider.getStatus as jest.Mock).mockResolvedValue({ state: 'SUCCEEDED', amount: 10_000n });
+    (provider.getStatus as jest.Mock).mockResolvedValue({
+      state: 'SUCCEEDED',
+      amount: 10_000n,
+      currency: 'XAF',
+    });
 
     await service.verifyStatus('org-1', 'txn-1');
 
@@ -306,5 +320,96 @@ describe('SubscriptionPaymentsService.verifyStatus — re-interrogation, jamais 
 
     expect(tx.subscription_invoices.update).not.toHaveBeenCalled();
     expect(referralQualification.onSubscriptionInvoicePaid).not.toHaveBeenCalled();
+  });
+});
+
+describe('SubscriptionPaymentsService — intégrité de la vérification', () => {
+  const row = (overrides: Record<string, unknown> = {}) => ({
+    id: 'txn-1',
+    organization_id: 'org-1',
+    status: 'PENDING',
+    aggregator: 'SIMULATOR',
+    aggregator_transaction_id: 'ref-1',
+    external_reference: 'txn-1',
+    merchant_reference: 'MOMO-202609-00001',
+    amount: 10_000n,
+    currency: 'XAF',
+    ...overrides,
+  });
+  const invoice = {
+    id: 'inv-1',
+    status: 'ISSUED',
+    total_amount: 10_000n,
+    subtotal_amount: 8_475n,
+    subscription_id: 'sub-1',
+  };
+  const txWith = (rows: unknown[]) =>
+    fakeTx({
+      $queryRawUnsafe: jest.fn().mockResolvedValue(rows),
+      subscription_invoices: {
+        findFirst: jest.fn().mockResolvedValue(invoice),
+        update: jest.fn(),
+      },
+    });
+
+  it.each([
+    ['devise absente', { state: 'SUCCEEDED', amount: 10_000n }],
+    ['montant absent', { state: 'SUCCEEDED', currency: 'XAF' }],
+    ['devise divergente', { state: 'SUCCEEDED', amount: 10_000n, currency: 'EUR' }],
+  ])('SUCCEEDED avec %s : aucune confirmation', async (_label, status) => {
+    const tx = txWith([row()]);
+    const { service, provider, referralQualification } = buildService(tx);
+    (provider.getStatus as jest.Mock).mockResolvedValue(status);
+    await service.verifyStatus('org-1', 'txn-1');
+    expect(tx.subscription_invoices.update).not.toHaveBeenCalled();
+    expect(referralQualification.onSubscriptionInvoicePaid).not.toHaveBeenCalled();
+  });
+
+  it('1re vérification PENDING puis 2e SUCCEEDED : la facture est payée (aucune réponse mémorisée)', async () => {
+    const tx = txWith([row()]);
+    const { service, provider, referralQualification } = buildService(tx);
+    (provider.getStatus as jest.Mock)
+      .mockResolvedValueOnce({ state: 'PENDING' })
+      .mockResolvedValueOnce({ state: 'SUCCEEDED', amount: 10_000n, currency: 'XAF' });
+    await service.verifyStatus('org-1', 'txn-1');
+    expect(tx.subscription_invoices.update).not.toHaveBeenCalled();
+    await service.verifyStatus('org-1', 'txn-1');
+    expect(provider.getStatus).toHaveBeenCalledTimes(2);
+    expect(tx.subscription_invoices.update).toHaveBeenCalledTimes(1);
+    expect(referralQualification.onSubscriptionInvoicePaid).toHaveBeenCalledTimes(1);
+  });
+
+  it('ligne sans external_reference : le fournisseur n’est pas interrogé (jamais la merchant_reference)', async () => {
+    const tx = txWith([row({ external_reference: null, aggregator_transaction_id: 'MOMO-1' })]);
+    const { service, provider } = buildService(tx);
+    await service.verifyStatus('org-1', 'txn-1');
+    expect(provider.getStatus).not.toHaveBeenCalled();
+    expect(tx.mobile_money_transactions.update).not.toHaveBeenCalled();
+  });
+
+  it('pay : INITIATED -> PENDING conditionnel (un webhook concurrent n’est pas régressé)', async () => {
+    const tx = fakeTx({
+      subscription_invoices: {
+        findFirst: jest.fn().mockResolvedValue({ ...invoice }),
+        update: jest.fn(),
+      },
+      subscriptions: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'sub-1', momo_msisdn: '+242066000001' }),
+        update: jest.fn(),
+      },
+    });
+    const { service, provider } = buildService(tx);
+    (provider.initiate as jest.Mock).mockResolvedValue({
+      providerReference: 'ref-1',
+      state: 'PENDING',
+      rawPayload: {},
+    });
+    await service.pay('org-1', 'user-1', 'inv-1');
+    expect(tx.mobile_money_transactions.updateMany).toHaveBeenCalledWith({
+      where: { id: expect.any(String), status: 'INITIATED' },
+      data: { status: 'PENDING' },
+    });
+    const updateData = (tx.mobile_money_transactions.update as jest.Mock).mock.calls[0][0].data;
+    expect(updateData).not.toHaveProperty('status');
   });
 });

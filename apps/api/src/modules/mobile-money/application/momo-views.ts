@@ -21,6 +21,7 @@ export interface MomoTransactionRow {
   payer_msisdn: string;
   payee_msisdn: string | null;
   amount: bigint;
+  currency: string;
   fee_amount: bigint;
   fee_bearer: string;
   net_amount: bigint;

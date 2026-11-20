@@ -8,13 +8,19 @@ import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
 import { RECEIPT_ISSUER, type ReceiptIssuer } from '../../payments/domain/ports';
 import { AllocationService } from '../../payments/application/allocation.service';
 import { PaymentsQueryService } from '../../payments/application/payments-query.service';
-import { computeFee, providerConfirmsAmount } from '../domain/momo-rules';
-import type { ProviderStatus } from '../domain/ports';
+import {
+  assertMomoTransition,
+  computeFee,
+  providerConfirmsAmount,
+  type MomoStatus,
+} from '../domain/momo-rules';
+import type { MobileMoneyProvider, ProviderStatus } from '../domain/ports';
+import type { CheckOrigin } from '../domain/reconcile-rules';
 import { MobileMoneyProviderRegistry } from '../infrastructure/mobile-money-provider.registry';
 import { MomoPayoutService } from './momo-payout.service';
 import { MomoQueryService, type MomoReader } from './momo-query.service';
 import { MomoStatusChecker } from './momo-status-checker';
-import type { MomoTransactionView } from './momo-views';
+import type { MomoTransactionSummaryRow, MomoTransactionView } from './momo-views';
 
 /**
  * Confirmation d'une transaction Mobile Money agrégateur (contrat phase 4,
@@ -55,35 +61,48 @@ export class MomoVerificationService {
   async verifyStatus(
     organizationId: string,
     transactionId: string,
-    hint?: { providerReference?: string },
+    hint?: { providerReference?: string; origin?: CheckOrigin },
   ): Promise<void> {
+    const origin = hint?.origin ?? 'REFRESH';
+    const meta = await this.prisma.withTenant(organizationId, null, (tx) =>
+      tx.mobile_money_transactions.findFirst({
+        where: { id: transactionId },
+        select: { purpose: true },
+      }),
+    );
+    if (!meta) throw new DomainError('MOMO.NOT_FOUND', { momoTransactionId: transactionId });
+    // Garde-fou : un abonnement n'est jamais traité ici (sa facture ne serait
+    // pas payée).
+    if (meta.purpose === 'SUBSCRIPTION') {
+      this.logger.warn(
+        `MOMO.VERIFY_PURPOSE_MISMATCH transaction=${transactionId} purpose=${meta.purpose} : ignorée par le flux loyer`,
+      );
+      return;
+    }
+    // Une vérification est d'abord RÉSERVÉE dans sa propre transaction (anti-abus, compteur) :
+    // elle reste comptée même si l'appel au fournisseur échoue et annule la suite.
+    if (!(await this.statusChecker.claim(organizationId, transactionId, origin))) return;
+    // Un reversement est délégué au décaissement, qui n'appelle le fournisseur qu'HORS
+    // transaction (l'ordre d'exécution d'un retrait est un virement réel, jamais rejouable).
+    if (meta.purpose === 'OWNER_PAYOUT') {
+      await this.payouts.verifyPayout(organizationId, transactionId);
+      return;
+    }
     let receiptIds: string[] = [];
     await this.prisma.withTenant(organizationId, null, async (tx) => {
       const row = await this.queries.lock(tx, transactionId);
-      // Garde-fou : un abonnement n'est jamais traité ici (sa facture ne serait
-      // pas payée). Un reversement est délégué au décaissement.
-      if (row.purpose === 'SUBSCRIPTION') {
-        this.logger.warn(
-          `MOMO.VERIFY_PURPOSE_MISMATCH transaction=${row.id} purpose=${row.purpose} : ignorée par le flux loyer`,
-        );
-        return;
-      }
-      if (row.purpose === 'OWNER_PAYOUT') {
-        if (row.channel === 'AGGREGATOR' && ['INITIATED', 'PENDING'].includes(row.status)) {
-          await this.payouts.refreshPayoutStatus(tx, transactionId);
-        }
-        return;
-      }
-      // INITIATED est vérifiable : un webhook peut précéder la réponse
-      // d'initiation.
-      if (row.channel !== 'AGGREGATOR' || !['INITIATED', 'PENDING'].includes(row.status)) return;
+      if (row.channel !== 'AGGREGATOR') return;
       const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
+      // Callback sur une transaction déjà EXPIRED : jamais de transition silencieuse, mais un
+      // succès conforme du fournisseur est un paiement perdu à signaler (alerte d'exploitation).
+      if (row.status === 'EXPIRED') {
+        await this.flagLateSuccess(tx, provider, row, hint);
+        return;
+      }
+      // INITIATED est vérifiable : un webhook peut précéder la réponse d'initiation.
+      if (!['INITIATED', 'PENDING'].includes(row.status)) return;
       const status = await this.statusChecker.check(tx, provider, row, 'COLLECTION', hint);
       if (!status) return;
-      await tx.mobile_money_transactions.update({
-        where: { id: transactionId },
-        data: { status_checked_at: new Date(), status_check_count: { increment: 1 } },
-      });
       if (status.state === 'FAILED') {
         await this.markFailed(
           tx,
@@ -100,6 +119,26 @@ export class MomoVerificationService {
     await this.receipts?.scheduleGeneration(organizationId, receiptIds);
   }
 
+  /** Succès conforme sur une transaction expirée : journal d'erreur, aucune écriture. */
+  private async flagLateSuccess(
+    tx: TenantClient,
+    provider: MobileMoneyProvider,
+    row: MomoTransactionSummaryRow,
+    hint?: { providerReference?: string },
+  ): Promise<void> {
+    if (provider.webhookTrust !== 'UNSIGNED_TRIGGER' || !row.aggregator_transaction_id) return;
+    const status = await this.statusChecker.check(tx, provider, row, 'COLLECTION', hint);
+    if (
+      status?.state === 'SUCCEEDED' &&
+      status.matched === true &&
+      providerConfirmsAmount(status, row)
+    ) {
+      this.logger.error(
+        `MOMO.LATE_SUCCESS_ON_EXPIRED transaction=${row.id} organisation=${row.organization_id} reference=${status.providerReference} : paiement réussi chez le fournisseur sur une transaction EXPIRED, aucune écriture automatique : décision humaine requise.`,
+      );
+    }
+  }
+
   private async markFailed(
     tx: TenantClient,
     organizationId: string,
@@ -107,6 +146,7 @@ export class MomoVerificationService {
     failureCode: string | null,
     failureMessage: string | null,
   ): Promise<void> {
+    assertMomoTransition(row.status as MomoStatus, 'FAILED');
     await tx.mobile_money_transactions.update({
       where: { id: row.id },
       data: {
@@ -142,6 +182,7 @@ export class MomoVerificationService {
     row: {
       id: string;
       payment_id: string | null;
+      status: string;
       amount: bigint;
       currency: string;
       fee_bearer: string;
@@ -178,6 +219,7 @@ export class MomoVerificationService {
     }
 
     const feeAmount = providerFee ?? computeFee(row.amount, 0);
+    assertMomoTransition(row.status as MomoStatus, 'SUCCEEDED');
     await tx.mobile_money_transactions.update({
       where: { id: row.id },
       data: {

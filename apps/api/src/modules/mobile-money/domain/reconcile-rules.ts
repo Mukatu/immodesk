@@ -43,19 +43,37 @@ export function isExpired(initiatedAt: Date, now: Date, pendingExpiryMinutes: nu
 /**
  * Anti-abus des vérifications d'une même transaction (fournisseur à webhook non
  * signé : un callback forgé ne doit pas se traduire en appels répétés) :
- * intervalle minimal depuis la dernière vérification, et plafond de vérifications.
+ * intervalle minimal depuis la dernière vérification. Il borne le polling du
+ * client comme les callbacks ; le plafond propre aux callbacks (fenêtre
+ * glissante) est porté par `OpenPayApiLimiter`, jamais par un compteur global
+ * que le polling épuiserait en quelques minutes.
  */
 export function isCheckThrottled(
-  tx: { status_checked_at: Date | null; status_check_count: number },
-  limits: { minIntervalSeconds: number; maxChecks: number },
+  tx: { status_checked_at: Date | null },
+  limits: { minIntervalSeconds: number },
   now: Date,
 ): boolean {
-  if (tx.status_check_count >= limits.maxChecks) return true;
   return (
     tx.status_checked_at !== null &&
     now.getTime() - tx.status_checked_at.getTime() < limits.minIntervalSeconds * 1000
   );
 }
+
+/**
+ * Origine d'une vérification de statut :
+ * - `CALLBACK` : déclenchée par un callback (non signé donc forgeable) : intervalle
+ *   minimal ET plafond par fenêtre glissante ;
+ * - `REFRESH` : demandée par un utilisateur (polling du client) : intervalle minimal ;
+ * - `RECONCILE` : rattrapage interne, déjà espacé par son repli : jamais freiné.
+ */
+export type CheckOrigin = 'CALLBACK' | 'REFRESH' | 'RECONCILE';
+
+/**
+ * Un reversement attend l'approbation d'OpenPay au moins 25 h (`execution_date` >= +24 h
+ * + marge d'une heure) : il n'expire pas avec les collectes. 48 h = 25 h + 23 h de marge
+ * d'approbation ; passé ce délai, le retrait est annulé chez le fournisseur avant d'être expiré.
+ */
+export const OWNER_PAYOUT_EXPIRY_MINUTES = 48 * 60;
 
 /** Une transaction `INITIATED` jamais sortie de cet état est expirée après ce délai. */
 export function isInitiatedExpired(initiatedAt: Date, now: Date, expiryMinutes: number): boolean {

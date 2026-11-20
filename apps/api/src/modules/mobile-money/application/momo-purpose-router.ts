@@ -1,13 +1,18 @@
 import { Injectable, type OnApplicationBootstrap } from '@nestjs/common';
 import { MOMO_PURPOSES, type MomoPurpose } from '../domain/momo-purpose';
+import type { CheckOrigin } from '../domain/reconcile-rules';
 import { MomoVerifyQueue } from '../infrastructure/momo-verify.queue';
 import { MomoVerificationService } from './momo-verification.service';
 
 export type { MomoPurpose } from '../domain/momo-purpose';
 
-/** Indice transmis par un callback non signé : jamais une preuve, `getStatus` tranche. */
+/**
+ * Indice transmis par un callback non signé (jamais une preuve, `getStatus` tranche) et
+ * origine de la vérification (anti-abus : voir `MomoStatusChecker.claim`).
+ */
 export interface MomoVerifyHint {
   providerReference?: string;
+  origin?: CheckOrigin;
 }
 
 export interface MomoPurposeHandler {

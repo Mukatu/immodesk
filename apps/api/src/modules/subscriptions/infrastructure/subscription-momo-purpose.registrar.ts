@@ -17,10 +17,14 @@ export class SubscriptionMomoPurposeRegistrar implements OnModuleInit {
 
   onModuleInit(): void {
     this.router.register('SUBSCRIPTION', {
-      enqueueVerify: (organizationId, transactionId) =>
-        this.queue.enqueue({ organizationId, transactionId }),
-      verifyNow: (organizationId, transactionId) =>
-        this.payments.verifyStatus(organizationId, transactionId),
+      enqueueVerify: (organizationId, transactionId, hint) =>
+        this.queue.enqueue({
+          organizationId,
+          transactionId,
+          ...(hint?.providerReference ? { providerReferenceHint: hint.providerReference } : {}),
+        }),
+      verifyNow: (organizationId, transactionId, hint) =>
+        this.payments.verifyStatus(organizationId, transactionId, hint),
     });
   }
 }

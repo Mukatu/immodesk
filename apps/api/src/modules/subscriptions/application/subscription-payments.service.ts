@@ -8,13 +8,19 @@ import { businessToday } from '../../../shared/time/business-date';
 import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
 import { NumberingService } from '../../numbering/application/numbering.service';
-import { detectOperator, providerConfirmsAmount } from '../../mobile-money/domain/momo-rules';
+import {
+  assertMomoTransition,
+  detectOperator,
+  providerConfirmsAmount,
+  type MomoStatus,
+} from '../../mobile-money/domain/momo-rules';
 import type {
   InitiatePaymentInput,
   InitiateResult,
   MobileMoneyProvider,
   ProviderStatus,
 } from '../../mobile-money/domain/ports';
+import type { CheckOrigin } from '../../mobile-money/domain/reconcile-rules';
 import { buildMomoNotifyUrl } from '../../mobile-money/infrastructure/momo-notify-url';
 import { MomoStatusChecker } from '../../mobile-money/application/momo-status-checker';
 import { MobileMoneyProviderRegistry } from '../../mobile-money/infrastructure/mobile-money-provider.registry';
@@ -41,8 +47,6 @@ interface MobileMoneyTransactionRow {
   amount: bigint;
   currency: string;
   payer_msisdn: string;
-  status_checked_at: Date | null;
-  status_check_count: number;
 }
 
 /**
@@ -210,11 +214,22 @@ export class SubscriptionPaymentsService {
    * d'initiation, ou immédiatement au reçu d'un webhook. Idempotente — ne
    * fait rien si la transaction n'est plus `INITIATED`/`PENDING`.
    */
-  async verifyStatus(organizationId: string, transactionId: string): Promise<void> {
+  async verifyStatus(
+    organizationId: string,
+    transactionId: string,
+    hint?: { providerReference?: string; origin?: CheckOrigin },
+  ): Promise<void> {
+    // Tentative réservée dans sa propre transaction (anti-abus, compteur) : comptée même si
+    // l'appel au fournisseur échoue ensuite.
+    if (
+      !(await this.statusChecker.claim(organizationId, transactionId, hint?.origin ?? 'REFRESH'))
+    ) {
+      return;
+    }
     const paidEvent = await this.prisma.withTenant(organizationId, null, async (tx) => {
       const rows = await tx.$queryRawUnsafe<MobileMoneyTransactionRow[]>(
         `SELECT id, organization_id, status, aggregator, aggregator_transaction_id, external_reference, merchant_reference, amount, currency,
-                payer_msisdn, status_checked_at, status_check_count
+                payer_msisdn
            FROM mobile_money_transactions
           WHERE id = $1::uuid AND organization_id = $2::uuid AND purpose = 'SUBSCRIPTION' FOR UPDATE`,
         transactionId,
@@ -226,12 +241,8 @@ export class SubscriptionPaymentsService {
       const provider = this.registry.forCode(
         row.aggregator ?? this.config.get('MOMO_PROVIDER_DEFAULT'),
       );
-      const status = await this.statusChecker.check(tx, provider, row, 'COLLECTION');
+      const status = await this.statusChecker.check(tx, provider, row, 'COLLECTION', hint);
       if (!status) return null;
-      await tx.mobile_money_transactions.update({
-        where: { id: transactionId },
-        data: { status_checked_at: new Date(), status_check_count: { increment: 1 } },
-      });
 
       if (status.state === 'SUCCEEDED') {
         return this.confirmPayment(tx, organizationId, row, status);
@@ -265,6 +276,7 @@ export class SubscriptionPaymentsService {
       );
       return null;
     }
+    assertMomoTransition(row.status as MomoStatus, 'SUCCEEDED');
     await tx.mobile_money_transactions.update({
       where: { id: row.id },
       data: { status: 'SUCCEEDED', completed_at: new Date() },

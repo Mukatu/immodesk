@@ -21,9 +21,11 @@ export type MomoStatus = (typeof MOMO_STATUSES)[number];
  * `INITIATED -> EXPIRED` : transaction que le fournisseur ne fait jamais
  * évoluer (réponse d'initiation perdue, aucune référence), expirée par le
  * rattrapage après `MOMO_INITIATED_EXPIRY_MINUTES`.
+ * `INITIATED -> SUCCEEDED` : le callback (ou le rattrapage) peut précéder la réponse
+ * d'initiation, la vérification du statut confirme alors directement (indice PTXN).
  */
 export const MOMO_TRANSITIONS: Readonly<Record<MomoStatus, readonly MomoStatus[]>> = {
-  INITIATED: ['PENDING', 'FAILED', 'EXPIRED'],
+  INITIATED: ['PENDING', 'SUCCEEDED', 'FAILED', 'EXPIRED'],
   PENDING: ['SUCCEEDED', 'FAILED', 'EXPIRED'],
   DECLARED: ['SUCCEEDED', 'REJECTED', 'CANCELLED'],
   SUCCEEDED: ['REFUNDED'],

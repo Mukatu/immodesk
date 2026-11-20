@@ -1,3 +1,4 @@
+import { MomoStatusChecker } from '../../src/modules/mobile-money/application/momo-status-checker';
 import { SubscriptionPaymentsService } from '../../src/modules/subscriptions/application/subscription-payments.service';
 
 /**
@@ -53,6 +54,7 @@ function buildService(
     config as never,
     auditService as never,
     registry as never,
+    new MomoStatusChecker({ get: () => 1000 } as never, {} as never) as never,
     verifyQueue as never,
     numbering as never,
     referralQualification as never,

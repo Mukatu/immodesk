@@ -62,6 +62,7 @@ describe('MomoReconcileService : routage par purpose', () => {
       { adminClient: () => admin } as never,
       router as never,
       {} as never,
+      { get: () => 60 } as never,
     );
     const result = await service.reconcilePending(new Date('2026-09-10T08:10:00Z'));
     expect(result.rechecked).toBe(3);

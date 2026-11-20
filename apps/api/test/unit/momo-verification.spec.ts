@@ -1,4 +1,5 @@
 import { MomoPayoutService } from '../../src/modules/mobile-money/application/momo-payout.service';
+import { MomoStatusChecker } from '../../src/modules/mobile-money/application/momo-status-checker';
 import { MomoVerificationService } from '../../src/modules/mobile-money/application/momo-verification.service';
 import {
   providerConfirmsAmount,
@@ -54,6 +55,7 @@ function buildVerification(rows: Array<Record<string, unknown>>, getStatus: jest
     paymentsQueries as never,
     allocation as never,
     payouts as never,
+    new MomoStatusChecker({ get: () => 1000 } as never, {} as never) as never,
     auditService as never,
   );
   return { service, tx, allocation, getStatus, payouts };
@@ -161,6 +163,7 @@ describe('MomoPayoutService.refreshPayoutStatus', () => {
     const service = new MomoPayoutService(
       { forCode: () => ({ getStatus }) } as never,
       { get: () => 'http://localhost:3000' } as never,
+      new MomoStatusChecker({ get: () => 1000 } as never, {} as never),
     );
     return { service, tx, getStatus };
   };

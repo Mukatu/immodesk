@@ -5,13 +5,19 @@ import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
 import { readOperationalSettings } from '../../../shared/settings/operational-settings';
-import { isDueForRecheck, isExpired } from '../domain/reconcile-rules';
+import {
+  INITIATED_MIN_AGE_MINUTES,
+  PENDING_MIN_AGE_MINUTES,
+  isDueForRecheck,
+  isExpired,
+} from '../domain/reconcile-rules';
 import type { MomoPurpose } from '../domain/momo-purpose';
 import { MomoPurposeRouter } from './momo-purpose-router';
 
 interface PendingRow {
   id: string;
   organization_id: string;
+  status: 'INITIATED' | 'PENDING';
   initiated_at: Date;
   status_checked_at: Date | null;
   status_check_count: number;
@@ -20,7 +26,7 @@ interface PendingRow {
 }
 
 /**
- * Rattrapage des transactions Mobile Money agrégateur restées `PENDING`
+ * Rattrapage des transactions Mobile Money agrégateur restées `PENDING` ou `INITIATED`
  * (job `momo:reconcile-pending`, contrat phase 4, § « Rattrapage »). Lecture
  * transverse aux organisations par le rôle d'administration — même
  * mécanique que `WebhooksService` (notifications) pour les webhooks entrants,
@@ -39,10 +45,13 @@ export class MomoReconcileService {
   async reconcilePending(now: Date = new Date()): Promise<{ rechecked: number; expired: number }> {
     const admin = this.adminClient();
     const rows = await admin.$queryRawUnsafe<PendingRow[]>(
-      `SELECT id, organization_id, initiated_at, status_checked_at, status_check_count, external_reference, purpose
+      `SELECT id, organization_id, status, initiated_at, status_checked_at, status_check_count, external_reference, purpose
          FROM mobile_money_transactions
-        WHERE channel = 'AGGREGATOR' AND status = 'PENDING'
-          AND initiated_at <= now() - interval '3 minutes'`,
+        WHERE channel = 'AGGREGATOR'
+          AND ((status = 'PENDING' AND initiated_at <= now() - make_interval(mins => $1::int))
+            OR (status = 'INITIATED' AND initiated_at <= now() - make_interval(mins => $2::int)))`,
+      PENDING_MIN_AGE_MINUTES,
+      INITIATED_MIN_AGE_MINUTES,
     );
     let rechecked = 0;
     let expired = 0;
@@ -54,7 +63,9 @@ export class MomoReconcileService {
       const pendingExpiryMinutes = readOperationalSettings(settings?.settings_json).paymentMethods
         .pendingExpiryMinutes;
 
-      if (isExpired(row.initiated_at, now, pendingExpiryMinutes)) {
+      // INITIATED n'a pas de transition vers EXPIRED (machine à états) : il est
+      // seulement re-interrogé ; le fournisseur le fait sortir de cet état.
+      if (row.status === 'PENDING' && isExpired(row.initiated_at, now, pendingExpiryMinutes)) {
         await this.expire(row.organization_id, row.id);
         expired += 1;
         continue;

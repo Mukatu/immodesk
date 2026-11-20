@@ -12,6 +12,7 @@ import {
   IsUUID,
   Max,
   Min,
+  ValidateBy,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
@@ -206,6 +207,22 @@ export const NESTED_SETTINGS_TYPES = {
 };
 
 const AGGREGATOR_PROVIDERS = ['SIMULATOR', 'CINETPAY'] as const;
+
+/**
+ * Le simulateur confirme n'importe quelle transaction : une organisation ne
+ * peut pas le choisir en production. Lu à la validation (pas au chargement du
+ * module) pour suivre l'environnement réel du processus.
+ */
+export function IsNotSimulatorInProduction(): PropertyDecorator {
+  return ValidateBy({
+    name: 'isNotSimulatorInProduction',
+    validator: {
+      validate: (value: unknown) =>
+        !(process.env.NODE_ENV === 'production' && value === 'SIMULATOR'),
+      defaultMessage: () => 'provider SIMULATOR est interdit en production',
+    },
+  });
+}
 const FEE_BEARERS = ['TENANT', 'ORGANIZATION'] as const;
 
 /** `settings_json.paymentMethods` (phase 4). */
@@ -252,6 +269,7 @@ export class UpdateMobileMoneyAggregatorSettingsDto {
   @ApiPropertyOptional({ enum: AGGREGATOR_PROVIDERS })
   @IsOptional()
   @IsIn(AGGREGATOR_PROVIDERS)
+  @IsNotSimulatorInProduction()
   provider?: (typeof AGGREGATOR_PROVIDERS)[number];
   @ApiPropertyOptional({ enum: FEE_BEARERS })
   @IsOptional()

@@ -7,6 +7,16 @@
  * `pendingExpiryMinutes`. Domaine pur : aucune dépendance à BullMQ ni à
  * l'horloge système au-delà des `Date` passées en paramètre.
  */
+/** Âge minimal d'une transaction `PENDING` avant rattrapage. */
+export const PENDING_MIN_AGE_MINUTES = 3;
+
+/**
+ * Âge minimal d'une transaction `INITIATED` : plus long, pour ne pas courir
+ * après une initiation en cours (l'appel au fournisseur n'a pas encore rendu
+ * la main). Au-delà, la ligne est restée coincée (crash, réponse perdue).
+ */
+export const INITIATED_MIN_AGE_MINUTES = 10;
+
 export const RECONCILE_BACKOFF_MINUTES = [3, 5, 10, 20, 30] as const;
 
 /**

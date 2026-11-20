@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import type { MomoPurpose } from '../domain/momo-purpose';
+import { Injectable, type OnApplicationBootstrap } from '@nestjs/common';
+import { MOMO_PURPOSES, type MomoPurpose } from '../domain/momo-purpose';
 import { MomoVerifyQueue } from '../infrastructure/momo-verify.queue';
 import { MomoVerificationService } from './momo-verification.service';
 
@@ -27,7 +27,7 @@ export interface MomoPurposeHandler {
  * Ne touche pas la base.
  */
 @Injectable()
-export class MomoPurposeRouter {
+export class MomoPurposeRouter implements OnApplicationBootstrap {
   private readonly handlers = new Map<MomoPurpose, MomoPurposeHandler>();
 
   constructor(verifyQueue: MomoVerifyQueue, verification: MomoVerificationService) {
@@ -46,6 +46,24 @@ export class MomoPurposeRouter {
       throw new Error(`MomoPurposeRouter : traitement déjà inscrit pour ${purpose}`);
     }
     this.handlers.set(purpose, handler);
+  }
+
+  /**
+   * Au démarrage (après les `onModuleInit` de tous les modules, dont
+   * l'inscription de `SUBSCRIPTION`) : un `purpose` sans traitement ferait
+   * échouer en silence les webhooks et le rattrapage de ces transactions.
+   */
+  onApplicationBootstrap(): void {
+    this.assertAllPurposesRegistered();
+  }
+
+  assertAllPurposesRegistered(): void {
+    const missing = MOMO_PURPOSES.filter((purpose) => !this.handlers.has(purpose));
+    if (missing.length > 0) {
+      throw new Error(
+        `MomoPurposeRouter : aucun traitement inscrit pour le(s) purpose ${missing.join(', ')}`,
+      );
+    }
   }
 
   handlerFor(purpose: MomoPurpose): MomoPurposeHandler | null {

@@ -34,6 +34,8 @@ export class MomoVerifyQueue implements OnModuleInit, OnModuleDestroy {
         prefix: this.config.get('QUEUE_PREFIX'),
       });
     } catch (error) {
+      // En production, une file absente rendrait les webhooks muets : on échoue au démarrage.
+      if (this.config.isProduction) throw error;
       this.logger.warn(
         `File ${MOMO_VERIFY_QUEUE_NAME} non initialisée : ${(error as Error).message}`,
       );
@@ -41,7 +43,15 @@ export class MomoVerifyQueue implements OnModuleInit, OnModuleDestroy {
   }
 
   async enqueue(data: VerifyStatusJobData, options?: { delay?: number }): Promise<void> {
-    if (!this.queue) return;
+    if (!this.queue) {
+      // En production : erreur visible (l'appelant marque l'événement pour
+      // retraitement). Hors production (dev sans Redis) : message, sans bloquer.
+      if (this.config.isProduction) {
+        throw new Error(`File ${MOMO_VERIFY_QUEUE_NAME} non initialisée : enqueue impossible`);
+      }
+      this.logger.warn(`File ${MOMO_VERIFY_QUEUE_NAME} absente : job ignoré (hors production)`);
+      return;
+    }
     await this.queue.add('verify', data, {
       jobId: `momo-verify-${data.transactionId}-${Date.now()}`,
       delay: options?.delay ?? 0,

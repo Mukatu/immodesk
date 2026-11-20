@@ -9,6 +9,7 @@ import { webhookBodyHash } from '../../mobile-money/domain/webhook-signature';
 import { MobileMoneyProviderRegistry } from '../../mobile-money/infrastructure/mobile-money-provider.registry';
 import {
   MOMO_WEBHOOK_AMBIGUOUS,
+  MOMO_WEBHOOK_ENQUEUE_FAILED,
   MOMO_WEBHOOK_PAYLOAD_INVALID,
   MOMO_WEBHOOK_PROVIDER_MISMATCH,
   MOMO_WEBHOOK_PURPOSE_NOT_ROUTED,
@@ -99,10 +100,18 @@ export class MomoWebhookIngestService {
     // ambigu reste SANS organisation et est mis de côté pour la revue plateforme.
     const resolved = resolution.kind === 'RESOLVED' ? resolution : null;
     const prefix = resolved?.purpose === 'SUBSCRIPTION' ? 'subscription.momo' : 'momo';
+    // Cohérence du fournisseur vérifiée AVANT le rattachement : un événement
+    // signé par un autre fournisseur que celui de la transaction ne doit jamais
+    // être rattaché à son organisation (journal, rejeu).
+    const providerMismatch =
+      resolved !== null &&
+      resolved.aggregator !== null &&
+      resolved.aggregator !== undefined &&
+      resolved.aggregator.toUpperCase() !== provider.code;
 
     const { id, duplicate } = await this.events.persist({
       ...persistBase,
-      organizationId: resolved?.organizationId ?? null,
+      organizationId: providerMismatch ? null : (resolved?.organizationId ?? null),
       eventType: `${prefix}.${parsed.state.toLowerCase()}`,
       externalEventId: parsed.eventId ?? webhookBodyHash(rawBody),
     });
@@ -121,7 +130,7 @@ export class MomoWebhookIngestService {
       }
       return;
     }
-    if (resolved.aggregator && resolved.aggregator.toUpperCase() !== provider.code) {
+    if (providerMismatch) {
       await this.events.markStatus(id, 'FAILED', {
         relatedEntityType: 'mobile_money_transactions',
         relatedEntityId: resolved.transactionId,
@@ -144,6 +153,7 @@ export class MomoWebhookIngestService {
     }
     let externalReference: string;
     try {
+      // `OTHER` / `OPENPAY` : aucun parseur, `forWebhookSource` lève.
       externalReference = this.registry.forWebhookSource(row.source).parseWebhook({
         headers: {},
         body: row.raw_payload,
@@ -189,7 +199,22 @@ export class MomoWebhookIngestService {
       return;
     }
     await this.events.markStatus(eventId, 'PROCESSING');
-    await handler.enqueueVerify(organizationId, transactionId);
+    try {
+      await handler.enqueueVerify(organizationId, transactionId);
+    } catch (error) {
+      // Ne jamais laisser l'événement en PROCESSING : le fournisseur relance et
+      // `persist` ignorerait la relance comme un doublon. FAILED avec ce code
+      // précis est repris par la prochaine relance (voir `persist`) ; le rejeu
+      // manuel reste possible.
+      this.logger.error(
+        `${MOMO_WEBHOOK_ENQUEUE_FAILED} event=${eventId} purpose=${purpose} : ${(error as Error).message}`,
+      );
+      await this.events.markStatus(eventId, 'FAILED', {
+        ...related,
+        errorMessage: MOMO_WEBHOOK_ENQUEUE_FAILED,
+      });
+      return;
+    }
     await this.events.markStatus(eventId, 'PROCESSED', related);
   }
 

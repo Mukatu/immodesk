@@ -156,11 +156,13 @@ describe('MomoReconcileService : INITIATED et PENDING', () => {
       { handlerFor: () => ({ verifyNow, enqueueVerify: jest.fn() }) } as never,
       {} as never,
       { get: () => 600 } as never,
+      { forCode: jest.fn() } as never,
+      { notifyOutcome: jest.fn() } as never,
     );
     // 5 h après l'initiation, délai d'expiration INITIATED de 10 h : re-interrogée, non expirée.
     const result = await service.reconcilePending(new Date('2026-09-10T13:00:00Z'));
     expect(result).toEqual({ rechecked: 1, expired: 0 });
-    expect(verifyNow).toHaveBeenCalledWith('org-1', 'i1');
+    expect(verifyNow).toHaveBeenCalledWith('org-1', 'i1', { origin: 'RECONCILE' });
     const [sql, pendingAge, initiatedAge] = admin.$queryRawUnsafe.mock.calls[0] as [
       string,
       number,

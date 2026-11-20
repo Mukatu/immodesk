@@ -1,6 +1,7 @@
 import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import { AppConfigService } from '../../src/shared/config/config.module';
 import { OpenPayClient } from '../../src/modules/mobile-money/infrastructure/openpay.client';
+import { createFakeOpenPay } from './openpay-fake';
 import { api, startTestApp, stopTestApp, type TestContext } from './helpers';
 import {
   createAgency,
@@ -17,14 +18,6 @@ import { enableAggregator, momoMsisdn } from './phase4-fixtures';
 const RUN = Math.random().toString(36).slice(2, 10).toUpperCase();
 const SECRET = 'openpay-secret-de-test-0123456789abcdef0123';
 
-interface FakeTx {
-  amount: string;
-  phone: string;
-  metadata: Record<string, unknown>;
-  status: string;
-  tamper?: Record<string, unknown>;
-}
-
 /**
  * Callback OpenPay NON signé : le corps ne prouve rien, seule la réponse
  * authentifiée de l'API (simulée ici d'après les exemples de la doc) confirme.
@@ -36,9 +29,8 @@ describe('OpenPay : callback non signé, vérification de statut', () => {
   let agency: Agency;
   let portfolio: BulkPortfolio;
   let subscriptionId: string;
-  const fake = new Map<string, FakeTx>();
-  const apiCalls: string[] = [];
-  let seq = 0;
+  const fake = createFakeOpenPay(RUN);
+  const apiCalls = fake.calls;
   const invoiceOf = new Map<string, string>();
   const owner = () => ({
     accessToken: agency.owner.accessToken,
@@ -53,42 +45,7 @@ describe('OpenPay : callback non signé, vérification de statut', () => {
       OPENPAY_MIN_CHECK_INTERVAL_SECONDS: '0',
     });
     ctx = await startTestApp();
-    ctx.app.get(OpenPayClient).fetchFn = (async (url: string, init: RequestInit) => {
-      const path = String(url).replace('https://api.openpay-cg.com/v1', '');
-      apiCalls.push(`${init.method} ${path}`);
-      const json = (status: number, body: unknown) =>
-        new Response(JSON.stringify(body), { status });
-      if (init.method === 'POST' && path === '/transaction/payment') {
-        const body = JSON.parse(init.body as string);
-        const reference = `PTXN${RUN}${String(++seq).padStart(4, '0')}`;
-        fake.set(reference, {
-          amount: String(body.amount),
-          phone: body.payment_phone_number,
-          metadata: body.metadata,
-          status: 'pending',
-        });
-        return json(200, {
-          reference,
-          status: 'pending',
-          type: 'payment',
-          metadata: body.metadata,
-        });
-      }
-      const reference = path.split('/').pop() as string;
-      const row = fake.get(reference);
-      if (!row) return json(404, { error: 'Transaction introuvable' });
-      return json(200, {
-        reference,
-        amount: row.amount,
-        currency: 'XAF',
-        paymentPhoneNumber: row.phone,
-        provider: 'MTN',
-        type: 'payment',
-        status: row.status,
-        metadata: row.metadata,
-        ...row.tamper,
-      });
-    }) as typeof fetch;
+    ctx.app.get(OpenPayClient).fetchFn = fake.fetchFn;
 
     agency = await createAgency(ctx, 'OpenPay');
     await enableAggregator(ctx, agency);
@@ -174,6 +131,19 @@ describe('OpenPay : callback non signé, vérification de statut', () => {
     };
   }
 
+  const statusCalls = (reference: string) =>
+    apiCalls.filter((c) => c === `GET /transaction/status/${reference}`).length;
+
+  /**
+   * La vérification initiale est différée de 4 s : on l'attend (puis son job se termine) avant de
+   * poster un callback, sinon elle pourrait être prise pour le déclenchement qu'on veut prouver,
+   * ou absorber le job du callback (même jobId tant qu'un job est en attente ou actif).
+   */
+  async function settleInitialCheck(reference: string): Promise<void> {
+    await waitFor(async () => statusCalls(reference) >= 1);
+    await new Promise((r) => setTimeout(r, 600));
+  }
+
   const eventsFor = (reference: string) =>
     ctx.admin.webhook_events.findMany({
       where: { source: 'OPENPAY', raw_payload: { path: ['reference'], equals: reference } },
@@ -215,8 +185,10 @@ describe('OpenPay : callback non signé, vérification de statut', () => {
   it('loyer : callback valide -> vérification -> confirmé, organisation rattachée après correspondance', async () => {
     const { txId, paymentId, reference } = await initiateRent(0);
     expect(reference).toMatch(/^PTXN/);
-    expect(fake.get(reference)?.metadata).toEqual({ external_reference: expect.any(String) });
-    fake.get(reference)!.status = 'success';
+    expect(fake.payments.get(reference)?.metadata).toEqual({
+      external_reference: expect.any(String),
+    });
+    fake.payments.get(reference)!.status = 'success';
     expect((await post(callback(reference))).status).toBe(200);
     await waitFor(async () => {
       const p = await ctx.admin.payments.findUnique({ where: { id: paymentId } });
@@ -252,7 +224,7 @@ describe('OpenPay : callback non signé, vérification de statut', () => {
       where: { id: res.body.transactionId },
     });
     const reference = tx.aggregator_transaction_id as string;
-    fake.get(reference)!.status = 'success';
+    fake.payments.get(reference)!.status = 'success';
     expect((await post(callback(reference))).status).toBe(200);
     await waitFor(
       async () =>
@@ -263,7 +235,8 @@ describe('OpenPay : callback non signé, vérification de statut', () => {
 
   it('mauvais segment secret : même 200, aucun effet, aucun appel OpenPay', async () => {
     const { txId, reference } = await initiateRent(1);
-    fake.get(reference)!.status = 'success';
+    await settleInitialCheck(reference);
+    fake.payments.get(reference)!.status = 'success';
     const before = apiCalls.length;
     expect((await post(callback(reference), 'mauvais-segment')).status).toBe(200);
     expect(
@@ -302,19 +275,20 @@ describe('OpenPay : callback non signé, vérification de statut', () => {
     ['montant', { amount: '1' }],
     ['devise', { currency: 'EUR' }],
     ['metadata', { metadata: { external_reference: '00000000-0000-7000-8000-000000000000' } }],
+    ['metadata null (GET /status sans metadata)', { metadata: null }],
     ['type', { type: 'scheduled_cashout' }],
   ])(
     'réponse non conforme (%s) : pas de confirmation, organisation de l’évènement NULL',
     async (_l, tamper) => {
       const { txId, paymentId, reference } = await initiateRent(1);
-      fake.get(reference)!.status = 'success';
-      fake.get(reference)!.tamper = tamper;
+      await settleInitialCheck(reference);
+      fake.payments.get(reference)!.status = 'success';
+      fake.payments.get(reference)!.tamper = tamper;
+      const before = statusCalls(reference);
       await post(callback(reference));
-      await waitFor(
-        async () =>
-          (await ctx.admin.mobile_money_transactions.findUniqueOrThrow({ where: { id: txId } }))
-            .status_check_count > 0,
-      );
+      // Preuve que c'est BIEN le callback qui a déclenché une nouvelle interrogation.
+      await waitFor(async () => statusCalls(reference) > before);
+      await new Promise((r) => setTimeout(r, 400));
       const tx = await ctx.admin.mobile_money_transactions.findUniqueOrThrow({
         where: { id: txId },
       });
@@ -338,5 +312,12 @@ describe('OpenPay : callback non signé, vérification de statut', () => {
     }
     await post(callback('PTXN26091IPALLOWD1'));
     expect(await eventsFor('PTXN26091IPALLOWD1')).toHaveLength(1);
+  });
+
+  it('le faux OpenPay n’a relevé aucune entorse (clé API, chemin exact, formats)', () => {
+    expect(fake.violations).toEqual([]);
+    expect(apiCalls.some((c) => /^GET \/transaction\/status\/PTXN[0-9A-Za-z]+$/.test(c))).toBe(
+      true,
+    );
   });
 });

@@ -152,6 +152,72 @@ describe('OpenPayCallbackGate', () => {
   });
 });
 
+/** Décaissement : prisma factice dont la ligne et le marqueur d'exécution sont suivis en mémoire. */
+function buildPayoutHarness(
+  txRow: Record<string, unknown>,
+  opts: { approved: boolean; markerTaken?: boolean; executeFails?: boolean } = { approved: true },
+) {
+  const state = { row: { ...txRow }, marker: opts.markerTaken === true };
+  const executePayout = opts.executeFails
+    ? jest.fn().mockRejectedValue(new Error('délai dépassé'))
+    : jest.fn().mockResolvedValue({
+        state: 'SUCCEEDED',
+        providerReference: TX,
+        amount: 50_000n,
+        currency: 'XAF',
+        rawPayload: null,
+      });
+  const getStatus = jest.fn().mockResolvedValue({
+    state: 'PENDING',
+    providerReference: TX,
+    amount: 50_000n,
+    currency: 'XAF',
+    matched: true,
+    ...(opts.approved ? { nextAction: 'EXECUTE' } : {}),
+    rawPayload: null,
+  });
+  const provider = { webhookTrust: 'UNSIGNED_TRIGGER', getStatus, executePayout };
+  const update = jest.fn();
+  const tx = {
+    $queryRawUnsafe: jest.fn(),
+    // UPDATE atomique du marqueur : une seule exécution peut le poser.
+    $executeRawUnsafe: jest.fn().mockImplementation(() => {
+      if (state.marker || !['INITIATED', 'PENDING'].includes(String(state.row.status))) return 0;
+      state.marker = true;
+      return 1;
+    }),
+    mobile_money_transactions: {
+      findFirst: jest.fn().mockImplementation(() => ({ ...state.row })),
+      update: update.mockImplementation(({ data }: { data: { status?: string } }) => {
+        if (data.status) state.row.status = data.status;
+      }),
+    },
+  };
+  const prisma = {
+    withTenant: jest.fn((_o: string, _u: unknown, fn: (t: unknown) => unknown) => fn(tx)),
+  };
+  const checker = new MomoStatusChecker(
+    config() as never,
+    prisma as never,
+    {} as never,
+    {} as never,
+  );
+  jest.spyOn(checker, 'claimTriggerEvents').mockResolvedValue(undefined);
+  const service = new MomoPayoutService(
+    { forCode: () => provider } as never,
+    config() as never,
+    checker,
+    prisma as never,
+    { enqueue: jest.fn().mockResolvedValue(undefined) } as never,
+  );
+  const outcomes: unknown[] = [];
+  service.onPayoutOutcome((_tx, outcome) => {
+    outcomes.push(outcome);
+    return Promise.resolve();
+  });
+  return { service, executePayout, getStatus, tx, state, outcomes };
+}
+
 describe('Reversement : execute seulement si la transaction est conforme', () => {
   const row = (over: Record<string, unknown> = {}) => ({
     id: TX,
@@ -165,55 +231,18 @@ describe('Reversement : execute seulement si la transaction est conforme', () =>
     purpose: 'OWNER_PAYOUT',
     direction: 'OUTBOUND',
     status: 'PENDING',
-    status_checked_at: null,
-    status_check_count: 0,
+    payout_execute_sent_at: null,
     ...over,
   });
-  const run = async (txRow: Record<string, unknown>, approved: boolean) => {
-    const executePayout = jest.fn().mockResolvedValue({
-      state: 'SUCCEEDED',
-      providerReference: TX,
-      amount: 50_000n,
-      currency: 'XAF',
-      rawPayload: null,
-    });
-    const getStatus = jest.fn().mockResolvedValue({
-      state: 'PENDING',
-      providerReference: TX,
-      amount: 50_000n,
-      currency: 'XAF',
-      matched: true,
-      ...(approved ? { nextAction: 'EXECUTE' } : {}),
-      rawPayload: null,
-    });
-    const provider = { webhookTrust: 'UNSIGNED_TRIGGER', getStatus, executePayout };
-    const tx = {
-      mobile_money_transactions: {
-        findFirst: jest.fn().mockResolvedValue(txRow),
-        update: jest.fn(),
-      },
-    };
-    const checker = new MomoStatusChecker(
-      config({
-        OPENPAY_MIN_CHECK_INTERVAL_SECONDS: 0,
-        OPENPAY_MAX_CHECKS_PER_TRANSACTION: 9,
-      }) as never,
-      { adminClient: () => null } as never,
-    );
-    jest.spyOn(checker, 'claimTriggerEvents').mockResolvedValue(undefined);
-    const service = new MomoPayoutService(
-      { forCode: () => provider } as never,
-      config() as never,
-      checker,
-    );
-    const result = await service.refreshPayoutStatus(tx as never, TX);
-    return { executePayout, result };
-  };
 
-  it('approuvé + transaction OWNER_PAYOUT sortante PENDING : execute appelé, SUCCEEDED', async () => {
-    const { executePayout, result } = await run(row(), true);
-    expect(executePayout).toHaveBeenCalledTimes(1);
-    expect(result.state).toBe('SUCCEEDED');
+  it('approuvé + OWNER_PAYOUT sortante PENDING : execute appelé une fois, SUCCEEDED, reversement notifié', async () => {
+    const h = buildPayoutHarness(row());
+    await h.service.verifyPayout('o', TX);
+    expect(h.executePayout).toHaveBeenCalledTimes(1);
+    expect(h.state.row.status).toBe('SUCCEEDED');
+    expect(h.outcomes).toEqual([
+      { organizationId: 'o', momoTransactionId: TX, state: 'SUCCEEDED' },
+    ]);
   });
 
   it.each([
@@ -222,8 +251,85 @@ describe('Reversement : execute seulement si la transaction est conforme', () =>
     ['purpose loyer', row({ purpose: 'RENT_COLLECTION' }), true],
     ['direction entrante', row({ direction: 'INBOUND' }), true],
   ])('pas d’execute : %s', async (_l, txRow, approved) => {
-    const { executePayout } = await run(txRow, approved);
-    expect(executePayout).not.toHaveBeenCalled();
+    const h = buildPayoutHarness(txRow, { approved });
+    await h.service.verifyPayout('o', TX);
+    expect(h.executePayout).not.toHaveBeenCalled();
+  });
+
+  it('CONCURRENCE : deux vérifications simultanées, un seul execute', async () => {
+    const h = buildPayoutHarness(row());
+    await Promise.all([h.service.verifyPayout('o', TX), h.service.verifyPayout('o', TX)]);
+    expect(h.executePayout).toHaveBeenCalledTimes(1);
+  });
+
+  it('marqueur déjà posé : jamais de second execute, état inchangé', async () => {
+    const h = buildPayoutHarness(row({ payout_execute_sent_at: new Date() }), {
+      approved: true,
+      markerTaken: true,
+    });
+    await h.service.verifyPayout('o', TX);
+    expect(h.executePayout).not.toHaveBeenCalled();
+    expect(h.state.row.status).toBe('PENDING');
+  });
+
+  it('DÉLAI de l’execute : issue incertaine, marqueur conservé, aucune relance automatique', async () => {
+    const h = buildPayoutHarness(row(), { approved: true, executeFails: true });
+    await h.service.verifyPayout('o', TX);
+    expect(h.executePayout).toHaveBeenCalledTimes(1);
+    expect(h.state.marker).toBe(true);
+    expect(h.state.row.status).toBe('PENDING');
+    // Le rattrapage suivant revoit « approuvé » : l'ordre n'est pas renvoyé.
+    await h.service.verifyPayout('o', TX);
+    expect(h.executePayout).toHaveBeenCalledTimes(1);
+  });
+
+  it('l’appel au fournisseur se fait HORS transaction : aucune transaction ouverte pendant l’execute', async () => {
+    const h = buildPayoutHarness(row());
+    let open = 0;
+    const prisma = (h.service as unknown as { prisma: { withTenant: jest.Mock } }).prisma;
+    const original = prisma.withTenant.getMockImplementation() as (
+      ...a: unknown[]
+    ) => Promise<unknown>;
+    prisma.withTenant.mockImplementation(async (...args: unknown[]) => {
+      open += 1;
+      try {
+        return await original(...args);
+      } finally {
+        open -= 1;
+      }
+    });
+    const openDuringCalls: number[] = [];
+    h.getStatus.mockImplementation(() => {
+      openDuringCalls.push(open);
+      return Promise.resolve({
+        state: 'PENDING',
+        providerReference: TX,
+        amount: 50_000n,
+        currency: 'XAF',
+        matched: true,
+        nextAction: 'EXECUTE',
+        rawPayload: null,
+      });
+    });
+    h.executePayout.mockImplementation(() => {
+      openDuringCalls.push(open);
+      return Promise.resolve({
+        state: 'SUCCEEDED',
+        providerReference: TX,
+        amount: 50_000n,
+        currency: 'XAF',
+        rawPayload: null,
+      });
+    });
+    await h.service.verifyPayout('o', TX);
+    expect(openDuringCalls).toEqual([0, 0]);
+  });
+
+  it('route manuelle : un retrait approuvé n’est jamais exécuté dans la transaction, il est confié à la file', async () => {
+    const h = buildPayoutHarness(row());
+    const result = await h.service.refreshPayoutStatus(h.tx as never, TX);
+    expect(result.state).toBe('PENDING');
+    expect(h.executePayout).not.toHaveBeenCalled();
   });
 });
 
@@ -249,6 +355,7 @@ describe('Réconciliation : INITIATED jamais mis à jour -> EXPIRED', () => {
       mobile_money_transactions: {
         findFirst: jest.fn().mockResolvedValue({ id: 'i1', payment_id: null, status: 'INITIATED' }),
         update,
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
     const prisma = {
@@ -260,6 +367,8 @@ describe('Réconciliation : INITIATED jamais mis à jour -> EXPIRED', () => {
       { handlerFor: () => null } as never,
       { record: jest.fn() } as never,
       { get: () => 60 } as never,
+      { forCode: jest.fn() } as never,
+      { notifyOutcome: jest.fn() } as never,
     );
     expect(await service.reconcilePending(new Date('2026-09-10T08:30:00Z'))).toEqual({
       rechecked: 0,
@@ -269,6 +378,9 @@ describe('Réconciliation : INITIATED jamais mis à jour -> EXPIRED', () => {
       rechecked: 0,
       expired: 1,
     });
-    expect(update).toHaveBeenCalledWith({ where: { id: 'i1' }, data: { status: 'EXPIRED' } });
+    expect(tx.mobile_money_transactions.updateMany).toHaveBeenCalledWith({
+      where: { id: 'i1', status: 'INITIATED' },
+      data: { status: 'EXPIRED' },
+    });
   });
 });

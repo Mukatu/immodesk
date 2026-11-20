@@ -85,11 +85,12 @@ describe('Machine à états d’une transaction Mobile Money', () => {
     expect(() => assertMomoTransition('DECLARED', 'INITIATED')).toThrow(DomainError);
   });
 
-  it('INITIATED (agrégateur) ne mène qu’à PENDING, FAILED ou EXPIRED', () => {
+  it('INITIATED (agrégateur) mène à PENDING, SUCCEEDED (callback avant l’initiation), FAILED ou EXPIRED', () => {
     expect(() => assertMomoTransition('INITIATED', 'EXPIRED')).not.toThrow();
     expect(() => assertMomoTransition('INITIATED', 'PENDING')).not.toThrow();
     expect(() => assertMomoTransition('INITIATED', 'FAILED')).not.toThrow();
-    expect(() => assertMomoTransition('INITIATED', 'SUCCEEDED')).toThrow(DomainError);
+    expect(() => assertMomoTransition('INITIATED', 'SUCCEEDED')).not.toThrow();
+    expect(() => assertMomoTransition('INITIATED', 'REFUNDED')).toThrow(DomainError);
   });
 
   it('PENDING mène à SUCCEEDED, FAILED ou EXPIRED', () => {

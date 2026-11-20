@@ -174,31 +174,20 @@ describe('correspondance stricte du retrait programmé', () => {
 });
 
 describe('anti-abus et masquage', () => {
-  const limits = { minIntervalSeconds: 5, maxChecks: 3 };
+  const limits = { minIntervalSeconds: 5 };
   const now = new Date('2026-09-10T10:00:10Z');
   it('intervalle minimal', () => {
     expect(
-      isCheckThrottled(
-        { status_checked_at: new Date('2026-09-10T10:00:08Z'), status_check_count: 1 },
-        limits,
-        now,
-      ),
+      isCheckThrottled({ status_checked_at: new Date('2026-09-10T10:00:08Z') }, limits, now),
     ).toBe(true);
     expect(
-      isCheckThrottled(
-        { status_checked_at: new Date('2026-09-10T10:00:04Z'), status_check_count: 1 },
-        limits,
-        now,
-      ),
+      isCheckThrottled({ status_checked_at: new Date('2026-09-10T10:00:04Z') }, limits, now),
     ).toBe(false);
-    expect(isCheckThrottled({ status_checked_at: null, status_check_count: 0 }, limits, now)).toBe(
-      false,
-    );
+    expect(isCheckThrottled({ status_checked_at: null }, limits, now)).toBe(false);
   });
-  it('plafond de vérifications', () => {
-    expect(isCheckThrottled({ status_checked_at: null, status_check_count: 3 }, limits, now)).toBe(
-      true,
-    );
+  it('aucun plafond à vie : un grand nombre de vérifications passées ne bloque jamais', () => {
+    // Le plafond des callbacks est une fenêtre glissante (OpenPayApiLimiter), pas un total.
+    expect(isCheckThrottled({ status_checked_at: null }, limits, now)).toBe(false);
   });
   it('expiration des INITIATED', () => {
     const t0 = new Date('2026-09-10T08:00:00Z');

@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import { z } from 'zod';
 
 const booleanish = z
@@ -240,11 +241,14 @@ export const configSchema = z
     // IP sources autorisées pour le callback, séparées par des virgules. Vide :
     // aucun filtrage (l'IP lue est `req.ip`, voir TRUST_PROXY_HOPS).
     OPENPAY_CALLBACK_IP_ALLOWLIST: originList,
-    // Anti-abus : intervalle minimal entre deux vérifications d'une transaction,
-    // plafond de vérifications par transaction, appels de statut par minute.
+    // Anti-abus : intervalle minimal entre deux vérifications d'une transaction (polling
+    // du client compris), plafond de vérifications DÉCLENCHÉES PAR CALLBACK par transaction
+    // et par heure glissante (le rattrapage n'est jamais plafonné), appels de statut par
+    // minute, callbacks reçus par IP et par minute (au-delà : ignorés, toujours 200 {}).
     OPENPAY_MIN_CHECK_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(5),
     OPENPAY_MAX_CHECKS_PER_TRANSACTION: z.coerce.number().int().positive().default(40),
     OPENPAY_STATUS_CALLS_PER_MINUTE: z.coerce.number().int().positive().default(120),
+    OPENPAY_CALLBACKS_PER_MINUTE: z.coerce.number().int().positive().default(600),
     // Une transaction INITIATED que le fournisseur ne fait jamais évoluer passe
     // EXPIRED après ce délai (rattrapage `momo:reconcile-pending`).
     MOMO_INITIATED_EXPIRY_MINUTES: z.coerce.number().int().min(11).default(60),
@@ -395,6 +399,34 @@ export const configSchema = z
         path: ['CINETPAY_API_KEY'],
         message:
           'CINETPAY_API_KEY, CINETPAY_SITE_ID et CINETPAY_SECRET_KEY sont obligatoires lorsque MOMO_PROVIDER_DEFAULT vaut CINETPAY.',
+      });
+    }
+    // Le segment d'URL secret reste dans un jeu sûr pour un chemin, quel que soit l'environnement.
+    if (cfg.OPENPAY_CALLBACK_SECRET && !/^[A-Za-z0-9_-]+$/.test(cfg.OPENPAY_CALLBACK_SECRET)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['OPENPAY_CALLBACK_SECRET'],
+        message: 'OPENPAY_CALLBACK_SECRET ne peut contenir que des caractères A-Z a-z 0-9 _ -.',
+      });
+    }
+    for (const entry of cfg.OPENPAY_CALLBACK_IP_ALLOWLIST ?? []) {
+      if (isIP(entry) === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['OPENPAY_CALLBACK_IP_ALLOWLIST'],
+          message: `OPENPAY_CALLBACK_IP_ALLOWLIST : « ${entry} » n'est pas une adresse IP valide.`,
+        });
+      }
+    }
+    if (
+      cfg.NODE_ENV === 'production' &&
+      !cfg.OPENPAY_BASE_URL.toLowerCase().startsWith('https://')
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['OPENPAY_BASE_URL'],
+        message:
+          'OPENPAY_BASE_URL doit utiliser https en production (la clé API transite dans chaque requête).',
       });
     }
     if (

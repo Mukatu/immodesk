@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import { scrubSecretUrl } from '../logger/scrub-secret-url';
 import { DomainError, type ErrorDetails } from './domain-error';
 import { ERROR_CATALOG, type ErrorCode } from './error-codes';
 
@@ -30,6 +31,8 @@ export class DomainExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
     const requestId = (request.headers['x-request-id'] as string | undefined) ?? undefined;
+    // Le callback OpenPay porte un segment secret dans son URL : jamais journalisé.
+    const url = scrubSecretUrl(request.url);
 
     const rendered = this.render(exception, requestId);
     const { status } = rendered;
@@ -41,13 +44,13 @@ export class DomainExceptionFilter implements ExceptionFilter {
       // Les details d'une erreur serveur (variable absente, reseau interne...)
       // ne sortent jamais : journalises ici, absents de la reponse HTTP.
       this.logger.error(
-        `${request.method} ${request.url} -> ${status} ${body.code}` +
+        `${request.method} ${url} -> ${status} ${body.code}` +
           (Object.keys(body.details).length > 0 ? ` details=${JSON.stringify(body.details)}` : ''),
         exception instanceof Error ? exception.stack : String(exception),
       );
       body = { ...body, details: requestId ? { requestId } : {} };
     } else {
-      this.logger.debug?.(`${request.method} ${request.url} -> ${status} ${body.code}`);
+      this.logger.debug?.(`${request.method} ${url} -> ${status} ${body.code}`);
     }
 
     // Retry-After n a de sens que sur un refus temporaire. Le gel en lecture

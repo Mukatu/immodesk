@@ -13,7 +13,11 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { Public } from '../../../shared/auth/auth.contracts';
-import { WebhookRateLimitGuard } from '../../../shared/throttler/webhook-rate-limit.guard';
+import {
+  SkipWebhookRateLimit,
+  WebhookRateLimitGuard,
+} from '../../../shared/throttler/webhook-rate-limit.guard';
+import { OpenPayApiLimiter } from '../../mobile-money/infrastructure/openpay.client';
 import { OpenPayCallbackGate } from '../../mobile-money/infrastructure/openpay-callback.gate';
 import { MomoWebhookIngestService } from '../application/momo-webhook-ingest.service';
 
@@ -30,6 +34,7 @@ export class MobileMoneyWebhooksController {
     private readonly ingest: MomoWebhookIngestService,
     private readonly config: AppConfigService,
     private readonly openPayGate: OpenPayCallbackGate,
+    private readonly openPayLimiter: OpenPayApiLimiter,
   ) {}
 
   private readonly logger = new Logger(MobileMoneyWebhooksController.name);
@@ -57,6 +62,7 @@ export class MobileMoneyWebhooksController {
    */
   @Post('openpay/:secret')
   @Public()
+  @SkipWebhookRateLimit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Callback OpenPay (non signé, segment secret)' })
   async receiveOpenPay(
@@ -64,6 +70,12 @@ export class MobileMoneyWebhooksController {
     @Req() req: RawBodyRequest<Request>,
   ): Promise<Record<string, never>> {
     try {
+      // Limite propre à la route (par IP, voir `SkipWebhookRateLimit`) : au-delà, l'appel est
+      // ignoré, jamais refusé.
+      if (!(await this.openPayLimiter.tryAcquireCallbackRequest(req.ip ?? 'inconnue'))) {
+        this.logger.warn(`MOMO.OPENPAY_CALLBACK_RATE_LIMITED ip=${req.ip ?? '-'}`);
+        return {};
+      }
       await this.ingest.ingestTrigger(
         'openpay',
         this.openPayGate.check(secret, req.ip ?? null),

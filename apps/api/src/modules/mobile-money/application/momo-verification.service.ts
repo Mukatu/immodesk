@@ -8,11 +8,12 @@ import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
 import { RECEIPT_ISSUER, type ReceiptIssuer } from '../../payments/domain/ports';
 import { AllocationService } from '../../payments/application/allocation.service';
 import { PaymentsQueryService } from '../../payments/application/payments-query.service';
-import { computeFee, providerConfirmsAmount, providerReferenceOf } from '../domain/momo-rules';
+import { computeFee, providerConfirmsAmount } from '../domain/momo-rules';
 import type { ProviderStatus } from '../domain/ports';
 import { MobileMoneyProviderRegistry } from '../infrastructure/mobile-money-provider.registry';
 import { MomoPayoutService } from './momo-payout.service';
 import { MomoQueryService, type MomoReader } from './momo-query.service';
+import { MomoStatusChecker } from './momo-status-checker';
 import type { MomoTransactionView } from './momo-views';
 
 /**
@@ -31,6 +32,7 @@ export class MomoVerificationService {
     private readonly paymentsQueries: PaymentsQueryService,
     private readonly allocation: AllocationService,
     private readonly payouts: MomoPayoutService,
+    private readonly statusChecker: MomoStatusChecker,
     private readonly auditService: AuditService,
     @Optional() @Inject(RECEIPT_ISSUER) private readonly receipts: ReceiptIssuer | null = null,
   ) {}
@@ -50,7 +52,11 @@ export class MomoVerificationService {
    * d'interroger le fournisseur. `SELECT ... FOR UPDATE` sérialise déjà les
    * appels concurrents, et un appel sur une transaction terminale est sans effet.
    */
-  async verifyStatus(organizationId: string, transactionId: string): Promise<void> {
+  async verifyStatus(
+    organizationId: string,
+    transactionId: string,
+    hint?: { providerReference?: string },
+  ): Promise<void> {
     let receiptIds: string[] = [];
     await this.prisma.withTenant(organizationId, null, async (tx) => {
       const row = await this.queries.lock(tx, transactionId);
@@ -71,15 +77,9 @@ export class MomoVerificationService {
       // INITIATED est vérifiable : un webhook peut précéder la réponse
       // d'initiation.
       if (row.channel !== 'AGGREGATOR' || !['INITIATED', 'PENDING'].includes(row.status)) return;
-      const providerRef = providerReferenceOf(row);
-      if (!providerRef) {
-        this.logger.warn(
-          `MOMO.VERIFY_SKIPPED transaction=${row.id} : external_reference absente (ligne antérieure à la migration 9), fournisseur non interrogé`,
-        );
-        return;
-      }
       const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
-      const status = await provider.getStatus(providerRef);
+      const status = await this.statusChecker.check(tx, provider, row, 'COLLECTION', hint);
+      if (!status) return;
       await tx.mobile_money_transactions.update({
         where: { id: transactionId },
         data: { status_checked_at: new Date(), status_check_count: { increment: 1 } },

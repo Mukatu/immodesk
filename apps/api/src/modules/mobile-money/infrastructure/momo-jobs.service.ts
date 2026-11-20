@@ -38,7 +38,14 @@ export class MomoJobsService implements OnModuleInit, OnModuleDestroy {
       this.connection = createBullConnection(this.config.get('REDIS_URL'));
       this.verifyWorker = new Worker<VerifyStatusJobData>(
         MOMO_VERIFY_QUEUE_NAME,
-        (job) => this.verification.verifyStatus(job.data.organizationId, job.data.transactionId),
+        (job) =>
+          this.verification.verifyStatus(
+            job.data.organizationId,
+            job.data.transactionId,
+            job.data.providerReferenceHint
+              ? { providerReference: job.data.providerReferenceHint }
+              : undefined,
+          ),
         { connection: this.connection, prefix, concurrency: 4 },
       );
       this.verifyWorker.on('failed', (job, error) =>

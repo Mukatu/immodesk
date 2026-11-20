@@ -8,11 +8,7 @@ import { businessToday } from '../../../shared/time/business-date';
 import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
 import { NumberingService } from '../../numbering/application/numbering.service';
-import {
-  detectOperator,
-  providerConfirmsAmount,
-  providerReferenceOf,
-} from '../../mobile-money/domain/momo-rules';
+import { detectOperator, providerConfirmsAmount } from '../../mobile-money/domain/momo-rules';
 import type {
   InitiatePaymentInput,
   InitiateResult,
@@ -20,6 +16,7 @@ import type {
   ProviderStatus,
 } from '../../mobile-money/domain/ports';
 import { buildMomoNotifyUrl } from '../../mobile-money/infrastructure/momo-notify-url';
+import { MomoStatusChecker } from '../../mobile-money/application/momo-status-checker';
 import { MobileMoneyProviderRegistry } from '../../mobile-money/infrastructure/mobile-money-provider.registry';
 import {
   ReferralQualificationService,
@@ -43,6 +40,9 @@ interface MobileMoneyTransactionRow {
   external_reference: string | null;
   amount: bigint;
   currency: string;
+  payer_msisdn: string;
+  status_checked_at: Date | null;
+  status_check_count: number;
 }
 
 /**
@@ -71,6 +71,7 @@ export class SubscriptionPaymentsService {
     private readonly config: AppConfigService,
     private readonly auditService: AuditService,
     private readonly registry: MobileMoneyProviderRegistry,
+    private readonly statusChecker: MomoStatusChecker,
     private readonly verifyQueue: SubscriptionMomoVerifyQueue,
     private readonly numbering: NumberingService,
     private readonly referralQualification: ReferralQualificationService,
@@ -212,7 +213,8 @@ export class SubscriptionPaymentsService {
   async verifyStatus(organizationId: string, transactionId: string): Promise<void> {
     const paidEvent = await this.prisma.withTenant(organizationId, null, async (tx) => {
       const rows = await tx.$queryRawUnsafe<MobileMoneyTransactionRow[]>(
-        `SELECT id, organization_id, status, aggregator, aggregator_transaction_id, external_reference, merchant_reference, amount, currency
+        `SELECT id, organization_id, status, aggregator, aggregator_transaction_id, external_reference, merchant_reference, amount, currency,
+                payer_msisdn, status_checked_at, status_check_count
            FROM mobile_money_transactions
           WHERE id = $1::uuid AND organization_id = $2::uuid AND purpose = 'SUBSCRIPTION' FOR UPDATE`,
         transactionId,
@@ -221,17 +223,11 @@ export class SubscriptionPaymentsService {
       const row = rows[0];
       if (!row || (row.status !== 'INITIATED' && row.status !== 'PENDING')) return null;
 
-      const providerRef = providerReferenceOf(row);
-      if (!providerRef) {
-        this.logger.warn(
-          `SUBSCRIPTIONS.MOMO_VERIFY_SKIPPED transaction=${row.id} : external_reference absente, fournisseur non interrogé`,
-        );
-        return null;
-      }
       const provider = this.registry.forCode(
         row.aggregator ?? this.config.get('MOMO_PROVIDER_DEFAULT'),
       );
-      const status = await provider.getStatus(providerRef);
+      const status = await this.statusChecker.check(tx, provider, row, 'COLLECTION');
+      if (!status) return null;
       await tx.mobile_money_transactions.update({
         where: { id: transactionId },
         data: { status_checked_at: new Date(), status_check_count: { increment: 1 } },

@@ -5,6 +5,11 @@ import type { IncomingMessage } from 'node:http';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/config.schema';
 
+/** `/v1/webhooks/mobile-money/openpay/<secret>` -> `.../openpay/[expurgé]`. */
+export function scrubSecretUrl(url: string | undefined): string | undefined {
+  return url?.replace(/(\/webhooks\/mobile-money\/openpay\/)[^/?#]+/i, '$1[expurgé]');
+}
+
 /**
  * Journalisation structurée pino.
  * Les secrets et données personnelles sensibles sont expurgés : jamais de
@@ -19,6 +24,16 @@ import type { AppConfig } from '../config/config.schema';
           level: config.LOG_LEVEL,
           genReqId: (req: IncomingMessage) =>
             (req.headers['x-request-id'] as string | undefined) ?? randomUUID(),
+          // Le callback OpenPay porte un segment secret dans l'URL : jamais journalisé.
+          serializers: {
+            req: (req: IncomingMessage & { id?: unknown }) => ({
+              id: req.id,
+              method: req.method,
+              url: scrubSecretUrl(req.url),
+              headers: req.headers,
+              remoteAddress: req.socket?.remoteAddress,
+            }),
+          },
           customProps: () => ({ service: 'immodesk-api' }),
           redact: {
             paths: [

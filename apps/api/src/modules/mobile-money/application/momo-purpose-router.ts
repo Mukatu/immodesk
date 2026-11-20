@@ -5,11 +5,20 @@ import { MomoVerificationService } from './momo-verification.service';
 
 export type { MomoPurpose } from '../domain/momo-purpose';
 
+/** Indice transmis par un callback non signé : jamais une preuve, `getStatus` tranche. */
+export interface MomoVerifyHint {
+  providerReference?: string;
+}
+
 export interface MomoPurposeHandler {
   /** Webhook ou rejeu : ré-interrogation asynchrone, la réponse reste sous 500 ms. */
-  enqueueVerify(organizationId: string, transactionId: string): Promise<void>;
+  enqueueVerify(
+    organizationId: string,
+    transactionId: string,
+    hint?: MomoVerifyHint,
+  ): Promise<void>;
   /** Rattrapage périodique : ré-interrogation immédiate. */
-  verifyNow(organizationId: string, transactionId: string): Promise<void>;
+  verifyNow(organizationId: string, transactionId: string, hint?: MomoVerifyHint): Promise<void>;
 }
 
 /**
@@ -32,10 +41,16 @@ export class MomoPurposeRouter implements OnApplicationBootstrap {
 
   constructor(verifyQueue: MomoVerifyQueue, verification: MomoVerificationService) {
     const viaVerification: MomoPurposeHandler = {
-      enqueueVerify: (organizationId, transactionId) =>
-        verifyQueue.enqueue({ organizationId, transactionId }),
-      verifyNow: (organizationId, transactionId) =>
-        verification.verifyStatus(organizationId, transactionId),
+      enqueueVerify: (organizationId, transactionId, hint) =>
+        verifyQueue.enqueue({
+          organizationId,
+          transactionId,
+          ...(hint?.providerReference ? { providerReferenceHint: hint.providerReference } : {}),
+        }),
+      verifyNow: (organizationId, transactionId, hint) =>
+        hint
+          ? verification.verifyStatus(organizationId, transactionId, hint)
+          : verification.verifyStatus(organizationId, transactionId),
     };
     this.handlers.set('RENT_COLLECTION', viaVerification);
     this.handlers.set('OWNER_PAYOUT', viaVerification);

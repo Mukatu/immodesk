@@ -5,12 +5,18 @@ import { newId } from '../../../shared/ids/uuid';
 import type { TenantClient } from '../../../shared/prisma/prisma.service';
 import { readOperationalSettings } from '../../../shared/settings/operational-settings';
 import { detectOperator, providerConfirmsAmount, providerReferenceOf } from '../domain/momo-rules';
+import { MomoStatusChecker } from './momo-status-checker';
 import type {
   MobileMoneyPayoutInitiator,
   MobileMoneyPayoutInput,
   MobileMoneyPayoutResult,
 } from '../domain/ports';
-import type { InitiateResult, MobileMoneyProvider, ProviderStatus } from '../domain/ports';
+import type {
+  InitiateResult,
+  MobileMoneyProvider,
+  ProviderStatus,
+  ProviderStatusExpectation,
+} from '../domain/ports';
 import { buildMomoNotifyUrl } from '../infrastructure/momo-notify-url';
 import { MobileMoneyProviderRegistry } from '../infrastructure/mobile-money-provider.registry';
 
@@ -33,6 +39,7 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
   constructor(
     private readonly registry: MobileMoneyProviderRegistry,
     private readonly config: AppConfigService,
+    private readonly statusChecker: MomoStatusChecker,
   ) {}
 
   async initiatePayout(
@@ -83,6 +90,7 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
       externalReference: id,
       description: input.description,
       callbackUrl: buildMomoNotifyUrl(this.config, provider.code),
+      kind: 'PAYOUT',
     });
 
     // Le simulateur (et un agrégateur réel interrogé sans délai) peut avoir
@@ -94,10 +102,16 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
     const resolved: InitiateResult | ProviderStatus =
       initiated.state === 'FAILED'
         ? initiated
-        : withVerifiedAmount(await this.safeGetStatus(provider, initiated.providerReference), {
-            amount: input.amount,
-            currency: input.currency,
-          });
+        : withVerifiedAmount(
+            await this.safeGetStatus(provider, initiated.providerReference, {
+              kind: 'PAYOUT',
+              externalReference: id,
+              amount: input.amount,
+              currency: input.currency,
+              msisdn: input.payerMsisdn,
+            }),
+            { amount: input.amount, currency: input.currency },
+          );
 
     await this.persistResult(tx, id, initiated, resolved);
     return {
@@ -113,14 +127,6 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
   ): Promise<MobileMoneyPayoutResult> {
     const row = await tx.mobile_money_transactions.findFirst({
       where: { id: momoTransactionId },
-      select: {
-        amount: true,
-        currency: true,
-        aggregator: true,
-        aggregator_transaction_id: true,
-        external_reference: true,
-        merchant_reference: true,
-      },
     });
     if (!row) {
       throw new DomainError('PLATFORM.NOT_FOUND', {
@@ -136,7 +142,34 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
         momoTransactionId,
       });
     }
-    const status = withVerifiedAmount(await provider.getStatus(providerReference), row);
+    const checked = await this.statusChecker.check(tx, provider, row, 'PAYOUT');
+    if (!checked) {
+      // Interrogation limitée (anti-abus) : aucun changement d'état.
+      return { momoTransactionId, providerReference, state: 'PENDING' };
+    }
+    let status = withVerifiedAmount(checked, row);
+    // Retrait approuvé : l'ordre d'exécution n'est donné que pour une transaction
+    // OWNER_PAYOUT sortante, encore en cours, dont le montant, le bénéficiaire et
+    // la référence ont été confirmés à l'instant (`matched`) par le fournisseur.
+    if (
+      status.nextAction === 'EXECUTE' &&
+      status.matched === true &&
+      provider.executePayout &&
+      row.purpose === 'OWNER_PAYOUT' &&
+      row.direction === 'OUTBOUND' &&
+      (row.status === 'INITIATED' || row.status === 'PENDING')
+    ) {
+      status = withVerifiedAmount(
+        await provider.executePayout(providerReference, {
+          kind: 'PAYOUT',
+          externalReference: row.external_reference as string,
+          amount: row.amount,
+          currency: row.currency,
+          msisdn: row.payer_msisdn,
+        }),
+        row,
+      );
+    }
 
     await tx.mobile_money_transactions.update({
       where: { id: momoTransactionId },
@@ -162,9 +195,10 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
   private async safeGetStatus(
     provider: MobileMoneyProvider,
     providerReference: string,
+    expected: ProviderStatusExpectation,
   ): Promise<ProviderStatus> {
     try {
-      return await provider.getStatus(providerReference);
+      return await provider.getStatus(providerReference, expected);
     } catch {
       return { providerReference, state: 'PENDING', rawPayload: null };
     }

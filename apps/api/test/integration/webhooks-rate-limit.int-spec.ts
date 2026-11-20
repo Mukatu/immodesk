@@ -69,4 +69,15 @@ describe('Limite de débit des webhooks publics', () => {
     const other = await post('/webhooks/mobile-money/simulator', fakeIp());
     expect(other.status).not.toBe(429);
   });
+
+  it('la route OpenPay n’est jamais refusée en 429 (limite propre, appel ignoré, toujours 200 {})', async () => {
+    const ip = fakeIp();
+    for (let i = 0; i < limit + 3; i += 1) {
+      const res = await post('/webhooks/mobile-money/openpay/mauvais-segment', ip);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({});
+    }
+    // Le compteur de la garde commune n'a pas été consommé par la route OpenPay.
+    expect((await post('/webhooks/mobile-money/simulator', ip)).status).not.toBe(429);
+  });
 });

@@ -1,3 +1,4 @@
+import { MomoStatusChecker } from '../../src/modules/mobile-money/application/momo-status-checker';
 import { SubscriptionPaymentsService } from '../../src/modules/subscriptions/application/subscription-payments.service';
 
 /**
@@ -23,6 +24,18 @@ function fakeTx(overrides: Record<string, unknown> = {}) {
     $queryRawUnsafe: jest.fn().mockResolvedValue([]),
   };
   return { ...base, ...overrides };
+}
+
+/** Vérificateur réel dont la réservation (accès base) est neutralisée. */
+function checkerStub(): MomoStatusChecker {
+  const checker = new MomoStatusChecker(
+    { get: () => 1000 } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
+  jest.spyOn(checker, 'claim').mockResolvedValue(true);
+  return checker;
 }
 
 function buildService(
@@ -53,6 +66,7 @@ function buildService(
     config as never,
     auditService as never,
     registry as never,
+    checkerStub() as never,
     verifyQueue as never,
     numbering as never,
     referralQualification as never,

@@ -26,7 +26,13 @@ export class SubscriptionMomoVerifyWorker implements OnModuleInit, OnModuleDestr
       this.connection = createBullConnection(this.config.get('REDIS_URL'));
       this.worker = new Worker<SubscriptionVerifyJobData>(
         SUBSCRIPTION_MOMO_VERIFY_QUEUE,
-        (job) => this.payments.verifyStatus(job.data.organizationId, job.data.transactionId),
+        (job) =>
+          this.payments.verifyStatus(job.data.organizationId, job.data.transactionId, {
+            origin: 'CALLBACK',
+            ...(job.data.providerReferenceHint
+              ? { providerReference: job.data.providerReferenceHint }
+              : {}),
+          }),
         { connection: this.connection, prefix: this.config.get('QUEUE_PREFIX'), concurrency: 4 },
       );
       this.worker.on('failed', (job, error) =>

@@ -138,6 +138,61 @@ export class WebhookEventsService {
     );
   }
 
+  /**
+   * Callback d'un fournisseur à webhook NON signé (OpenPay), format valide.
+   * Aucun corps conservé : empreinte, taille, `reference` et `type` seulement.
+   * `organization_id` reste NULL jusqu'à ce que `getStatus` confirme la
+   * correspondance ; `related_entity_id` n'est qu'un pointeur de recherche.
+   * Les relances à corps identique sont fusionnées (clé `trigger:<sha256>`), SAUF un évènement
+   * FAILED faute d'avoir pu être mis en file (`MOMO.WEBHOOK_ENQUEUE_FAILED`) : la relance du
+   * fournisseur le retraite, comme `persist` (voir `dispatch`).
+   */
+  async persistTrigger(input: {
+    source: string;
+    requestPath: string;
+    sourceIp: string | null;
+    bodySha256: string;
+    bodyBytes: number;
+    userAgent: string | null;
+    reference: string;
+    type: string;
+    relatedTransactionId: string | null;
+  }): Promise<{ id: string; duplicate: boolean }> {
+    const id = newId();
+    const rows = await this.adminClient().$queryRawUnsafe<Array<{ id: string }>>(
+      `INSERT INTO webhook_events (id, organization_id, source, event_type, status, external_event_id,
+                                   signature_header, signature_valid, request_path, source_ip, headers,
+                                   raw_payload, related_entity_type, related_entity_id)
+       VALUES ($1::uuid, NULL, $2::webhook_source, 'momo.trigger', 'RECEIVED', $3,
+               NULL, false, $4, $5::inet, $6::jsonb, $7::jsonb, $8, $9::uuid)
+       ON CONFLICT (source, external_event_id) DO UPDATE
+         SET status = 'RECEIVED',
+             error_message = NULL,
+             related_entity_type = EXCLUDED.related_entity_type,
+             related_entity_id = EXCLUDED.related_entity_id,
+             updated_at = now()
+         WHERE webhook_events.status = 'FAILED'
+           AND webhook_events.error_message = $10
+       RETURNING id`,
+      id,
+      input.source,
+      `trigger:${input.bodySha256}`,
+      input.requestPath,
+      input.sourceIp,
+      JSON.stringify(input.userAgent ? { 'user-agent': input.userAgent.slice(0, 256) } : {}),
+      JSON.stringify({
+        bodySha256: input.bodySha256,
+        bodyBytes: input.bodyBytes,
+        reference: input.reference,
+        type: input.type,
+      }),
+      input.relatedTransactionId ? 'mobile_money_transactions' : null,
+      input.relatedTransactionId,
+      MOMO_WEBHOOK_ENQUEUE_FAILED,
+    );
+    return rows[0] ? { id: rows[0].id, duplicate: false } : { id: '', duplicate: true };
+  }
+
   async markStatus(
     id: string,
     status: 'PROCESSING' | 'PROCESSED' | 'IGNORED' | 'FAILED',

@@ -15,7 +15,10 @@ import {
   MOMO_WEBHOOK_PURPOSE_NOT_ROUTED,
   MOMO_WEBHOOK_UNRESOLVED,
   resolveMomoExternalReference,
+  resolveOpenPayTrigger,
 } from '../../mobile-money/infrastructure/momo-reference-resolver';
+import { OPENPAY_CALLBACK_MAX_BYTES } from '../../mobile-money/domain/openpay-rules';
+import type { OpenPayCallbackAccess } from '../../mobile-money/infrastructure/openpay-callback.gate';
 import { WebhookEventsService } from './webhook-events.service';
 import { headerValue, parseJson, type HeaderMap } from './webhook-request';
 
@@ -51,7 +54,9 @@ export class MomoWebhookIngestService {
     const body = parseJson(rawBody);
     const raw: RawWebhook = { headers, body, rawBody };
 
-    if (!provider.verifyWebhook(raw)) {
+    // Un fournisseur à webhook non signé n'a pas de chemin « signature valide » :
+    // cette route générique (sans segment secret) ne peut que l'ignorer.
+    if (provider.webhookTrust === 'UNSIGNED_TRIGGER' || !provider.verifyWebhook(raw)) {
       const bodySha256 = webhookBodyHash(rawBody);
       await this.events.persistUnsigned({
         source: provider.webhookSource,
@@ -142,12 +147,102 @@ export class MomoWebhookIngestService {
   }
 
   /**
+   * Callback d'un fournisseur à webhook NON signé (OpenPay), chemin SÉPARÉ de
+   * `ingest`. N'y entre qu'avec le segment secret (et l'IP) valides ; sinon
+   * l'appel est journalisé comme un webhook non signé (empreinte et taille) et
+   * sans effet. Seuls `reference` et `type` sont lus (`parseTrigger`) ; la
+   * transaction est ensuite re-interrogée côté fournisseur par la file de
+   * vérification, qui seule la confirme. L'organisation de l'évènement reste
+   * NULL tant que la réponse du fournisseur ne correspond pas.
+   */
+  async ingestTrigger(
+    providerParam: string,
+    access: OpenPayCallbackAccess,
+    rawBody: Buffer,
+    headers: HeaderMap,
+    sourceIp: string | null,
+    requestPath: string,
+  ): Promise<void> {
+    const provider = this.registry.forCode(providerParam);
+    const bodySha256 = webhookBodyHash(rawBody);
+    const userAgent = headerValue(headers, 'user-agent');
+    const ignore = async (reason: string): Promise<void> => {
+      await this.events.persistUnsigned({
+        source: provider.webhookSource,
+        requestPath,
+        sourceIp,
+        bodySha256,
+        bodyBytes: rawBody.length,
+        userAgent,
+      });
+      this.logger.warn(
+        `MOMO.WEBHOOK_TRIGGER_IGNORED provider=${providerParam} reason=${reason} ip=${sourceIp ?? '-'} sha256=${bodySha256}`,
+      );
+    };
+    if (provider.webhookTrust !== 'UNSIGNED_TRIGGER' || !provider.parseTrigger) {
+      return ignore('provider');
+    }
+    if (access !== 'OK') return ignore(access);
+    if (rawBody.length > OPENPAY_CALLBACK_MAX_BYTES) return ignore('body_too_large');
+    const trigger = provider.parseTrigger({ headers, body: parseJson(rawBody), rawBody });
+    if (!trigger) return ignore('payload_invalid');
+
+    const target = await resolveOpenPayTrigger(this.adminClient(), trigger);
+    const { id, duplicate } = await this.events.persistTrigger({
+      source: provider.webhookSource,
+      requestPath,
+      sourceIp,
+      bodySha256,
+      bodyBytes: rawBody.length,
+      userAgent,
+      reference: trigger.reference,
+      type: trigger.type,
+      relatedTransactionId: target?.transactionId ?? null,
+    });
+    if (duplicate) return;
+    if (!target) {
+      await this.events.markStatus(id, 'IGNORED', { errorMessage: MOMO_WEBHOOK_UNRESOLVED });
+      return;
+    }
+    await this.dispatch(id, target.organizationId, target.transactionId, target.purpose, {
+      providerReference: target.providerReferenceHint,
+    });
+  }
+
+  /**
    * Rejeu (`POST /v1/webhook-events/{id}/replay`, OWNER) : reprend le
    * traitement à partir du corps déjà persisté. Réservé aux événements
    * SIGNÉS : un événement non signé n'a jamais été de confiance. Idempotent.
    */
   async replay(organizationId: string, userId: string, id: string): Promise<void> {
     const row = await this.events.get(organizationId, userId, id);
+    let trust: 'SIGNED' | 'UNSIGNED_TRIGGER' = 'SIGNED';
+    try {
+      trust = this.registry.forWebhookSource(row.source).webhookTrust;
+    } catch {
+      // Source sans parseur (OTHER) : traitée par le chemin signé ci-dessous.
+    }
+    if (trust === 'UNSIGNED_TRIGGER') {
+      // Callback non signé : jamais rejoué depuis un corps (non conservé) mais par
+      // une nouvelle vérification de statut de la transaction rattachée.
+      const transactionId = (row as { related_entity_id?: string | null }).related_entity_id;
+      const found = transactionId
+        ? await this.prisma.withTenant(organizationId, userId, (tx) =>
+            tx.mobile_money_transactions.findFirst({
+              where: { id: transactionId },
+              select: { id: true, purpose: true },
+            }),
+          )
+        : null;
+      if (!found) {
+        await this.events.markStatus(id, 'FAILED', {
+          errorMessage: 'Transaction Mobile Money introuvable au rejeu.',
+        });
+        return;
+      }
+      await this.dispatch(id, organizationId, found.id, found.purpose);
+      return;
+    }
     if (!row.signature_valid) {
       throw new DomainError('WEBHOOKS.REPLAY_NOT_ALLOWED', { webhookEventId: id });
     }
@@ -184,6 +279,7 @@ export class MomoWebhookIngestService {
     organizationId: string,
     transactionId: string,
     purpose: MomoPurpose,
+    hint?: { providerReference?: string },
   ): Promise<void> {
     const related = {
       relatedEntityType: 'mobile_money_transactions',
@@ -200,7 +296,9 @@ export class MomoWebhookIngestService {
     }
     await this.events.markStatus(eventId, 'PROCESSING');
     try {
-      await handler.enqueueVerify(organizationId, transactionId);
+      await (hint?.providerReference
+        ? handler.enqueueVerify(organizationId, transactionId, hint)
+        : handler.enqueueVerify(organizationId, transactionId));
     } catch (error) {
       // Ne jamais laisser l'événement en PROCESSING : le fournisseur relance et
       // `persist` ignorerait la relance comme un doublon. FAILED avec ce code

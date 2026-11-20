@@ -1,4 +1,6 @@
+import { Logger } from '@nestjs/common';
 import { MomoPayoutService } from '../../src/modules/mobile-money/application/momo-payout.service';
+import { MomoStatusChecker } from '../../src/modules/mobile-money/application/momo-status-checker';
 import { MomoVerificationService } from '../../src/modules/mobile-money/application/momo-verification.service';
 import {
   providerConfirmsAmount,
@@ -28,9 +30,29 @@ const baseRow = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-function buildVerification(rows: Array<Record<string, unknown>>, getStatus: jest.Mock) {
+/** Vérificateur réel dont la réservation (accès base) est neutralisée. */
+function checkerStub(): MomoStatusChecker {
+  const checker = new MomoStatusChecker(
+    { get: () => 1000 } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
+  jest.spyOn(checker, 'claim').mockResolvedValue(true);
+  jest.spyOn(checker, 'claimTriggerEvents').mockResolvedValue(undefined);
+  return checker;
+}
+
+function buildVerification(
+  rows: Array<Record<string, unknown>>,
+  getStatus: jest.Mock,
+  providerExtra: Record<string, unknown> = {},
+) {
   const tx = {
-    mobile_money_transactions: { update: jest.fn() },
+    mobile_money_transactions: {
+      update: jest.fn(),
+      findFirst: jest.fn().mockResolvedValue({ purpose: rows[0]?.purpose ?? 'RENT_COLLECTION' }),
+    },
     payments: { update: jest.fn() },
   };
   const prisma = {
@@ -40,13 +62,13 @@ function buildVerification(rows: Array<Record<string, unknown>>, getStatus: jest
   const queries = {
     lock: jest.fn(() => Promise.resolve(rows.length > 1 ? rows.shift() : rows[0])),
   };
-  const registry = { forCode: jest.fn().mockReturnValue({ getStatus }) };
+  const registry = { forCode: jest.fn().mockReturnValue({ getStatus, ...providerExtra }) };
   const paymentsQueries = {
     lock: jest.fn().mockResolvedValue({ id: 'pay-1', organization_id: 'o' }),
   };
   const allocation = { allocate: jest.fn().mockResolvedValue({ paidInvoiceIds: [] }) };
   const auditService = { record: jest.fn() };
-  const payouts = { refreshPayoutStatus: jest.fn() };
+  const payouts = { verifyPayout: jest.fn() };
   const service = new MomoVerificationService(
     prisma as never,
     queries as never,
@@ -54,6 +76,7 @@ function buildVerification(rows: Array<Record<string, unknown>>, getStatus: jest
     paymentsQueries as never,
     allocation as never,
     payouts as never,
+    checkerStub() as never,
     auditService as never,
   );
   return { service, tx, allocation, getStatus, payouts };
@@ -142,8 +165,13 @@ describe('providerConfirmsAmount / providerReferenceOf', () => {
 describe('MomoPayoutService.refreshPayoutStatus', () => {
   const build = (status: Record<string, unknown>, rowOverrides: Record<string, unknown> = {}) => {
     const tx = {
+      $queryRawUnsafe: jest.fn(),
       mobile_money_transactions: {
         findFirst: jest.fn().mockResolvedValue({
+          status: 'PENDING',
+          purpose: 'OWNER_PAYOUT',
+          direction: 'OUTBOUND',
+          payer_msisdn: '+242066203420',
           amount: 50_000n,
           currency: 'XAF',
           aggregator: 'SIMULATOR',
@@ -161,15 +189,40 @@ describe('MomoPayoutService.refreshPayoutStatus', () => {
     const service = new MomoPayoutService(
       { forCode: () => ({ getStatus }) } as never,
       { get: () => 'http://localhost:3000' } as never,
+      checkerStub(),
+      {} as never,
+      { enqueue: jest.fn().mockResolvedValue(undefined) } as never,
     );
     return { service, tx, getStatus };
   };
+  const statusWrites = (tx: ReturnType<typeof build>['tx']) =>
+    tx.mobile_money_transactions.update.mock.calls
+      .map(([arg]) => (arg as { data: { status?: string } }).data.status)
+      .filter(Boolean);
 
   it('SUCCEEDED conforme : persisté SUCCEEDED', async () => {
     const { service, tx } = build({ state: 'SUCCEEDED', amount: 50_000n, currency: 'XAF' });
     const result = await service.refreshPayoutStatus(tx as never, 'txn-1');
     expect(result.state).toBe('SUCCEEDED');
-    expect(tx.mobile_money_transactions.update.mock.calls[0][0].data.status).toBe('SUCCEEDED');
+    expect(statusWrites(tx)).toEqual(['SUCCEEDED']);
+  });
+
+  it('UNKNOWN : aucune écriture de statut (jamais de retour en PENDING)', async () => {
+    const { service, tx } = build({ state: 'UNKNOWN' }, { status: 'SUCCEEDED' });
+    expect((await service.refreshPayoutStatus(tx as never, 'txn-1')).state).toBe('SUCCEEDED');
+    expect(tx.mobile_money_transactions.update).not.toHaveBeenCalled();
+    const pending = build({ state: 'UNKNOWN' });
+    expect((await pending.service.refreshPayoutStatus(pending.tx as never, 'txn-1')).state).toBe(
+      'PENDING',
+    );
+    expect(statusWrites(pending.tx)).toEqual([]);
+  });
+
+  it('ligne déjà terminale (FAILED) : jamais réécrite, fournisseur non interrogé', async () => {
+    const { service, tx, getStatus } = build({ state: 'PENDING' }, { status: 'FAILED' });
+    expect((await service.refreshPayoutStatus(tx as never, 'txn-1')).state).toBe('FAILED');
+    expect(getStatus).not.toHaveBeenCalled();
+    expect(tx.mobile_money_transactions.update).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -180,7 +233,7 @@ describe('MomoPayoutService.refreshPayoutStatus', () => {
     const { service, tx } = build({ state: 'SUCCEEDED', ...extra });
     const result = await service.refreshPayoutStatus(tx as never, 'txn-1');
     expect(result.state).toBe('PENDING');
-    expect(tx.mobile_money_transactions.update.mock.calls[0][0].data.status).toBe('PENDING');
+    expect(statusWrites(tx)).toEqual([]);
   });
 
   it('sans external_reference : erreur, fournisseur non interrogé', async () => {
@@ -208,7 +261,60 @@ describe('MomoVerificationService : garde-fous par purpose', () => {
       getStatus,
     );
     await service.verifyStatus('org-1', 'txn-1');
-    expect(payouts.refreshPayoutStatus).toHaveBeenCalledTimes(1);
+    expect(payouts.verifyPayout).toHaveBeenCalledTimes(1);
     expect(getStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('MomoVerificationService : transitions contrôlées et succès tardif (F9, M1)', () => {
+  const succeeded = {
+    state: 'SUCCEEDED',
+    providerReference: 'PTXN1234ABCD',
+    amount: 10_000n,
+    currency: 'XAF',
+    matched: true,
+    rawPayload: null,
+  };
+
+  it('INITIATED (callback avant la réponse d’initiation) -> SUCCEEDED : transition explicite et valide', async () => {
+    const getStatus = jest.fn().mockResolvedValue(succeeded);
+    const { service, tx } = buildVerification([baseRow({ status: 'INITIATED' })], getStatus);
+    await service.verifyStatus('org-1', 'txn-1');
+    expect(statusUpdates(tx)).toEqual(['SUCCEEDED']);
+  });
+
+  it('callback sur une transaction EXPIRED : succès conforme signalé en erreur, AUCUNE écriture', async () => {
+    const getStatus = jest.fn().mockResolvedValue(succeeded);
+    const errors: string[] = [];
+    const spy = jest.spyOn(Logger.prototype, 'error').mockImplementation((m: unknown) => {
+      errors.push(String(m));
+    });
+    const { service, tx, allocation } = buildVerification(
+      [baseRow({ status: 'EXPIRED' })],
+      getStatus,
+      { webhookTrust: 'UNSIGNED_TRIGGER' },
+    );
+    await service.verifyStatus('org-1', 'txn-1', { origin: 'CALLBACK' });
+    spy.mockRestore();
+    expect(getStatus).toHaveBeenCalledTimes(1);
+    expect(errors.join(' ')).toContain('MOMO.LATE_SUCCESS_ON_EXPIRED');
+    expect(tx.mobile_money_transactions.update).not.toHaveBeenCalled();
+    expect(tx.payments.update).not.toHaveBeenCalled();
+    expect(allocation.allocate).not.toHaveBeenCalled();
+  });
+
+  it('transaction EXPIRED et réponse non conforme : ni alerte ni écriture', async () => {
+    const getStatus = jest.fn().mockResolvedValue({ ...succeeded, amount: 1n });
+    const errors: string[] = [];
+    const spy = jest.spyOn(Logger.prototype, 'error').mockImplementation((m: unknown) => {
+      errors.push(String(m));
+    });
+    const { service, tx } = buildVerification([baseRow({ status: 'EXPIRED' })], getStatus, {
+      webhookTrust: 'UNSIGNED_TRIGGER',
+    });
+    await service.verifyStatus('org-1', 'txn-1');
+    spy.mockRestore();
+    expect(errors).toEqual([]);
+    expect(tx.mobile_money_transactions.update).not.toHaveBeenCalled();
   });
 });

@@ -6,12 +6,16 @@ import { MomoPurposeRouter } from './application/momo-purpose-router';
 import { MomoPayoutService } from './application/momo-payout.service';
 import { MomoQueryService } from './application/momo-query.service';
 import { MomoReconcileService } from './application/momo-reconcile.service';
+import { MomoStatusChecker } from './application/momo-status-checker';
 import { MomoVerificationService } from './application/momo-verification.service';
-import { MOMO_PAYOUT_INITIATOR } from './domain/ports';
+import { MOMO_PAYOUT_INITIATOR, MOMO_PAYOUT_OUTCOME_REGISTRY } from './domain/ports';
 import { CinetPayProvider } from './infrastructure/cinetpay.provider';
 import { MobileMoneyProviderRegistry } from './infrastructure/mobile-money-provider.registry';
 import { MomoJobsService } from './infrastructure/momo-jobs.service';
 import { MomoVerifyQueue } from './infrastructure/momo-verify.queue';
+import { OpenPayApiLimiter, OpenPayClient } from './infrastructure/openpay.client';
+import { OpenPayCallbackGate } from './infrastructure/openpay-callback.gate';
+import { OpenPayProvider } from './infrastructure/openpay.provider';
 import { SimulatedMobileMoneyProvider } from './infrastructure/simulated-mobile-money.provider';
 import { MobileMoneyController } from './presentation/mobile-money.controller';
 
@@ -37,6 +41,10 @@ import { MobileMoneyController } from './presentation/mobile-money.controller';
   providers: [
     SimulatedMobileMoneyProvider,
     CinetPayProvider,
+    OpenPayClient,
+    OpenPayApiLimiter,
+    OpenPayProvider,
+    OpenPayCallbackGate,
     MobileMoneyProviderRegistry,
     MomoVerifyQueue,
     MomoJobsService,
@@ -46,18 +54,24 @@ import { MobileMoneyController } from './presentation/mobile-money.controller';
     MomoVerificationService,
     MomoReconcileService,
     MomoPayoutService,
+    MomoStatusChecker,
     MomoPurposeRouter,
     { provide: MOMO_PAYOUT_INITIATOR, useExisting: MomoPayoutService },
+    { provide: MOMO_PAYOUT_OUTCOME_REGISTRY, useExisting: MomoPayoutService },
   ],
   exports: [
     MobileMoneyProviderRegistry,
+    OpenPayCallbackGate,
     MomoVerifyQueue,
     MomoQueryService,
     MomoAggregatorService,
     MomoVerificationService,
     MomoReconcileService,
+    MomoStatusChecker,
     MomoPurposeRouter,
     MOMO_PAYOUT_INITIATOR,
+    MOMO_PAYOUT_OUTCOME_REGISTRY,
+    OpenPayApiLimiter,
   ],
 })
 export class MobileMoneyModule {}

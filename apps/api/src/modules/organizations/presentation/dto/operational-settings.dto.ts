@@ -206,7 +206,7 @@ export const NESTED_SETTINGS_TYPES = {
   facilities: () => UpdateFacilitiesSettingsDto,
 };
 
-const AGGREGATOR_PROVIDERS = ['SIMULATOR', 'CINETPAY'] as const;
+const AGGREGATOR_PROVIDERS = ['SIMULATOR', 'CINETPAY', 'OPENPAY'] as const;
 
 /**
  * Le simulateur confirme n'importe quelle transaction : une organisation ne

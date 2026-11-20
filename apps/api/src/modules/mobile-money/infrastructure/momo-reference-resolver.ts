@@ -72,3 +72,61 @@ export async function resolveMomoExternalReference(
   const candidates = legacy[0]?.n ?? 0;
   return candidates > 0 ? { kind: 'AMBIGUOUS', candidates } : { kind: 'UNKNOWN' };
 }
+
+export interface OpenPayTriggerTarget {
+  organizationId: string;
+  transactionId: string;
+  purpose: MomoPurpose;
+  /** Référence du callback à proposer à `getStatus` quand la nôtre n'est pas encore stockée. */
+  providerReferenceHint?: string;
+}
+
+/**
+ * Retrouve la transaction visée par un callback OpenPay NON signé. Le résultat
+ * ne prouve rien (il ne sert qu'à choisir quoi re-interroger) : l'organisation
+ * n'est attribuée à l'événement qu'après une réponse conforme du fournisseur.
+ * Collecte : référence OpenPay (`PTXN...`), sinon l'indice
+ * `metadata.external_reference` pour une transaction encore sans référence.
+ * Retrait : l'UUID est notre `external_reference`.
+ */
+export async function resolveOpenPayTrigger(
+  admin: PrismaClient,
+  trigger: {
+    reference: string;
+    type: 'payment' | 'scheduled_cashout';
+    externalReferenceHint?: string;
+  },
+): Promise<OpenPayTriggerTarget | null> {
+  type Row = { id: string; organization_id: string; purpose: MomoPurpose };
+  const toTarget = (row: Row | undefined, hint?: string): OpenPayTriggerTarget | null =>
+    row
+      ? {
+          organizationId: row.organization_id,
+          transactionId: row.id,
+          purpose: row.purpose,
+          ...(hint ? { providerReferenceHint: hint } : {}),
+        }
+      : null;
+  if (trigger.type === 'scheduled_cashout') {
+    const rows = await admin.$queryRawUnsafe<Row[]>(
+      `SELECT id, organization_id, purpose FROM mobile_money_transactions
+        WHERE aggregator = 'OPENPAY' AND purpose = 'OWNER_PAYOUT' AND external_reference = $1`,
+      trigger.reference,
+    );
+    return toTarget(rows[0]);
+  }
+  const byReference = await admin.$queryRawUnsafe<Row[]>(
+    `SELECT id, organization_id, purpose FROM mobile_money_transactions
+      WHERE aggregator = 'OPENPAY' AND purpose <> 'OWNER_PAYOUT' AND aggregator_transaction_id = $1`,
+    trigger.reference,
+  );
+  if (byReference[0]) return toTarget(byReference[0]);
+  if (!trigger.externalReferenceHint) return null;
+  const byHint = await admin.$queryRawUnsafe<Row[]>(
+    `SELECT id, organization_id, purpose FROM mobile_money_transactions
+      WHERE aggregator = 'OPENPAY' AND purpose <> 'OWNER_PAYOUT' AND external_reference = $1
+        AND aggregator_transaction_id IS NULL AND status = 'INITIATED'`,
+    trigger.externalReferenceHint,
+  );
+  return toTarget(byHint[0], trigger.reference);
+}

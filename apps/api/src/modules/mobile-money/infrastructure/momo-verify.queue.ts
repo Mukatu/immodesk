@@ -10,6 +10,8 @@ export const MOMO_VERIFY_QUEUE_NAME = 'momo-verify-status';
 export interface VerifyStatusJobData {
   organizationId: string;
   transactionId: string;
+  /** Référence fournisseur reçue dans un callback, avant d'être stockée : candidate, prouvée par `getStatus`. */
+  providerReferenceHint?: string;
 }
 
 /**
@@ -53,11 +55,15 @@ export class MomoVerifyQueue implements OnModuleInit, OnModuleDestroy {
       return;
     }
     await this.queue.add('verify', data, {
-      jobId: `momo-verify-${data.transactionId}-${Date.now()}`,
+      // Déterministe : les déclenchements multiples (callbacks répétés, forgés,
+      // rattrapage) d'une même transaction fusionnent tant qu'un job est en
+      // attente ou actif. BullMQ interdit « : » dans un jobId : `verify-<txId>`.
+      // Les jobs terminés sont supprimés, sinon le jobId bloquerait les suivants.
+      jobId: `verify-${data.transactionId}`,
       delay: options?.delay ?? 0,
       attempts: 1,
-      removeOnComplete: 200,
-      removeOnFail: 200,
+      removeOnComplete: true,
+      removeOnFail: true,
     });
   }
 

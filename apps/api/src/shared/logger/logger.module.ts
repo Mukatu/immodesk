@@ -4,6 +4,9 @@ import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/config.schema';
+import { scrubSecretUrl, serializeRequest } from './scrub-secret-url';
+
+export { scrubSecretUrl };
 
 /**
  * Journalisation structurée pino.
@@ -19,6 +22,10 @@ import type { AppConfig } from '../config/config.schema';
           level: config.LOG_LEVEL,
           genReqId: (req: IncomingMessage) =>
             (req.headers['x-request-id'] as string | undefined) ?? randomUUID(),
+          // Le callback OpenPay porte un segment secret dans l'URL : jamais journalisé.
+          serializers: {
+            req: serializeRequest,
+          },
           customProps: () => ({ service: 'immodesk-api' }),
           redact: {
             paths: [

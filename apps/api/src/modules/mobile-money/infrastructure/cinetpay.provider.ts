@@ -31,6 +31,7 @@ export class CinetPayProvider implements MobileMoneyProvider {
   readonly code = 'CINETPAY' as const;
   readonly signatureHeader = 'x-token';
   readonly webhookSource = 'CINETPAY' as const;
+  readonly webhookTrust = 'SIGNED' as const;
   private readonly logger = new Logger(CinetPayProvider.name);
 
   constructor(private readonly config: AppConfigService) {}

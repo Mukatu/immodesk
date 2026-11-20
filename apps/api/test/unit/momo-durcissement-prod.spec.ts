@@ -74,6 +74,7 @@ describe('MobileMoneyProviderRegistry : simulateur et OTHER', () => {
     new MobileMoneyProviderRegistry(
       { code: 'SIMULATOR' } as never,
       { code: 'CINETPAY' } as never,
+      { code: 'OPENPAY' } as never,
       { isProduction: production } as never,
     );
 
@@ -85,7 +86,11 @@ describe('MobileMoneyProviderRegistry : simulateur et OTHER', () => {
     expect(build(true).forCode('cinetpay')).toMatchObject({ code: 'CINETPAY' });
   });
 
-  it.each(['OTHER', 'OPENPAY', 'PAWAPAY'])('forWebhookSource(%s) : aucun parseur', (source) => {
+  it('forWebhookSource(OPENPAY) : rejeu par vérification de statut', () => {
+    expect(build(false).forWebhookSource('OPENPAY')).toMatchObject({ code: 'OPENPAY' });
+  });
+
+  it.each(['OTHER', 'PAWAPAY'])('forWebhookSource(%s) : aucun parseur', (source) => {
     expect(() => build(false).forWebhookSource(source)).toThrow(
       expect.objectContaining({ code: 'PLATFORM.NOT_FOUND' }),
     );
@@ -150,11 +155,14 @@ describe('MomoReconcileService : INITIATED et PENDING', () => {
       { adminClient: () => admin } as never,
       { handlerFor: () => ({ verifyNow, enqueueVerify: jest.fn() }) } as never,
       {} as never,
+      { get: () => 600 } as never,
+      { forCode: jest.fn() } as never,
+      { notifyOutcome: jest.fn() } as never,
     );
-    // 5 h après l'initiation : au-delà de la fenêtre PENDING, mais INITIATED n'expire pas.
+    // 5 h après l'initiation, délai d'expiration INITIATED de 10 h : re-interrogée, non expirée.
     const result = await service.reconcilePending(new Date('2026-09-10T13:00:00Z'));
     expect(result).toEqual({ rechecked: 1, expired: 0 });
-    expect(verifyNow).toHaveBeenCalledWith('org-1', 'i1');
+    expect(verifyNow).toHaveBeenCalledWith('org-1', 'i1', { origin: 'RECONCILE' });
     const [sql, pendingAge, initiatedAge] = admin.$queryRawUnsafe.mock.calls[0] as [
       string,
       number,

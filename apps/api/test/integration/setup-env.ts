@@ -41,6 +41,9 @@ process.env.S3_BUCKET = process.env.S3_BUCKET ?? 'immodesk';
 process.env.S3_ACCESS_KEY = process.env.S3_ACCESS_KEY ?? 'immodesk';
 process.env.S3_SECRET_KEY = process.env.S3_SECRET_KEY ?? 'immodesk123';
 process.env.SWAGGER_ENABLED = 'false';
+// Base de la notify_url des transactions Mobile Money (le simulateur la reecrit
+// vers le port ephemere de l'application testee : pointSimulatorAtTestApp).
+process.env.MOMO_WEBHOOK_BASE_URL = process.env.MOMO_WEBHOOK_BASE_URL ?? 'http://localhost:3000';
 
 // Les specs partagent l'IP 127.0.0.1 : la limite des webhooks est relevee pour
 // ne pas fausser les specs qui en postent beaucoup (webhooks-rate-limit la

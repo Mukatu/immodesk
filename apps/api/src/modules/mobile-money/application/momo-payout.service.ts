@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { newId } from '../../../shared/ids/uuid';
 import type { TenantClient } from '../../../shared/prisma/prisma.service';
@@ -10,6 +11,7 @@ import type {
   MobileMoneyPayoutResult,
 } from '../domain/ports';
 import type { InitiateResult, MobileMoneyProvider, ProviderStatus } from '../domain/ports';
+import { buildMomoNotifyUrl } from '../infrastructure/momo-notify-url';
 import { MobileMoneyProviderRegistry } from '../infrastructure/mobile-money-provider.registry';
 
 /**
@@ -28,7 +30,10 @@ import { MobileMoneyProviderRegistry } from '../infrastructure/mobile-money-prov
  */
 @Injectable()
 export class MomoPayoutService implements MobileMoneyPayoutInitiator {
-  constructor(private readonly registry: MobileMoneyProviderRegistry) {}
+  constructor(
+    private readonly registry: MobileMoneyProviderRegistry,
+    private readonly config: AppConfigService,
+  ) {}
 
   async initiatePayout(
     tx: TenantClient,
@@ -56,6 +61,7 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
         provider: operator === 'MTN' ? 'MTN_MOMO' : 'AIRTEL_MONEY',
         aggregator: provider.code,
         direction: 'OUTBOUND',
+        purpose: 'OWNER_PAYOUT',
         channel: 'AGGREGATOR',
         status: 'INITIATED',
         merchant_reference: input.externalReference,
@@ -76,13 +82,13 @@ export class MomoPayoutService implements MobileMoneyPayoutInitiator {
       operator,
       externalReference: id,
       description: input.description,
-      callbackUrl: '',
+      callbackUrl: buildMomoNotifyUrl(this.config, provider.code),
     });
 
     // Le simulateur (et un agrégateur réel interrogé sans délai) peut avoir
     // déjà résolu la transaction : re-interroger tout de suite évite
-    // d'attendre inutilement un webhook qui, pour un décaissement, n'a pas
-    // de route dédiée (voir la limitation documentée dans domain/ports.ts).
+    // d'attendre inutilement un webhook (qui, lui, est routé par `purpose`
+    // vers `refreshPayoutStatus`, voir `MomoPurposeRouter`).
     // Un SUCCEEDED d'initiation ne porte ni montant ni devise : il est
     // re-vérifié par getStatus, et seul un statut conforme vaut SUCCEEDED.
     const resolved: InitiateResult | ProviderStatus =

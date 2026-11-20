@@ -113,6 +113,7 @@ export class MomoDeclarationsService {
             invoice_id: input.invoiceId ?? null,
             provider: input.provider,
             channel: 'DECLARED',
+            purpose: 'RENT_COLLECTION',
             status: 'DECLARED',
             provider_transaction_id: operatorReference,
             merchant_reference: number,

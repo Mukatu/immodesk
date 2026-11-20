@@ -18,6 +18,7 @@ const baseRow = (overrides: Record<string, unknown> = {}) => ({
   aggregator: 'SIMULATOR',
   aggregator_transaction_id: 'ref-1',
   external_reference: 'txn-1',
+  purpose: 'RENT_COLLECTION',
   merchant_reference: 'MOMO-202609-00001',
   payment_id: 'pay-1',
   invoice_id: 'inv-1',
@@ -45,15 +46,17 @@ function buildVerification(rows: Array<Record<string, unknown>>, getStatus: jest
   };
   const allocation = { allocate: jest.fn().mockResolvedValue({ paidInvoiceIds: [] }) };
   const auditService = { record: jest.fn() };
+  const payouts = { refreshPayoutStatus: jest.fn() };
   const service = new MomoVerificationService(
     prisma as never,
     queries as never,
     registry as never,
     paymentsQueries as never,
     allocation as never,
+    payouts as never,
     auditService as never,
   );
-  return { service, tx, allocation, getStatus };
+  return { service, tx, allocation, getStatus, payouts };
 }
 
 const statusUpdates = (tx: ReturnType<typeof buildVerification>['tx']) =>
@@ -155,7 +158,10 @@ describe('MomoPayoutService.refreshPayoutStatus', () => {
     const getStatus = jest
       .fn()
       .mockResolvedValue({ providerReference: 'ref-1', rawPayload: null, ...status });
-    const service = new MomoPayoutService({ forCode: () => ({ getStatus }) } as never);
+    const service = new MomoPayoutService(
+      { forCode: () => ({ getStatus }) } as never,
+      { get: () => 'http://localhost:3000' } as never,
+    );
     return { service, tx, getStatus };
   };
 
@@ -182,6 +188,27 @@ describe('MomoPayoutService.refreshPayoutStatus', () => {
     await expect(service.refreshPayoutStatus(tx as never, 'txn-1')).rejects.toMatchObject({
       code: 'MOMO.PROVIDER_UNAVAILABLE',
     });
+    expect(getStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('MomoVerificationService : garde-fous par purpose', () => {
+  it('ligne SUBSCRIPTION : ni getStatus ni écriture', async () => {
+    const getStatus = jest.fn();
+    const { service, tx } = buildVerification([baseRow({ purpose: 'SUBSCRIPTION' })], getStatus);
+    await service.verifyStatus('org-1', 'txn-1');
+    expect(getStatus).not.toHaveBeenCalled();
+    expect(tx.mobile_money_transactions.update).not.toHaveBeenCalled();
+  });
+
+  it('ligne OWNER_PAYOUT : déléguée au décaissement', async () => {
+    const getStatus = jest.fn();
+    const { service, payouts } = buildVerification(
+      [baseRow({ purpose: 'OWNER_PAYOUT' })],
+      getStatus,
+    );
+    await service.verifyStatus('org-1', 'txn-1');
+    expect(payouts.refreshPayoutStatus).toHaveBeenCalledTimes(1);
     expect(getStatus).not.toHaveBeenCalled();
   });
 });

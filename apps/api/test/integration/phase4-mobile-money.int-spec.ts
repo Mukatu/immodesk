@@ -1,5 +1,6 @@
 import { newId as uuidv7 } from '../../src/shared/ids/uuid';
 import { MobileMoneyProviderRegistry } from '../../src/modules/mobile-money/infrastructure/mobile-money-provider.registry';
+import { webhookBodyHash } from '../../src/modules/mobile-money/domain/webhook-signature';
 import { MomoReconcileService } from '../../src/modules/mobile-money/application/momo-reconcile.service';
 import { api, startTestApp, stopTestApp, type TestContext } from './helpers';
 import {
@@ -236,10 +237,16 @@ describe('Phase 4 — Mobile Money agrégateur (simulateur)', () => {
     const res = await postSimulatorWebhook(ctx, body, 'signature-invalide');
     expect(res.status).toBe(200);
 
+    // Non signé : aucune organisation, aucun corps conservé, clé `unsigned:<sha256>`.
     const event = await ctx.admin.webhook_events.findFirst({
-      where: { external_event_id: `forged-${transaction.id}` },
+      where: { external_event_id: `unsigned:${webhookBodyHash(Buffer.from(body))}` },
     });
-    expect(event).toMatchObject({ signature_valid: false, status: 'IGNORED' });
+    expect(event).toMatchObject({
+      signature_valid: false,
+      status: 'IGNORED',
+      organization_id: null,
+    });
+    expect(JSON.stringify(event?.raw_payload)).not.toContain(transaction.id);
 
     const still = await ctx.admin.mobile_money_transactions.findUnique({
       where: { id: transaction.id },

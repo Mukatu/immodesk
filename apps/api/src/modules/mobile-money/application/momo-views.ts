@@ -13,6 +13,7 @@ export interface MomoTransactionRow {
   provider: string;
   aggregator: string | null;
   channel: string;
+  purpose: 'RENT_COLLECTION' | 'SUBSCRIPTION' | 'OWNER_PAYOUT';
   status: string;
   provider_transaction_id: string | null;
   aggregator_transaction_id: string | null;

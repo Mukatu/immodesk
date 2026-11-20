@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { MomoAggregatorService } from './application/momo-aggregator.service';
 import { MomoDeclarationsService } from './application/momo-declarations.service';
+import { MomoPurposeRouter } from './application/momo-purpose-router';
 import { MomoPayoutService } from './application/momo-payout.service';
 import { MomoQueryService } from './application/momo-query.service';
 import { MomoReconcileService } from './application/momo-reconcile.service';
@@ -45,6 +46,7 @@ import { MobileMoneyController } from './presentation/mobile-money.controller';
     MomoVerificationService,
     MomoReconcileService,
     MomoPayoutService,
+    MomoPurposeRouter,
     { provide: MOMO_PAYOUT_INITIATOR, useExisting: MomoPayoutService },
   ],
   exports: [
@@ -54,6 +56,7 @@ import { MobileMoneyController } from './presentation/mobile-money.controller';
     MomoAggregatorService,
     MomoVerificationService,
     MomoReconcileService,
+    MomoPurposeRouter,
     MOMO_PAYOUT_INITIATOR,
   ],
 })

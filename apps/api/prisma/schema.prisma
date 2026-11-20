@@ -1478,6 +1478,8 @@ model mobile_money_transactions {
   verified_by_user_id                                        String?                 @db.Uuid
   verified_at                                                DateTime?               @db.Timestamptz(6)
   rejection_reason                                           String?
+  /// Usage de la transaction : route webhooks, rejeu et rattrapage (migration 10).
+  purpose                                                    momo_purpose
   users_mobile_money_transactions_declared_by_user_idTousers users?                  @relation("mobile_money_transactions_declared_by_user_idTousers", fields: [declared_by_user_id], references: [id], onUpdate: NoAction)
   rent_invoices                                              rent_invoices?          @relation(fields: [invoice_id], references: [id], onUpdate: NoAction)
   leases                                                     leases?                 @relation(fields: [lease_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
@@ -3529,4 +3531,10 @@ enum webhook_status {
 enum momo_channel {
   AGGREGATOR
   DECLARED
+}
+
+enum momo_purpose {
+  RENT_COLLECTION
+  SUBSCRIPTION
+  OWNER_PAYOUT
 }

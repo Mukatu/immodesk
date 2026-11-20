@@ -316,14 +316,14 @@ laisser Puppeteer télécharger son propre binaire à chaque build.
 
 ### Mobile Money et virement déclaré (phase 4)
 
-| Variable                                        | Rôle                                                                                                                   |
-| :---------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
-| `MOMO_PROVIDER_DEFAULT`                         | `SIMULATOR` (défaut) ou `CINETPAY`. Choix repris par organisation via `paymentMethods.mobileMoneyAggregator.provider`. |
-| `MOMO_SIMULATOR_DELAY_MS`                       | Délai avant que le simulateur envoie son webhook signé (1 500 ms par défaut).                                          |
-| `MOMO_SIMULATOR_SECRET`                         | Secret HMAC du simulateur (en-tête `x-simulator-signature`).                                                           |
-| `MOMO_WEBHOOK_BASE_URL`                         | URL publique par laquelle le simulateur, puis CinetPay, rappellent l'API.                                              |
-| `CINETPAY_API_KEY` / `_SITE_ID` / `_SECRET_KEY` | Identifiants marchands CinetPay. Obligatoires si `MOMO_PROVIDER_DEFAULT=CINETPAY`.                                     |
-| `CINETPAY_BASE_URL`                             | Racine de l'API CinetPay (`https://api-checkout.cinetpay.com`).                                                        |
+| Variable                                        | Rôle                                                                                                                                                                                                    |
+| :---------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `MOMO_PROVIDER_DEFAULT`                         | `SIMULATOR` (défaut) ou `CINETPAY`. Choix repris par organisation via `paymentMethods.mobileMoneyAggregator.provider`.                                                                                  |
+| `MOMO_SIMULATOR_DELAY_MS`                       | Délai avant que le simulateur envoie son webhook signé (1 500 ms par défaut).                                                                                                                           |
+| `MOMO_SIMULATOR_SECRET`                         | Secret HMAC du simulateur (en-tête `x-simulator-signature`).                                                                                                                                            |
+| `MOMO_WEBHOOK_BASE_URL`                         | URL publique de l'API vue par l'agrégateur : base de la `notify_url` de chaque transaction (`{base}/v1/webhooks/mobile-money/{fournisseur}`). https public exigé en production avec un agrégateur réel. |
+| `CINETPAY_API_KEY` / `_SITE_ID` / `_SECRET_KEY` | Identifiants marchands CinetPay. Obligatoires si `MOMO_PROVIDER_DEFAULT=CINETPAY`.                                                                                                                      |
+| `CINETPAY_BASE_URL`                             | Racine de l'API CinetPay (`https://api-checkout.cinetpay.com`).                                                                                                                                         |
 
 Le simulateur (`SimulatedMobileMoneyProvider`) est piloté par les deux
 derniers chiffres du numéro payeur : `…01` succès, `…02` échec, `…03` aucune
@@ -348,6 +348,19 @@ part par défaut :
    `CINETPAY_API_KEY`, `CINETPAY_SITE_ID`, `CINETPAY_SECRET_KEY` renseignés
    (le démarrage échoue sinon si `MOMO_PROVIDER_DEFAULT=CINETPAY`) et un
    contrat commercial signé.
+
+**Webhooks et `notify_url`.** Tous les webhooks Mobile Money (loyers,
+abonnements, reversements) sont reçus par une ingestion unique, sur
+`POST /v1/webhooks/mobile-money/{fournisseur}` (la route historique
+`/subscription` converge vers la même, avec `MOMO_PROVIDER_DEFAULT`). La
+signature est vérifiée en premier : un webhook non signé n'est rattaché à
+aucune organisation et seul son hash et sa taille sont conservés. Le
+traitement est choisi par `mobile_money_transactions.purpose`
+(`RENT_COLLECTION`, `SUBSCRIPTION`, `OWNER_PAYOUT`), jamais par l'URL. Contrat
+pour tout fournisseur (`domain/ports.ts`) : `verifyWebhook` ne jette jamais,
+`parseWebhook` lève une erreur contrôlée, `initiate` refuse une `notify_url`
+vide. En production, avec un agrégateur réel, `MOMO_WEBHOOK_BASE_URL` doit être
+une URL https publique, sinon le démarrage échoue.
 
 **CinetPay : champs à confirmer.** L'adaptateur (`infrastructure/cinetpay.provider.ts`)
 est écrit et testable (analyse de webhook, calcul de signature) mais les noms

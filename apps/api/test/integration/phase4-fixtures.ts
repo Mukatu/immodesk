@@ -23,13 +23,17 @@ export function signSimulatorWebhook(
   return { body, signature: signHmac(body, secret) };
 }
 
-/** POST brut vers `/webhooks/mobile-money/simulator`, hors passerelle `api()` (corps déjà sérialisé). */
+/**
+ * POST brut vers `/webhooks/mobile-money/{path}` (par défaut `simulator`),
+ * hors passerelle `api()` (corps déjà sérialisé).
+ */
 export async function postSimulatorWebhook(
   ctx: TestContext,
   body: string,
   signature: string | null,
+  path = 'simulator',
 ): Promise<{ status: number }> {
-  const response = await fetch(`${ctx.baseUrl}/webhooks/mobile-money/simulator`, {
+  const response = await fetch(`${ctx.baseUrl}/webhooks/mobile-money/${path}`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',

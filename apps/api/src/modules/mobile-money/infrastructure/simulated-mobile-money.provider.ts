@@ -8,12 +8,15 @@ import type {
   ProviderStatus,
   RawWebhook,
 } from '../domain/ports';
-import { signHmac, verifyHmacSignature } from '../domain/webhook-signature';
+import { isRecord, signHmac, verifyHmacSignature } from '../domain/webhook-signature';
+import { DomainError } from '../../../shared/errors/domain-error';
+import { buildMomoNotifyUrl } from './momo-notify-url';
 
 interface SimulatedTransaction {
   amount: bigint;
   currency: string;
   suffix: string;
+  callbackUrl: string;
 }
 
 /**
@@ -25,6 +28,8 @@ interface SimulatedTransaction {
 @Injectable()
 export class SimulatedMobileMoneyProvider implements MobileMoneyProvider {
   readonly code = 'SIMULATOR' as const;
+  readonly signatureHeader = 'x-simulator-signature';
+  readonly webhookSource = 'OTHER' as const;
   private readonly logger = new Logger(SimulatedMobileMoneyProvider.name);
   private readonly memory = new Map<string, SimulatedTransaction>();
 
@@ -36,6 +41,7 @@ export class SimulatedMobileMoneyProvider implements MobileMoneyProvider {
       amount: input.amount,
       currency: input.currency,
       suffix,
+      callbackUrl: input.callbackUrl,
     });
 
     if (suffix === '06') {
@@ -90,6 +96,13 @@ export class SimulatedMobileMoneyProvider implements MobileMoneyProvider {
       amount?: string;
       currency?: string;
     };
+    if (
+      !isRecord(raw.body) ||
+      typeof body.merchantReference !== 'string' ||
+      body.merchantReference === ''
+    ) {
+      throw new DomainError('VALIDATION.INVALID_PAYLOAD', { reason: 'merchantReference absent' });
+    }
     // Le champ du corps garde son nom historique (`merchantReference`), mais
     // porte la clé envoyée à `initiate`, c'est-à-dire l'`external_reference`.
     return {
@@ -103,7 +116,7 @@ export class SimulatedMobileMoneyProvider implements MobileMoneyProvider {
   }
 
   verifyWebhook(raw: RawWebhook): boolean {
-    const header = raw.headers['x-simulator-signature'];
+    const header = raw.headers[this.signatureHeader];
     const value = Array.isArray(header) ? header[0] : header;
     return verifyHmacSignature(raw.rawBody, value, this.config.get('MOMO_SIMULATOR_SECRET'));
   }
@@ -122,7 +135,10 @@ export class SimulatedMobileMoneyProvider implements MobileMoneyProvider {
     };
     const body = JSON.stringify(payload);
     const signature = signHmac(body, this.config.get('MOMO_SIMULATOR_SECRET'));
-    const url = `${this.config.get('MOMO_WEBHOOK_BASE_URL')}/${this.config.get('API_GLOBAL_PREFIX')}/webhooks/mobile-money/simulator`;
+    // Même URL que celle transmise à `initiate` : le simulateur exerce le
+    // chemin de production (repli sur l'URL calculée si elle était vide).
+    const url =
+      this.memory.get(merchantReference)?.callbackUrl || buildMomoNotifyUrl(this.config, this.code);
     try {
       await fetch(url, {
         method: 'POST',

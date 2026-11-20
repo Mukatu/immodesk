@@ -19,6 +19,7 @@ import type {
   MobileMoneyProvider,
   ProviderStatus,
 } from '../../mobile-money/domain/ports';
+import { buildMomoNotifyUrl } from '../../mobile-money/infrastructure/momo-notify-url';
 import { MobileMoneyProviderRegistry } from '../../mobile-money/infrastructure/mobile-money-provider.registry';
 import {
   ReferralQualificationService,
@@ -119,6 +120,7 @@ export class SubscriptionPaymentsService {
           provider: operator === 'MTN' ? 'MTN_MOMO' : 'AIRTEL_MONEY',
           aggregator: aggregatorCode,
           channel: 'AGGREGATOR',
+          purpose: 'SUBSCRIPTION',
           status: 'INITIATED',
           merchant_reference: merchantReference,
           // Clé fournisseur unique sur la plateforme (migration 9).
@@ -156,7 +158,7 @@ export class SubscriptionPaymentsService {
       operator: prepared.operator,
       externalReference: prepared.transactionId,
       description: `Abonnement Immodesk ${prepared.merchantReference}`,
-      callbackUrl: '',
+      callbackUrl: buildMomoNotifyUrl(this.config, provider.code),
     });
 
     await this.prisma.withTenant(organizationId, userId, async (tx) => {
@@ -211,7 +213,8 @@ export class SubscriptionPaymentsService {
     const paidEvent = await this.prisma.withTenant(organizationId, null, async (tx) => {
       const rows = await tx.$queryRawUnsafe<MobileMoneyTransactionRow[]>(
         `SELECT id, organization_id, status, aggregator, aggregator_transaction_id, external_reference, merchant_reference, amount, currency
-           FROM mobile_money_transactions WHERE id = $1::uuid AND organization_id = $2::uuid FOR UPDATE`,
+           FROM mobile_money_transactions
+          WHERE id = $1::uuid AND organization_id = $2::uuid AND purpose = 'SUBSCRIPTION' FOR UPDATE`,
         transactionId,
         organizationId,
       );

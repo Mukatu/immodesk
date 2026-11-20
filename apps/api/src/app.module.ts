@@ -98,14 +98,9 @@ import { TenantContextInterceptor } from './shared/tenant/tenant-context.interce
     CashModule,
     ReceiptsModule,
     PlatformModule,
-    // `subscriptions` (phase 10) est importé ICI, AVANT `webhooks` : sa route
-    // `POST /webhooks/mobile-money/subscription` doit s'enregistrer avant la
-    // route générique `POST /webhooks/mobile-money/:provider` de `webhooks`,
-    // faute de quoi Express (premier motif compatible gagne, sans égard à sa
-    // spécificité) router­ait « subscription » vers `:provider` et casserait
-    // le webhook dédié. `subscriptions` importe `mobile-money` mais jamais
-    // `webhooks` : c'est ce qui garantit que le graphe scanné par Nest ne
-    // fait apparaître le contrôleur générique qu'après le nôtre.
+    // `subscriptions` (phase 10) : ses webhooks Mobile Money sont reçus par
+    // `webhooks` (ingestion unique) puis routés par `purpose`. L'ordre
+    // d'import n'est plus requis ; il est conservé tel quel.
     SubscriptionsModule,
     // Phase 4 — Mobile Money, virement déclaré, webhooks. `mobile-money`
     // publie le registre de fournisseurs et la file de vérification que

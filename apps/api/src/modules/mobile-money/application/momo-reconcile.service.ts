@@ -6,7 +6,8 @@ import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
 import { readOperationalSettings } from '../../../shared/settings/operational-settings';
 import { isDueForRecheck, isExpired } from '../domain/reconcile-rules';
-import { MomoVerificationService } from './momo-verification.service';
+import type { MomoPurpose } from '../domain/momo-purpose';
+import { MomoPurposeRouter } from './momo-purpose-router';
 
 interface PendingRow {
   id: string;
@@ -15,6 +16,7 @@ interface PendingRow {
   status_checked_at: Date | null;
   status_check_count: number;
   external_reference: string | null;
+  purpose: MomoPurpose;
 }
 
 /**
@@ -30,14 +32,14 @@ export class MomoReconcileService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly verification: MomoVerificationService,
+    private readonly router: MomoPurposeRouter,
     private readonly auditService: AuditService,
   ) {}
 
   async reconcilePending(now: Date = new Date()): Promise<{ rechecked: number; expired: number }> {
     const admin = this.adminClient();
     const rows = await admin.$queryRawUnsafe<PendingRow[]>(
-      `SELECT id, organization_id, initiated_at, status_checked_at, status_check_count, external_reference
+      `SELECT id, organization_id, initiated_at, status_checked_at, status_check_count, external_reference, purpose
          FROM mobile_money_transactions
         WHERE channel = 'AGGREGATOR' AND status = 'PENDING'
           AND initiated_at <= now() - interval '3 minutes'`,
@@ -67,7 +69,14 @@ export class MomoReconcileService {
         continue;
       }
       if (isDueForRecheck(row.status_checked_at, row.initiated_at, row.status_check_count, now)) {
-        await this.verification.verifyStatus(row.organization_id, row.id);
+        const handler = this.router.handlerFor(row.purpose);
+        if (!handler) {
+          this.logger.warn(
+            `MOMO.RECONCILE_NO_HANDLER transaction=${row.id} purpose=${row.purpose} : aucun traitement inscrit`,
+          );
+          continue;
+        }
+        await handler.verifyNow(row.organization_id, row.id);
         rechecked += 1;
       }
     }

@@ -20,6 +20,11 @@ export interface InitiatePaymentInput {
    */
   externalReference: string;
   description: string;
+  /**
+   * `notify_url` propre à la transaction (même URL pour tous les usages, le
+   * routage se fait par `purpose`). Tout fournisseur réel doit la transmettre
+   * et refuser d'initier si elle est vide.
+   */
   callbackUrl: string;
 }
 
@@ -61,16 +66,31 @@ export interface ParsedWebhook {
 export interface MobileMoneyProvider {
   readonly code: 'SIMULATOR' | 'CINETPAY' | 'PAWAPAY' | 'MTN_MOMO' | 'AIRTEL_MONEY';
 
+  /** En-tête (minuscules) qui porte la signature du webhook de ce fournisseur. */
+  readonly signatureHeader: string;
+
+  /** Valeur de `webhook_events.source` pour les webhooks de ce fournisseur. */
+  readonly webhookSource: 'CINETPAY' | 'OTHER';
+
   /** Déclenche le push USSD/STK sur le téléphone du payeur. */
   initiate(input: InitiatePaymentInput): Promise<InitiateResult>;
 
   /** Source de vérité : interroge le fournisseur. Aucune confirmation sans cet appel. */
   getStatus(providerReference: string): Promise<ProviderStatus>;
 
-  /** Normalise un corps de webhook hétérogène vers un évènement interne. */
+  /**
+   * Normalise un corps de webhook hétérogène vers un évènement interne.
+   * CONTRAT pour tout fournisseur : lever une `DomainError` contrôlée
+   * (`VALIDATION.INVALID_PAYLOAD`) si le corps n'est pas un objet ou n'a pas
+   * la référence attendue, jamais une TypeError. L'ingestion la capte.
+   */
   parseWebhook(raw: RawWebhook): ParsedWebhook;
 
-  /** Vérifie signature HMAC, horodatage et anti-rejeu. Retourne un booléen, ne jette pas. */
+  /**
+   * Vérifie signature HMAC, horodatage et anti-rejeu. Retourne un booléen,
+   * ne jette JAMAIS, quel que soit le corps (null, tableau, scalaire) ou la
+   * configuration (secret absent : journalisé, puis `false`).
+   */
   verifyWebhook(raw: RawWebhook): boolean;
 }
 

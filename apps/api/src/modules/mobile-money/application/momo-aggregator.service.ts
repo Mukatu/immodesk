@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AppConfigService } from '../../../shared/config/config.module';
 import { DomainError } from '../../../shared/errors/domain-error';
 import { newId } from '../../../shared/ids/uuid';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
@@ -15,6 +16,7 @@ import {
   type MomoQuoteResult,
 } from '../domain/momo-rules';
 import { MobileMoneyProviderRegistry } from '../infrastructure/mobile-money-provider.registry';
+import { buildMomoNotifyUrl } from '../infrastructure/momo-notify-url';
 import { MomoVerifyQueue } from '../infrastructure/momo-verify.queue';
 import { MomoQueryService, type MomoReader } from './momo-query.service';
 import { toMomoTransactionView, type MomoTransactionView } from './momo-views';
@@ -38,6 +40,7 @@ export class MomoAggregatorService {
     private readonly registry: MobileMoneyProviderRegistry,
     private readonly verifyQueue: MomoVerifyQueue,
     private readonly auditService: AuditService,
+    private readonly config: AppConfigService,
   ) {}
 
   async quote(organizationId: string, userId: string, amount: bigint): Promise<MomoQuoteResult> {
@@ -127,6 +130,7 @@ export class MomoAggregatorService {
             provider: operator === 'MTN' ? 'MTN_MOMO' : 'AIRTEL_MONEY',
             aggregator: aggregator.provider,
             channel: 'AGGREGATOR',
+            purpose: 'RENT_COLLECTION',
             status: 'INITIATED',
             merchant_reference: merchantRef,
             // Clé fournisseur unique sur la plateforme (migration 9) :
@@ -161,7 +165,7 @@ export class MomoAggregatorService {
       operator,
       externalReference: transactionId,
       description: `Paiement Mobile Money ${merchantReference}`,
-      callbackUrl: '',
+      callbackUrl: buildMomoNotifyUrl(this.config, provider.code),
     });
 
     await this.prisma.withTenant(organizationId, reader.userId, async (tx) => {

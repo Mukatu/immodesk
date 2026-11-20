@@ -118,6 +118,7 @@ async function seedMomoDeclaration(
       invoice_id: input.invoiceId,
       provider: 'MTN_MOMO',
       channel: 'DECLARED',
+      purpose: 'RENT_COLLECTION',
       status: 'DECLARED',
       provider_transaction_id: `MP${ym(now)}.SEED.A56789`,
       merchant_reference: merchantReference,

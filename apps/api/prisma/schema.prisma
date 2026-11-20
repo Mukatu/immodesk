@@ -3240,6 +3240,7 @@ enum momo_provider {
   AIRTEL_MONEY
   CINETPAY
   PAWAPAY
+  OPENPAY
   OTHER
 }
 
@@ -3517,6 +3518,7 @@ enum webhook_source {
   AIRTEL_MONEY
   WHATSAPP_CLOUD
   SMS_GATEWAY
+  OPENPAY
   OTHER
 }
 

@@ -22,6 +22,15 @@ const PRODUCTION_SECRETS = {
   MOMO_SIMULATOR_SECRET: 'momo-simulator-secret-prod',
 };
 
+/** Agrégateur réel obligatoire en production (le simulateur y est interdit). */
+const PRODUCTION_MOMO = {
+  MOMO_PROVIDER_DEFAULT: 'CINETPAY',
+  CINETPAY_API_KEY: 'k',
+  CINETPAY_SITE_ID: 's',
+  CINETPAY_SECRET_KEY: 'x',
+  MOMO_WEBHOOK_BASE_URL: 'https://api.immodesk.cg',
+};
+
 describe('configuration : secrets de développement en production', () => {
   it('accepte les valeurs par défaut hors production', () => {
     expect(() => validateConfig({ ...BASE, NODE_ENV: 'development' })).not.toThrow();
@@ -49,6 +58,7 @@ describe('configuration : secrets de développement en production', () => {
       validateConfig({
         ...BASE,
         ...PRODUCTION_SECRETS,
+        ...PRODUCTION_MOMO,
         NODE_ENV: 'production',
         CORS_ALLOWED_ORIGINS: 'https://immodesk.watuneed.fr',
       }),
@@ -81,6 +91,7 @@ describe('configuration : CORS_ALLOWED_ORIGINS obligatoire en production', () =>
       validateConfig({
         ...BASE,
         ...PRODUCTION_SECRETS,
+        ...PRODUCTION_MOMO,
         NODE_ENV: 'production',
         CORS_ALLOWED_ORIGINS: 'https://immodesk.watuneed.fr',
       }),

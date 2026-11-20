@@ -8,6 +8,7 @@ import { buildKeyset, keysetOrderBy } from '../../../shared/pagination/keyset';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
+import { MOMO_WEBHOOK_ENQUEUE_FAILED } from '../../mobile-money/infrastructure/momo-reference-resolver';
 import { toWebhookEventView, type WebhookEventRow, type WebhookEventView } from './webhook-views';
 
 export interface WebhookPersistInput {
@@ -55,7 +56,9 @@ export class WebhookEventsService {
    * jamais l'arrivée ultérieure du même `external_event_id` correctement
    * signé — sinon un tiers pourrait « réserver » à l'avance l'identifiant
    * d'une notification légitime et la faire ignorer. La ligne est alors
-   * reprise (même `id`) et traitée normalement.
+   * reprise (même `id`) et traitée normalement. Même reprise pour un événement
+   * FAILED faute d'avoir pu être mis en file (`MOMO.WEBHOOK_ENQUEUE_FAILED`) :
+   * la relance du fournisseur le retraite au lieu d'être ignorée en doublon.
    */
   async persist(input: WebhookPersistInput): Promise<{ id: string; duplicate: boolean }> {
     const id = newId();
@@ -75,7 +78,10 @@ export class WebhookEventsService {
              raw_payload = EXCLUDED.raw_payload,
              error_message = NULL,
              updated_at = now()
-         WHERE webhook_events.signature_valid = false AND EXCLUDED.signature_valid = true
+         WHERE (webhook_events.signature_valid = false AND EXCLUDED.signature_valid = true)
+            OR (webhook_events.status = 'FAILED'
+                AND webhook_events.error_message = $12
+                AND EXCLUDED.signature_valid = true)
        RETURNING id`,
       id,
       input.organizationId,
@@ -88,6 +94,7 @@ export class WebhookEventsService {
       input.sourceIp,
       JSON.stringify(input.headers ?? {}),
       JSON.stringify(input.rawPayload ?? {}),
+      MOMO_WEBHOOK_ENQUEUE_FAILED,
     );
     if (rows.length === 0) {
       this.logger.debug(

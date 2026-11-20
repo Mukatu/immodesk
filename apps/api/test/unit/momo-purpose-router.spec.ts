@@ -180,9 +180,19 @@ describe('configuration : MOMO_WEBHOOK_BASE_URL en production', () => {
     ).not.toThrow();
   });
 
-  it('ne contraint pas le simulateur seul', () => {
-    const { CINETPAY_API_KEY, CINETPAY_SITE_ID, CINETPAY_SECRET_KEY, ...rest } = PROD;
-    void [CINETPAY_API_KEY, CINETPAY_SITE_ID, CINETPAY_SECRET_KEY];
-    expect(() => validateConfig({ ...rest, MOMO_PROVIDER_DEFAULT: 'SIMULATOR' })).not.toThrow();
+  it('hors production, le simulateur reste le défaut sans contrainte', () => {
+    const {
+      CINETPAY_API_KEY,
+      CINETPAY_SITE_ID,
+      CINETPAY_SECRET_KEY,
+      MOMO_PROVIDER_DEFAULT,
+      ...rest
+    } = PROD;
+    void [CINETPAY_API_KEY, CINETPAY_SITE_ID, CINETPAY_SECRET_KEY, MOMO_PROVIDER_DEFAULT];
+    const dev = { ...rest, NODE_ENV: 'development' };
+    expect(validateConfig(dev).MOMO_PROVIDER_DEFAULT).toBe('SIMULATOR');
+    expect(
+      validateConfig({ ...dev, MOMO_PROVIDER_DEFAULT: 'SIMULATOR' }).MOMO_PROVIDER_DEFAULT,
+    ).toBe('SIMULATOR');
   });
 });

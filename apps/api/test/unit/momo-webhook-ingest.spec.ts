@@ -147,6 +147,29 @@ describe('MomoWebhookIngestService.ingest', () => {
     expect(rentQueue.enqueue).not.toHaveBeenCalled();
   });
 
+  it('mismatch de fournisseur : l’événement n’est PAS rattaché à l’organisation', async () => {
+    const { service, events } = build({ aggregator: 'CINETPAY' });
+    await ingest(service);
+    expect(events.persist).toHaveBeenCalledWith(expect.objectContaining({ organizationId: null }));
+  });
+
+  it('échec de mise en file : FAILED ENQUEUE_FAILED (pas PROCESSING), journalisé', async () => {
+    const { service, events, rentQueue } = build({});
+    rentQueue.enqueue.mockRejectedValueOnce(new Error('redis down'));
+    const errorSpy = jest
+      .spyOn((service as unknown as { logger: { error: () => void } }).logger, 'error')
+      .mockImplementation(() => undefined);
+    await ingest(service);
+    expect(events.markStatus).toHaveBeenNthCalledWith(1, 'evt-1', 'PROCESSING');
+    expect(events.markStatus).toHaveBeenLastCalledWith(
+      'evt-1',
+      'FAILED',
+      expect.objectContaining({ errorMessage: 'MOMO.WEBHOOK_ENQUEUE_FAILED' }),
+    );
+    expect(events.markStatus).not.toHaveBeenCalledWith('evt-1', 'PROCESSED', expect.anything());
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('redis down'));
+  });
+
   it('signé mais illisible : FAILED PAYLOAD_INVALID, sans résolution', async () => {
     const { service, events, queryRawUnsafe } = build({
       parse: () => {
@@ -183,6 +206,23 @@ describe('MomoWebhookIngestService.ingest', () => {
 });
 
 describe('MomoWebhookIngestService.replay', () => {
+  it('source sans parseur (OTHER/OPENPAY) : FAILED, aucun routage', async () => {
+    const { service, events, rentQueue } = build({ eventRow: { source: 'OTHER' } });
+    // Le registre réel lève pour OTHER : on le simule ici.
+    (
+      service as unknown as { registry: { forWebhookSource: jest.Mock } }
+    ).registry.forWebhookSource = jest.fn(() => {
+      throw new DomainError('PLATFORM.NOT_FOUND');
+    });
+    await service.replay('org-1', 'user-1', 'evt-1');
+    expect(events.markStatus).toHaveBeenCalledWith(
+      'evt-1',
+      'FAILED',
+      expect.objectContaining({ errorMessage: 'MOMO.WEBHOOK_PAYLOAD_INVALID' }),
+    );
+    expect(rentQueue.enqueue).not.toHaveBeenCalled();
+  });
+
   it('événement non signé : REPLAY_NOT_ALLOWED, ni markStatus ni file', async () => {
     const { service, events, rentQueue } = build({ eventRow: { signature_valid: false } });
     await expect(service.replay('org-1', 'user-1', 'evt-1')).rejects.toMatchObject({

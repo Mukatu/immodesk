@@ -218,7 +218,9 @@ export const configSchema = z
     // n'a pas encore choisi (`paymentMethods.mobileMoneyAggregator.provider`
     // fait foi sinon). Le simulateur est le seul actif hors production tant
     // que le contrat CinetPay n'est pas signé (arbitrage 6 du contrat phase 4).
-    MOMO_PROVIDER_DEFAULT: z.enum(['SIMULATOR', 'CINETPAY']).default('SIMULATOR'),
+    // Sans valeur : SIMULATOR hors production (voir la fin de ce schéma) ; en
+    // production la variable est OBLIGATOIRE et ne peut pas valoir SIMULATOR.
+    MOMO_PROVIDER_DEFAULT: z.enum(['SIMULATOR', 'CINETPAY']).optional(),
     MOMO_SIMULATOR_DELAY_MS: z.coerce.number().int().nonnegative().default(1500),
     MOMO_SIMULATOR_SECRET: z.string().min(8).default(DEV_SECRET_DEFAULTS.MOMO_SIMULATOR_SECRET),
     // URL publique par laquelle le simulateur (et CinetPay) rappellent l'API.
@@ -376,6 +378,24 @@ export const configSchema = z
           'CINETPAY_API_KEY, CINETPAY_SITE_ID et CINETPAY_SECRET_KEY sont obligatoires lorsque MOMO_PROVIDER_DEFAULT vaut CINETPAY.',
       });
     }
+    // Le simulateur confirme n'importe quelle transaction : jamais en
+    // production, et jamais par repli implicite.
+    if (cfg.NODE_ENV === 'production' && cfg.MOMO_PROVIDER_DEFAULT === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['MOMO_PROVIDER_DEFAULT'],
+        message:
+          "MOMO_PROVIDER_DEFAULT est obligatoire en production (aucun repli silencieux sur le simulateur) : renseigner l'agrégateur réel, par exemple CINETPAY.",
+      });
+    }
+    if (cfg.NODE_ENV === 'production' && cfg.MOMO_PROVIDER_DEFAULT === 'SIMULATOR') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['MOMO_PROVIDER_DEFAULT'],
+        message:
+          "MOMO_PROVIDER_DEFAULT=SIMULATOR est interdit en production : le simulateur confirme n'importe quelle transaction.",
+      });
+    }
     // Tout agrégateur réel (autre que le simulateur) rappelle l'API à
     // l'adresse `notify_url` fournie à chaque transaction, construite depuis
     // MOMO_WEBHOOK_BASE_URL : en production, l'URL doit être publique et en
@@ -425,7 +445,13 @@ export const configSchema = z
         }
       }
     }
-  });
+  })
+  .transform((cfg) => ({
+    ...cfg,
+    // Atteint seulement hors production : la production sans valeur a été
+    // refusée plus haut.
+    MOMO_PROVIDER_DEFAULT: cfg.MOMO_PROVIDER_DEFAULT ?? ('SIMULATOR' as const),
+  }));
 
 export type AppConfig = z.infer<typeof configSchema>;
 

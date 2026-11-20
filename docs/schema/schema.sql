@@ -1694,6 +1694,8 @@ COMMENT ON COLUMN mobile_money_transactions.proof_document_id IS 'Capture d''éc
 ALTER TABLE mobile_money_transactions ADD CONSTRAINT momo_channel_chk CHECK (
     (channel = 'AGGREGATOR' AND aggregator IS NOT NULL) OR (channel = 'DECLARED' AND provider_transaction_id IS NOT NULL));
 CREATE INDEX momo_payload_gin ON mobile_money_transactions USING GIN (raw_payload jsonb_path_ops);
+CREATE UNIQUE INDEX momo_openpay_ref_uk ON mobile_money_transactions (aggregator, aggregator_transaction_id)
+    WHERE aggregator = 'OPENPAY' AND aggregator_transaction_id IS NOT NULL;
 -- =====================================================================
 -- Partie 08a : Rapprochement — relevés bancaires importés
 -- =====================================================================

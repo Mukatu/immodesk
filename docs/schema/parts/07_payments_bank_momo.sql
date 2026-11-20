@@ -111,6 +111,7 @@ CREATE TABLE mobile_money_transactions (
     expires_at             TIMESTAMPTZ,
     status_checked_at      TIMESTAMPTZ,
     status_check_count     SMALLINT NOT NULL DEFAULT 0 CHECK (status_check_count >= 0),
+    payout_execute_sent_at TIMESTAMPTZ,
     failure_code           TEXT,
     failure_message        TEXT,
     raw_payload            JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -143,7 +144,8 @@ CREATE INDEX momo_payer_idx ON mobile_money_transactions (organization_id, payer
 CREATE INDEX momo_declared_pending_idx ON mobile_money_transactions (organization_id, initiated_at DESC)
     WHERE channel = 'DECLARED' AND status = 'DECLARED';
 COMMENT ON COLUMN mobile_money_transactions.channel IS 'AGGREGATOR : initiée via MobileMoneyProvider ; DECLARED : transfert direct vers le numéro du bailleur déclaré par le locataire (référence opérateur saisie), à vérifier manuellement ou par relevé opérateur.';
-COMMENT ON COLUMN mobile_money_transactions.aggregator IS 'Nom de l''agrégateur (CINETPAY, PAWAPAY) ; NULL pour une transaction déclarée.';
+COMMENT ON COLUMN mobile_money_transactions.aggregator IS 'Nom de l''agrégateur (CINETPAY, OPENPAY, PAWAPAY) ; NULL pour une transaction déclarée. OPENPAY : aggregator_transaction_id porte la référence PTXN d''un encaissement, ou l''UUID v4 (external_reference) d''un retrait programmé.';
+COMMENT ON COLUMN mobile_money_transactions.payout_execute_sent_at IS 'Horodatage de l''ordre d''exécution d''un retrait programmé (reversement OpenPay), posé avant l''appel au fournisseur : s''il est renseigné, l''exécution n''est jamais relancée automatiquement.';
 COMMENT ON COLUMN mobile_money_transactions.proof_document_id IS 'Capture d''écran facultative du transfert (documents), mode déclaré.';
 ALTER TABLE mobile_money_transactions ADD CONSTRAINT momo_channel_chk CHECK (
     (channel = 'AGGREGATOR' AND aggregator IS NOT NULL) OR (channel = 'DECLARED' AND provider_transaction_id IS NOT NULL));

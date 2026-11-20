@@ -16,7 +16,7 @@ export interface OpenPayResponse {
 }
 
 export interface OpenPayRequest {
-  method: 'GET' | 'POST';
+  method: 'GET' | 'POST' | 'DELETE';
   path: string;
   body?: Record<string, unknown>;
   idempotencyKey?: string;
@@ -48,6 +48,7 @@ export class OpenPayClient {
       req.timeoutMs ?? OPENPAY_STATUS_TIMEOUT_MS,
     );
     let response: Response;
+    let body: unknown;
     try {
       response = await this.fetchFn(`${baseUrl}${req.path}`, {
         method: req.method,
@@ -60,6 +61,15 @@ export class OpenPayClient {
         body: req.body ? JSON.stringify(req.body) : undefined,
         signal: controller.signal,
       });
+      // Le corps est lu AVANT d'annuler le délai : un serveur qui répond ses
+      // en-têtes puis goutte-à-goutte son corps ne doit pas suspendre l'appelant
+      // (l'annulation fait échouer `text()`, traité comme une indisponibilité).
+      const text = await response.text();
+      try {
+        body = text.length > 0 ? JSON.parse(text) : null;
+      } catch {
+        body = null;
+      }
     } catch (error) {
       this.logger.error(
         `OpenPay ${req.method} ${this.loggablePath(req.path)} indisponible : ${maskMsisdns(String(error))}`,
@@ -68,7 +78,6 @@ export class OpenPayClient {
     } finally {
       clearTimeout(timeout);
     }
-    const body = await response.json().catch(() => null);
     if ([200, 201, 400, 404, 409, 422].includes(response.status)) {
       return {
         status: response.status,
@@ -112,6 +121,48 @@ export class OpenPayApiLimiter {
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     private readonly config: AppConfigService,
   ) {}
+
+  /**
+   * Plafond des vérifications DÉCLENCHÉES PAR CALLBACK pour une transaction : fenêtre
+   * glissante d'une heure (compteurs Redis de l'heure courante et de la précédente), jamais
+   * un total à vie : un paiement ou un retrait approuvé tardivement doit toujours pouvoir être
+   * confirmé, alors qu'un callback forgé en rafale reste borné. Le polling du client et le
+   * rattrapage ne passent pas par ici. Redis indisponible : fail-open.
+   */
+  async tryAcquireCallbackCheck(transactionId: string): Promise<boolean> {
+    const max = this.config.get('OPENPAY_MAX_CHECKS_PER_TRANSACTION');
+    const hour = Math.floor(Date.now() / 3_600_000);
+    const base = `${this.config.get('QUEUE_PREFIX')}:rl:openpay-callback-check:${transactionId}`;
+    try {
+      const [previous, current] = await Promise.all([
+        this.redis.get(`${base}:${hour - 1}`),
+        this.redis.incr(`${base}:${hour}`),
+      ]);
+      if (current === 1) await this.redis.expire(`${base}:${hour}`, 7_300);
+      return current + Number(previous ?? 0) <= max;
+    } catch (error) {
+      this.logger.warn(`Limiteur OpenPay indisponible : ${(error as Error).message}`);
+      return true;
+    }
+  }
+
+  /**
+   * Limite propre à la route du callback, par IP et par minute. Au-delà, l'appel est ignoré
+   * SANS erreur (la route répond toujours `200 {}`, un 429 ferait relancer OpenPay et révélerait
+   * la limite à un tiers). Fail-open si Redis est indisponible.
+   */
+  async tryAcquireCallbackRequest(ip: string): Promise<boolean> {
+    const window = Math.floor(Date.now() / 60_000);
+    const key = `${this.config.get('QUEUE_PREFIX')}:rl:openpay-callback:${ip}:${window}`;
+    try {
+      const count = await this.redis.incr(key);
+      if (count === 1) await this.redis.expire(key, 70);
+      return count <= this.config.get('OPENPAY_CALLBACKS_PER_MINUTE');
+    } catch (error) {
+      this.logger.warn(`Limiteur OpenPay indisponible : ${(error as Error).message}`);
+      return true;
+    }
+  }
 
   async tryAcquireStatusCall(): Promise<boolean> {
     const window = Math.floor(Date.now() / 60_000);

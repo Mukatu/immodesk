@@ -142,6 +142,27 @@ export interface MobileMoneyProvider {
   ): Promise<ProviderStatus>;
 
   /**
+   * Annule un retrait programmé encore en attente d'approbation (OpenPay :
+   * `DELETE /scheduled-cashout/:reference`, uniquement tant qu'il est `pending`).
+   * `NOT_CANCELLABLE` : le fournisseur refuse (déjà approuvé, exécuté, annulé ou
+   * inconnu) : l'appelant ne doit alors PAS expirer la transaction.
+   */
+  cancelPayout?(providerReference: string): Promise<'CANCELLED' | 'NOT_CANCELLABLE'>;
+
+  /**
+   * Référence propre au fournisseur pour un décaissement, quand sa documentation en
+   * impose le format (OpenPay : UUID v4). Absent : `external_reference` = id de la transaction.
+   */
+  newPayoutReference?(): string;
+
+  /**
+   * `true` si rejouer `initiate()` avec la même `externalReference` et les mêmes paramètres
+   * renvoie la transaction d'origine sans la recréer (OpenPay : en-tête `Idempotency-Key`).
+   * Le rattrapage s'en sert pour retrouver la référence d'une initiation dont la réponse est perdue.
+   */
+  readonly idempotentInitiation?: boolean;
+
+  /**
    * Normalise un corps de webhook hétérogène vers un évènement interne.
    * CONTRAT pour tout fournisseur : lever une `DomainError` contrôlée
    * (`VALIDATION.INVALID_PAYLOAD`) si le corps n'est pas un objet ou n'a pas
@@ -214,4 +235,27 @@ export interface MobileMoneyPayoutInitiator {
     tx: TenantClient,
     momoTransactionId: string,
   ): Promise<MobileMoneyPayoutResult>;
+}
+
+/**
+ * Un décaissement peut se conclure bien après l'appel de `owner-payouts` (OpenPay :
+ * approbation puis exécution, par callback ou rattrapage). `owner-payouts` s'inscrit
+ * auprès de `mobile-money` pour répercuter l'issue sur le reversement, sans que
+ * `mobile-money` n'importe `owner-payouts` (aucun cycle de modules).
+ */
+export const MOMO_PAYOUT_OUTCOME_REGISTRY = Symbol('MOMO_PAYOUT_OUTCOME_REGISTRY');
+
+export interface MobileMoneyPayoutOutcome {
+  organizationId: string;
+  momoTransactionId: string;
+  state: 'SUCCEEDED' | 'FAILED' | 'EXPIRED';
+}
+
+export type MobileMoneyPayoutOutcomeListener = (
+  tx: TenantClient,
+  outcome: MobileMoneyPayoutOutcome,
+) => Promise<void>;
+
+export interface MobileMoneyPayoutOutcomeRegistry {
+  onPayoutOutcome(listener: MobileMoneyPayoutOutcomeListener): void;
 }

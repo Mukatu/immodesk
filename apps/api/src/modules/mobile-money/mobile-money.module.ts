@@ -8,7 +8,7 @@ import { MomoQueryService } from './application/momo-query.service';
 import { MomoReconcileService } from './application/momo-reconcile.service';
 import { MomoStatusChecker } from './application/momo-status-checker';
 import { MomoVerificationService } from './application/momo-verification.service';
-import { MOMO_PAYOUT_INITIATOR } from './domain/ports';
+import { MOMO_PAYOUT_INITIATOR, MOMO_PAYOUT_OUTCOME_REGISTRY } from './domain/ports';
 import { CinetPayProvider } from './infrastructure/cinetpay.provider';
 import { MobileMoneyProviderRegistry } from './infrastructure/mobile-money-provider.registry';
 import { MomoJobsService } from './infrastructure/momo-jobs.service';
@@ -57,6 +57,7 @@ import { MobileMoneyController } from './presentation/mobile-money.controller';
     MomoStatusChecker,
     MomoPurposeRouter,
     { provide: MOMO_PAYOUT_INITIATOR, useExisting: MomoPayoutService },
+    { provide: MOMO_PAYOUT_OUTCOME_REGISTRY, useExisting: MomoPayoutService },
   ],
   exports: [
     MobileMoneyProviderRegistry,
@@ -69,6 +70,8 @@ import { MobileMoneyController } from './presentation/mobile-money.controller';
     MomoStatusChecker,
     MomoPurposeRouter,
     MOMO_PAYOUT_INITIATOR,
+    MOMO_PAYOUT_OUTCOME_REGISTRY,
+    OpenPayApiLimiter,
   ],
 })
 export class MobileMoneyModule {}

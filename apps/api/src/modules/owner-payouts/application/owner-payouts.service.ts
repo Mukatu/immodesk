@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { DomainError, notFound } from '../../../shared/errors/domain-error';
 import { newId } from '../../../shared/ids/uuid';
 import { toAmount } from '../../../shared/money/amount';
@@ -8,7 +8,10 @@ import { audit, AuditService } from '../../audit/application/audit.service';
 import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
 import {
   MOMO_PAYOUT_INITIATOR,
+  MOMO_PAYOUT_OUTCOME_REGISTRY,
   type MobileMoneyPayoutInitiator,
+  type MobileMoneyPayoutOutcome,
+  type MobileMoneyPayoutOutcomeRegistry,
 } from '../../mobile-money/domain/ports';
 import { NOTIFICATION_ENQUEUER, type NotificationEnqueuer } from '../../notifications/domain/ports';
 import { MESSAGE_TEMPLATE_CODES } from '../../notifications/domain/template-codes';
@@ -97,7 +100,7 @@ const BANK_ACCOUNT_SELECT = {
  * module n'a aucune route déclenchée par `owner-statements`.
  */
 @Injectable()
-export class OwnerPayoutsService {
+export class OwnerPayoutsService implements OnModuleInit {
   private readonly logger = new Logger(OwnerPayoutsService.name);
 
   constructor(
@@ -107,7 +110,59 @@ export class OwnerPayoutsService {
     private readonly statements: OwnerStatementsService,
     @Inject(MOMO_PAYOUT_INITIATOR) private readonly momoPayouts: MobileMoneyPayoutInitiator,
     @Inject(NOTIFICATION_ENQUEUER) private readonly notifications: NotificationEnqueuer,
+    @Inject(MOMO_PAYOUT_OUTCOME_REGISTRY)
+    private readonly momoOutcomes: MobileMoneyPayoutOutcomeRegistry,
   ) {}
+
+  /** Un retrait OpenPay se conclut par callback ou rattrapage : l'issue est répercutée sur le reversement. */
+  onModuleInit(): void {
+    this.momoOutcomes.onPayoutOutcome((tx, outcome) => this.applyMomoOutcome(tx, outcome));
+  }
+
+  /**
+   * Issue d'un décaissement Mobile Money conclue HORS de `POST /{id}/execute` (callback,
+   * rattrapage) : le reversement `PROCESSING` qui le porte devient `PAID` ou `FAILED`, et son
+   * relevé est soldé. Idempotent : un reversement déjà conclu n'est pas retouché.
+   */
+  async applyMomoOutcome(tx: TenantClient, outcome: MobileMoneyPayoutOutcome): Promise<void> {
+    const payout = (await tx.owner_payouts.findFirst({
+      where: { momo_transaction_id: outcome.momoTransactionId, status: 'PROCESSING' },
+    })) as unknown as OwnerPayoutRow | null;
+    if (!payout) return;
+    const succeeded = outcome.state === 'SUCCEEDED';
+    const paidAt = succeeded ? new Date() : null;
+    await tx.owner_payouts.update({
+      where: { id: payout.id },
+      data: {
+        status: succeeded ? 'PAID' : 'FAILED',
+        paid_at: paidAt,
+        failure_reason: succeeded
+          ? null
+          : outcome.state === 'EXPIRED'
+            ? 'Décaissement Mobile Money expiré (retrait non approuvé à temps, annulé).'
+            : 'Échec du décaissement Mobile Money (agrégateur).',
+        updated_at: new Date(),
+      },
+    });
+    await audit(this.auditService, tx, {
+      organizationId: outcome.organizationId,
+      action: 'STATE_TRANSITION',
+      operation: succeeded
+        ? AUDIT_OPERATIONS.OWNER_PAYOUT_EXECUTED
+        : AUDIT_OPERATIONS.OWNER_PAYOUT_FAILED,
+      entityType: 'owner_payouts',
+      entityId: payout.id,
+      previousState: toJsonState({ status: payout.status }),
+      newState: toJsonState({
+        status: succeeded ? 'PAID' : 'FAILED',
+        momoTransactionId: outcome.momoTransactionId,
+        source: 'provider_callback',
+      }),
+    });
+    if (succeeded && payout.statement_id && paidAt) {
+      await this.statements.markPaid(tx, payout.statement_id, paidAt);
+    }
+  }
 
   /**
    * L'alerte MANAGER (contrat, arbitrage n°6) est best-effort : elle ne doit
@@ -404,16 +459,24 @@ export class OwnerPayoutsService {
     id: string,
     input: ExecutePayoutInput,
   ): Promise<PayoutView> {
-    return this.prisma.withTenant(organizationId, userId, async (tx) => {
-      const before = await this.require(tx, id);
-      assertExecutable(before.status as PayoutStatus);
-      if (input.proofDocumentId)
-        await this.requireDocument(tx, organizationId, input.proofDocumentId);
+    // Délai de transaction relevé : un décaissement Mobile Money enchaîne l'initiation chez le
+    // fournisseur (jusqu'à 20 s) et la relecture du statut (10 s), au-delà des 15 s par défaut
+    // (une annulation après l'appel au fournisseur laisserait une demande orpheline).
+    return this.prisma.withTenant(
+      organizationId,
+      userId,
+      async (tx) => {
+        const before = await this.require(tx, id);
+        assertExecutable(before.status as PayoutStatus);
+        if (input.proofDocumentId)
+          await this.requireDocument(tx, organizationId, input.proofDocumentId);
 
-      return before.method === 'MOBILE_MONEY'
-        ? this.executeMobileMoney(tx, organizationId, before, input)
-        : this.executeManual(tx, before, input);
-    });
+        return before.method === 'MOBILE_MONEY'
+          ? this.executeMobileMoney(tx, organizationId, before, input)
+          : this.executeManual(tx, before, input);
+      },
+      { timeout: 60_000 },
+    );
   }
 
   private async requireDocument(

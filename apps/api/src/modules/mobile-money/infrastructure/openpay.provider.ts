@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { DomainError } from '../../../shared/errors/domain-error';
 import {
   OPENPAY_ORIGIN_APP,
+  isOpenPayCashoutReference,
   isOpenPayPaymentReference,
-  isOpenPayUuid,
   matchCashoutResponse,
   matchPaymentResponse,
   parseOpenPayTrigger,
@@ -47,12 +48,19 @@ export class OpenPayProvider implements MobileMoneyProvider {
   readonly signatureHeader = 'x-openpay-signature';
   readonly webhookSource = 'OPENPAY' as const;
   readonly webhookTrust = 'UNSIGNED_TRIGGER' as const;
+  /** `Idempotency-Key` : même clé et mêmes paramètres = la transaction d'origine, jamais recréée. */
+  readonly idempotentInitiation = true;
   private readonly logger = new Logger(OpenPayProvider.name);
 
   constructor(
     private readonly client: OpenPayClient,
     private readonly limiter: OpenPayApiLimiter,
   ) {}
+
+  /** La doc exige un UUID v4 pour la `reference` d'un retrait (jamais l'UUID v7 des identifiants Immodesk). */
+  newPayoutReference(): string {
+    return randomUUID();
+  }
 
   async initiate(input: InitiatePaymentInput): Promise<InitiateResult> {
     return input.kind === 'PAYOUT' ? this.initiateCashout(input) : this.initiatePayment(input);
@@ -94,8 +102,10 @@ export class OpenPayProvider implements MobileMoneyProvider {
   }
 
   private async initiateCashout(input: InitiatePaymentInput): Promise<InitiateResult> {
-    if (!isOpenPayUuid(input.externalReference)) {
-      throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'référence de retrait non UUID' });
+    if (!isOpenPayCashoutReference(input.externalReference)) {
+      throw new DomainError('PLATFORM.INTERNAL_ERROR', {
+        reason: 'référence de retrait : UUID v4 attendu',
+      });
     }
     const response = await this.client.request({
       method: 'POST',
@@ -135,7 +145,7 @@ export class OpenPayProvider implements MobileMoneyProvider {
     const payout = expected.kind === 'PAYOUT';
     const reference = payout ? providerReference.toLowerCase() : providerReference;
     // Format vérifié avant tout appel : la référence entre dans le chemin de l'URL.
-    if (payout ? !isOpenPayUuid(reference) : !isOpenPayPaymentReference(reference)) {
+    if (payout ? !isOpenPayCashoutReference(reference) : !isOpenPayPaymentReference(reference)) {
       return this.unknown(providerReference, 'format de référence');
     }
     if (!(await this.limiter.tryAcquireStatusCall())) {
@@ -153,7 +163,7 @@ export class OpenPayProvider implements MobileMoneyProvider {
     expected: ProviderStatusExpectation,
   ): Promise<ProviderStatus> {
     const reference = providerReference.toLowerCase();
-    if (expected.kind !== 'PAYOUT' || !isOpenPayUuid(reference)) {
+    if (expected.kind !== 'PAYOUT' || !isOpenPayCashoutReference(reference)) {
       throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'execute : retrait attendu' });
     }
     const response = await this.client.request({
@@ -162,6 +172,32 @@ export class OpenPayProvider implements MobileMoneyProvider {
       timeoutMs: OPENPAY_ACTION_TIMEOUT_MS,
     });
     return this.interpret(response, reference, expected);
+  }
+
+  /**
+   * `DELETE /scheduled-cashout/:reference` (doc : uniquement tant que le retrait est `pending`,
+   * sinon HTTP 400). Seule la réponse `{ success: true }` vaut annulation ; toute autre réponse
+   * métier (400, 404...) est « non annulable » et l'appelant ne doit pas expirer la transaction.
+   * Une erreur technique (réseau, 5xx, 403...) est propagée.
+   */
+  async cancelPayout(providerReference: string): Promise<'CANCELLED' | 'NOT_CANCELLABLE'> {
+    const reference = providerReference.toLowerCase();
+    if (!isOpenPayCashoutReference(reference)) {
+      throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'annulation : retrait attendu' });
+    }
+    const response = await this.client.request({
+      method: 'DELETE',
+      path: `/scheduled-cashout/${reference}`,
+      timeoutMs: OPENPAY_ACTION_TIMEOUT_MS,
+    });
+    const cancelled =
+      response.status === 200 && isRecord(response.body) && response.body.success === true;
+    if (!cancelled) {
+      this.logger.warn(
+        `MOMO.OPENPAY_CANCEL_REFUSED reference=${reference} HTTP ${response.status}`,
+      );
+    }
+    return cancelled ? 'CANCELLED' : 'NOT_CANCELLABLE';
   }
 
   private interpret(

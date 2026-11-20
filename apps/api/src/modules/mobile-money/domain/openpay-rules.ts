@@ -15,6 +15,8 @@ export const OPENPAY_ORIGIN_APP = 'Immodesk';
 const PAYMENT_REFERENCE = /^PTXN[0-9A-Za-z]{4,40}$/;
 /** Référence d'un retrait programmé : l'UUID fourni à la création. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** UUID v4 exigé par la doc OpenPay pour la `reference` d'un retrait programmé. */
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function isOpenPayPaymentReference(value: unknown): value is string {
   return typeof value === 'string' && value.length <= 44 && PAYMENT_REFERENCE.test(value);
@@ -22,6 +24,11 @@ export function isOpenPayPaymentReference(value: unknown): value is string {
 
 export function isOpenPayUuid(value: unknown): value is string {
   return typeof value === 'string' && value.length === 36 && UUID.test(value);
+}
+
+/** Référence de retrait programmé : UUID v4 (la doc l'exige ; un UUID v7 n'est pas accepté). */
+export function isOpenPayCashoutReference(value: unknown): value is string {
+  return typeof value === 'string' && value.length === 36 && UUID_V4.test(value);
 }
 
 /**
@@ -35,7 +42,7 @@ export function parseOpenPayTrigger(body: unknown): ParsedTrigger | null {
   let parsed: ParsedTrigger;
   if (type === 'payment' && isOpenPayPaymentReference(reference)) {
     parsed = { reference, type };
-  } else if (type === 'scheduled_cashout' && isOpenPayUuid(reference)) {
+  } else if (type === 'scheduled_cashout' && isOpenPayCashoutReference(reference)) {
     parsed = { reference: reference.toLowerCase(), type };
   } else {
     return null;

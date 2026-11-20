@@ -78,7 +78,7 @@ export const configSchema = z
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
-    // Origines autorisées par CORS (`https://app.immodesk.cg,https://portail.immodesk.cg`).
+    // Origines autorisées par CORS (`https://immodesk.watuneed.fr,https://portail.immodesk.watuneed.fr`).
     // Absente : toute origine est reflétée — acceptable sur un poste de
     // développement, refusé au démarrage en production (cf. superRefine).
     CORS_ALLOWED_ORIGINS: originList,
@@ -169,7 +169,7 @@ export const configSchema = z
 
     // --- Invitations -----------------------------------------------------
     INVITATION_TTL_DAYS: z.coerce.number().int().positive().default(7),
-    INVITATION_BASE_URL: z.string().default('https://app.immodesk.cg/invitations'),
+    INVITATION_BASE_URL: z.string().default('https://immodesk.watuneed.fr/invitations'),
 
     // --- Messagerie (phase 3 : WhatsApp d'abord, SMS en repli) ----------
     SMS_PROVIDER: z.enum(['fake', 'android_gateway']).default('fake'),
@@ -194,7 +194,7 @@ export const configSchema = z
 
     // --- Liens publics (quittances, SMS) ---------------------------------
     // Page de vérification : `{PUBLIC_WEB_BASE_URL}/verifier/{token}` (QR et SMS).
-    PUBLIC_WEB_BASE_URL: z.string().url().default('https://app.immodesk.cg'),
+    PUBLIC_WEB_BASE_URL: z.string().url().default('https://immodesk.watuneed.fr'),
     // Racine publique de l'API, pour les liens courts de PDF envoyés par SMS.
     PUBLIC_API_BASE_URL: z.string().url().default('http://localhost:3000'),
     // Validité des liens de PDF joints aux messages : 7 jours, plafond SigV4.
@@ -265,7 +265,7 @@ export const configSchema = z
     AGENCY_MONTHLY_CRON_PATTERN: z.string().default('0 4 * * *'),
     AGENCY_MONTHLY_CRON_TIMEZONE: z.string().default('Africa/Brazzaville'),
     // Lien d'activation du portail bailleur envoyé par WhatsApp.
-    PORTAL_BASE_URL: z.string().url().default('https://portail.immodesk.cg'),
+    PORTAL_BASE_URL: z.string().url().default('https://portail.immodesk.watuneed.fr'),
 
     // --- États des lieux, compteurs, charges, maintenance (phase 8) ------
     UTILITY_RUN_DAY_OF_MONTH: z.coerce.number().int().min(1).max(28).default(3),
@@ -420,7 +420,7 @@ export const configSchema = z
         code: z.ZodIssueCode.custom,
         path: ['CORS_ALLOWED_ORIGINS'],
         message:
-          'CORS_ALLOWED_ORIGINS est obligatoire en production : lister les origines autorisées, séparées par des virgules (ex. https://app.immodesk.cg,https://portail.immodesk.cg), faute de quoi toute origine serait acceptée avec les cookies.',
+          'CORS_ALLOWED_ORIGINS est obligatoire en production : lister les origines autorisées, séparées par des virgules (ex. https://immodesk.watuneed.fr,https://portail.immodesk.watuneed.fr), faute de quoi toute origine serait acceptée avec les cookies.',
       });
     }
     if (cfg.NODE_ENV === 'production' && cfg.OTP_DEV_CODE) {

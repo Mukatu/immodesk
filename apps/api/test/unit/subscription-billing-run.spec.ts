@@ -55,7 +55,7 @@ function buildService(
       key === 'DATABASE_ADMIN_URL'
         ? 'postgres://admin'
         : key === 'PUBLIC_WEB_BASE_URL'
-          ? 'https://app.immodesk.cg'
+          ? 'https://immodesk.watuneed.fr'
           : undefined,
     ),
   };

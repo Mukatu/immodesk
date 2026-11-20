@@ -85,7 +85,7 @@ export class ReceiptDetailDto extends ReceiptSummaryDto {
   @ApiProperty(AMOUNT) chargesAmount!: number;
   @ApiProperty(AMOUNT) penaltyAmount!: number;
   @ApiProperty(AMOUNT) remainingBalanceAmount!: number;
-  @ApiProperty({ example: 'https://app.immodesk.cg/verifier/3f9a…' }) verificationUrl!: string;
+  @ApiProperty({ example: 'https://immodesk.watuneed.fr/verifier/3f9a…' }) verificationUrl!: string;
   @ApiProperty({ format: 'uuid', ...NULLABLE }) documentId!: string | null;
   @ApiProperty({ format: 'date-time', ...NULLABLE }) cancelledAt!: string | null;
   @ApiProperty(NULLABLE) cancellationReason!: string | null;

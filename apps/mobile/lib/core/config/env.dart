@@ -1,7 +1,7 @@
 /// Configuration par environnement, injectée via `--dart-define`.
 ///
 /// Exemple :
-/// `flutter run --dart-define=API_BASE_URL=https://api.staging.immodesk.cg/v1`
+/// `flutter run --dart-define=API_BASE_URL=https://api.staging.immodesk.watuneed.fr/v1`
 abstract final class Env {
   /// URL de base de l'API (préfixe `/v1` inclus).
   ///

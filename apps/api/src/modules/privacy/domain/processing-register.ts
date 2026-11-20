@@ -88,7 +88,7 @@ export function processingRegisterCommon(dpoContact: string | null): ProcessingR
     ],
     support: {
       channel: 'WhatsApp / e-mail',
-      contact: dpoContact ?? 'support@immodesk.cg',
+      contact: dpoContact ?? 'support@immodesk.watuneed.fr',
       slaBySeverity: { CRITICAL: '4h', MAJOR: '24h', MINOR: '5j ouvrés' },
     },
   };

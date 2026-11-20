@@ -27628,7 +27628,7 @@
           },
           "verificationUrl": {
             "type": "string",
-            "example": "https://app.immodesk.cg/verifier/3f9a…"
+            "example": "https://immodesk.watuneed.fr/verifier/3f9a…"
           },
           "documentId": {
             "type": ["string", "null"],

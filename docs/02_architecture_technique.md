@@ -1410,7 +1410,7 @@ Une quittance porte toujours : le numéro `QUI-{YYYYMM}-{seq}`, l'identification
 
 ### 9.2 Page publique de vérification
 
-Un bailleur, une banque ou une administration doit pouvoir vérifier une quittance **sans compte Immodesk**. Le QR imprimé encode `https://app.immodesk.cg/verifier/{token}`.
+Un bailleur, une banque ou une administration doit pouvoir vérifier une quittance **sans compte Immodesk**. Le QR imprimé encode `https://immodesk.watuneed.fr/verifier/{token}`.
 
 Le token est un JWT compact signé HMAC-SHA256 avec une clé dédiée à la vérification (distincte des clés de session), portant `{ rid: receiptId, org: organizationId, v: 1 }` et **sans expiration** — une quittance de 2026 doit rester vérifiable en 2031. Il est stocké dans `receipts.verification_token` avec un index unique, et il est **révocable** : une quittance annulée conserve son token mais la page affiche l'annulation.
 

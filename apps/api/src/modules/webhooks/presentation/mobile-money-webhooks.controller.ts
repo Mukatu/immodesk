@@ -1,5 +1,6 @@
 import {
   Controller,
+  Logger,
   HttpCode,
   HttpStatus,
   Param,
@@ -13,6 +14,7 @@ import type { Request } from 'express';
 import { AppConfigService } from '../../../shared/config/config.module';
 import { Public } from '../../../shared/auth/auth.contracts';
 import { WebhookRateLimitGuard } from '../../../shared/throttler/webhook-rate-limit.guard';
+import { OpenPayCallbackGate } from '../../mobile-money/infrastructure/openpay-callback.gate';
 import { MomoWebhookIngestService } from '../application/momo-webhook-ingest.service';
 
 /**
@@ -27,7 +29,10 @@ export class MobileMoneyWebhooksController {
   constructor(
     private readonly ingest: MomoWebhookIngestService,
     private readonly config: AppConfigService,
+    private readonly openPayGate: OpenPayCallbackGate,
   ) {}
+
+  private readonly logger = new Logger(MobileMoneyWebhooksController.name);
 
   /**
    * Compatibilité : ancienne URL du webhook d'abonnement. Converge vers la
@@ -40,6 +45,39 @@ export class MobileMoneyWebhooksController {
   @ApiOperation({ summary: 'Webhook Mobile Money (URL historique, fournisseur par défaut)' })
   async receiveSubscription(@Req() req: RawBodyRequest<Request>): Promise<Record<string, never>> {
     return this.forward(this.config.get('MOMO_PROVIDER_DEFAULT'), req);
+  }
+
+  /**
+   * Callback OpenPay (NON signé) : segment secret dans l'URL. Répond TOUJOURS
+   * `200 {}` rapidement (référence connue ou non, secret bon ou mauvais, corps
+   * valide ou non) : rien ne permet de sonder l'API. Un mauvais segment renvoie
+   * le même 200 qu'un bon (un 404 révélerait qu'un segment secret existe et
+   * permettrait de distinguer les essais) ; l'appel est seulement journalisé
+   * comme non signé. Le chemin enregistré est le gabarit, jamais le secret.
+   */
+  @Post('openpay/:secret')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Callback OpenPay (non signé, segment secret)' })
+  async receiveOpenPay(
+    @Param('secret') secret: string,
+    @Req() req: RawBodyRequest<Request>,
+  ): Promise<Record<string, never>> {
+    try {
+      await this.ingest.ingestTrigger(
+        'openpay',
+        this.openPayGate.check(secret, req.ip ?? null),
+        req.rawBody ?? Buffer.alloc(0),
+        req.headers as Record<string, string | string[] | undefined>,
+        req.ip ?? null,
+        '/webhooks/mobile-money/openpay/:secret',
+      );
+    } catch (error) {
+      // Jamais d'erreur renvoyée à l'appelant : OpenPay relancerait, et un
+      // attaquant sonderait le comportement.
+      this.logger.error(`Callback OpenPay non traité : ${(error as Error).message}`);
+    }
+    return {};
   }
 
   @Post(':provider')

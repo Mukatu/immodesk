@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { format, resolveConfig } from 'prettier';
 import { createApp } from '../src/bootstrap';
 import { buildOpenApiDocument } from '../src/modules/platform/infrastructure/openapi';
 import { AppConfigService } from '../src/shared/config/config.module';
@@ -17,7 +18,10 @@ async function main(): Promise<void> {
 
   const target = resolve(__dirname, '../../../docs/api/openapi.json');
   mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(target, `${JSON.stringify(document, null, 2)}\n`, 'utf8');
+  // Mise en forme Prettier (objets développés, tableaux courts compactés) : identique à lint-staged, sans bruit de diff.
+  const options = (await resolveConfig(target)) ?? {};
+  const content = await format(JSON.stringify(document, null, 2), { ...options, filepath: target });
+  writeFileSync(target, content, 'utf8');
 
   const routes = Object.keys(document.paths ?? {}).length;
   console.info(`Contrat OpenAPI ${document.openapi} écrit : ${target} (${routes} chemins).`);

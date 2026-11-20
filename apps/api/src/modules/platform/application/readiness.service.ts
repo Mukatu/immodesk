@@ -72,6 +72,9 @@ export class ReadinessService {
    * dépendance qu'il n'utilise pas.
    */
   private async checkMobileMoney(): Promise<HealthCheck> {
+    if (this.config.MOMO_PROVIDER_DEFAULT === 'OPENPAY') {
+      return this.probeHttp(this.config.OPENPAY_BASE_URL);
+    }
     if (this.config.MOMO_PROVIDER_DEFAULT !== 'CINETPAY') {
       return { status: 'skipped', detail: 'MOMO_PROVIDER_DEFAULT=SIMULATOR.' };
     }

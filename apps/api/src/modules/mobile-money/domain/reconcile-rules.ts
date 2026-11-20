@@ -39,3 +39,25 @@ export function isDueForRecheck(
 export function isExpired(initiatedAt: Date, now: Date, pendingExpiryMinutes: number): boolean {
   return now.getTime() - initiatedAt.getTime() >= pendingExpiryMinutes * 60_000;
 }
+
+/**
+ * Anti-abus des vérifications d'une même transaction (fournisseur à webhook non
+ * signé : un callback forgé ne doit pas se traduire en appels répétés) :
+ * intervalle minimal depuis la dernière vérification, et plafond de vérifications.
+ */
+export function isCheckThrottled(
+  tx: { status_checked_at: Date | null; status_check_count: number },
+  limits: { minIntervalSeconds: number; maxChecks: number },
+  now: Date,
+): boolean {
+  if (tx.status_check_count >= limits.maxChecks) return true;
+  return (
+    tx.status_checked_at !== null &&
+    now.getTime() - tx.status_checked_at.getTime() < limits.minIntervalSeconds * 1000
+  );
+}
+
+/** Une transaction `INITIATED` jamais sortie de cet état est expirée après ce délai. */
+export function isInitiatedExpired(initiatedAt: Date, now: Date, expiryMinutes: number): boolean {
+  return now.getTime() - initiatedAt.getTime() >= expiryMinutes * 60_000;
+}

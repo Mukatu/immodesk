@@ -18,9 +18,12 @@ export type MomoStatus = (typeof MOMO_STATUSES)[number];
  * Machine à états d'une transaction Mobile Money (docs/api/phase4-contract.md,
  * § « Statuts d'une transaction déclarée » et § « Rattrapage »).
  * `DECLARED` amorce le canal déclaré ; `INITIATED` amorce l'agrégateur.
+ * `INITIATED -> EXPIRED` : transaction que le fournisseur ne fait jamais
+ * évoluer (réponse d'initiation perdue, aucune référence), expirée par le
+ * rattrapage après `MOMO_INITIATED_EXPIRY_MINUTES`.
  */
 export const MOMO_TRANSITIONS: Readonly<Record<MomoStatus, readonly MomoStatus[]>> = {
-  INITIATED: ['PENDING', 'FAILED'],
+  INITIATED: ['PENDING', 'FAILED', 'EXPIRED'],
   PENDING: ['SUCCEEDED', 'FAILED', 'EXPIRED'],
   DECLARED: ['SUCCEEDED', 'REJECTED', 'CANCELLED'],
   SUCCEEDED: ['REFUNDED'],

@@ -220,7 +220,7 @@ export const configSchema = z
     // que le contrat CinetPay n'est pas signé (arbitrage 6 du contrat phase 4).
     // Sans valeur : SIMULATOR hors production (voir la fin de ce schéma) ; en
     // production la variable est OBLIGATOIRE et ne peut pas valoir SIMULATOR.
-    MOMO_PROVIDER_DEFAULT: z.enum(['SIMULATOR', 'CINETPAY']).optional(),
+    MOMO_PROVIDER_DEFAULT: z.enum(['SIMULATOR', 'CINETPAY', 'OPENPAY']).optional(),
     MOMO_SIMULATOR_DELAY_MS: z.coerce.number().int().nonnegative().default(1500),
     MOMO_SIMULATOR_SECRET: z.string().min(8).default(DEV_SECRET_DEFAULTS.MOMO_SIMULATOR_SECRET),
     // URL publique par laquelle le simulateur (et CinetPay) rappellent l'API.
@@ -229,6 +229,25 @@ export const configSchema = z
     CINETPAY_SITE_ID: optionalText,
     CINETPAY_SECRET_KEY: optionalText,
     CINETPAY_BASE_URL: z.string().url().default('https://api-checkout.cinetpay.com'),
+
+    // --- OpenPay (Congo-Brazzaville) --------------------------------------
+    // Callbacks NON signés : la confiance repose sur un segment secret dans
+    // l'URL (`OPENPAY_CALLBACK_SECRET`), une allowlist d'IP optionnelle et,
+    // surtout, sur la re-interrogation authentifiée de l'API (jamais le corps).
+    OPENPAY_API_KEY: optionalText,
+    OPENPAY_CALLBACK_SECRET: optionalText,
+    OPENPAY_BASE_URL: z.string().url().default('https://api.openpay-cg.com/v1'),
+    // IP sources autorisées pour le callback, séparées par des virgules. Vide :
+    // aucun filtrage (l'IP lue est `req.ip`, voir TRUST_PROXY_HOPS).
+    OPENPAY_CALLBACK_IP_ALLOWLIST: originList,
+    // Anti-abus : intervalle minimal entre deux vérifications d'une transaction,
+    // plafond de vérifications par transaction, appels de statut par minute.
+    OPENPAY_MIN_CHECK_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(5),
+    OPENPAY_MAX_CHECKS_PER_TRANSACTION: z.coerce.number().int().positive().default(40),
+    OPENPAY_STATUS_CALLS_PER_MINUTE: z.coerce.number().int().positive().default(120),
+    // Une transaction INITIATED que le fournisseur ne fait jamais évoluer passe
+    // EXPIRED après ce délai (rattrapage `momo:reconcile-pending`).
+    MOMO_INITIATED_EXPIRY_MINUTES: z.coerce.number().int().min(11).default(60),
 
     // --- Synchronisation mobile par lots (phase 5) ------------------------
     // Limite dure appliquée par le serveur à `POST /v1/sync/batches`.
@@ -377,6 +396,28 @@ export const configSchema = z
         message:
           'CINETPAY_API_KEY, CINETPAY_SITE_ID et CINETPAY_SECRET_KEY sont obligatoires lorsque MOMO_PROVIDER_DEFAULT vaut CINETPAY.',
       });
+    }
+    if (
+      cfg.NODE_ENV === 'production' &&
+      (cfg.MOMO_PROVIDER_DEFAULT === 'OPENPAY' ||
+        cfg.OPENPAY_API_KEY ||
+        cfg.OPENPAY_CALLBACK_SECRET)
+    ) {
+      if (!cfg.OPENPAY_API_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['OPENPAY_API_KEY'],
+          message: 'OPENPAY_API_KEY est obligatoire en production lorsque OpenPay est utilisé.',
+        });
+      }
+      if (!cfg.OPENPAY_CALLBACK_SECRET || cfg.OPENPAY_CALLBACK_SECRET.length < 32) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['OPENPAY_CALLBACK_SECRET'],
+          message:
+            "OPENPAY_CALLBACK_SECRET est obligatoire en production lorsque OpenPay est utilisé, avec au moins 32 caractères (les callbacks OpenPay ne sont pas signés : ce segment d'URL est leur seule barrière).",
+        });
+      }
     }
     // Le simulateur confirme n'importe quelle transaction : jamais en
     // production, et jamais par repli implicite.

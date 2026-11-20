@@ -30,7 +30,7 @@ export interface MessagingSettings {
 }
 
 /** `settings_json.paymentMethods` (phase 4, docs/api/phase4-contract.md). */
-export type MomoAggregatorProvider = 'SIMULATOR' | 'CINETPAY';
+export type MomoAggregatorProvider = 'SIMULATOR' | 'CINETPAY' | 'OPENPAY';
 export type FeeBearerChoice = 'TENANT' | 'ORGANIZATION';
 
 export interface MobileMoneyDeclaredSettings {
@@ -205,7 +205,7 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback
     : fallback;
 }
 
-const MOMO_PROVIDERS: readonly MomoAggregatorProvider[] = ['SIMULATOR', 'CINETPAY'];
+const MOMO_PROVIDERS: readonly MomoAggregatorProvider[] = ['SIMULATOR', 'CINETPAY', 'OPENPAY'];
 const FEE_BEARER_CHOICES: readonly FeeBearerChoice[] = ['TENANT', 'ORGANIZATION'];
 
 function readPaymentMethods(root: Record<string, unknown>): PaymentMethodsSettings {

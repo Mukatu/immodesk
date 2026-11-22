@@ -86,7 +86,8 @@ export interface OpenPayTriggerTarget {
  * ne prouve rien (il ne sert qu'à choisir quoi re-interroger) : l'organisation
  * n'est attribuée à l'événement qu'après une réponse conforme du fournisseur.
  * Collecte : référence OpenPay (`PTXN...`), sinon l'indice
- * `metadata.external_reference` pour une transaction encore sans référence.
+ * `metadata.external_reference` pour une transaction encore sans référence (INITIATED, ou EXPIRED :
+ * un succès tardif sur une transaction expirée sans référence doit pouvoir être signalé).
  * Retrait : l'UUID est notre `external_reference`.
  */
 export async function resolveOpenPayTrigger(
@@ -125,7 +126,7 @@ export async function resolveOpenPayTrigger(
   const byHint = await admin.$queryRawUnsafe<Row[]>(
     `SELECT id, organization_id, purpose FROM mobile_money_transactions
       WHERE aggregator = 'OPENPAY' AND purpose <> 'OWNER_PAYOUT' AND external_reference = $1
-        AND aggregator_transaction_id IS NULL AND status = 'INITIATED'`,
+        AND aggregator_transaction_id IS NULL AND status IN ('INITIATED', 'EXPIRED')`,
     trigger.externalReferenceHint,
   );
   return toTarget(byHint[0], trigger.reference);

@@ -171,6 +171,7 @@ describe('MomoReconcileService : INITIATED et PENDING', () => {
     expect(sql).toContain("status = 'PENDING'");
     expect(sql).toContain("status = 'INITIATED'");
     expect(pendingAge).toBe(3);
-    expect(initiatedAge).toBeGreaterThan(pendingAge);
+    // Les INITIATED sont lues dès l'âge de rejeu d'une initiation (1 min) ; le reste attend 10 min en code.
+    expect(initiatedAge).toBe(1);
   });
 });

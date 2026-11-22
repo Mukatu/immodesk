@@ -4,7 +4,10 @@ import { PrismaService } from '../../src/shared/prisma/prisma.service';
 import { MomoPayoutService } from '../../src/modules/mobile-money/application/momo-payout.service';
 import { MomoReconcileService } from '../../src/modules/mobile-money/application/momo-reconcile.service';
 import { WebhookEventsService } from '../../src/modules/webhooks/application/webhook-events.service';
-import { OpenPayClient } from '../../src/modules/mobile-money/infrastructure/openpay.client';
+import {
+  OpenPayApiLimiter,
+  OpenPayClient,
+} from '../../src/modules/mobile-money/infrastructure/openpay.client';
 import { api, startTestApp, stopTestApp, type TestContext } from './helpers';
 import {
   createAgency,
@@ -44,6 +47,8 @@ describe('OpenPay : récupération, polling et reversement (revue PR #62)', () =
       OPENPAY_API_KEY: 'cle-api-de-test',
       OPENPAY_CALLBACK_SECRET: SECRET,
       OPENPAY_MIN_CHECK_INTERVAL_SECONDS: '0',
+      // Un proxy de confiance : l'IP du callback vient de X-Forwarded-For (N3).
+      TRUST_PROXY_HOPS: '1',
     });
     ctx = await startTestApp();
     ctx.app.get(OpenPayClient).fetchFn = fake.fetchFn;
@@ -53,7 +58,7 @@ describe('OpenPay : récupération, polling et reversement (revue PR #62)', () =
       ...owner(),
       body: { mobileMoneyAggregator: { enabled: true, provider: 'OPENPAY', feeRateBps: 0 } },
     });
-    portfolio = await seedLeases(ctx.admin, agency.organizationId, 4, {
+    portfolio = await seedLeases(ctx.admin, agency.organizationId, 9, {
       startDate: firstOfMonth(0),
     });
     const run = await api(ctx, 'POST', '/billing/runs', {
@@ -75,10 +80,13 @@ describe('OpenPay : récupération, polling et reversement (revue PR #62)', () =
     Object.assign(process.env, saved);
   });
 
-  const post = (body: unknown) =>
-    fetch(`${ctx.baseUrl}/webhooks/mobile-money/openpay/${SECRET}`, {
+  const post = (body: unknown, opts: { secret?: string; ip?: string } = {}) =>
+    fetch(`${ctx.baseUrl}/webhooks/mobile-money/openpay/${opts.secret ?? SECRET}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': opts.ip ?? '198.51.100.7',
+      },
       body: JSON.stringify(body),
     });
 
@@ -96,9 +104,12 @@ describe('OpenPay : récupération, polling et reversement (revue PR #62)', () =
     });
   };
 
-  /** Initiation dont la réponse est perdue : le paiement existe chez OpenPay, pas de référence chez nous. */
+  /**
+   * Initiation dont la réponse est perdue par un DÉLAI DÉPASSÉ : le paiement existe chez OpenPay,
+   * pas de référence chez nous (la requête a pu arriver : seul cas où un rejeu est admis).
+   */
   async function lostInitiation(tenantIndex: number) {
-    fake.control.losePaymentResponses = 2;
+    fake.control.timeoutPaymentResponses = 2;
     const res = await initiateRent(tenantIndex);
     expect(res.status).toBeGreaterThanOrEqual(500);
     const tenantId = portfolio.leases[tenantIndex]?.tenantId as string;
@@ -106,6 +117,7 @@ describe('OpenPay : récupération, polling et reversement (revue PR #62)', () =
       where: { organization_id: agency.organizationId, tenant_id: tenantId, status: 'INITIATED' },
     });
     expect(row.aggregator_transaction_id).toBeNull();
+    expect(row.failure_code).toBe('INITIATION_TIMEOUT');
     const entry = [...fake.payments.entries()].find(
       ([, p]) => p.metadata?.external_reference === row.external_reference,
     );
@@ -137,12 +149,12 @@ describe('OpenPay : récupération, polling et reversement (revue PR #62)', () =
     expect((await paymentOf(row.payment_id)).status).toBe('CONFIRMED');
   }, 40_000);
 
-  it('rattrapage : rejeu idempotent (même clé), un seul paiement chez OpenPay, référence retrouvée puis confirmée', async () => {
+  it('rattrapage : rejeu idempotent (même clé) dans la fenêtre courte, un seul paiement chez OpenPay, référence retrouvée puis confirmée', async () => {
     const { row, reference, payment } = await lostInitiation(1);
     const created = fake.payments.size;
     await ctx.admin.mobile_money_transactions.update({
       where: { id: row.id },
-      data: { initiated_at: new Date(Date.now() - 15 * 60_000) },
+      data: { initiated_at: new Date(Date.now() - 3 * 60_000) },
     });
     await ctx.app.get(MomoReconcileService).reconcilePending();
     expect(fake.payments.size).toBe(created);
@@ -215,6 +227,154 @@ describe('OpenPay : récupération, polling et reversement (revue PR #62)', () =
       errorMessage: 'MOMO.WEBHOOK_REFERENCE_UNRESOLVED',
     });
     expect((await events.persistTrigger(input)).duplicate).toBe(true);
+  });
+
+  describe('initiation incertaine (N2)', () => {
+    const backdate = (id: string, minutes: number) =>
+      ctx.admin.mobile_money_transactions.update({
+        where: { id },
+        data: { initiated_at: new Date(Date.now() - minutes * 60_000) },
+      });
+    const reload = (id: string) =>
+      ctx.admin.mobile_money_transactions.findUniqueOrThrow({ where: { id } });
+
+    it('initiation JAMAIS reçue par OpenPay (connexion refusée) : aucun rejeu, donc aucun push USSD tardif', async () => {
+      fake.control.dropPaymentRequests = 2;
+      const before = fake.payments.size;
+      const res = await initiateRent(3);
+      expect(res.status).toBeGreaterThanOrEqual(500);
+      const tenantId = portfolio.leases[3]?.tenantId as string;
+      const row = await ctx.admin.mobile_money_transactions.findFirstOrThrow({
+        where: { organization_id: agency.organizationId, tenant_id: tenantId, status: 'INITIATED' },
+      });
+      expect(row.failure_code).toBe('INITIATION_UNREACHABLE');
+      await backdate(row.id, 3);
+      await ctx.app.get(MomoReconcileService).reconcilePending();
+      // Rien n'a été créé chez OpenPay, et le rattrapage n'a pas rejoué la requête.
+      expect(fake.payments.size).toBe(before);
+      const after = await reload(row.id);
+      expect(after.aggregator_transaction_id).toBeNull();
+      expect(after.failure_code).toBe('INITIATION_UNCERTAIN');
+      expect(after.status).toBe('INITIATED');
+    }, 40_000);
+
+    it('réponse perdue par délai dépassé, mais fenêtre de rejeu dépassée (15 min) : jamais rejouée', async () => {
+      const { row } = await lostInitiation(4);
+      const created = fake.payments.size;
+      await backdate(row.id, 15);
+      await ctx.app.get(MomoReconcileService).reconcilePending();
+      expect(fake.payments.size).toBe(created);
+      const after = await reload(row.id);
+      expect(after.aggregator_transaction_id).toBeNull();
+      expect(after.failure_code).toBe('INITIATION_UNCERTAIN');
+    }, 40_000);
+
+    it('une autre tentative du même locataire/facture a abouti depuis : aucun rejeu', async () => {
+      const { row } = await lostInitiation(5);
+      const created = fake.payments.size;
+      // Le locataire réessaie : seconde initiation (nouvelle clé), acceptée par OpenPay.
+      const retry = await initiateRent(5);
+      expect(retry.status).toBe(202);
+      const afterRetry = fake.payments.size;
+      expect(afterRetry).toBe(created + 1);
+      await backdate(row.id, 3);
+      await ctx.app.get(MomoReconcileService).reconcilePending();
+      expect(fake.payments.size).toBe(afterRetry);
+      expect((await reload(row.id)).failure_code).toBe('INITIATION_UNCERTAIN');
+    }, 40_000);
+  });
+
+  describe('callbacks : secret et quota (N3), intervalle minimal (N6)', () => {
+    it('N3 : les appels au mauvais secret ne consomment pas le quota des callbacks légitimes', async () => {
+      const config = ctx.app.get(AppConfigService).all as Record<string, unknown>;
+      const saved = {
+        valid: config.OPENPAY_CALLBACKS_PER_MINUTE,
+        invalid: config.OPENPAY_INVALID_CALLBACKS_PER_MINUTE,
+      };
+      config.OPENPAY_CALLBACKS_PER_MINUTE = 2;
+      config.OPENPAY_INVALID_CALLBACKS_PER_MINUTE = 2;
+      try {
+        const res = await initiateRent(8);
+        expect(res.status).toBe(202);
+        const txId = res.body.transaction.id as string;
+        const row = await ctx.admin.mobile_money_transactions.findUniqueOrThrow({
+          where: { id: txId },
+        });
+        const reference = row.aggregator_transaction_id as string;
+        fake.payments.get(reference)!.status = 'success';
+        // Même IP (vue par le proxy) : une rafale de mauvais secrets, bien au-delà de 2.
+        for (let i = 0; i < 8; i += 1) {
+          const r = await post(
+            { reference, type: 'payment' },
+            { secret: 'mauvais-secret', ip: '203.0.113.50' },
+          );
+          expect(r.status).toBe(200);
+        }
+        // Le vrai callback, de la MÊME IP, passe encore : quota des bons secrets intact.
+        expect((await post({ reference, type: 'payment' }, { ip: '203.0.113.50' })).status).toBe(
+          200,
+        );
+        await waitFor(async () => {
+          const t = await ctx.admin.mobile_money_transactions.findUniqueOrThrow({
+            where: { id: txId },
+          });
+          return t.status === 'SUCCEEDED' ? t : null;
+        });
+      } finally {
+        config.OPENPAY_CALLBACKS_PER_MINUTE = saved.valid;
+        config.OPENPAY_INVALID_CALLBACKS_PER_MINUTE = saved.invalid;
+      }
+    }, 40_000);
+
+    it('N3 : les compteurs sont par IP lue dans X-Forwarded-For (proxy de confiance), pas par IP du proxy', async () => {
+      const limiter = ctx.app.get(OpenPayApiLimiter);
+      (
+        ctx.app.get(AppConfigService).all as Record<string, unknown>
+      ).OPENPAY_INVALID_CALLBACKS_PER_MINUTE = 1;
+      try {
+        expect(await limiter.tryAcquireCallbackRequest('203.0.113.61', 'INVALID')).toBe(true);
+        expect(await limiter.tryAcquireCallbackRequest('203.0.113.61', 'INVALID')).toBe(false);
+        expect(await limiter.tryAcquireCallbackRequest('203.0.113.62', 'INVALID')).toBe(true);
+      } finally {
+        (
+          ctx.app.get(AppConfigService).all as Record<string, unknown>
+        ).OPENPAY_INVALID_CALLBACKS_PER_MINUTE = 60;
+      }
+    });
+
+    it('N6 : un callback freiné par l’intervalle minimal est remis en file, pas perdu (sans polling)', async () => {
+      const config = ctx.app.get(AppConfigService).all as Record<string, unknown>;
+      config.OPENPAY_MIN_CHECK_INTERVAL_SECONDS = 6;
+      try {
+        const res = await initiateRent(7);
+        expect(res.status).toBe(202);
+        const txId = res.body.transaction.id as string;
+        // Un rafraîchissement du client juste avant le paiement : l'intervalle court désormais.
+        await api(ctx, 'POST', `/payments/mobile-money/transactions/${txId}/refresh`, owner());
+        const row = await ctx.admin.mobile_money_transactions.findUniqueOrThrow({
+          where: { id: txId },
+        });
+        const reference = row.aggregator_transaction_id as string;
+        fake.payments.get(reference)!.status = 'success';
+        await post({ reference, type: 'payment' });
+        await new Promise((r) => setTimeout(r, 1_500));
+        // Freiné : pas encore confirmé (le callback n'a rien interrogé)...
+        expect(
+          (await ctx.admin.mobile_money_transactions.findUniqueOrThrow({ where: { id: txId } }))
+            .status,
+        ).toBe('PENDING');
+        // ... puis confirmé à l'issue de l'intervalle, SANS nouveau refresh ni nouveau callback.
+        const done = await waitFor(async () => {
+          const t = await ctx.admin.mobile_money_transactions.findUniqueOrThrow({
+            where: { id: txId },
+          });
+          return t.status === 'SUCCEEDED' ? t : null;
+        }, 25_000);
+        expect(done).toBeTruthy();
+      } finally {
+        config.OPENPAY_MIN_CHECK_INTERVAL_SECONDS = 0;
+      }
+    }, 60_000);
   });
 
   describe('reversement (retrait programmé)', () => {

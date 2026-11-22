@@ -11,6 +11,7 @@ function build(
     provider?: Record<string, unknown>;
     statusAfterVerify?: string;
     updateCount?: number;
+    laterAttempt?: boolean;
   } = {},
 ) {
   const row = {
@@ -26,10 +27,18 @@ function build(
     aggregator_transaction_id: '550e8400-e29b-41d4-a716-446655440000',
     payer_msisdn: '+242066203420',
     amount: 50_000n,
+    tenant_id: null,
+    invoice_id: null,
+    failure_code: null,
     ...rowOverrides,
   };
   const admin = {
-    $queryRawUnsafe: jest.fn().mockResolvedValue([row]),
+    // La requête « autre tentative depuis » (LIMIT 1) ne renvoie rien sauf demande explicite.
+    $queryRawUnsafe: jest.fn((sql: string) =>
+      Promise.resolve(
+        sql.includes('LIMIT 1') ? (opts.laterAttempt ? [{ id: 'later' }] : []) : [row],
+      ),
+    ),
     organization_settings: { findUnique: jest.fn().mockResolvedValue(null) },
   };
   const tx = {
@@ -64,7 +73,7 @@ function build(
       get: (k: string) => (k === 'MOMO_INITIATED_EXPIRY_MINUTES' ? 60 : 'http://localhost'),
     } as never,
     { forCode: () => provider } as never,
-    { notifyOutcome } as never,
+    { notifyOutcome, alertOnce: jest.fn() } as never,
   );
   return { service, tx, verifyNow, provider, notifyOutcome };
 }
@@ -133,12 +142,21 @@ describe('Reconcile : course d’expiration (M3)', () => {
   });
 });
 
-describe('Reconcile : INITIATED OpenPay sans référence (M1)', () => {
-  const lost = { status: 'INITIATED', purpose: 'RENT_COLLECTION', aggregator_transaction_id: null };
+describe('Reconcile : INITIATED OpenPay sans référence (M1, N2)', () => {
+  const minutesLater = (m: number) => new Date(T0.getTime() + m * 60_000);
+  /** Initiation d'origine terminée sur un DÉLAI DÉPASSÉ : la requête a pu arriver chez OpenPay. */
+  const lost = {
+    status: 'INITIATED',
+    purpose: 'RENT_COLLECTION',
+    aggregator_transaction_id: null,
+    failure_code: 'INITIATION_TIMEOUT',
+    tenant_id: 'tenant-1',
+    invoice_id: 'inv-1',
+  };
 
-  it('rejoue l’initiation avec la même clé et les mêmes paramètres, stocke la référence, relit le statut', async () => {
+  it('rejoue l’initiation (même clé, mêmes paramètres) dans la fenêtre courte, stocke la référence, relit le statut', async () => {
     const h = build(lost);
-    const result = await h.service.reconcilePending(hoursLater(0.5));
+    const result = await h.service.reconcilePending(minutesLater(3));
     expect(h.provider.initiate).toHaveBeenCalledWith(
       expect.objectContaining({
         amount: 50_000n,
@@ -149,32 +167,85 @@ describe('Reconcile : INITIATED OpenPay sans référence (M1)', () => {
     );
     expect(h.tx.mobile_money_transactions.updateMany).toHaveBeenCalledWith({
       where: { id: 'tx-1', status: 'INITIATED', aggregator_transaction_id: null },
-      data: { aggregator_transaction_id: 'PTXN1234ABCD' },
+      data: { aggregator_transaction_id: 'PTXN1234ABCD', failure_code: null },
     });
     expect(h.verifyNow).toHaveBeenCalledWith('org-1', 'tx-1', { origin: 'RECONCILE' });
     expect(result).toMatchObject({ rechecked: 1, expired: 0 });
+  });
+
+  it('N2 : au-delà de la fenêtre, JAMAIS de rejeu (un push USSD tardif doublerait le paiement) : initiation incertaine', async () => {
+    const h = build(lost);
+    expect(await h.service.reconcilePending(minutesLater(30))).toMatchObject({ expired: 0 });
+    expect(h.provider.initiate).not.toHaveBeenCalled();
+    expect(h.tx.mobile_money_transactions.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ failure_code: 'INITIATION_UNCERTAIN' }),
+      }),
+    );
+  });
+
+  it.each([
+    ['connexion refusée', 'INITIATION_UNREACHABLE'],
+    ['cause inconnue (arrêt brutal)', null],
+  ])(
+    'N2 : %s : la requête n’est peut-être jamais arrivée, aucun rejeu, incertaine',
+    async (_l, code) => {
+      const h = build({ ...lost, failure_code: code });
+      await h.service.reconcilePending(minutesLater(3));
+      expect(h.provider.initiate).not.toHaveBeenCalled();
+      expect(h.tx.mobile_money_transactions.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ failure_code: 'INITIATION_UNCERTAIN' }),
+        }),
+      );
+    },
+  );
+
+  it('N2 : une autre transaction du même locataire/facture a été tentée depuis : aucun rejeu', async () => {
+    const h = build(lost, { laterAttempt: true });
+    await h.service.reconcilePending(minutesLater(3));
+    expect(h.provider.initiate).not.toHaveBeenCalled();
+    expect(h.tx.mobile_money_transactions.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ failure_code: 'INITIATION_UNCERTAIN' }),
+      }),
+    );
   });
 
   it('rejeu en échec : la ligne n’est pas expirée avant son délai, la suite du rattrapage continue', async () => {
     const h = build(lost, {
       provider: { initiate: jest.fn().mockRejectedValue(new Error('timeout')) },
     });
-    expect(await h.service.reconcilePending(hoursLater(0.5))).toMatchObject({ expired: 0 });
+    expect(await h.service.reconcilePending(minutesLater(3))).toMatchObject({ expired: 0 });
     expect(h.tx.mobile_money_transactions.updateMany).not.toHaveBeenCalled();
   });
 
-  it('rejeu tenté avant l’expiration : un paiement retrouvé à 61 min n’est pas expiré', async () => {
+  it('une initiation de moins de 10 min hors fenêtre n’est ni rejouée ni expirée', async () => {
     const h = build(lost);
-    expect(await h.service.reconcilePending(hoursLater(1.02))).toMatchObject({ expired: 0 });
-    expect(h.provider.initiate).toHaveBeenCalledTimes(1);
+    expect(await h.service.reconcilePending(minutesLater(8))).toMatchObject({
+      rechecked: 0,
+      expired: 0,
+    });
+    expect(h.provider.initiate).not.toHaveBeenCalled();
   });
 
   it('fournisseur sans initiation idempotente, ou référence déjà connue : aucun rejeu', async () => {
     const plain = build(lost, { provider: { idempotentInitiation: undefined } });
-    await plain.service.reconcilePending(hoursLater(0.5));
+    await plain.service.reconcilePending(minutesLater(3));
     expect(plain.provider.initiate).not.toHaveBeenCalled();
     const known = build({ ...lost, aggregator_transaction_id: 'PTXN1234ABCD' });
-    await known.service.reconcilePending(hoursLater(0.5));
+    await known.service.reconcilePending(minutesLater(3));
     expect(known.provider.initiate).not.toHaveBeenCalled();
+  });
+});
+
+describe('Reconcile : collecte PENDING expirée (N10)', () => {
+  it('dernière vérification AVANT d’expirer (un callback perdu ne fait pas expirer un paiement réussi)', async () => {
+    const h = build({ purpose: 'RENT_COLLECTION' });
+    expect(await h.service.reconcilePending(hoursLater(5))).toMatchObject({ expired: 1 });
+    expect(h.verifyNow).toHaveBeenCalledWith('org-1', 'tx-1', { origin: 'RECONCILE' });
+    expect(h.verifyNow.mock.invocationCallOrder[0]).toBeLessThan(
+      h.tx.mobile_money_transactions.updateMany.mock.invocationCallOrder[0] as number,
+    );
   });
 });

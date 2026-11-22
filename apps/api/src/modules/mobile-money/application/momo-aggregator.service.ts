@@ -158,15 +158,23 @@ export class MomoAggregatorService {
       },
     );
 
-    const result = await this.callInitiate(provider, {
-      amount: input.amount,
-      currency: 'XAF',
-      payerMsisdn,
-      operator,
-      externalReference: transactionId,
-      description: `Paiement Mobile Money ${merchantReference}`,
-      callbackUrl: buildMomoNotifyUrl(this.config, provider.code),
-    });
+    let result: Awaited<ReturnType<MomoAggregatorService['callInitiate']>>;
+    try {
+      result = await this.callInitiate(provider, {
+        amount: input.amount,
+        currency: 'XAF',
+        payerMsisdn,
+        operator,
+        externalReference: transactionId,
+        description: `Paiement Mobile Money ${merchantReference}`,
+        callbackUrl: buildMomoNotifyUrl(this.config, provider.code),
+      });
+    } catch (error) {
+      // Cause de l'échec conservée sur la ligne INITIATED : le rattrapage ne rejoue l'initiation
+      // (idempotente) qu'après un DÉLAI DÉPASSÉ, jamais après une connexion refusée.
+      await this.recordInitiationFailure(organizationId, reader.userId, transactionId, error);
+      throw error;
+    }
 
     await this.prisma.withTenant(organizationId, reader.userId, async (tx) => {
       // Le webhook du fournisseur peut avoir déjà été traité (transaction
@@ -197,7 +205,10 @@ export class MomoAggregatorService {
       }
     });
     if (result.state !== 'FAILED') {
-      await this.verifyQueue.enqueue({ organizationId, transactionId }, { delay: 4000 });
+      await this.verifyQueue.enqueue(
+        { organizationId, transactionId, origin: 'REFRESH' },
+        { delay: 4000 },
+      );
     }
 
     const view = await this.queries.get(organizationId, reader, transactionId);
@@ -209,6 +220,27 @@ export class MomoAggregatorService {
         status: result.state === 'FAILED' ? 'REJECTED' : 'PENDING',
       },
     };
+  }
+
+  private async recordInitiationFailure(
+    organizationId: string,
+    userId: string,
+    transactionId: string,
+    error: unknown,
+  ): Promise<void> {
+    const cause = error instanceof DomainError ? error.details?.cause : undefined;
+    try {
+      await this.prisma.withTenant(organizationId, userId, (tx) =>
+        tx.mobile_money_transactions.updateMany({
+          where: { id: transactionId, status: 'INITIATED' },
+          data: {
+            failure_code: cause === 'TIMEOUT' ? 'INITIATION_TIMEOUT' : 'INITIATION_UNREACHABLE',
+          },
+        }),
+      );
+    } catch {
+      // Au mieux : sans cause connue, le rattrapage ne rejoue pas (initiation marquée incertaine).
+    }
   }
 
   private async callInitiate(

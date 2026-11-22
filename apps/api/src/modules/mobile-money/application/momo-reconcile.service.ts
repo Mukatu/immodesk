@@ -8,11 +8,14 @@ import { AUDIT_OPERATIONS, toJsonState } from '../../audit/domain/audit-entry';
 import { readOperationalSettings } from '../../../shared/settings/operational-settings';
 import {
   INITIATED_MIN_AGE_MINUTES,
+  INITIATION_REPLAY_MAX_AGE_MINUTES,
+  INITIATION_REPLAY_MIN_AGE_MINUTES,
   OWNER_PAYOUT_EXPIRY_MINUTES,
   PENDING_MIN_AGE_MINUTES,
   isDueForRecheck,
   isExpired,
   isInitiatedExpired,
+  isInitiationReplayable,
 } from '../domain/reconcile-rules';
 import { assertMomoTransition, detectOperator, type MomoStatus } from '../domain/momo-rules';
 import type { MomoPurpose } from '../domain/momo-purpose';
@@ -34,6 +37,9 @@ interface PendingRow {
   aggregator_transaction_id: string | null;
   payer_msisdn: string;
   amount: bigint;
+  tenant_id: string | null;
+  invoice_id: string | null;
+  failure_code: string | null;
 }
 
 /**
@@ -60,13 +66,16 @@ export class MomoReconcileService {
     const admin = this.adminClient();
     const rows = await admin.$queryRawUnsafe<PendingRow[]>(
       `SELECT id, organization_id, status, initiated_at, status_checked_at, status_check_count, external_reference, purpose,
-              aggregator, aggregator_transaction_id, payer_msisdn, amount
+              aggregator, aggregator_transaction_id, payer_msisdn, amount,
+              tenant_id, invoice_id, failure_code
          FROM mobile_money_transactions
         WHERE channel = 'AGGREGATOR'
           AND ((status = 'PENDING' AND initiated_at <= now() - make_interval(mins => $1::int))
             OR (status = 'INITIATED' AND initiated_at <= now() - make_interval(mins => $2::int)))`,
       PENDING_MIN_AGE_MINUTES,
-      INITIATED_MIN_AGE_MINUTES,
+      // Les INITIATED sont lues dès l'âge de rejeu d'une initiation (voir `recoverInitiation`) ;
+      // celles qui n'en relèvent pas attendent `INITIATED_MIN_AGE_MINUTES` plus bas.
+      INITIATION_REPLAY_MIN_AGE_MINUTES,
     );
     let rechecked = 0;
     let expired = 0;
@@ -89,16 +98,26 @@ export class MomoReconcileService {
           payout ? OWNER_PAYOUT_EXPIRY_MINUTES : pendingExpiryMinutes,
         )
       ) {
-        if (
-          payout ? await this.expirePayout(row) : await this.expire(row.organization_id, row.id)
-        ) {
-          expired += 1;
+        if (payout) {
+          if (await this.expirePayout(row)) expired += 1;
+        } else {
+          // Dernière vérification AVANT d'expirer : un callback perdu ne doit pas faire expirer un
+          // paiement réussi (`expire` ne touche plus une ligne que la vérification a conclue).
+          await this.safeVerify(row);
+          if (await this.expire(row.organization_id, row.id)) expired += 1;
         }
         continue;
       }
-      // INITIATED OpenPay sans référence (réponse d'initiation perdue) : rejeu idempotent.
-      if (row.status === 'INITIATED' && (await this.recoverInitiation(row))) {
+      // INITIATED OpenPay sans référence (réponse d'initiation perdue) : rejeu idempotent, mais
+      // seulement dans une courte fenêtre et après un délai dépassé (voir `recoverInitiation`).
+      if (row.status === 'INITIATED' && (await this.recoverInitiation(row, now))) {
         rechecked += 1;
+        continue;
+      }
+      if (
+        row.status === 'INITIATED' &&
+        now.getTime() - row.initiated_at.getTime() < INITIATED_MIN_AGE_MINUTES * 60_000
+      ) {
         continue;
       }
       // INITIATED que le fournisseur ne fait jamais évoluer (réponse d'initiation
@@ -164,11 +183,18 @@ export class MomoReconcileService {
   /**
    * INITIATED d'un fournisseur à initiation idempotente (OpenPay) dont la réponse a été perdue :
    * aucune référence fournisseur, donc rien à interroger. Rejouer `initiate()` avec la MÊME clé
-   * et les MÊMES paramètres renvoie la transaction d'origine sans la recréer (doc : en-tête
-   * `Idempotency-Key`) ; sa référence est alors stockée et le statut relu. `true` : référence
-   * retrouvée (la ligne est reprise par la vérification, pas expirée ce tour-ci).
+   * et les MÊMES paramètres renvoie la transaction d'origine (doc : en-tête `Idempotency-Key`)
+   * MAIS la CRÉE si la requête d'origine n'est jamais arrivée : le payeur recevrait alors un push
+   * USSD inattendu bien après coup (double paiement probable). Le rejeu n'a donc lieu que :
+   * - dans une courte fenêtre (`INITIATION_REPLAY_*_AGE_MINUTES`) ;
+   * - si l'initiation d'origine s'est terminée sur un DÉLAI DÉPASSÉ (`INITIATION_TIMEOUT`, la
+   *   requête a pu arriver), jamais sur une connexion refusée ni une cause inconnue ;
+   * - si aucune autre transaction du même locataire/facture n'a été tentée ou n'a abouti depuis.
+   * Sinon la transaction est marquée « initiation incertaine » (`INITIATION_UNCERTAIN`, une alerte) :
+   * elle n'est jamais rejouée, et un succès tardif signalé par callback sera alerté (EXPIRED).
+   * `true` : référence retrouvée (la ligne est reprise par la vérification, pas expirée ce tour-ci).
    */
-  private async recoverInitiation(row: PendingRow): Promise<boolean> {
+  private async recoverInitiation(row: PendingRow, now: Date): Promise<boolean> {
     if (
       row.purpose === 'OWNER_PAYOUT' ||
       row.aggregator_transaction_id ||
@@ -183,6 +209,30 @@ export class MomoReconcileService {
     try {
       const provider = this.registry.forCode(row.aggregator);
       if (!provider.idempotentInitiation) return false;
+      if (!isInitiationReplayable(row.initiated_at, now)) {
+        // Fenêtre dépassée sans référence : trop tard pour rejouer sans risque.
+        if (
+          now.getTime() - row.initiated_at.getTime() >=
+          INITIATION_REPLAY_MAX_AGE_MINUTES * 60_000
+        ) {
+          await this.markInitiationUncertain(row, 'fenêtre de rejeu dépassée');
+        }
+        return false;
+      }
+      if (row.failure_code !== 'INITIATION_TIMEOUT') {
+        await this.markInitiationUncertain(
+          row,
+          `cause de l'échec d'initiation « ${row.failure_code ?? 'inconnue'} » : la requête n'est peut-être jamais arrivée, rejeu refusé`,
+        );
+        return false;
+      }
+      if (await this.hasLaterAttempt(row)) {
+        await this.markInitiationUncertain(
+          row,
+          'une autre transaction du même locataire/facture a été tentée depuis : rejeu refusé',
+        );
+        return false;
+      }
       const replayed = await provider.initiate({
         amount: row.amount,
         currency: 'XAF',
@@ -195,7 +245,7 @@ export class MomoReconcileService {
       const stored = await this.prisma.withTenant(row.organization_id, null, (tx) =>
         tx.mobile_money_transactions.updateMany({
           where: { id: row.id, status: 'INITIATED', aggregator_transaction_id: null },
-          data: { aggregator_transaction_id: replayed.providerReference },
+          data: { aggregator_transaction_id: replayed.providerReference, failure_code: null },
         }),
       );
       if (stored.count === 0) return false;
@@ -209,6 +259,52 @@ export class MomoReconcileService {
         `MOMO.INITIATION_RECOVERY_FAILED transaction=${row.id} : ${(error as Error).message}`,
       );
       return false;
+    }
+  }
+
+  /** Une autre transaction du même locataire/facture, tentée depuis celle-ci, est en cours ou a abouti. */
+  private async hasLaterAttempt(row: PendingRow): Promise<boolean> {
+    const found = await this.adminClient().$queryRawUnsafe<Array<{ id: string }>>(
+      `SELECT id FROM mobile_money_transactions
+        WHERE organization_id = $1::uuid AND id <> $2::uuid AND channel = 'AGGREGATOR'
+          AND purpose = $3::momo_purpose AND initiated_at >= $4
+          AND status IN ('INITIATED', 'PENDING', 'SUCCEEDED')
+          AND (($5::uuid IS NOT NULL OR $6::uuid IS NOT NULL)
+               AND tenant_id IS NOT DISTINCT FROM $5::uuid
+               AND invoice_id IS NOT DISTINCT FROM $6::uuid
+               OR ($5::uuid IS NULL AND $6::uuid IS NULL AND payer_msisdn = $7))
+        LIMIT 1`,
+      row.organization_id,
+      row.id,
+      row.purpose,
+      row.initiated_at,
+      row.tenant_id,
+      row.invoice_id,
+      row.payer_msisdn,
+    );
+    return found.length > 0;
+  }
+
+  /** Une seule alerte : la marque `INITIATION_UNCERTAIN` n'est posée (et journalisée) qu'une fois. */
+  private async markInitiationUncertain(row: PendingRow, reason: string): Promise<void> {
+    const marked = await this.prisma.withTenant(row.organization_id, null, (tx) =>
+      tx.mobile_money_transactions.updateMany({
+        where: {
+          id: row.id,
+          status: 'INITIATED',
+          aggregator_transaction_id: null,
+          OR: [{ failure_code: null }, { failure_code: { not: 'INITIATION_UNCERTAIN' } }],
+        },
+        data: {
+          failure_code: 'INITIATION_UNCERTAIN',
+          failure_message: `Initiation incertaine : ${reason}`.slice(0, 500),
+        },
+      }),
+    );
+    if (marked.count > 0) {
+      this.logger.error(
+        `MOMO.INITIATION_UNCERTAIN transaction=${row.id} organisation=${row.organization_id} : ${reason}. Aucun rejeu automatique ; un push USSD a pu partir (succès tardif signalé si callback).`,
+      );
     }
   }
 
@@ -232,8 +328,12 @@ export class MomoReconcileService {
       if (provider.cancelPayout) {
         const reference = row.aggregator_transaction_id ?? row.external_reference;
         if (!reference || (await provider.cancelPayout(reference)) !== 'CANCELLED') {
-          this.logger.error(
-            `MOMO.PAYOUT_EXPIRY_BLOCKED transaction=${row.id} : retrait non annulable chez le fournisseur (approuvé ou exécuté ?), non expiré : décision humaine requise.`,
+          await this.payouts.alertOnce(
+            row.organization_id,
+            row.id,
+            'BLOCKED',
+            'MOMO.PAYOUT_EXPIRY_BLOCKED',
+            "retrait non annulable chez le fournisseur (approuvé ou exécuté ?), non expiré : vérifier chez le fournisseur puis résoudre (action d'administration du reversement).",
           );
           return false;
         }

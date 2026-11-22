@@ -175,6 +175,7 @@ export function matchCashoutResponse(
       amount: expected.amount,
       currency: 'XAF',
       matched: true,
+      cashoutStatus: data.status as NonNullable<ProviderStatus['cashoutStatus']>,
       ...(data.status === 'approved' ? { nextAction: 'EXECUTE' as const } : {}),
       ...(state === 'FAILED' ? { failureCode: `openpay_${String(data.status)}` } : {}),
       rawPayload: response,

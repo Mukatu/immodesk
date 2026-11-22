@@ -226,7 +226,11 @@ export class OpenPayProvider implements MobileMoneyProvider {
     expected: ProviderStatusExpectation,
   ): ProviderStatus {
     if (response.status !== 200 && response.status !== 201) {
-      return this.unknown(reference, `HTTP ${response.status}`);
+      const unknown = this.unknown(reference, `HTTP ${response.status}`);
+      // 404 sur un retrait : le fournisseur ne le connaît pas (aucun virement possible).
+      return response.status === 404 && expected.kind === 'PAYOUT'
+        ? { ...unknown, notFound: true }
+        : unknown;
     }
     const match: OpenPayMatch =
       expected.kind === 'PAYOUT'

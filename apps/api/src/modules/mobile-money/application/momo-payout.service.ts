@@ -52,6 +52,7 @@ interface PayoutRow {
   payout_execute_sent_at: Date | null;
   payout_execute_refused_at: Date | null;
   payout_alert_code: string | null;
+  failure_code: string | null;
 }
 
 /** Un ordre d'exécution posé depuis moins de ce délai est peut-être encore en cours (course normale). */
@@ -301,6 +302,10 @@ export class MomoPayoutService
         where: { id: transactionId, purpose: 'OWNER_PAYOUT', channel: 'AGGREGATOR' },
       }),
     )) as PayoutRow | null;
+    if (row && ['FAILED', 'EXPIRED'].includes(row.status)) {
+      await this.checkLateSuccess(organizationId, row);
+      return;
+    }
     if (!row || !IN_FLIGHT.includes(row.status)) return;
     const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
     if (!providerReferenceOf(row)) {
@@ -341,22 +346,78 @@ export class MomoPayoutService
     await this.applyLocked(organizationId, transactionId, status);
   }
 
+  /**
+   * Reversement expiré, ou marqué échoué à la main : si le retrait est en fait `completed` chez le
+   * fournisseur, le virement est parti alors que la ligne est conclue en échec (une nouvelle tentative
+   * le doublerait). Aucune écriture automatique : alerte d'exploitation `MOMO.PAYOUT_LATE_SUCCESS`.
+   * Espacé (une relecture toutes les 10 s par ligne), une seule alerte par ligne.
+   */
+  private async checkLateSuccess(organizationId: string, row: PayoutRow): Promise<void> {
+    if (row.status === 'FAILED' && row.failure_code !== 'MANUAL_RESOLUTION') return;
+    if (row.payout_alert_code === 'LATE_SUCCESS') return;
+    const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
+    if (!providerReferenceOf(row) || !row.external_reference) return;
+    const due = await this.prisma.withTenant(organizationId, null, (tx) =>
+      tx.$executeRawUnsafe(
+        `UPDATE mobile_money_transactions SET status_checked_at = now()
+          WHERE id = $1::uuid AND (status_checked_at IS NULL
+                OR status_checked_at <= now() - make_interval(secs => 10))`,
+        row.id,
+      ),
+    );
+    if (due !== 1) return;
+    let status: ProviderStatus | null;
+    try {
+      status = await this.statusChecker.check(null, provider, row, 'PAYOUT');
+    } catch (error) {
+      this.logger.warn(
+        `MOMO.PAYOUT_LATE_CHECK_FAILED transaction=${row.id} : ${(error as Error).message}`,
+      );
+      return;
+    }
+    if (status && withVerifiedAmount(status, row).state === 'SUCCEEDED') {
+      await this.alertLateSuccess(organizationId, row);
+    }
+  }
+
+  private async alertLateSuccess(organizationId: string, row: PayoutRow): Promise<void> {
+    await this.alertOnce(
+      organizationId,
+      row.id,
+      'LATE_SUCCESS',
+      'MOMO.PAYOUT_LATE_SUCCESS',
+      `retrait « completed » chez le fournisseur alors que la ligne est ${row.status} (${row.failure_code ?? 'sans motif'}) : le virement EST parti. Ne PAS relancer ; vérifier puis régulariser à la main (reversement et relevé).`,
+    );
+  }
+
   /** Applique un statut du fournisseur sous verrou de ligne, dans une transaction courte. */
   private async applyLocked(
     organizationId: string,
     transactionId: string,
     status: ProviderStatus,
   ): Promise<void> {
-    await this.prisma.withTenant(organizationId, null, async (tx) => {
-      await tx.$queryRawUnsafe(
-        `SELECT id FROM mobile_money_transactions WHERE id = $1::uuid FOR UPDATE`,
-        transactionId,
-      );
-      const locked = (await tx.mobile_money_transactions.findFirst({
-        where: { id: transactionId },
-      })) as PayoutRow | null;
-      if (locked) await this.applyStatus(tx, locked, status, true);
-    });
+    await this.prisma
+      .withTenant(organizationId, null, async (tx) => {
+        await tx.$queryRawUnsafe(
+          `SELECT id FROM mobile_money_transactions WHERE id = $1::uuid FOR UPDATE`,
+          transactionId,
+        );
+        const locked = (await tx.mobile_money_transactions.findFirst({
+          where: { id: transactionId },
+        })) as PayoutRow | null;
+        if (locked) await this.applyStatus(tx, locked, status, true);
+        return locked;
+      })
+      .then(async (locked) => {
+        // Succès conforme sur une ligne déjà conclue en échec : alerte (hors transaction, la ligne y était verrouillée).
+        if (
+          locked &&
+          status.state === 'SUCCEEDED' &&
+          ['FAILED', 'EXPIRED'].includes(locked.status)
+        ) {
+          await this.alertLateSuccess(organizationId, locked);
+        }
+      });
   }
 
   /**
@@ -390,7 +451,12 @@ export class MomoPayoutService
       );
       return;
     }
-    if (isExecutable(provider, row, reread)) {
+    // Refus d'un retrait `approved` OU encore `pending` (non approuvé : cause même du refus) : la
+    // relecture prouve qu'aucun virement n'est parti, le marqueur est levé dans les deux cas.
+    if (
+      isExecutable(provider, row, reread) ||
+      (reread.matched === true && reread.cashoutStatus === 'pending')
+    ) {
       await this.prisma.withTenant(organizationId, null, (tx) =>
         tx.$executeRawUnsafe(
           `UPDATE mobile_money_transactions
@@ -476,7 +542,7 @@ export class MomoPayoutService
   async alertOnce(
     organizationId: string,
     transactionId: string,
-    kind: 'REFUSED' | 'BLOCKED',
+    kind: 'REFUSED' | 'BLOCKED' | 'LATE_SUCCESS',
     code: string,
     detail: string,
   ): Promise<void> {
@@ -485,7 +551,12 @@ export class MomoPayoutService
       const updated = await this.prisma.withTenant(organizationId, null, (tx) =>
         tx.$executeRawUnsafe(
           `UPDATE mobile_money_transactions SET payout_alert_code = $2
-            WHERE id = $1::uuid AND payout_alert_code IS DISTINCT FROM $2`,
+            WHERE id = $1::uuid AND payout_alert_code IS DISTINCT FROM $2
+              AND CASE $2
+                    WHEN 'REFUSED' THEN payout_alert_code IS NULL
+                    WHEN 'BLOCKED' THEN payout_alert_code IS DISTINCT FROM 'LATE_SUCCESS'
+                    ELSE true
+                  END`,
           transactionId,
           kind,
         ),
@@ -501,15 +572,29 @@ export class MomoPayoutService
 
   /**
    * Action d'administration (`OWNER`, auditée par l'appelant) sur un décaissement dont l'issue
-   * est incertaine, APRÈS vérification chez le fournisseur par un humain. Aucun virement n'est émis
-   * ici. `RETRY` lève les marqueurs : l'ordre ne repartira que si le statut relu par la
-   * vérification est `approved` (état certain) ; `MARK_PAID` / `MARK_FAILED` concluent la ligne.
+   * est incertaine. Aucun virement n'est émis ici, et AUCUNE résolution ne se fie à la seule
+   * déclaration de l'humain : le statut du retrait est RELU chez le fournisseur, sous le verrou de
+   * la ligne, et la résolution n'est acceptée que si elle exclut tout double virement. Dans le doute,
+   * elle est refusée (`MOMO.RESOLUTION_REFUSED`) et l'incident reste signalé.
+   *
+   * - recevable seulement si la ligne est bloquée (alerte `BLOCKED`) ou porte un marqueur d'ordre
+   *   posé depuis plus de `RESOLUTION_MIN_AGE_MS` (un ordre plus récent peut être en cours) ;
+   * - `MARK_PAID` : seulement si le retrait est relu `completed` ;
+   * - `MARK_FAILED` : seulement si relu `cancelled` / `rejected` / inconnu (404), ou `pending` ET
+   *   annulé (DELETE réussi) ; refusé si `approved` (non annulable, orienter vers `RETRY`) ou `completed` ;
+   * - `RETRY` : seulement si relu `pending` ou `approved` (la vérification ne redonnera l'ordre
+   *   que sur un statut `approved` relu).
    */
   async resolveBlockedPayout(
     tx: TenantClient,
     momoTransactionId: string,
     resolution: MobileMoneyPayoutResolution,
-  ): Promise<{ previousStatus: string; status: string; markerCleared: boolean }> {
+  ): Promise<{
+    previousStatus: string;
+    status: string;
+    markerCleared: boolean;
+    providerStatus: string;
+  }> {
     await tx.$queryRawUnsafe(
       `SELECT id FROM mobile_money_transactions WHERE id = $1::uuid FOR UPDATE`,
       momoTransactionId,
@@ -523,9 +608,26 @@ export class MomoPayoutService
     if (!IN_FLIGHT.includes(row.status)) {
       throw new DomainError('MOMO.INVALID_TRANSITION', { from: row.status, to: resolution });
     }
+    assertResolvable(row, resolution);
+    const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
+    const providerStatus = await this.rereadForResolution(row, provider, resolution);
+    const refuse = (reason: string): never => {
+      this.logger.error(
+        `MOMO.RESOLUTION_REFUSED transaction=${row.id} resolution=${resolution} statut=${providerStatus} : ${reason}`,
+      );
+      throw new DomainError('MOMO.RESOLUTION_REFUSED', {
+        resolution,
+        providerStatus,
+        reason,
+      });
+    };
     if (resolution === 'RETRY') {
-      if (!row.payout_execute_sent_at && !row.payout_execute_refused_at) {
-        throw new DomainError('MOMO.INVALID_TRANSITION', { from: row.status, to: 'RETRY' });
+      if (providerStatus !== 'pending' && providerStatus !== 'approved') {
+        refuse(
+          providerStatus === 'completed'
+            ? 'retrait déjà exécuté : utiliser MARK_PAID'
+            : 'statut du retrait non rejouable ou illisible',
+        );
       }
       await tx.$executeRawUnsafe(
         `UPDATE mobile_money_transactions
@@ -535,8 +637,50 @@ export class MomoPayoutService
         momoTransactionId,
       );
       this.enqueueVerifyBestEffort(row, 'RECONCILE', 5_000);
-      return { previousStatus: row.status, status: row.status, markerCleared: true };
+      return {
+        previousStatus: row.status,
+        status: row.status,
+        markerCleared: true,
+        providerStatus,
+      };
     }
+    if (resolution === 'MARK_PAID') {
+      if (providerStatus !== 'completed') {
+        refuse(
+          'le retrait n’est pas relu « completed » chez le fournisseur : aucun virement constaté',
+        );
+      }
+    } else if (providerStatus === 'pending') {
+      // Non annulable = approuvé entre-temps : le virement peut encore partir, on refuse.
+      let cancelled = false;
+      try {
+        cancelled =
+          provider.cancelPayout !== undefined &&
+          (await provider.cancelPayout(providerReferenceOf(row) as string)) === 'CANCELLED';
+      } catch {
+        cancelled = false;
+      }
+      if (!cancelled) {
+        refuse('retrait en attente non annulable chez le fournisseur (annulation refusée)');
+      }
+    } else if (!['cancelled', 'rejected', 'not_found'].includes(providerStatus)) {
+      refuse(
+        providerStatus === 'approved'
+          ? 'retrait approuvé, non annulable, le virement peut encore partir : utiliser RETRY'
+          : providerStatus === 'completed'
+            ? 'retrait déjà exécuté : utiliser MARK_PAID'
+            : 'statut du retrait illisible chez le fournisseur',
+      );
+    }
+    return this.concludeResolution(tx, row, resolution, providerStatus);
+  }
+
+  private async concludeResolution(
+    tx: TenantClient,
+    row: PayoutRow,
+    resolution: 'MARK_PAID' | 'MARK_FAILED',
+    providerStatus: string,
+  ) {
     const next = resolution === 'MARK_PAID' ? 'SUCCEEDED' : 'FAILED';
     assertMomoTransition(row.status, next);
     await tx.mobile_money_transactions.update({
@@ -554,7 +698,67 @@ export class MomoPayoutService
       state: next,
       source: 'MANUAL_RESOLUTION',
     });
-    return { previousStatus: row.status, status: next, markerCleared: false };
+    return { previousStatus: row.status, status: next, markerCleared: false, providerStatus };
+  }
+
+  /**
+   * Statut du retrait relu chez le fournisseur pour décider d'une résolution. Une relecture
+   * impossible (réseau, limite d'appels) refuse : sans preuve, aucune résolution.
+   */
+  private async rereadForResolution(
+    row: PayoutRow,
+    provider: MobileMoneyProvider,
+    resolution: MobileMoneyPayoutResolution,
+  ): Promise<ResolutionProviderStatus> {
+    const reference = providerReferenceOf(row);
+    if (!reference || !row.external_reference) {
+      throw new DomainError('MOMO.RESOLUTION_REFUSED', {
+        resolution,
+        reason: 'référence fournisseur inconnue : relecture impossible',
+      });
+    }
+    try {
+      const status = withVerifiedAmount(
+        await provider.getStatus(reference, { ...expectationOf(row), origin: 'RECONCILE' }),
+        row,
+      );
+      return classifyProviderStatus(status);
+    } catch (error) {
+      this.logger.error(
+        `MOMO.RESOLUTION_REFUSED transaction=${row.id} resolution=${resolution} : relecture impossible (${(error as Error).message}).`,
+      );
+      throw new DomainError('MOMO.RESOLUTION_REFUSED', {
+        resolution,
+        reason: 'statut du retrait illisible chez le fournisseur : réessayer plus tard',
+      });
+    }
+  }
+
+  /**
+   * Refus d'une nouvelle tentative (`executeMobileMoney`) après un `MARK_FAILED` dont le retrait
+   * avait reçu un ordre d'exécution : sans relecture prouvant qu'aucun virement n'est parti
+   * (`cancelled`, `rejected` ou inconnu), un second retrait doublerait peut-être le virement.
+   */
+  async assertNoTransferSent(tx: TenantClient, momoTransactionId: string): Promise<void> {
+    const row = (await tx.mobile_money_transactions.findFirst({
+      where: { id: momoTransactionId },
+    })) as PayoutRow | null;
+    if (!row) return;
+    const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
+    let providerStatus: ResolutionProviderStatus = 'unknown';
+    try {
+      providerStatus = await this.rereadForResolution(row, provider, 'RETRY');
+    } catch {
+      providerStatus = 'unknown';
+    }
+    if (['cancelled', 'rejected', 'not_found'].includes(providerStatus)) return;
+    this.logger.error(
+      `MOMO.RETRY_REFUSED transaction=${row.id} statut=${providerStatus} : ancienne tentative marquée échouée à la main, retrait non confirmé annulé chez le fournisseur : aucune nouvelle tentative (double virement possible), vérifier puis résoudre.`,
+    );
+    throw new DomainError('MOMO.RESOLUTION_REFUSED', {
+      reason: 'ancien retrait non confirmé annulé chez le fournisseur : nouvelle tentative refusée',
+      providerStatus,
+    });
   }
 
   private enqueueVerifyBestEffort(
@@ -711,4 +915,38 @@ function toMomoDbStatus(
   if (state === 'SUCCEEDED') return 'SUCCEEDED';
   if (state === 'FAILED') return 'FAILED';
   return 'PENDING';
+}
+
+/** Temps minimal depuis la pose du marqueur d'ordre avant toute résolution humaine (ordre peut-être en cours). */
+const RESOLUTION_MIN_AGE_MS = 60_000;
+
+type ResolutionProviderStatus =
+  'pending' | 'approved' | 'completed' | 'cancelled' | 'rejected' | 'not_found' | 'unknown';
+
+/** Statut du retrait chez le fournisseur, seulement s'il correspond exactement à la transaction. */
+function classifyProviderStatus(status: ProviderStatus): ResolutionProviderStatus {
+  if (status.notFound === true) return 'not_found';
+  if (status.matched === true && status.cashoutStatus) return status.cashoutStatus;
+  return 'unknown';
+}
+
+/**
+ * Recevabilité d'une résolution : ligne bloquée (alerte `BLOCKED`) ou marqueur d'ordre posé et
+ * ancien. Un ordre posé depuis moins de `RESOLUTION_MIN_AGE_MS` est peut-être encore en cours : refus.
+ */
+function assertResolvable(row: PayoutRow, resolution: MobileMoneyPayoutResolution): void {
+  const sentAt = row.payout_execute_sent_at;
+  if (sentAt && Date.now() - sentAt.getTime() < RESOLUTION_MIN_AGE_MS) {
+    throw new DomainError('MOMO.RESOLUTION_REFUSED', {
+      resolution,
+      reason:
+        'ordre d’exécution posé depuis moins de 60 s : peut-être en cours, réessayer plus tard',
+    });
+  }
+  if (row.payout_alert_code !== 'BLOCKED' && !sentAt) {
+    throw new DomainError('MOMO.RESOLUTION_REFUSED', {
+      resolution,
+      reason: 'décaissement non bloqué : aucune résolution à faire',
+    });
+  }
 }

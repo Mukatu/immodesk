@@ -76,6 +76,14 @@ export interface ProviderStatus {
    */
   nextAction?: 'EXECUTE';
   /**
+   * Retrait (OpenPay) : statut documenté tel que le fournisseur le rapporte, seulement quand la
+   * réponse correspond exactement à la transaction attendue. Sert aux décisions humaines
+   * (résolution d'un décaissement bloqué), jamais à conclure une ligne.
+   */
+  cashoutStatus?: 'pending' | 'approved' | 'completed' | 'cancelled' | 'rejected';
+  /** Le fournisseur ne connaît pas cette référence (HTTP 404) : aucun retrait, donc aucun virement. */
+  notFound?: boolean;
+  /**
    * `executePayout` seulement : le fournisseur a REFUSÉ définitivement l'ordre (HTTP 400 : solde
    * insuffisant, retrait non approuvé ; 404 : inconnu). Aucun virement n'est parti ; le statut
    * du retrait doit être relu avant d'en conclure quoi que ce soit.
@@ -269,11 +277,23 @@ export interface MobileMoneyPayoutInitiator {
    * Action d'administration sur un décaissement bloqué (issue incertaine d'un ordre d'exécution).
    * Aucun virement n'est jamais émis par cet appel.
    */
+  /**
+   * Relit le statut du retrait d'une ancienne tentative marquée échouée à la main : lève
+   * `MOMO.RESOLUTION_REFUSED` sauf preuve (annulé, rejeté, inconnu) qu'aucun virement n'est parti.
+   */
+  assertNoTransferSent(tx: TenantClient, momoTransactionId: string): Promise<void>;
+
   resolveBlockedPayout(
     tx: TenantClient,
     momoTransactionId: string,
     resolution: MobileMoneyPayoutResolution,
-  ): Promise<{ previousStatus: string; status: string; markerCleared: boolean }>;
+  ): Promise<{
+    previousStatus: string;
+    status: string;
+    markerCleared: boolean;
+    /** Statut relu chez le fournisseur pour décider (conservé dans l'audit). */
+    providerStatus: string;
+  }>;
 }
 
 /**

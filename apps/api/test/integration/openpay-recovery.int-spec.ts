@@ -474,6 +474,56 @@ describe('OpenPay : récupération, polling et reversement (revue PR #62)', () =
       expect(cashout.executeCount).toBe(0);
     }, 30_000);
 
+    it('C : après 48 h, alternance refus d’exécution / retrait non annulable : alerte BLOCKED jamais rétrogradée, DELETE une seule fois', async () => {
+      const { row, cashout } = await newPayout();
+      cashout.status = 'approved';
+      fake.control.rejectExecute = 2;
+      await ctx.admin.mobile_money_transactions.update({
+        where: { id: row.id },
+        data: { initiated_at: new Date(Date.now() - 49 * 3_600_000) },
+      });
+      const deletes = () =>
+        fake.calls.filter((c) => c === `DELETE /scheduled-cashout/${cashout.reference}`).length;
+      await ctx.app.get(MomoReconcileService).reconcilePending();
+      // Ordre refusé (REFUSED) puis retrait non annulable (BLOCKED) : le plus grave l'emporte.
+      expect((await reload(row.id)).payout_alert_code).toBe('BLOCKED');
+      expect((await reload(row.id)).status).toBe('PENDING');
+      expect(deletes()).toBe(1);
+      // 31 min plus tard : l'ordre est relancé, refusé de nouveau (REFUSED ne régresse pas BLOCKED),
+      // et le DELETE voué au 400 n'est pas renvoyé.
+      await ctx.admin.mobile_money_transactions.update({
+        where: { id: row.id },
+        data: { payout_execute_refused_at: new Date(Date.now() - 31 * 60_000) },
+      });
+      await ctx.app.get(MomoReconcileService).reconcilePending();
+      await ctx.app.get(MomoReconcileService).reconcilePending();
+      expect((await reload(row.id)).payout_alert_code).toBe('BLOCKED');
+      expect(deletes()).toBe(1);
+      expect(cashout.executeCount).toBe(0);
+    }, 40_000);
+
+    it('D : ordre refusé (400) puis relecture `pending` (non approuvé) : aucun virement, marqueur levé', async () => {
+      const { row, cashout } = await newPayout();
+      cashout.status = 'approved';
+      fake.control.revertToPendingOnExecute = 1;
+      await payouts().verifyPayout(agency.organizationId, row.id);
+      expect(cashout.executeCount).toBe(0);
+      const lifted = await reload(row.id);
+      expect(lifted.status).toBe('PENDING');
+      expect(lifted.payout_execute_sent_at).toBeNull();
+      expect(lifted.payout_execute_refused_at).not.toBeNull();
+      expect(lifted.payout_alert_code).toBe('REFUSED');
+      // Approuvé ensuite : relance après l'espacement, un seul virement.
+      cashout.status = 'approved';
+      await ctx.admin.mobile_money_transactions.update({
+        where: { id: row.id },
+        data: { payout_execute_refused_at: new Date(Date.now() - 31 * 60_000) },
+      });
+      await payouts().verifyPayout(agency.organizationId, row.id);
+      await waitFor(async () => (await reload(row.id)).status === 'SUCCEEDED');
+      expect(cashout.executeCount).toBe(1);
+    }, 40_000);
+
     it('le faux OpenPay n’a relevé aucune entorse', () => {
       expect(fake.violations).toEqual([]);
     });

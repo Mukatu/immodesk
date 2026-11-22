@@ -319,10 +319,16 @@ export class MomoReconcileService {
     const current = await this.prisma.withTenant(row.organization_id, null, (tx) =>
       tx.mobile_money_transactions.findFirst({
         where: { id: row.id },
-        select: { status: true },
+        select: { status: true, payout_alert_code: true },
       }),
     );
     if (current?.status !== 'PENDING') return false;
+    // Déjà signalé non annulable (alerte BLOCKED) : le retrait n'est plus `pending` chez le fournisseur
+    // (il ne le redeviendra pas) ; inutile de renvoyer un DELETE voué au 400 toutes les 5 minutes.
+    // La décision est humaine (résolution), dont l'annulation éventuelle.
+    if (current.payout_alert_code === 'BLOCKED' || current.payout_alert_code === 'LATE_SUCCESS') {
+      return false;
+    }
     try {
       const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
       if (provider.cancelPayout) {

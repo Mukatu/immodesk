@@ -45,6 +45,8 @@ export function createFakeOpenPay(runTag: string, apiKey = 'cle-api-de-test') {
     executeLostAfterTransfer: 0,
     /** Les N prochains `execute` échouent (réseau) AVANT d'émettre un virement. */
     executeLostBeforeTransfer: 0,
+    /** Les N prochains `execute` trouvent le retrait de nouveau `pending` (non approuvé) : 400, aucun virement. */
+    revertToPendingOnExecute: 0,
   };
   let seq = 0;
 
@@ -156,6 +158,10 @@ export function createFakeOpenPay(runTag: string, apiKey = 'cle-api-de-test') {
         return json(200, { success: true, message: 'Retrait annulé' });
       }
       if (method === 'POST' && cashoutMatch[2]) {
+        if (control.revertToPendingOnExecute > 0) {
+          control.revertToPendingOnExecute -= 1;
+          cashout.status = 'pending';
+        }
         if (cashout.status !== 'approved')
           return json(400, { error: 'Le retrait doit être approuvé' });
         if (control.rejectExecute > 0) {

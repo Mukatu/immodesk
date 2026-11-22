@@ -91,7 +91,9 @@ export class MomoVerifyQueue implements OnModuleInit, OnModuleDestroy {
       'verify',
       { ...data, requeues },
       {
-        jobId: `verify-retry-${data.transactionId}`,
+        // Suffixé par le rang de la remise en file : le job qui la demande porte peut-être encore
+        // `verify-retry-<id>` (actif), et BullMQ ignore silencieusement un `add` au jobId existant.
+        jobId: `verify-retry-${data.transactionId}-${requeues}`,
         delay: Math.max(delayMs, 0) + 250,
         attempts: 1,
         removeOnComplete: true,

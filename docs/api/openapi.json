@@ -8799,30 +8799,6 @@
         "tags": ["Abonnement"]
       }
     },
-    "/v1/webhooks/mobile-money/subscription": {
-      "post": {
-        "operationId": "SubscriptionWebhooksController_receive",
-        "parameters": [
-          {
-            "name": "X-Organization-Id",
-            "in": "header",
-            "required": false,
-            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Réception du webhook Mobile Money de l'abonnement",
-        "tags": ["Abonnement"]
-      }
-    },
     "/v1/payments/mobile-money/declarations": {
       "post": {
         "operationId": "MobileMoneyController_declare",
@@ -9426,6 +9402,30 @@
           }
         ],
         "summary": "Rejouer un événement (retraitement idempotent)",
+        "tags": ["Webhooks"]
+      }
+    },
+    "/v1/webhooks/mobile-money/subscription": {
+      "post": {
+        "operationId": "MobileMoneyWebhooksController_receiveSubscription",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Webhook Mobile Money (URL historique, fournisseur par défaut)",
         "tags": ["Webhooks"]
       }
     },

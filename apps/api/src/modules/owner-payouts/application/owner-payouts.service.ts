@@ -85,6 +85,9 @@ function toBankAccountCandidate(
   };
 }
 
+/** Le lien Mobile Money du reversement a changé entre l'aperçu et le verrou : transaction à rejouer. */
+class MomoLinkChangedError extends Error {}
+
 const BANK_ACCOUNT_SELECT = {
   id: true,
   is_active: true,
@@ -425,13 +428,31 @@ export class OwnerPayoutsService implements OnModuleInit {
     id: string,
     reason: string,
   ): Promise<PayoutView> {
+    return this.retryOnLinkChange(() => this.failLocked(organizationId, userId, id, reason));
+  }
+
+  private async failLocked(
+    organizationId: string,
+    userId: string,
+    id: string,
+    reason: string,
+  ): Promise<PayoutView> {
     return this.prisma.withTenant(organizationId, userId, async (tx) => {
-      const before = await this.require(tx, id);
+      // Sous verrou (même ordre que partout) et conditionné au statut : un callback qui vient de
+      // solder le reversement (PAID) ne peut jamais être écrasé par un échec manuel.
+      const before = await this.lockPayoutInOrder(tx, id);
       assertFailable(before.status as PayoutStatus, reason);
-      const after = (await tx.owner_payouts.update({
-        where: { id },
+      const moved = await tx.owner_payouts.updateMany({
+        where: { id, status: { in: ['APPROVED', 'PROCESSING'] } },
         data: { status: 'FAILED', failure_reason: reason.trim(), updated_at: new Date() },
-      })) as unknown as OwnerPayoutRow;
+      });
+      if (moved.count === 0) {
+        throw new DomainError('AGENCY.PAYOUT_INVALID_TRANSITION', {
+          status: before.status,
+          target: 'FAILED',
+        });
+      }
+      const after = await this.require(tx, id);
       await audit(this.auditService, tx, {
         action: 'STATE_TRANSITION',
         operation: AUDIT_OPERATIONS.OWNER_PAYOUT_FAILED,
@@ -442,6 +463,40 @@ export class OwnerPayoutsService implements OnModuleInit {
       });
       return toPayoutView(after);
     });
+  }
+
+  /**
+   * Verrouille la transaction Mobile Money liée PUIS le reversement (ordre du callback), et relit le
+   * lien sous le verrou du reversement : si une exécution concurrente l'a changé entre-temps, c'est
+   * l'ancienne transaction qui a été verrouillée (ordre inverse de celui du callback sur la nouvelle :
+   * risque d'interblocage). La transaction est alors annulée et relancée (`retryOnLinkChange`).
+   */
+  private async lockPayoutInOrder(tx: TenantClient, id: string): Promise<OwnerPayoutRow> {
+    const preview = await this.require(tx, id);
+    if (preview.method === 'MOBILE_MONEY' && preview.momo_transaction_id) {
+      await this.lockMomoTransaction(tx, preview.momo_transaction_id);
+    }
+    const before = await this.requireForUpdate(tx, id);
+    if ((before.momo_transaction_id ?? null) !== (preview.momo_transaction_id ?? null)) {
+      throw new MomoLinkChangedError();
+    }
+    return before;
+  }
+
+  /** Rejoue (3 essais) une transaction annulée parce que le lien Mobile Money a changé sous elle. */
+  private async retryOnLinkChange<T>(run: () => Promise<T>): Promise<T> {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await run();
+      } catch (error) {
+        if (!(error instanceof MomoLinkChangedError)) throw error;
+        if (attempt >= 3) {
+          throw new DomainError('AGENCY.PAYOUT_INVALID_TRANSITION', {
+            reason: 'reversement modifié en parallèle, réessayer',
+          });
+        }
+      }
+    }
   }
 
   /** Relecture SOUS VERROU de ligne : sérialise la route d'exécution et les callbacks. */
@@ -481,17 +536,22 @@ export class OwnerPayoutsService implements OnModuleInit {
     // Délai de transaction relevé : un décaissement Mobile Money enchaîne l'initiation chez le
     // fournisseur (jusqu'à 20 s) et la relecture du statut (10 s), au-delà des 15 s par défaut
     // (une annulation après l'appel au fournisseur laisserait une demande orpheline).
+    return this.retryOnLinkChange(() => this.executeLocked(organizationId, userId, id, input));
+  }
+
+  private executeLocked(
+    organizationId: string,
+    userId: string,
+    id: string,
+    input: ExecutePayoutInput,
+  ): Promise<PayoutView> {
     return this.prisma.withTenant(
       organizationId,
       userId,
       async (tx) => {
         // Ordre de verrouillage identique à celui du callback (transaction MoMo, puis reversement) :
         // pas d'interblocage, et la route ne lit jamais un état que le callback va écraser.
-        const preview = await this.require(tx, id);
-        if (preview.method === 'MOBILE_MONEY' && preview.momo_transaction_id) {
-          await this.lockMomoTransaction(tx, preview.momo_transaction_id);
-        }
-        const before = await this.requireForUpdate(tx, id);
+        const before = await this.lockPayoutInOrder(tx, id);
         // Callback arrivé entre-temps : reversement déjà PAID, rejeu idempotent (ni nouveau
         // `paid_at`, ni second audit).
         if (before.method === 'MOBILE_MONEY' && before.status === 'PAID') {
@@ -589,12 +649,21 @@ export class OwnerPayoutsService implements OnModuleInit {
       (before.status === 'FAILED' || before.status === 'PROCESSING') && before.momo_transaction_id
         ? await tx.mobile_money_transactions.findFirst({
             where: { id: before.momo_transaction_id },
-            select: { status: true },
+            select: { status: true, failure_code: true, payout_execute_sent_at: true },
           })
         : null;
     const terminalFailure =
       linked !== null && ['FAILED', 'EXPIRED', 'CANCELLED', 'REJECTED'].includes(linked.status);
     const isRetry = Boolean(before.momo_transaction_id) && linked !== null && !terminalFailure;
+    // Ancienne tentative marquée échouée À LA MAIN alors qu'un ordre d'exécution avait été donné :
+    // sans relecture prouvant qu'aucun virement n'est parti, une nouvelle tentative le doublerait.
+    if (
+      terminalFailure &&
+      linked.failure_code === 'MANUAL_RESOLUTION' &&
+      linked.payout_execute_sent_at !== null
+    ) {
+      await this.momoPayouts.assertNoTransferSent(tx, before.momo_transaction_id as string);
+    }
     let initiated: MobileMoneyPayoutResult | null = null;
     try {
       let result: MobileMoneyPayoutResult;
@@ -710,48 +779,62 @@ export class OwnerPayoutsService implements OnModuleInit {
     id: string,
     input: { resolution: MobileMoneyPayoutResolution; reason: string },
   ): Promise<PayoutView> {
-    return this.prisma.withTenant(organizationId, userId, async (tx) => {
-      const preview = await this.require(tx, id);
-      if (preview.method !== 'MOBILE_MONEY' || !preview.momo_transaction_id) {
-        throw new DomainError('AGENCY.PAYOUT_INVALID_TRANSITION', {
-          status: preview.status,
-          target: input.resolution,
-          reason: 'aucun décaissement Mobile Money',
+    return this.retryOnLinkChange(() => this.resolveMomoLocked(organizationId, userId, id, input));
+  }
+
+  private resolveMomoLocked(
+    organizationId: string,
+    userId: string,
+    id: string,
+    input: { resolution: MobileMoneyPayoutResolution; reason: string },
+  ): Promise<PayoutView> {
+    // Délai relevé : la résolution relit le statut chez le fournisseur (et peut annuler le retrait).
+    return this.prisma.withTenant(
+      organizationId,
+      userId,
+      async (tx) => {
+        const before = await this.lockPayoutInOrder(tx, id);
+        if (before.method !== 'MOBILE_MONEY' || !before.momo_transaction_id) {
+          throw new DomainError('AGENCY.PAYOUT_INVALID_TRANSITION', {
+            status: before.status,
+            target: input.resolution,
+            reason: 'aucun décaissement Mobile Money',
+          });
+        }
+        if (before.status !== 'PROCESSING') {
+          throw new DomainError('AGENCY.PAYOUT_INVALID_TRANSITION', {
+            status: before.status,
+            target: input.resolution,
+            allowed: ['PROCESSING'],
+          });
+        }
+        const outcome = await this.momoPayouts.resolveBlockedPayout(
+          tx,
+          before.momo_transaction_id as string,
+          input.resolution,
+        );
+        const after = await this.require(tx, id);
+        await audit(this.auditService, tx, {
+          action: 'STATE_TRANSITION',
+          operation: AUDIT_OPERATIONS.OWNER_PAYOUT_MOMO_RESOLVED,
+          entityType: 'owner_payouts',
+          entityId: id,
+          previousState: toJsonState({ status: before.status, momoStatus: outcome.previousStatus }),
+          newState: toJsonState({
+            status: after.status,
+            resolution: input.resolution,
+            reason: input.reason.trim(),
+            momoTransactionId: before.momo_transaction_id,
+            momoStatus: outcome.status,
+            providerStatus: outcome.providerStatus,
+            markerCleared: outcome.markerCleared,
+            resolvedByUserId: userId,
+          }),
         });
-      }
-      await this.lockMomoTransaction(tx, preview.momo_transaction_id);
-      const before = await this.requireForUpdate(tx, id);
-      if (before.status !== 'PROCESSING') {
-        throw new DomainError('AGENCY.PAYOUT_INVALID_TRANSITION', {
-          status: before.status,
-          target: input.resolution,
-          allowed: ['PROCESSING'],
-        });
-      }
-      const outcome = await this.momoPayouts.resolveBlockedPayout(
-        tx,
-        before.momo_transaction_id as string,
-        input.resolution,
-      );
-      const after = await this.require(tx, id);
-      await audit(this.auditService, tx, {
-        action: 'STATE_TRANSITION',
-        operation: AUDIT_OPERATIONS.OWNER_PAYOUT_MOMO_RESOLVED,
-        entityType: 'owner_payouts',
-        entityId: id,
-        previousState: toJsonState({ status: before.status, momoStatus: outcome.previousStatus }),
-        newState: toJsonState({
-          status: after.status,
-          resolution: input.resolution,
-          reason: input.reason.trim(),
-          momoTransactionId: before.momo_transaction_id,
-          momoStatus: outcome.status,
-          markerCleared: outcome.markerCleared,
-          resolvedByUserId: userId,
-        }),
-      });
-      return toPayoutView(after);
-    });
+        return toPayoutView(after);
+      },
+      { timeout: 60_000 },
+    );
   }
 
   /**

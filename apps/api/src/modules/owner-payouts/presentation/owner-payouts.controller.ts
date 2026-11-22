@@ -142,9 +142,33 @@ export class OwnerPayoutsController {
   })
   @ApiResponse({ status: 200, type: PayoutDto })
   @ApiResponse({
+    status: 400,
+    type: ErrorResponseDto,
+    description: 'VALIDATION.INVALID_PAYLOAD : identifiant de reversement qui n’est pas un UUID.',
+  })
+  @ApiResponse({
+    status: 422,
+    type: ErrorResponseDto,
+    description:
+      'VALIDATION.INVALID_PAYLOAD : résolution inconnue ou motif hors de 10 à 1000 caractères.',
+  })
+  @ApiResponse({
+    status: 403,
+    type: ErrorResponseDto,
+    description: 'Rôle insuffisant (OWNER requis) ou organisation non autorisée.',
+  })
+  @ApiResponse({
+    status: 404,
+    type: ErrorResponseDto,
+    description:
+      'AGENCY.PAYOUT_NOT_FOUND (reversement absent de cette organisation), MOMO.NOT_FOUND',
+  })
+  @ApiResponse({
     status: 409,
     type: ErrorResponseDto,
-    description: 'AGENCY.PAYOUT_INVALID_TRANSITION, MOMO.INVALID_TRANSITION',
+    description:
+      'MOMO.RESOLUTION_REFUSED (statut du retrait chez le fournisseur, ordre récent ou ligne non bloquée), ' +
+      'AGENCY.PAYOUT_INVALID_TRANSITION, MOMO.INVALID_TRANSITION',
   })
   async resolveMomo(
     @CurrentOrganizationId() organizationId: string,

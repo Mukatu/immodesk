@@ -1,3 +1,4 @@
+import { PrismaService } from '../../src/shared/prisma/prisma.service';
 import { MomoPayoutService } from '../../src/modules/mobile-money/application/momo-payout.service';
 import { OpenPayClient } from '../../src/modules/mobile-money/infrastructure/openpay.client';
 import { api, startTestApp, stopTestApp, type TestContext } from './helpers';
@@ -55,7 +56,7 @@ describe('OpenPay : reversements (execute, callback, résolution)', () => {
       ...asOwner(),
       body: { mobileMoneyAggregator: { enabled: true, provider: 'OPENPAY', feeRateBps: 0 } },
     });
-    portfolio = await seedMandatePortfolio(ctx.admin, agency.organizationId, 8, period, {
+    portfolio = await seedMandatePortfolio(ctx.admin, agency.organizationId, 24, period, {
       rentAmount: 200_000,
       salt: 'o',
     });
@@ -281,17 +282,44 @@ describe('OpenPay : reversements (execute, callback, résolution)', () => {
     expect((await resolve(p.id, body)).status).toBe(409);
   }, 90_000);
 
-  it('N1 : « marquer payé » (virement vérifié chez OpenPay) : reversement et relevé PAID, aucun virement émis par l’appel', async () => {
+  /** Marqueur d'ordre d'exécution posé depuis `ageMs` (ordre « envoyé », issue incertaine). */
+  const markSent = (momoId: string, ageMs = 300_000, alert: string | null = 'BLOCKED') =>
+    ctx.admin.mobile_money_transactions.update({
+      where: { id: momoId },
+      data: { payout_execute_sent_at: new Date(Date.now() - ageMs), payout_alert_code: alert },
+    });
+  const reason = 'Constat fait sur le tableau de bord partenaire OpenPay.';
+  const deletesOf = (reference: string) =>
+    fake.calls.filter((c) => c === `DELETE /scheduled-cashout/${reference}`).length;
+  /** Rien n'a bougé : reversement, transaction, relevé, aucun virement, aucun audit de résolution. */
+  async function expectUntouched(p: Awaited<ReturnType<typeof startedPayout>>) {
+    expect((await payoutOf(p.id)).status).toBe('PROCESSING');
+    expect((await momoOf(p.momoId)).status).toBe('PENDING');
+    expect((await statementOf(p.statementId)).status).not.toBe('PAID');
+    expect(p.cashout.executeCount).toBe(0);
+    expect(await auditsOf(p.id, 'OWNER_PAYOUT_MOMO_RESOLVED')).toHaveLength(0);
+  }
+
+  it('B : « marquer payé » refusé tant que le retrait n’est pas `completed` (pending, approved) : rien ne change', async () => {
+    for (const status of ['pending', 'approved'] as const) {
+      const p = await startedPayout();
+      p.cashout.status = status;
+      await markSent(p.momoId);
+      const refused = await resolve(p.id, { resolution: 'MARK_PAID', reason });
+      expect(refused.status).toBe(409);
+      expect(refused.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+      expect(refused.body.details).toMatchObject({ providerStatus: status });
+      await expectUntouched(p);
+      // Un callback `approved` ultérieur reste exécutable : l'argent n'a pas été déclaré versé.
+      expect((await momoOf(p.momoId)).payout_alert_code).toBe('BLOCKED');
+    }
+  }, 60_000);
+
+  it('N1 : « marquer payé » accepté seulement si le retrait est relu `completed` ; statut relu consigné à l’audit', async () => {
     const p = await startedPayout();
-    p.cashout.status = 'approved';
-    await ctx.admin.mobile_money_transactions.update({
-      where: { id: p.momoId },
-      data: { payout_execute_sent_at: new Date(Date.now() - 300_000) },
-    });
-    const done = await resolve(p.id, {
-      resolution: 'MARK_PAID',
-      reason: 'Virement constaté dans les transactions partenaire OpenPay.',
-    });
+    p.cashout.status = 'completed';
+    await markSent(p.momoId);
+    const done = await resolve(p.id, { resolution: 'MARK_PAID', reason });
     expect(done.status).toBe(200);
     expect(done.body.status).toBe('PAID');
     expect((await momoOf(p.momoId)).status).toBe('SUCCEEDED');
@@ -299,24 +327,107 @@ describe('OpenPay : reversements (execute, callback, résolution)', () => {
     expect(p.cashout.executeCount).toBe(0);
     const audits = await auditsOf(p.id, 'OWNER_PAYOUT_MOMO_RESOLVED');
     expect(audits).toHaveLength(1);
-    expect(audits[0]?.new_state).toMatchObject({ resolution: 'MARK_PAID', status: 'PAID' });
+    expect(audits[0]?.new_state).toMatchObject({
+      resolution: 'MARK_PAID',
+      status: 'PAID',
+      providerStatus: 'completed',
+    });
   }, 60_000);
 
-  it('N1 + N5 : « marquer échoué » puis nouvelle tentative : nouveau retrait sous référence suffixée, PAID au callback', async () => {
+  it('A : « marquer échoué » refusé sur un retrait approuvé (non annulable, le virement peut partir) : orienter vers RETRY', async () => {
     const p = await startedPayout();
-    await ctx.admin.mobile_money_transactions.update({
-      where: { id: p.momoId },
-      data: { payout_execute_sent_at: new Date(Date.now() - 300_000) },
-    });
+    p.cashout.status = 'approved';
+    await markSent(p.momoId);
+    const refused = await resolve(p.id, { resolution: 'MARK_FAILED', reason });
+    expect(refused.status).toBe(409);
+    expect(refused.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+    expect(refused.body.details.reason).toContain('RETRY');
+    expect(deletesOf(p.cashout.reference)).toBe(0);
+    await expectUntouched(p);
+    // Retrait déjà exécuté chez OpenPay : « marquer échoué » refusé aussi (c'est un « marquer payé »).
+    p.cashout.status = 'completed';
+    const late = await resolve(p.id, { resolution: 'MARK_FAILED', reason });
+    expect(late.status).toBe(409);
+    expect(late.body.details.reason).toContain('MARK_PAID');
+    expect((await payoutOf(p.id)).status).toBe('PROCESSING');
+  }, 60_000);
+
+  it('A : « relancer » refusé si le retrait est déjà `completed` (le virement est parti)', async () => {
+    const p = await startedPayout();
+    p.cashout.status = 'completed';
+    await markSent(p.momoId);
+    const refused = await resolve(p.id, { resolution: 'RETRY', reason });
+    expect(refused.status).toBe(409);
+    expect(refused.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+    expect((await momoOf(p.momoId)).payout_execute_sent_at).not.toBeNull();
+  }, 60_000);
+
+  it('A : ordre d’exécution posé depuis moins de 60 s (execute en cours) : toute résolution refusée, le virement aboutit une fois', async () => {
+    const p = await startedPayout();
+    p.cashout.status = 'approved';
+    fake.control.executeDelayMs = 5_000;
+    try {
+      const running = verify(p.momoId);
+      await waitFor(async () => (await momoOf(p.momoId)).payout_execute_sent_at !== null);
+      for (const resolution of ['MARK_FAILED', 'MARK_PAID', 'RETRY']) {
+        const refused = await resolve(p.id, { resolution, reason });
+        expect(refused.status).toBe(409);
+        expect(refused.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+      }
+      await running;
+    } finally {
+      fake.control.executeDelayMs = 0;
+    }
+    // Le virement a eu lieu une fois, la ligne est conclue par le statut relu : jamais « échouée ».
+    await waitFor(async () => (await payoutOf(p.id)).status === 'PAID');
+    expect(p.cashout.executeCount).toBe(1);
+    expect((await momoOf(p.momoId)).status).toBe('SUCCEEDED');
+    expect(deletesOf(p.cashout.reference)).toBe(0);
+    expect(await auditsOf(p.id, 'OWNER_PAYOUT_MOMO_RESOLVED')).toHaveLength(0);
+  }, 60_000);
+
+  it('B : reversement non bloqué (ni marqueur ni alerte) : les trois résolutions sont refusées', async () => {
+    const p = await startedPayout();
+    for (const resolution of ['RETRY', 'MARK_PAID', 'MARK_FAILED']) {
+      const refused = await resolve(p.id, { resolution, reason });
+      expect(refused.status).toBe(409);
+      expect(refused.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+    }
+    await expectUntouched(p);
+    expect(deletesOf(p.cashout.reference)).toBe(0);
+  }, 60_000);
+
+  it('A : relecture impossible (retrait au statut non conforme) : aucune résolution, on refuse', async () => {
+    const p = await startedPayout();
+    await markSent(p.momoId);
+    // Montant discordant côté fournisseur : la réponse n'est pas conforme, donc non concluante.
+    p.cashout.amount = '1.00';
+    for (const resolution of ['RETRY', 'MARK_PAID', 'MARK_FAILED']) {
+      const refused = await resolve(p.id, { resolution, reason });
+      expect(refused.status).toBe(409);
+      expect(refused.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+    }
+    await expectUntouched(p);
+  }, 60_000);
+
+  it('N1 + N5 : « marquer échoué » sur retrait `pending` : annulé chez OpenPay (DELETE), puis nouveau retrait sous référence suffixée', async () => {
+    const p = await startedPayout();
+    await markSent(p.momoId);
     const failed = await resolve(p.id, {
       resolution: 'MARK_FAILED',
-      reason: 'Retrait introuvable chez OpenPay, aucun virement émis.',
+      reason: 'Retrait en attente, jamais approuvé, abandon.',
     });
     expect(failed.status).toBe(200);
     expect(failed.body.status).toBe('FAILED');
+    // Annulé pour de bon chez le fournisseur : plus aucun virement possible sur l'ancien retrait.
+    expect(p.cashout.status).toBe('cancelled');
+    expect(deletesOf(p.cashout.reference)).toBe(1);
     expect((await momoOf(p.momoId)).status).toBe('FAILED');
+    expect((await momoOf(p.momoId)).failure_code).toBe('MANUAL_RESOLUTION');
     expect((await statementOf(p.statementId)).status).not.toBe('PAID');
-    // Reversement FAILED : `momo_merchant_ref_uk` ne bloque plus, un nouveau décaissement est initié.
+    const audits = await auditsOf(p.id, 'OWNER_PAYOUT_MOMO_RESOLVED');
+    expect(audits[0]?.new_state).toMatchObject({ providerStatus: 'pending', status: 'FAILED' });
+    // Relecture « annulé » : la nouvelle tentative est permise, sous une référence suffixée.
     const retried = await api(ctx, 'POST', `/owner-payouts/${p.id}/execute`, {
       ...asAccountant(),
       body: {},
@@ -336,6 +447,122 @@ describe('OpenPay : reversements (execute, callback, résolution)', () => {
     expect(cashout.executeCount).toBe(1);
     expect(p.cashout.executeCount).toBe(0);
   }, 90_000);
+
+  it('N1 : « marquer échoué » accepté si OpenPay ne connaît plus le retrait (404) : aucun virement possible', async () => {
+    const p = await startedPayout();
+    await markSent(p.momoId);
+    fake.cashouts.delete(p.cashout.reference);
+    const failed = await resolve(p.id, { resolution: 'MARK_FAILED', reason });
+    expect(failed.status).toBe(200);
+    expect(failed.body.status).toBe('FAILED');
+    const audits = await auditsOf(p.id, 'OWNER_PAYOUT_MOMO_RESOLVED');
+    expect(audits[0]?.new_state).toMatchObject({ providerStatus: 'not_found' });
+  }, 60_000);
+
+  it('A : ancien retrait passé `completed` après un « marquer échoué » : alerte, aucune nouvelle tentative, aucun second virement', async () => {
+    const p = await startedPayout();
+    p.cashout.status = 'completed';
+    // État laissé par l'ancien comportement : transaction FAILED à la main, marqueur posé.
+    await ctx.admin.mobile_money_transactions.update({
+      where: { id: p.momoId },
+      data: {
+        status: 'FAILED',
+        failure_code: 'MANUAL_RESOLUTION',
+        completed_at: new Date(),
+        payout_execute_sent_at: new Date(Date.now() - 300_000),
+        payout_alert_code: 'BLOCKED',
+        status_checked_at: null,
+      },
+    });
+    await ctx.admin.owner_payouts.update({ where: { id: p.id }, data: { status: 'FAILED' } });
+    // Le callback d'exécution tardif ne réécrit pas la ligne, mais signale que le virement EST parti.
+    await callback(p.cashout.reference);
+    await waitFor(async () => (await momoOf(p.momoId)).payout_alert_code === 'LATE_SUCCESS');
+    expect((await momoOf(p.momoId)).status).toBe('FAILED');
+    expect((await statementOf(p.statementId)).status).not.toBe('PAID');
+    // Nouvelle tentative : refusée (la relecture n'est pas « annulé »), aucun second retrait créé.
+    const created = () => fake.calls.filter((c) => c === 'POST /scheduled-cashout').length;
+    const before = created();
+    const retried = await api(ctx, 'POST', `/owner-payouts/${p.id}/execute`, {
+      ...asAccountant(),
+      body: {},
+    });
+    expect(retried.status).toBe(409);
+    expect(retried.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+    expect(created()).toBe(before);
+    expect((await payoutOf(p.id)).momo_transaction_id).toBe(p.momoId);
+  }, 60_000);
+
+  it('E : deux /execute concurrents après un échec terminal : ni interblocage ni double retrait', async () => {
+    const p = await startedPayout();
+    await markSent(p.momoId);
+    expect((await resolve(p.id, { resolution: 'MARK_FAILED', reason })).status).toBe(200);
+    const created = () => fake.calls.filter((c) => c === 'POST /scheduled-cashout').length;
+    const before = created();
+    const runs = await Promise.all(
+      [1, 2, 3].map(() =>
+        api(ctx, 'POST', `/owner-payouts/${p.id}/execute`, { ...asAccountant(), body: {} }),
+      ),
+    );
+    for (const r of runs) expect([200, 201]).toContain(r.status);
+    expect(created()).toBe(before + 1);
+    expect((await payoutOf(p.id)).status).toBe('PROCESSING');
+  }, 90_000);
+
+  it('isolation : un OWNER d’une autre organisation ne peut ni lire ni résoudre le décaissement', async () => {
+    const p = await startedPayout();
+    await markSent(p.momoId);
+    p.cashout.status = 'completed';
+    const other = await createAgency(ctx, 'OpenPayOther');
+    try {
+      const body = { resolution: 'MARK_PAID', reason };
+      const url = `/owner-payouts/${p.id}/momo-resolution`;
+      const otherOwner = { accessToken: other.owner.accessToken };
+      // Sa propre organisation : le reversement lui est invisible (RLS), 404.
+      const asOther = await api(ctx, 'POST', url, {
+        ...otherOwner,
+        organizationId: other.organizationId,
+        body,
+      });
+      expect(asOther.status).toBe(404);
+      expect(asOther.body.code).toBe('AGENCY.PAYOUT_NOT_FOUND');
+      // L'organisation d'origine, dont il n'est pas membre : refus (403, ou 404 anti-énumération).
+      const asForeign = await api(ctx, 'POST', url, {
+        ...otherOwner,
+        organizationId: agency.organizationId,
+        body,
+      });
+      expect([403, 404]).toContain(asForeign.status);
+      // La logique de domaine elle-même ne voit rien hors de son organisation (RLS).
+      await expect(
+        ctx.app
+          .get(PrismaService)
+          .withTenant(other.organizationId, other.owner.userId, (tx) =>
+            payouts().resolveBlockedPayout(tx, p.momoId, 'MARK_PAID'),
+          ),
+      ).rejects.toMatchObject({ code: 'MOMO.NOT_FOUND' });
+      await expectUntouched(p);
+      expect(await auditsOf(p.id, 'OWNER_PAYOUT_MOMO_RESOLVED')).toHaveLength(0);
+      // Le propriétaire légitime, lui, peut résoudre (retrait `completed`).
+      expect((await resolve(p.id, body)).status).toBe(200);
+    } finally {
+      await dropOrganization(ctx.admin, other.organizationId, [other.owner.userId]);
+    }
+  }, 90_000);
+
+  it('G : « échec » manuel sur un reversement déjà PAID refusé : le statut PAID n’est jamais écrasé', async () => {
+    const p = await startedPayout();
+    p.cashout.status = 'approved';
+    await callback(p.cashout.reference);
+    await waitFor(async () => (await payoutOf(p.id)).status === 'PAID');
+    const failed = await api(ctx, 'POST', `/owner-payouts/${p.id}/fail`, {
+      ...asAccountant(),
+      body: { reason: 'Tentative manuelle trop tardive.' },
+    });
+    expect(failed.status).toBe(409);
+    expect((await payoutOf(p.id)).status).toBe('PAID');
+    expect((await statementOf(p.statementId)).status).toBe('PAID');
+  }, 60_000);
 
   it('le faux OpenPay n’a relevé aucune entorse', () => {
     expect(fake.violations).toEqual([]);

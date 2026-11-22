@@ -8,6 +8,7 @@ describe('OwnerPayoutsService : issue d’un décaissement Mobile Money hors POS
       owner_payouts: {
         findFirst: jest.fn().mockResolvedValue(payout),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
     const statements = { markPaid: jest.fn().mockResolvedValue(undefined) };
@@ -47,7 +48,11 @@ describe('OwnerPayoutsService : issue d’un décaissement Mobile Money hors POS
     expect(h.tx.owner_payouts.findFirst).toHaveBeenCalledWith({
       where: { momo_transaction_id: 'm1', status: 'PROCESSING' },
     });
-    expect(h.tx.owner_payouts.update.mock.calls[0]?.[0].data).toMatchObject({
+    expect(h.tx.owner_payouts.updateMany.mock.calls[0]?.[0].where).toEqual({
+      id: 'p1',
+      status: 'PROCESSING',
+    });
+    expect(h.tx.owner_payouts.updateMany.mock.calls[0]?.[0].data).toMatchObject({
       status: 'PAID',
       failure_reason: null,
     });
@@ -60,13 +65,23 @@ describe('OwnerPayoutsService : issue d’un décaissement Mobile Money hors POS
     async (state) => {
       const h = build(payout);
       await h.listener()(h.tx as never, outcome(state));
-      expect(h.tx.owner_payouts.update.mock.calls[0]?.[0].data).toMatchObject({ status: 'FAILED' });
-      expect(h.tx.owner_payouts.update.mock.calls[0]?.[0].data.failure_reason).toEqual(
+      expect(h.tx.owner_payouts.updateMany.mock.calls[0]?.[0].data).toMatchObject({
+        status: 'FAILED',
+      });
+      expect(h.tx.owner_payouts.updateMany.mock.calls[0]?.[0].data.failure_reason).toEqual(
         expect.any(String),
       );
       expect(h.statements.markPaid).not.toHaveBeenCalled();
     },
   );
+
+  it('N7 : conclu entre la lecture et l’écriture (mise à jour conditionnelle perdue) : ni audit, ni relevé', async () => {
+    const h = build(payout);
+    h.tx.owner_payouts.updateMany.mockResolvedValue({ count: 0 });
+    await h.listener()(h.tx as never, outcome('SUCCEEDED'));
+    expect(h.auditService.record).not.toHaveBeenCalled();
+    expect(h.statements.markPaid).not.toHaveBeenCalled();
+  });
 
   it('reversement déjà conclu (plus PROCESSING) : jamais retouché', async () => {
     const h = build(null);

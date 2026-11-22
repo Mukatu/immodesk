@@ -19,8 +19,10 @@ import type {
   MobileMoneyPayoutOutcome,
   MobileMoneyPayoutOutcomeListener,
   MobileMoneyPayoutOutcomeRegistry,
+  MobileMoneyPayoutResolution,
   MobileMoneyPayoutResult,
 } from '../domain/ports';
+import { PAYOUT_EXECUTE_RETRY_MINUTES } from '../domain/reconcile-rules';
 import type {
   InitiateResult,
   MobileMoneyProvider,
@@ -48,7 +50,12 @@ interface PayoutRow {
   amount: bigint;
   currency: string;
   payout_execute_sent_at: Date | null;
+  payout_execute_refused_at: Date | null;
+  payout_alert_code: string | null;
 }
+
+/** Un ordre d'exécution posé depuis moins de ce délai est peut-être encore en cours (course normale). */
+const EXECUTE_IN_PROGRESS_MS = 40_000;
 
 /**
  * Décaissement Mobile Money vers un bailleur (contrat phase 7, § Reversements) :
@@ -123,7 +130,12 @@ export class MomoPayoutService
         purpose: 'OWNER_PAYOUT',
         channel: 'AGGREGATOR',
         status: 'INITIATED',
-        merchant_reference: input.externalReference,
+        // Après un échec terminal, une nouvelle tentative porte un suffixe : `momo_merchant_ref_uk`
+        // (organisation, merchant_reference) interdit deux transactions de même référence.
+        merchant_reference:
+          input.attempt && input.attempt > 1
+            ? `${input.externalReference}-${input.attempt}`
+            : input.externalReference,
         external_reference: externalReference,
         // Bénéficiaire du reversement, pas un payeur (voir domain/ports.ts).
         payer_msisdn: input.payerMsisdn,
@@ -132,17 +144,53 @@ export class MomoPayoutService
       },
     });
 
-    const initiated = await provider.initiate({
-      amount: input.amount,
-      currency: input.currency,
-      payerMsisdn: input.payerMsisdn,
-      operator,
-      externalReference,
-      description: input.description,
-      callbackUrl: buildMomoNotifyUrl(this.config, provider.code),
-      kind: 'PAYOUT',
-    });
+    let initiated: InitiateResult;
+    try {
+      initiated = await provider.initiate({
+        amount: input.amount,
+        currency: input.currency,
+        payerMsisdn: input.payerMsisdn,
+        operator,
+        externalReference,
+        description: input.description,
+        callbackUrl: buildMomoNotifyUrl(this.config, provider.code),
+        kind: 'PAYOUT',
+      });
+    } catch (error) {
+      // Délai dépassé : la demande a pu être créée chez le fournisseur alors que cette transaction
+      // (donc sa référence) va disparaître : annulation au mieux sous la référence générée ici.
+      await this.discardOrphanPayout({
+        momoTransactionId: id,
+        providerReference: externalReference,
+        state: 'PENDING',
+        aggregator: provider.code,
+      });
+      throw error;
+    }
+    const created: MobileMoneyPayoutResult = {
+      momoTransactionId: id,
+      providerReference: initiated.providerReference,
+      state: 'PENDING',
+      aggregator: provider.code,
+    };
+    try {
+      return await this.settleInitiation(tx, provider, input, id, externalReference, initiated);
+    } catch (error) {
+      // La transaction de l'appelant va être annulée alors que le retrait existe chez le
+      // fournisseur : annulation au mieux, pour ne pas laisser un retrait orphelin.
+      if (initiated.state !== 'FAILED') await this.discardOrphanPayout(created);
+      throw error;
+    }
+  }
 
+  private async settleInitiation(
+    tx: TenantClient,
+    provider: MobileMoneyProvider,
+    input: MobileMoneyPayoutInput,
+    id: string,
+    externalReference: string,
+    initiated: InitiateResult,
+  ): Promise<MobileMoneyPayoutResult> {
     // Le simulateur (et un agrégateur réel interrogé sans délai) peut avoir
     // déjà résolu la transaction : re-interroger tout de suite évite
     // d'attendre inutilement un webhook (qui, lui, est routé par `purpose`
@@ -168,7 +216,24 @@ export class MomoPayoutService
       momoTransactionId: id,
       providerReference: initiated.providerReference,
       state: toPortState(resolved.state),
+      aggregator: provider.code,
     };
+  }
+
+  /** Annulation au mieux (DELETE) d'un retrait orphelin : jamais d'exception, toujours journalisé. */
+  async discardOrphanPayout(result: MobileMoneyPayoutResult): Promise<void> {
+    try {
+      const provider = this.registry.forCode(result.aggregator ?? 'SIMULATOR');
+      if (!provider.cancelPayout) return;
+      const outcome = await provider.cancelPayout(result.providerReference);
+      this.logger.warn(
+        `MOMO.PAYOUT_ORPHAN_DISCARDED transaction=${result.momoTransactionId} reference=${result.providerReference} : annulation chez le fournisseur ${outcome}.`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `MOMO.PAYOUT_ORPHAN transaction=${result.momoTransactionId} reference=${result.providerReference} : annulation impossible (${(error as Error).message}), retrait possiblement orphelin chez le fournisseur : vérifier.`,
+      );
+    }
   }
 
   /**
@@ -251,19 +316,37 @@ export class MomoPayoutService
       const proceed = await this.claimExecution(organizationId, row);
       if (!proceed) return;
       try {
-        status = withVerifiedAmount(
-          await provider.executePayout(providerReferenceOf(row) as string, expectationOf(row)),
-          row,
+        const executed = await provider.executePayout(
+          providerReferenceOf(row) as string,
+          expectationOf(row),
         );
+        if (executed.executeRefused) {
+          await this.handleExecuteRefused(organizationId, row, provider);
+          return;
+        }
+        status = withVerifiedAmount(executed, row);
       } catch (error) {
-        // Issue incertaine (délai, réseau) : le virement a peut-être été émis. Le marqueur reste
-        // posé, aucune relance automatique ; le statut sera relu (`completed` ou non) ensuite.
-        this.logger.error(
-          `MOMO.PAYOUT_EXECUTE_UNKNOWN transaction=${row.id} : issue incertaine (${(error as Error).message}), exécution jamais relancée automatiquement : vérifier chez le fournisseur.`,
+        // Issue incertaine (délai, réseau, 5xx) : le virement a peut-être été émis. Le marqueur
+        // reste posé, aucune relance automatique ; le statut sera relu (`completed` ou non).
+        await this.alertOnce(
+          organizationId,
+          row.id,
+          'BLOCKED',
+          'MOMO.PAYOUT_EXECUTE_UNKNOWN',
+          `issue incertaine (${(error as Error).message}), exécution jamais relancée automatiquement : vérifier chez le fournisseur puis résoudre (action d'administration du reversement).`,
         );
         return;
       }
     }
+    await this.applyLocked(organizationId, transactionId, status);
+  }
+
+  /** Applique un statut du fournisseur sous verrou de ligne, dans une transaction courte. */
+  private async applyLocked(
+    organizationId: string,
+    transactionId: string,
+    status: ProviderStatus,
+  ): Promise<void> {
     await this.prisma.withTenant(organizationId, null, async (tx) => {
       await tx.$queryRawUnsafe(
         `SELECT id FROM mobile_money_transactions WHERE id = $1::uuid FOR UPDATE`,
@@ -276,26 +359,214 @@ export class MomoPayoutService
     });
   }
 
-  /** `false` : l'ordre a déjà été donné (ou la ligne n'est plus en cours) : ne pas l'émettre. */
+  /**
+   * Ordre d'exécution REFUSÉ (HTTP 400/404 : solde insuffisant, retrait non approuvé) : aucun
+   * virement n'est parti. Le statut est relu avant toute conclusion : un retrait encore
+   * `approved` lève le marqueur (relance espacée de `PAYOUT_EXECUTE_RETRY_MINUTES`, une seule
+   * alerte) ; un autre statut conforme est appliqué ; une relecture impossible ou non conforme
+   * laisse le marqueur (issue incertaine).
+   */
+  private async handleExecuteRefused(
+    organizationId: string,
+    row: PayoutRow,
+    provider: MobileMoneyProvider,
+  ): Promise<void> {
+    let reread: ProviderStatus;
+    try {
+      reread = withVerifiedAmount(
+        await provider.getStatus(providerReferenceOf(row) as string, {
+          ...expectationOf(row),
+          origin: 'RECONCILE',
+        }),
+        row,
+      );
+    } catch (error) {
+      await this.alertOnce(
+        organizationId,
+        row.id,
+        'BLOCKED',
+        'MOMO.PAYOUT_EXECUTE_UNKNOWN',
+        `ordre refusé mais statut illisible ensuite (${(error as Error).message}) : marqueur conservé, vérifier chez le fournisseur.`,
+      );
+      return;
+    }
+    if (isExecutable(provider, row, reread)) {
+      await this.prisma.withTenant(organizationId, null, (tx) =>
+        tx.$executeRawUnsafe(
+          `UPDATE mobile_money_transactions
+              SET payout_execute_sent_at = NULL, payout_execute_refused_at = now()
+            WHERE id = $1::uuid AND status IN ('INITIATED', 'PENDING')`,
+          row.id,
+        ),
+      );
+      await this.alertOnce(
+        organizationId,
+        row.id,
+        'REFUSED',
+        'MOMO.PAYOUT_EXECUTE_REFUSED',
+        `ordre d'exécution refusé par le fournisseur (solde plateforme ou opérateur insuffisant ?), retrait toujours approuvé, aucun virement émis : marqueur levé, nouvelle tentative dans ${PAYOUT_EXECUTE_RETRY_MINUTES} min. Alimenter le solde.`,
+      );
+      return;
+    }
+    if (reread.state === 'SUCCEEDED' || reread.state === 'FAILED' || reread.state === 'EXPIRED') {
+      await this.applyLocked(organizationId, row.id, reread);
+      return;
+    }
+    await this.alertOnce(
+      organizationId,
+      row.id,
+      'BLOCKED',
+      'MOMO.PAYOUT_EXECUTE_UNKNOWN',
+      `ordre refusé, statut relu non concluant (${reread.state}) : marqueur conservé, vérifier chez le fournisseur.`,
+    );
+  }
+
+  /**
+   * `false` : l'ordre n'est pas à émettre maintenant (déjà donné, relance espacée, ligne conclue).
+   * Un ordre posé depuis moins de ~40 s est une course normale (autre traitement en cours) :
+   * simple avertissement. Au-delà, UNE alerte par transaction.
+   */
   private async claimExecution(organizationId: string, row: PayoutRow): Promise<boolean> {
     const claimed = await this.prisma.withTenant(organizationId, null, (tx) =>
       tx.$executeRawUnsafe(
         `UPDATE mobile_money_transactions SET payout_execute_sent_at = now()
           WHERE id = $1::uuid AND payout_execute_sent_at IS NULL
+            AND (payout_execute_refused_at IS NULL
+                 OR payout_execute_refused_at <= now() - make_interval(mins => $2::int))
             AND purpose = 'OWNER_PAYOUT' AND status IN ('INITIATED', 'PENDING')`,
         row.id,
+        PAYOUT_EXECUTE_RETRY_MINUTES,
       ),
     );
     if (claimed === 1) return true;
-    this.logger.error(
-      `MOMO.PAYOUT_EXECUTE_ALREADY_SENT transaction=${row.id} : retrait approuvé mais ordre d'exécution déjà envoyé (${row.payout_execute_sent_at?.toISOString() ?? 'par un autre traitement'}), jamais relancé automatiquement : décision humaine requise.`,
+    const current = (await this.prisma.withTenant(organizationId, null, (tx) =>
+      tx.mobile_money_transactions.findFirst({ where: { id: row.id } }),
+    )) as PayoutRow | null;
+    if (!current || !IN_FLIGHT.includes(current.status)) return false;
+    const sentAt = current.payout_execute_sent_at;
+    if (!sentAt) {
+      // Refus récent : relance espacée, rien à signaler de plus.
+      this.logger.debug(
+        `MOMO.PAYOUT_EXECUTE_RETRY_LATER transaction=${row.id} : dernier refus ${current.payout_execute_refused_at?.toISOString() ?? '-'}`,
+      );
+      return false;
+    }
+    if (Date.now() - sentAt.getTime() < EXECUTE_IN_PROGRESS_MS) {
+      this.logger.warn(
+        `MOMO.PAYOUT_EXECUTE_IN_PROGRESS transaction=${row.id} : ordre posé à ${sentAt.toISOString()}, autre traitement en cours.`,
+      );
+      return false;
+    }
+    await this.alertOnce(
+      organizationId,
+      row.id,
+      'BLOCKED',
+      'MOMO.PAYOUT_EXECUTE_ALREADY_SENT',
+      `retrait approuvé mais ordre d'exécution déjà envoyé (${sentAt.toISOString()}), jamais relancé automatiquement : vérifier chez le fournisseur puis résoudre (action d'administration du reversement).`,
     );
     return false;
   }
 
-  private enqueueVerifyBestEffort(row: PayoutRow): void {
+  /**
+   * Alerte d'exploitation UNE FOIS par nature d'incident et par transaction (`payout_alert_code` :
+   * `REFUSED` = ordre refusé, à relancer après alimentation du solde ; `BLOCKED` = issue incertaine,
+   * décision humaine) : le rattrapage revient sur la ligne toutes les quelques minutes, l'alerte
+   * ne doit pas se répéter. Lever le blocage (action d'administration) réarme l'alerte.
+   */
+  async alertOnce(
+    organizationId: string,
+    transactionId: string,
+    kind: 'REFUSED' | 'BLOCKED',
+    code: string,
+    detail: string,
+  ): Promise<void> {
+    let first = true;
+    try {
+      const updated = await this.prisma.withTenant(organizationId, null, (tx) =>
+        tx.$executeRawUnsafe(
+          `UPDATE mobile_money_transactions SET payout_alert_code = $2
+            WHERE id = $1::uuid AND payout_alert_code IS DISTINCT FROM $2`,
+          transactionId,
+          kind,
+        ),
+      );
+      first = updated === 1;
+    } catch {
+      // Marqueur d'alerte illisible : mieux vaut une alerte en trop qu'aucune.
+    }
+    const message = `${code} transaction=${transactionId} : ${detail}`;
+    if (first) this.logger.error(message);
+    else this.logger.debug(`${message} (déjà signalé)`);
+  }
+
+  /**
+   * Action d'administration (`OWNER`, auditée par l'appelant) sur un décaissement dont l'issue
+   * est incertaine, APRÈS vérification chez le fournisseur par un humain. Aucun virement n'est émis
+   * ici. `RETRY` lève les marqueurs : l'ordre ne repartira que si le statut relu par la
+   * vérification est `approved` (état certain) ; `MARK_PAID` / `MARK_FAILED` concluent la ligne.
+   */
+  async resolveBlockedPayout(
+    tx: TenantClient,
+    momoTransactionId: string,
+    resolution: MobileMoneyPayoutResolution,
+  ): Promise<{ previousStatus: string; status: string; markerCleared: boolean }> {
+    await tx.$queryRawUnsafe(
+      `SELECT id FROM mobile_money_transactions WHERE id = $1::uuid FOR UPDATE`,
+      momoTransactionId,
+    );
+    const row = (await tx.mobile_money_transactions.findFirst({
+      where: { id: momoTransactionId },
+    })) as PayoutRow | null;
+    if (!row || row.purpose !== 'OWNER_PAYOUT' || row.direction !== 'OUTBOUND') {
+      throw new DomainError('MOMO.NOT_FOUND', { momoTransactionId });
+    }
+    if (!IN_FLIGHT.includes(row.status)) {
+      throw new DomainError('MOMO.INVALID_TRANSITION', { from: row.status, to: resolution });
+    }
+    if (resolution === 'RETRY') {
+      if (!row.payout_execute_sent_at && !row.payout_execute_refused_at) {
+        throw new DomainError('MOMO.INVALID_TRANSITION', { from: row.status, to: 'RETRY' });
+      }
+      await tx.$executeRawUnsafe(
+        `UPDATE mobile_money_transactions
+            SET payout_execute_sent_at = NULL, payout_execute_refused_at = NULL,
+                payout_alert_code = NULL
+          WHERE id = $1::uuid`,
+        momoTransactionId,
+      );
+      this.enqueueVerifyBestEffort(row, 'RECONCILE', 5_000);
+      return { previousStatus: row.status, status: row.status, markerCleared: true };
+    }
+    const next = resolution === 'MARK_PAID' ? 'SUCCEEDED' : 'FAILED';
+    assertMomoTransition(row.status, next);
+    await tx.mobile_money_transactions.update({
+      where: { id: row.id },
+      data: {
+        status: next,
+        completed_at: new Date(),
+        failure_code: next === 'FAILED' ? 'MANUAL_RESOLUTION' : null,
+        failure_message: next === 'FAILED' ? 'Marqué échoué par un administrateur.' : null,
+      },
+    });
+    await this.notifyOutcome(tx, {
+      organizationId: row.organization_id,
+      momoTransactionId: row.id,
+      state: next,
+      source: 'MANUAL_RESOLUTION',
+    });
+    return { previousStatus: row.status, status: next, markerCleared: false };
+  }
+
+  private enqueueVerifyBestEffort(
+    row: PayoutRow,
+    origin: 'REFRESH' | 'RECONCILE' = 'REFRESH',
+    delay?: number,
+  ): void {
     void this.verifyQueue
-      .enqueue({ organizationId: row.organization_id, transactionId: row.id })
+      .enqueue(
+        { organizationId: row.organization_id, transactionId: row.id, origin },
+        delay ? { delay } : undefined,
+      )
       .catch((error: unknown) =>
         this.logger.warn(
           `MOMO.PAYOUT_VERIFY_NOT_ENQUEUED transaction=${row.id} : ${String(error)}`,

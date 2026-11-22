@@ -31,6 +31,7 @@ import {
   ListOwnerPayoutsQueryDto,
   PayoutDto,
   PayoutPageDto,
+  ResolveMomoPayoutDto,
 } from './dto/owner-payouts.dto';
 
 /** Contrôleur `owner-payouts` (contrat, § Reversements) : voir `application/owner-payouts.service.ts`. */
@@ -125,6 +126,37 @@ export class OwnerPayoutsController {
       requireUser(user),
       id,
       dto as unknown as ExecutePayoutInput,
+    ) as Promise<PayoutDto>;
+  }
+
+  @Post(':id/momo-resolution')
+  @Roles('OWNER')
+  @HttpCode(HttpStatus.OK)
+  @ApiHeader(ORG_HEADER)
+  @ApiOperation({
+    summary: 'Résoudre un décaissement Mobile Money bloqué (issue incertaine), après vérification',
+    description:
+      'Réservé à OWNER, audité (OWNER_PAYOUT_MOMO_RESOLVED). À utiliser quand un ordre d’exécution ' +
+      'a une issue incertaine (timeout, erreur réseau) : vérifier le retrait chez OpenPay, puis ' +
+      'relancer, marquer payé ou marquer échoué. N’émet jamais de virement.',
+  })
+  @ApiResponse({ status: 200, type: PayoutDto })
+  @ApiResponse({
+    status: 409,
+    type: ErrorResponseDto,
+    description: 'AGENCY.PAYOUT_INVALID_TRANSITION, MOMO.INVALID_TRANSITION',
+  })
+  async resolveMomo(
+    @CurrentOrganizationId() organizationId: string,
+    @CurrentUser() user: AuthenticatedUser | undefined,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ResolveMomoPayoutDto,
+  ): Promise<PayoutDto> {
+    return this.payouts.resolveMomoBlocked(
+      organizationId,
+      requireUser(user),
+      id,
+      dto,
     ) as Promise<PayoutDto>;
   }
 

@@ -17,6 +17,29 @@ export const PENDING_MIN_AGE_MINUTES = 3;
  */
 export const INITIATED_MIN_AGE_MINUTES = 10;
 
+/**
+ * Délai minimal entre deux ordres d'exécution d'un retrait OpenPay après un refus définitif
+ * (HTTP 400 : solde insuffisant...) : aucun virement n'est parti, la relance est seulement espacée.
+ */
+export const PAYOUT_EXECUTE_RETRY_MINUTES = 30;
+
+/**
+ * Âges (minutes) entre lesquels une initiation OpenPay sans référence peut être REJOUÉE (clé
+ * d'idempotence) : trop tôt, l'appel d'origine est peut-être encore en cours ; trop tard, un
+ * rejeu qui crée réellement la transaction enverrait un push USSD inattendu. La borne haute
+ * dépasse la période du cron (5 min) : une fenêtre contient toujours au moins un passage.
+ */
+export const INITIATION_REPLAY_MIN_AGE_MINUTES = 1;
+export const INITIATION_REPLAY_MAX_AGE_MINUTES = 6;
+
+export function isInitiationReplayable(initiatedAt: Date, now: Date): boolean {
+  const ageMs = now.getTime() - initiatedAt.getTime();
+  return (
+    ageMs >= INITIATION_REPLAY_MIN_AGE_MINUTES * 60_000 &&
+    ageMs < INITIATION_REPLAY_MAX_AGE_MINUTES * 60_000
+  );
+}
+
 export const RECONCILE_BACKOFF_MINUTES = [3, 5, 10, 20, 30] as const;
 
 /**

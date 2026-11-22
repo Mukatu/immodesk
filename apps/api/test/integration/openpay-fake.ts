@@ -34,7 +34,17 @@ export function createFakeOpenPay(runTag: string, apiKey = 'cle-api-de-test') {
   const control = {
     /** Les N prochaines réponses d'initiation sont perdues (503) alors que le paiement EST créé. */
     losePaymentResponses: 0,
+    /** Les N prochaines initiations n'atteignent JAMAIS OpenPay (connexion refusée) : rien n'est créé. */
+    dropPaymentRequests: 0,
+    /** Les N prochaines réponses d'initiation sont perdues par un DÉLAI DÉPASSÉ (paiement créé). */
+    timeoutPaymentResponses: 0,
     executeDelayMs: 0,
+    /** Les N prochains `execute` sont refusés en 400 (solde insuffisant) : AUCUN virement. */
+    rejectExecute: 0,
+    /** Les N prochains `execute` émettent le virement puis la réponse est perdue (réseau coupé). */
+    executeLostAfterTransfer: 0,
+    /** Les N prochains `execute` échouent (réseau) AVANT d'émettre un virement. */
+    executeLostBeforeTransfer: 0,
   };
   let seq = 0;
 
@@ -60,6 +70,10 @@ export function createFakeOpenPay(runTag: string, apiKey = 'cle-api-de-test') {
       return json(401, { error: 'Clé API invalide' });
     }
     if (method === 'POST' && path === '/transaction/payment') {
+      if (control.dropPaymentRequests > 0) {
+        control.dropPaymentRequests -= 1;
+        throw new Error('connect ECONNREFUSED 127.0.0.1:443');
+      }
       const body = JSON.parse(init.body as string);
       const key = headers['Idempotency-Key'];
       const params = JSON.stringify([body.amount, body.payment_phone_number, body.provider]);
@@ -76,6 +90,10 @@ export function createFakeOpenPay(runTag: string, apiKey = 'cle-api-de-test') {
           status: 'pending',
         });
         if (key) byIdempotencyKey.set(key, { reference, params });
+      }
+      if (control.timeoutPaymentResponses > 0) {
+        control.timeoutPaymentResponses -= 1;
+        throw new DOMException('The operation was aborted', 'AbortError');
       }
       if (control.losePaymentResponses > 0) {
         control.losePaymentResponses -= 1;
@@ -140,10 +158,22 @@ export function createFakeOpenPay(runTag: string, apiKey = 'cle-api-de-test') {
       if (method === 'POST' && cashoutMatch[2]) {
         if (cashout.status !== 'approved')
           return json(400, { error: 'Le retrait doit être approuvé' });
+        if (control.rejectExecute > 0) {
+          control.rejectExecute -= 1;
+          return json(400, { error: 'Solde plateforme insuffisant' });
+        }
+        if (control.executeLostBeforeTransfer > 0) {
+          control.executeLostBeforeTransfer -= 1;
+          throw new Error('socket hang up');
+        }
         if (control.executeDelayMs > 0)
           await new Promise((r) => setTimeout(r, control.executeDelayMs));
         cashout.executeCount += 1;
         cashout.status = 'completed';
+        if (control.executeLostAfterTransfer > 0) {
+          control.executeLostAfterTransfer -= 1;
+          throw new Error('socket hang up');
+        }
         return json(200, {
           success: true,
           message: 'Retrait effectué',

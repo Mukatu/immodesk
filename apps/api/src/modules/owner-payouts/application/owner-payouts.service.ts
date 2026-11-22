@@ -12,6 +12,8 @@ import {
   type MobileMoneyPayoutInitiator,
   type MobileMoneyPayoutOutcome,
   type MobileMoneyPayoutOutcomeRegistry,
+  type MobileMoneyPayoutResolution,
+  type MobileMoneyPayoutResult,
 } from '../../mobile-money/domain/ports';
 import { NOTIFICATION_ENQUEUER, type NotificationEnqueuer } from '../../notifications/domain/ports';
 import { MESSAGE_TEMPLATE_CODES } from '../../notifications/domain/template-codes';
@@ -131,8 +133,10 @@ export class OwnerPayoutsService implements OnModuleInit {
     if (!payout) return;
     const succeeded = outcome.state === 'SUCCEEDED';
     const paidAt = succeeded ? new Date() : null;
-    await tx.owner_payouts.update({
-      where: { id: payout.id },
+    // Mise à jour CONDITIONNÉE au statut lu : jamais d'écrasement de `paid_at` ni d'audit doublé si
+    // un autre traitement (route d'exécution) a déjà conclu le reversement.
+    const moved = await tx.owner_payouts.updateMany({
+      where: { id: payout.id, status: 'PROCESSING' },
       data: {
         status: succeeded ? 'PAID' : 'FAILED',
         paid_at: paidAt,
@@ -144,6 +148,7 @@ export class OwnerPayoutsService implements OnModuleInit {
         updated_at: new Date(),
       },
     });
+    if (moved.count === 0) return;
     await audit(this.auditService, tx, {
       organizationId: outcome.organizationId,
       action: 'STATE_TRANSITION',
@@ -156,7 +161,7 @@ export class OwnerPayoutsService implements OnModuleInit {
       newState: toJsonState({
         status: succeeded ? 'PAID' : 'FAILED',
         momoTransactionId: outcome.momoTransactionId,
-        source: 'provider_callback',
+        source: outcome.source === 'MANUAL_RESOLUTION' ? 'manual_resolution' : 'provider_callback',
       }),
     });
     if (succeeded && payout.statement_id && paidAt) {
@@ -439,6 +444,20 @@ export class OwnerPayoutsService implements OnModuleInit {
     });
   }
 
+  /** Relecture SOUS VERROU de ligne : sérialise la route d'exécution et les callbacks. */
+  private async requireForUpdate(tx: TenantClient, id: string): Promise<OwnerPayoutRow> {
+    await tx.$queryRawUnsafe(`SELECT id FROM owner_payouts WHERE id = $1::uuid FOR UPDATE`, id);
+    return this.require(tx, id);
+  }
+
+  /** Verrou de la transaction Mobile Money : même ordre partout (transaction, puis reversement). */
+  private async lockMomoTransaction(tx: TenantClient, momoTransactionId: string): Promise<void> {
+    await tx.$queryRawUnsafe(
+      `SELECT id FROM mobile_money_transactions WHERE id = $1::uuid FOR UPDATE`,
+      momoTransactionId,
+    );
+  }
+
   async require(tx: TenantClient, id: string): Promise<OwnerPayoutRow> {
     const row = (await tx.owner_payouts.findFirst({
       where: { id },
@@ -466,7 +485,18 @@ export class OwnerPayoutsService implements OnModuleInit {
       organizationId,
       userId,
       async (tx) => {
-        const before = await this.require(tx, id);
+        // Ordre de verrouillage identique à celui du callback (transaction MoMo, puis reversement) :
+        // pas d'interblocage, et la route ne lit jamais un état que le callback va écraser.
+        const preview = await this.require(tx, id);
+        if (preview.method === 'MOBILE_MONEY' && preview.momo_transaction_id) {
+          await this.lockMomoTransaction(tx, preview.momo_transaction_id);
+        }
+        const before = await this.requireForUpdate(tx, id);
+        // Callback arrivé entre-temps : reversement déjà PAID, rejeu idempotent (ni nouveau
+        // `paid_at`, ni second audit).
+        if (before.method === 'MOBILE_MONEY' && before.status === 'PAID') {
+          return toPayoutView(before);
+        }
         assertExecutable(before.status as PayoutStatus);
         if (input.proofDocumentId)
           await this.requireDocument(tx, organizationId, input.proofDocumentId);
@@ -551,25 +581,82 @@ export class OwnerPayoutsService implements OnModuleInit {
     before: OwnerPayoutRow,
     input: ExecutePayoutInput,
   ): Promise<PayoutView> {
-    const isRetry =
-      (before.status === 'FAILED' || before.status === 'PROCESSING') &&
-      Boolean(before.momo_transaction_id);
-    const result = isRetry
-      ? await this.momoPayouts.refreshPayoutStatus(tx, before.momo_transaction_id as string)
-      : await this.momoPayouts.initiatePayout(tx, {
+    // Transaction liée déjà terminale ET non réussie (FAILED, EXPIRED, annulée) : la relire ne
+    // donnerait jamais autre chose qu'un échec, et `momo_merchant_ref_uk` interdit de recréer une
+    // transaction de même référence. Un nouveau décaissement est initié, sous une référence
+    // suffixée du numéro de tentative.
+    const linked =
+      (before.status === 'FAILED' || before.status === 'PROCESSING') && before.momo_transaction_id
+        ? await tx.mobile_money_transactions.findFirst({
+            where: { id: before.momo_transaction_id },
+            select: { status: true },
+          })
+        : null;
+    const terminalFailure =
+      linked !== null && ['FAILED', 'EXPIRED', 'CANCELLED', 'REJECTED'].includes(linked.status);
+    const isRetry = Boolean(before.momo_transaction_id) && linked !== null && !terminalFailure;
+    let initiated: MobileMoneyPayoutResult | null = null;
+    try {
+      let result: MobileMoneyPayoutResult;
+      if (isRetry) {
+        result = await this.momoPayouts.refreshPayoutStatus(
+          tx,
+          before.momo_transaction_id as string,
+        );
+      } else {
+        initiated = await this.momoPayouts.initiatePayout(tx, {
           organizationId,
           amount: before.net_amount,
           currency: before.currency as 'XAF',
           payerMsisdn: await this.resolveMomoMsisdnForPayout(tx, before),
           externalReference: before.reference,
           description: `Reversement ${before.reference}`,
+          attempt: terminalFailure ? await this.nextAttempt(tx, organizationId, before) : 1,
         });
+        result = initiated;
+      }
+      return await this.concludeMobileMoney(tx, before, input, result);
+    } catch (error) {
+      // La transaction va être annulée alors que le retrait existe chez le fournisseur : annulation
+      // au mieux (journalisée) pour ne pas laisser un retrait orphelin.
+      if (initiated && initiated.state !== 'FAILED') {
+        await this.momoPayouts.discardOrphanPayout(initiated);
+      }
+      throw error;
+    }
+  }
 
+  /** Numéro de la prochaine tentative : 1 + décaissements déjà créés pour ce reversement. */
+  private async nextAttempt(
+    tx: TenantClient,
+    organizationId: string,
+    payout: OwnerPayoutRow,
+  ): Promise<number> {
+    const existing = await tx.mobile_money_transactions.count({
+      where: {
+        organization_id: organizationId,
+        purpose: 'OWNER_PAYOUT',
+        OR: [
+          { merchant_reference: payout.reference },
+          { merchant_reference: { startsWith: `${payout.reference}-` } },
+        ],
+      },
+    });
+    return existing + 1;
+  }
+
+  private async concludeMobileMoney(
+    tx: TenantClient,
+    before: OwnerPayoutRow,
+    input: ExecutePayoutInput,
+    result: MobileMoneyPayoutResult,
+  ): Promise<PayoutView> {
     const status =
       result.state === 'SUCCEEDED' ? 'PAID' : result.state === 'FAILED' ? 'FAILED' : 'PROCESSING';
     const paidAt = status === 'PAID' ? new Date() : null;
-    const after = (await tx.owner_payouts.update({
-      where: { id: before.id },
+    // Conditionné au statut (sous verrou) : jamais d'écrasement d'un reversement déjà conclu.
+    const moved = await tx.owner_payouts.updateMany({
+      where: { id: before.id, status: { in: ['APPROVED', 'FAILED', 'PROCESSING'] } },
       data: {
         status,
         momo_transaction_id: result.momoTransactionId,
@@ -579,7 +666,14 @@ export class OwnerPayoutsService implements OnModuleInit {
           status === 'FAILED' ? 'Échec du décaissement Mobile Money (agrégateur).' : null,
         updated_at: new Date(),
       },
-    })) as unknown as OwnerPayoutRow;
+    });
+    if (moved.count === 0) {
+      throw new DomainError('AGENCY.PAYOUT_INVALID_TRANSITION', {
+        status: before.status,
+        target: status,
+      });
+    }
+    const after = await this.require(tx, before.id);
 
     await audit(this.auditService, tx, {
       action: 'STATE_TRANSITION',
@@ -600,6 +694,64 @@ export class OwnerPayoutsService implements OnModuleInit {
       await this.statements.markPaid(tx, before.statement_id, paidAt);
     }
     return toPayoutView(after);
+  }
+
+  /**
+   * `POST /{id}/momo-resolution` (`OWNER`, audité) : résolution humaine d'un décaissement Mobile
+   * Money dont l'issue est incertaine (ordre d'exécution sans réponse, marqueur posé), APRÈS
+   * vérification chez le fournisseur. `RETRY` lève le marqueur (la vérification ne redonnera
+   * l'ordre que si le retrait est relu `approved`) ; `MARK_PAID` / `MARK_FAILED` concluent la
+   * transaction, le reversement et le relevé suivent par le même chemin qu'un callback. Aucun
+   * virement n'est émis par cet appel.
+   */
+  async resolveMomoBlocked(
+    organizationId: string,
+    userId: string,
+    id: string,
+    input: { resolution: MobileMoneyPayoutResolution; reason: string },
+  ): Promise<PayoutView> {
+    return this.prisma.withTenant(organizationId, userId, async (tx) => {
+      const preview = await this.require(tx, id);
+      if (preview.method !== 'MOBILE_MONEY' || !preview.momo_transaction_id) {
+        throw new DomainError('AGENCY.PAYOUT_INVALID_TRANSITION', {
+          status: preview.status,
+          target: input.resolution,
+          reason: 'aucun décaissement Mobile Money',
+        });
+      }
+      await this.lockMomoTransaction(tx, preview.momo_transaction_id);
+      const before = await this.requireForUpdate(tx, id);
+      if (before.status !== 'PROCESSING') {
+        throw new DomainError('AGENCY.PAYOUT_INVALID_TRANSITION', {
+          status: before.status,
+          target: input.resolution,
+          allowed: ['PROCESSING'],
+        });
+      }
+      const outcome = await this.momoPayouts.resolveBlockedPayout(
+        tx,
+        before.momo_transaction_id as string,
+        input.resolution,
+      );
+      const after = await this.require(tx, id);
+      await audit(this.auditService, tx, {
+        action: 'STATE_TRANSITION',
+        operation: AUDIT_OPERATIONS.OWNER_PAYOUT_MOMO_RESOLVED,
+        entityType: 'owner_payouts',
+        entityId: id,
+        previousState: toJsonState({ status: before.status, momoStatus: outcome.previousStatus }),
+        newState: toJsonState({
+          status: after.status,
+          resolution: input.resolution,
+          reason: input.reason.trim(),
+          momoTransactionId: before.momo_transaction_id,
+          momoStatus: outcome.status,
+          markerCleared: outcome.markerCleared,
+          resolvedByUserId: userId,
+        }),
+      });
+      return toPayoutView(after);
+    });
   }
 
   /**

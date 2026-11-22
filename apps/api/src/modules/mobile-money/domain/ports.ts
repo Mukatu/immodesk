@@ -47,6 +47,12 @@ export interface ProviderStatusExpectation {
   currency: string;
   /** Numéro E.164 du payeur (collecte) ou du bénéficiaire (reversement). */
   msisdn?: string;
+  /**
+   * Origine de la vérification (budget d'appels du fournisseur) : un rattrapage interne
+   * (`RECONCILE`) et tout décaissement ont leur propre budget, que le polling des
+   * utilisateurs ne peut pas épuiser.
+   */
+  origin?: 'CALLBACK' | 'REFRESH' | 'RECONCILE';
 }
 
 export interface InitiateResult {
@@ -69,6 +75,12 @@ export interface ProviderStatus {
    * (OpenPay : `scheduled_cashout` approuvé, puis `execute`).
    */
   nextAction?: 'EXECUTE';
+  /**
+   * `executePayout` seulement : le fournisseur a REFUSÉ définitivement l'ordre (HTTP 400 : solde
+   * insuffisant, retrait non approuvé ; 404 : inconnu). Aucun virement n'est parti ; le statut
+   * du retrait doit être relu avant d'en conclure quoi que ce soit.
+   */
+  executeRefused?: boolean;
   /**
    * Fournisseur à webhook non signé : la réponse correspond exactement à la
    * transaction attendue. Seule une réponse conforme rattache l'événement reçu
@@ -214,13 +226,24 @@ export interface MobileMoneyPayoutInput {
   /** `owner_payouts.reference` (`REV-{YYYYMM}-{seq}`) : `merchant_reference` de la transaction. */
   externalReference: string;
   description: string;
+  /** Numéro de tentative (1 par défaut) : suffixe de `merchant_reference` après un échec terminal. */
+  attempt?: number;
 }
 
 export interface MobileMoneyPayoutResult {
   momoTransactionId: string;
   providerReference: string;
   state: 'PENDING' | 'SUCCEEDED' | 'FAILED';
+  /** Agrégateur qui porte la transaction (annulation d'un retrait orphelin). */
+  aggregator?: string;
 }
+
+/**
+ * Résolution humaine d'un décaissement bloqué (issue incertaine), après vérification chez le
+ * fournisseur : `RETRY` lève le marqueur d'exécution (l'ordre ne repartira que si le statut
+ * relu est `approved`), `MARK_PAID` / `MARK_FAILED` concluent la transaction.
+ */
+export type MobileMoneyPayoutResolution = 'RETRY' | 'MARK_PAID' | 'MARK_FAILED';
 
 export interface MobileMoneyPayoutInitiator {
   /** Crée la transaction (`mobile_money_transactions`, `direction = OUTBOUND`) et l'initie. */
@@ -235,6 +258,22 @@ export interface MobileMoneyPayoutInitiator {
     tx: TenantClient,
     momoTransactionId: string,
   ): Promise<MobileMoneyPayoutResult>;
+
+  /**
+   * Annule au mieux (journalisé) un retrait créé chez le fournisseur dont la transaction
+   * Immodesk est annulée juste après (rollback) : évite un retrait orphelin.
+   */
+  discardOrphanPayout(result: MobileMoneyPayoutResult): Promise<void>;
+
+  /**
+   * Action d'administration sur un décaissement bloqué (issue incertaine d'un ordre d'exécution).
+   * Aucun virement n'est jamais émis par cet appel.
+   */
+  resolveBlockedPayout(
+    tx: TenantClient,
+    momoTransactionId: string,
+    resolution: MobileMoneyPayoutResolution,
+  ): Promise<{ previousStatus: string; status: string; markerCleared: boolean }>;
 }
 
 /**
@@ -249,6 +288,8 @@ export interface MobileMoneyPayoutOutcome {
   organizationId: string;
   momoTransactionId: string;
   state: 'SUCCEEDED' | 'FAILED' | 'EXPIRED';
+  /** `MANUAL_RESOLUTION` : conclu par un administrateur ; absent : callback ou rattrapage. */
+  source?: 'MANUAL_RESOLUTION';
 }
 
 export type MobileMoneyPayoutOutcomeListener = (

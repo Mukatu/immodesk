@@ -148,7 +148,10 @@ export class OpenPayProvider implements MobileMoneyProvider {
     if (payout ? !isOpenPayCashoutReference(reference) : !isOpenPayPaymentReference(reference)) {
       return this.unknown(providerReference, 'format de référence');
     }
-    if (!(await this.limiter.tryAcquireStatusCall())) {
+    // Un décaissement et le rattrapage interne ont un budget réservé : le polling des clients ne
+    // peut pas les rendre « indisponibles ».
+    const priority = payout || expected.origin === 'RECONCILE';
+    if (!(await this.limiter.tryAcquireStatusCall(priority ? 'PRIORITY' : 'STANDARD'))) {
       throw new DomainError('MOMO.PROVIDER_UNAVAILABLE', { reason: 'limite d’appels OpenPay' });
     }
     const response = await this.client.request({
@@ -171,6 +174,23 @@ export class OpenPayProvider implements MobileMoneyProvider {
       path: `/scheduled-cashout/${reference}/execute`,
       timeoutMs: OPENPAY_ACTION_TIMEOUT_MS,
     });
+    // 400 (solde plateforme ou opérateur insuffisant, retrait non approuvé) et 404 : refus
+    // métier DÉFINITIF de l'ordre (doc : erreurs fréquentes). Aucun virement n'est parti ; ce
+    // n'est pas un statut du retrait : l'appelant relit le statut avant d'en tirer une conclusion.
+    // Tout le reste (timeout, réseau, 5xx, 401/403/429) lève une erreur : issue INCERTAINE.
+    if (response.status === 400 || response.status === 404) {
+      this.logger.warn(
+        `MOMO.OPENPAY_EXECUTE_REFUSED reference=${reference} HTTP ${response.status} : ordre refusé, aucun virement émis.`,
+      );
+      return {
+        state: 'UNKNOWN',
+        providerReference: reference,
+        executeRefused: true,
+        failureCode: 'OPENPAY_EXECUTE_REFUSED',
+        failureMessage: `HTTP ${response.status}`,
+        rawPayload: null,
+      };
+    }
     return this.interpret(response, reference, expected);
   }
 

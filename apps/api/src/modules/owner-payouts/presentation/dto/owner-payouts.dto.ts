@@ -10,6 +10,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 import { PageInfoDto } from '../../../parties/presentation/dto/landlords.dto';
 import { FEE_BEARERS, PAYMENT_METHODS } from '../../../payments/domain/payment-rules';
@@ -79,6 +80,29 @@ export class ExecutePayoutDto {
 export class FailPayoutDto {
   @ApiProperty({ example: 'Solde Mobile Money insuffisant chez l’agrégateur.' })
   @IsString()
+  @MaxLength(1000)
+  reason!: string;
+}
+
+export const MOMO_RESOLUTIONS = ['RETRY', 'MARK_PAID', 'MARK_FAILED'] as const;
+
+export class ResolveMomoPayoutDto {
+  @ApiProperty({
+    enum: MOMO_RESOLUTIONS,
+    description:
+      'Après vérification chez le fournisseur : `RETRY` (aucun virement émis : lève le marqueur, ' +
+      "l'ordre ne repart que si le retrait est relu `approved`), `MARK_PAID` (virement bien émis), " +
+      '`MARK_FAILED` (aucun virement, abandon). Aucun virement n’est émis par cet appel.',
+  })
+  @IsIn(MOMO_RESOLUTIONS)
+  resolution!: (typeof MOMO_RESOLUTIONS)[number];
+
+  @ApiProperty({
+    example: 'Vérifié sur le tableau de bord OpenPay : retrait completed, virement reçu.',
+    description: 'Constat fait chez le fournisseur (conservé dans le journal d’audit).',
+  })
+  @IsString()
+  @MinLength(10)
   @MaxLength(1000)
   reason!: string;
 }

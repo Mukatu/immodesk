@@ -243,26 +243,26 @@ laisser Puppeteer télécharger son propre binaire à chaque build.
 
 ### Facturation, messagerie et liens publics (phase 3)
 
-| Variable                                             | Rôle                                                                                               |
-| :--------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
-| `BILLING_CRON_ENABLED` / `_PATTERN` / `_TIMEZONE`    | Cron `billing-daily` : `0 3 * * *`, `Africa/Brazzaville` (inactif d'office en `NODE_ENV=test`).    |
-| `RECEIPT_PDF_FORMAT`                                 | `A5` (défaut) ou `A4` : format des quittances et reçus de caisse.                                  |
-| `WHATSAPP_PROVIDER`                                  | `fake` (développement, tests) ou `meta` (Cloud API en direct).                                     |
-| `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_ACCESS_TOKEN` | Identifiant du numéro et jeton système Meta. Obligatoires si `meta`.                               |
-| `WHATSAPP_APP_SECRET`                                | Secret de l'application Meta : vérifie `X-Hub-Signature-256` des webhooks.                         |
-| `WHATSAPP_VERIFY_TOKEN`                              | Jeton choisi par l'exploitant, rejoué par Meta lors de la vérification `GET` du webhook.           |
-| `WHATSAPP_API_VERSION` / `WHATSAPP_API_BASE_URL`     | `v21.0`, `https://graph.facebook.com`.                                                             |
-| `SMS_PROVIDER`                                       | `fake` ou `android_gateway` (SMS Gateway for Android, open source).                                |
-| `SMS_GATEWAY_URL` / `_USERNAME` / `_PASSWORD`        | Adresse et identifiants Basic de la passerelle. Obligatoires si `android_gateway`.                 |
-| `SMS_GATEWAY_WEBHOOK_SECRET`                         | Clé partagée des webhooks de la passerelle (`X-Signature` + `X-Timestamp`, ou `X-Webhook-Secret`). |
-| `NOTIFICATIONS_WORKER_ENABLED` / `_CONCURRENCY`      | Worker BullMQ `notifications` (4 envois simultanés).                                               |
-| `PUBLIC_WEB_BASE_URL`                                | Page de vérification : `{PUBLIC_WEB_BASE_URL}/verifier/{token}` (QR et SMS).                       |
-| `PUBLIC_API_BASE_URL`                                | Racine publique de l'API, pour les liens courts de PDF envoyés par SMS.                            |
-| `DOCUMENT_LINK_TTL_SECONDS`                          | Validité des liens de PDF joints aux messages : 604 800 s (7 jours, plafond SigV4).                |
-| `LINK_SIGNING_SECRET`                                | Signature HMAC des liens courts `/v1/public/d/{token}`.                                            |
-| `RATE_LIMIT_PUBLIC_PER_MINUTE`                       | Débit des routes publiques (vérification, liens courts) : 30 / min / IP.                           |
-| `RATE_LIMIT_WEBHOOK_PER_MINUTE`                      | Débit des webhooks publics `/v1/webhooks/*` : 120 / min / IP.                                      |
-| `TRUST_PROXY_HOPS`                                   | Reverse proxies de confiance (0 par défaut) : à régler pour que `req.ip` soit l'IP du client réel. |
+| Variable                                             | Rôle                                                                                                                                                        |
+| :--------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BILLING_CRON_ENABLED` / `_PATTERN` / `_TIMEZONE`    | Cron `billing-daily` : `0 3 * * *`, `Africa/Brazzaville` (inactif d'office en `NODE_ENV=test`).                                                             |
+| `RECEIPT_PDF_FORMAT`                                 | `A5` (défaut) ou `A4` : format des quittances et reçus de caisse.                                                                                           |
+| `WHATSAPP_PROVIDER`                                  | `fake` (développement, tests) ou `meta` (Cloud API en direct).                                                                                              |
+| `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_ACCESS_TOKEN` | Identifiant du numéro et jeton système Meta. Obligatoires si `meta`.                                                                                        |
+| `WHATSAPP_APP_SECRET`                                | Secret de l'application Meta : vérifie `X-Hub-Signature-256` des webhooks.                                                                                  |
+| `WHATSAPP_VERIFY_TOKEN`                              | Jeton choisi par l'exploitant, rejoué par Meta lors de la vérification `GET` du webhook.                                                                    |
+| `WHATSAPP_API_VERSION` / `WHATSAPP_API_BASE_URL`     | `v21.0`, `https://graph.facebook.com`.                                                                                                                      |
+| `SMS_PROVIDER`                                       | `fake` ou `android_gateway` (SMS Gateway for Android, open source).                                                                                         |
+| `SMS_GATEWAY_URL` / `_USERNAME` / `_PASSWORD`        | Adresse et identifiants Basic de la passerelle. Obligatoires si `android_gateway`.                                                                          |
+| `SMS_GATEWAY_WEBHOOK_SECRET`                         | Clé partagée des webhooks de la passerelle (`X-Signature` + `X-Timestamp`, ou `X-Webhook-Secret`).                                                          |
+| `NOTIFICATIONS_WORKER_ENABLED` / `_CONCURRENCY`      | Worker BullMQ `notifications` (4 envois simultanés).                                                                                                        |
+| `PUBLIC_WEB_BASE_URL`                                | Page de vérification : `{PUBLIC_WEB_BASE_URL}/verifier/{token}` (QR et SMS).                                                                                |
+| `PUBLIC_API_BASE_URL`                                | Racine publique de l'API, pour les liens courts de PDF envoyés par SMS.                                                                                     |
+| `DOCUMENT_LINK_TTL_SECONDS`                          | Validité des liens de PDF joints aux messages : 604 800 s (7 jours, plafond SigV4).                                                                         |
+| `LINK_SIGNING_SECRET`                                | Signature HMAC des liens courts `/v1/public/d/{token}`.                                                                                                     |
+| `RATE_LIMIT_PUBLIC_PER_MINUTE`                       | Débit des routes publiques (vérification, liens courts) : 30 / min / IP.                                                                                    |
+| `RATE_LIMIT_WEBHOOK_PER_MINUTE`                      | Débit des webhooks publics `/v1/webhooks/*` : 120 / min / IP.                                                                                               |
+| `TRUST_PROXY_HOPS`                                   | Reverse proxies de confiance (0 par défaut) : à régler pour que `req.ip` soit l'IP du client réel. Obligatoire `>= 1` en production si OpenPay est utilisé. |
 
 #### Configurer Meta WhatsApp Cloud API
 

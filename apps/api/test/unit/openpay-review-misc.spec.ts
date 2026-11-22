@@ -30,9 +30,32 @@ const PROD = {
   MOMO_PROVIDER_DEFAULT: 'OPENPAY',
   OPENPAY_API_KEY: 'cle',
   OPENPAY_CALLBACK_SECRET: 'Ab1_-'.repeat(8),
+  TRUST_PROXY_HOPS: '1',
 };
 
 describe('configuration OpenPay (F7)', () => {
+  it('N3 : exige TRUST_PROXY_HOPS >= 1 en production avec OpenPay (sinon req.ip = IP du proxy)', () => {
+    expect(() => validateConfig({ ...PROD, TRUST_PROXY_HOPS: '0' })).toThrow(/TRUST_PROXY_HOPS/);
+    expect(() => validateConfig({ ...PROD, TRUST_PROXY_HOPS: undefined })).toThrow(
+      /TRUST_PROXY_HOPS/,
+    );
+  });
+
+  it('N3 : sans OpenPay, TRUST_PROXY_HOPS reste libre', () => {
+    expect(() =>
+      validateConfig({
+        ...PROD,
+        MOMO_PROVIDER_DEFAULT: 'CINETPAY',
+        CINETPAY_API_KEY: 'k',
+        CINETPAY_SITE_ID: 's',
+        CINETPAY_SECRET_KEY: 'x',
+        OPENPAY_API_KEY: undefined,
+        OPENPAY_CALLBACK_SECRET: undefined,
+        TRUST_PROXY_HOPS: '0',
+      }),
+    ).not.toThrow();
+  });
+
   it('accepte une configuration de production conforme', () => {
     expect(() => validateConfig(PROD)).not.toThrow();
   });

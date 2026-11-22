@@ -18,7 +18,11 @@ describe('MomoPurposeRouter', () => {
     const { router, queue, verification } = build();
     expect(router.handlerFor('SUBSCRIPTION')).toBeNull();
     await router.handlerFor('RENT_COLLECTION')?.enqueueVerify('o', 't');
-    expect(queue.enqueue).toHaveBeenCalledWith({ organizationId: 'o', transactionId: 't' });
+    expect(queue.enqueue).toHaveBeenCalledWith({
+      organizationId: 'o',
+      transactionId: 't',
+      origin: 'CALLBACK',
+    });
     await router.handlerFor('OWNER_PAYOUT')?.verifyNow('o', 't');
     expect(verification.verifyStatus).toHaveBeenCalledWith('o', 't');
   });

@@ -42,9 +42,11 @@ export class MomoJobsService implements OnModuleInit, OnModuleDestroy {
           this.verification.verifyStatus(
             job.data.organizationId,
             job.data.transactionId,
-            // Un job de cette file ne naît que d'un callback (ou d'un rejeu) : origine CALLBACK.
+            // L'origine est portée par le job (CALLBACK par défaut, pour les jobs antérieurs) : la
+            // relecture interne 4 s après l'initiation ne consomme pas le plafond des callbacks.
             {
-              origin: 'CALLBACK',
+              origin: job.data.origin ?? 'CALLBACK',
+              requeues: job.data.requeues ?? 0,
               ...(job.data.providerReferenceHint
                 ? { providerReference: job.data.providerReferenceHint }
                 : {}),

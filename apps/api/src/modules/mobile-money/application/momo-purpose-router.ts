@@ -50,6 +50,7 @@ export class MomoPurposeRouter implements OnApplicationBootstrap {
         verifyQueue.enqueue({
           organizationId,
           transactionId,
+          origin: 'CALLBACK',
           ...(hint?.providerReference ? { providerReferenceHint: hint.providerReference } : {}),
         }),
       verifyNow: (organizationId, transactionId, hint) =>

@@ -245,10 +245,16 @@ export const configSchema = z
     // du client compris), plafond de vérifications DÉCLENCHÉES PAR CALLBACK par transaction
     // et par heure glissante (le rattrapage n'est jamais plafonné), appels de statut par
     // minute, callbacks reçus par IP et par minute (au-delà : ignorés, toujours 200 {}).
+    // Budgets SÉPARÉS : `OPENPAY_STATUS_CALLS_PER_MINUTE` ne concerne que le polling du client et
+    // les vérifications par callback ; `OPENPAY_PRIORITY_CALLS_PER_MINUTE` est réservé au rattrapage
+    // et aux reversements (jamais épuisé par le polling) ; `OPENPAY_INVALID_CALLBACKS_PER_MINUTE`
+    // borne par IP les appels au mauvais secret, sans entamer le quota des appels légitimes.
     OPENPAY_MIN_CHECK_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(5),
     OPENPAY_MAX_CHECKS_PER_TRANSACTION: z.coerce.number().int().positive().default(40),
     OPENPAY_STATUS_CALLS_PER_MINUTE: z.coerce.number().int().positive().default(120),
     OPENPAY_CALLBACKS_PER_MINUTE: z.coerce.number().int().positive().default(600),
+    OPENPAY_PRIORITY_CALLS_PER_MINUTE: z.coerce.number().int().positive().default(60),
+    OPENPAY_INVALID_CALLBACKS_PER_MINUTE: z.coerce.number().int().positive().default(60),
     // Une transaction INITIATED que le fournisseur ne fait jamais évoluer passe
     // EXPIRED après ce délai (rattrapage `momo:reconcile-pending`).
     MOMO_INITIATED_EXPIRY_MINUTES: z.coerce.number().int().min(11).default(60),
@@ -440,6 +446,16 @@ export const configSchema = z
           code: z.ZodIssueCode.custom,
           path: ['OPENPAY_API_KEY'],
           message: 'OPENPAY_API_KEY est obligatoire en production lorsque OpenPay est utilisé.',
+        });
+      }
+      // Derrière un reverse proxy, `req.ip` est celui du proxy : sans saut déclaré, la limite par IP
+      // est commune à tous les appelants et l'allowlist d'IP refuserait tout, OpenPay compris.
+      if (cfg.TRUST_PROXY_HOPS < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['TRUST_PROXY_HOPS'],
+          message:
+            "TRUST_PROXY_HOPS doit valoir au moins 1 en production lorsque OpenPay est utilisé (nombre de reverse proxies devant l'API) : sinon l'IP lue est celle du proxy, la limite des callbacks est commune et l'allowlist d'IP est inopérante.",
         });
       }
       if (!cfg.OPENPAY_CALLBACK_SECRET || cfg.OPENPAY_CALLBACK_SECRET.length < 32) {

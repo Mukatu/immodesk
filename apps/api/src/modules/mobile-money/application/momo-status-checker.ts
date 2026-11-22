@@ -58,13 +58,19 @@ export class MomoStatusChecker {
    *   (rattrapage interne, déjà espacé, jamais freiné), et plafond par heure glissante pour
    *   les seules vérifications déclenchées par callback ;
    * - autres fournisseurs : aucun frein.
+   * `onThrottled` : une vérification de FILE (callback, relecture) freinée par l'INTERVALLE (pas par
+   * le plafond horaire, garde-fou anti-abus) n'est pas perdue : l'appelant la remet en file avec le
+   * reste de l'intervalle. Les jobs sont fusionnés par transaction : un callback peut avoir été
+   * absorbé par un job déjà en attente d'une autre origine.
    */
   async claim(
     organizationId: string,
     transactionId: string,
     origin: CheckOrigin,
+    onThrottled?: (retryAfterMs: number) => Promise<void>,
   ): Promise<boolean> {
-    return this.prisma.withTenant(organizationId, null, async (tx) => {
+    let retryAfterMs = null as number | null;
+    const claimed = await this.prisma.withTenant(organizationId, null, async (tx) => {
       const rows = await tx.$queryRawUnsafe<
         Array<{ aggregator: string | null; status: string; status_checked_at: Date | null }>
       >(
@@ -89,6 +95,11 @@ export class MomoStatusChecker {
           this.logger.warn(
             `MOMO.VERIFY_THROTTLED transaction=${transactionId} origin=${origin} ${throttled ? 'intervalle' : 'plafond callbacks'}`,
           );
+          if (throttled && row.status_checked_at) {
+            retryAfterMs =
+              this.config.get('OPENPAY_MIN_CHECK_INTERVAL_SECONDS') * 1000 -
+              (Date.now() - row.status_checked_at.getTime());
+          }
           return false;
         }
       }
@@ -100,6 +111,16 @@ export class MomoStatusChecker {
       );
       return true;
     });
+    if (!claimed && retryAfterMs !== null && onThrottled) {
+      try {
+        await onThrottled(retryAfterMs);
+      } catch (error) {
+        this.logger.warn(
+          `MOMO.VERIFY_REQUEUE_FAILED transaction=${transactionId} : ${(error as Error).message}`,
+        );
+      }
+    }
+    return claimed;
   }
 
   /**
@@ -112,7 +133,7 @@ export class MomoStatusChecker {
     provider: MobileMoneyProvider,
     row: CheckableTransaction,
     kind: 'COLLECTION' | 'PAYOUT',
-    hint?: { providerReference?: string },
+    hint?: { providerReference?: string; origin?: CheckOrigin },
   ): Promise<ProviderStatus | null> {
     const untrusted = provider.webhookTrust === 'UNSIGNED_TRIGGER';
     // Collecte OpenPay : la référence est celle du fournisseur (PTXN...). Si elle n'est pas
@@ -133,6 +154,7 @@ export class MomoStatusChecker {
       amount: row.amount,
       currency: row.currency,
       msisdn: row.payer_msisdn,
+      ...(hint?.origin ? { origin: hint.origin } : {}),
     };
     const status = await provider.getStatus(candidate, expected);
     if (untrusted && status.matched === true) {

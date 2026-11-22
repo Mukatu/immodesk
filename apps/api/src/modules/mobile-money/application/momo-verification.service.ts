@@ -17,6 +17,7 @@ import {
 import type { MobileMoneyProvider, ProviderStatus } from '../domain/ports';
 import type { CheckOrigin } from '../domain/reconcile-rules';
 import { MobileMoneyProviderRegistry } from '../infrastructure/mobile-money-provider.registry';
+import { MomoVerifyQueue } from '../infrastructure/momo-verify.queue';
 import { MomoPayoutService } from './momo-payout.service';
 import { MomoQueryService, type MomoReader } from './momo-query.service';
 import { MomoStatusChecker } from './momo-status-checker';
@@ -39,6 +40,7 @@ export class MomoVerificationService {
     private readonly allocation: AllocationService,
     private readonly payouts: MomoPayoutService,
     private readonly statusChecker: MomoStatusChecker,
+    private readonly verifyQueue: MomoVerifyQueue,
     private readonly auditService: AuditService,
     @Optional() @Inject(RECEIPT_ISSUER) private readonly receipts: ReceiptIssuer | null = null,
   ) {}
@@ -61,9 +63,14 @@ export class MomoVerificationService {
   async verifyStatus(
     organizationId: string,
     transactionId: string,
-    hint?: { providerReference?: string; origin?: CheckOrigin },
+    hint?: { providerReference?: string; origin?: CheckOrigin; requeues?: number },
   ): Promise<void> {
     const origin = hint?.origin ?? 'REFRESH';
+    // L'origine voyage jusqu'au fournisseur (budget d'appels du rattrapage distinct de celui du polling).
+    const checkHint = {
+      ...(hint?.providerReference ? { providerReference: hint.providerReference } : {}),
+      origin,
+    };
     const meta = await this.prisma.withTenant(organizationId, null, (tx) =>
       tx.mobile_money_transactions.findFirst({
         where: { id: transactionId },
@@ -81,7 +88,27 @@ export class MomoVerificationService {
     }
     // Une vérification est d'abord RÉSERVÉE dans sa propre transaction (anti-abus, compteur) :
     // elle reste comptée même si l'appel au fournisseur échoue et annule la suite.
-    if (!(await this.statusChecker.claim(organizationId, transactionId, origin))) return;
+    // Un job de la file freiné par l'intervalle minimal est remis en file (reste de l'intervalle) :
+    // le callback fusionné dans ce job n'est pas perdu. Pas pour la route manuelle (le client
+    // reviendra), d'où la présence de `requeues`, posée par le seul worker.
+    const requeue =
+      hint?.requeues === undefined
+        ? undefined
+        : (delay: number) =>
+            this.verifyQueue.requeueThrottled(
+              {
+                organizationId,
+                transactionId,
+                origin,
+                requeues: hint.requeues,
+                ...(hint.providerReference
+                  ? { providerReferenceHint: hint.providerReference }
+                  : {}),
+              },
+              delay,
+            );
+    const claimed = await this.statusChecker.claim(organizationId, transactionId, origin, requeue);
+    if (!claimed) return;
     // Un reversement est délégué au décaissement, qui n'appelle le fournisseur qu'HORS
     // transaction (l'ordre d'exécution d'un retrait est un virement réel, jamais rejouable).
     if (meta.purpose === 'OWNER_PAYOUT') {
@@ -96,12 +123,12 @@ export class MomoVerificationService {
       // Callback sur une transaction déjà EXPIRED : jamais de transition silencieuse, mais un
       // succès conforme du fournisseur est un paiement perdu à signaler (alerte d'exploitation).
       if (row.status === 'EXPIRED') {
-        await this.flagLateSuccess(tx, provider, row, hint);
+        await this.flagLateSuccess(tx, provider, row, checkHint);
         return;
       }
       // INITIATED est vérifiable : un webhook peut précéder la réponse d'initiation.
       if (!['INITIATED', 'PENDING'].includes(row.status)) return;
-      const status = await this.statusChecker.check(tx, provider, row, 'COLLECTION', hint);
+      const status = await this.statusChecker.check(tx, provider, row, 'COLLECTION', checkHint);
       if (!status) return;
       if (status.state === 'FAILED') {
         await this.markFailed(
@@ -124,9 +151,16 @@ export class MomoVerificationService {
     tx: TenantClient,
     provider: MobileMoneyProvider,
     row: MomoTransactionSummaryRow,
-    hint?: { providerReference?: string },
+    hint?: { providerReference?: string; origin?: CheckOrigin },
   ): Promise<void> {
-    if (provider.webhookTrust !== 'UNSIGNED_TRIGGER' || !row.aggregator_transaction_id) return;
+    // La référence du callback (indice) suffit si la nôtre n'a jamais été stockée : la metadata de
+    // la réponse du fournisseur prouve le rattachement (`matched`), pas l'indice.
+    if (
+      provider.webhookTrust !== 'UNSIGNED_TRIGGER' ||
+      (!row.aggregator_transaction_id && !hint?.providerReference)
+    ) {
+      return;
+    }
     const status = await this.statusChecker.check(tx, provider, row, 'COLLECTION', hint);
     if (
       status?.state === 'SUCCEEDED' &&

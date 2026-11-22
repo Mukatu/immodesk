@@ -29,6 +29,9 @@ export interface OpenPayRequest {
  * 422 sont rendus à l'appelant (réponse métier) ; 401, 403, 429, 5xx, délai
  * dépassé et réseau lèvent `MOMO.PROVIDER_UNAVAILABLE`.
  */
+const isAbort = (error: unknown): boolean =>
+  ['AbortError', 'TimeoutError'].includes((error as { name?: string } | null)?.name ?? '');
+
 @Injectable()
 export class OpenPayClient {
   private readonly logger = new Logger(OpenPayClient.name);
@@ -43,12 +46,13 @@ export class OpenPayClient {
       throw new DomainError('PLATFORM.INTERNAL_ERROR', { reason: 'OPENPAY_API_KEY absent' });
     const baseUrl = this.config.get('OPENPAY_BASE_URL').replace(/\/+$/, '');
     const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      req.timeoutMs ?? OPENPAY_STATUS_TIMEOUT_MS,
-    );
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, req.timeoutMs ?? OPENPAY_STATUS_TIMEOUT_MS);
     let response: Response;
     let body: unknown;
+    let timedOut = false;
     try {
       response = await this.fetchFn(`${baseUrl}${req.path}`, {
         method: req.method,
@@ -74,7 +78,12 @@ export class OpenPayClient {
       this.logger.error(
         `OpenPay ${req.method} ${this.loggablePath(req.path)} indisponible : ${maskMsisdns(String(error))}`,
       );
-      throw new DomainError('MOMO.PROVIDER_UNAVAILABLE', { path: this.loggablePath(req.path) });
+      // `cause` : TIMEOUT = la requête a pu atteindre OpenPay (issue incertaine) ; NETWORK =
+      // connexion impossible ou coupée (refusée, DNS) : en règle générale rien n'est parti.
+      throw new DomainError('MOMO.PROVIDER_UNAVAILABLE', {
+        path: this.loggablePath(req.path),
+        cause: timedOut || isAbort(error) ? 'TIMEOUT' : 'NETWORK',
+      });
     } finally {
       clearTimeout(timeout);
     }
@@ -89,7 +98,11 @@ export class OpenPayClient {
     this.logger.error(
       `OpenPay ${req.method} ${this.loggablePath(req.path)} : HTTP ${response.status} (${reason})`,
     );
-    throw new DomainError('MOMO.PROVIDER_UNAVAILABLE', { status: response.status, reason });
+    throw new DomainError('MOMO.PROVIDER_UNAVAILABLE', {
+      status: response.status,
+      reason,
+      cause: 'HTTP',
+    });
   }
 
   private describe(status: number): string {
@@ -151,26 +164,46 @@ export class OpenPayApiLimiter {
    * SANS erreur (la route répond toujours `200 {}`, un 429 ferait relancer OpenPay et révélerait
    * la limite à un tiers). Fail-open si Redis est indisponible.
    */
-  async tryAcquireCallbackRequest(ip: string): Promise<boolean> {
+  async tryAcquireCallbackRequest(ip: string, secret: 'VALID' | 'INVALID'): Promise<boolean> {
     const window = Math.floor(Date.now() / 60_000);
-    const key = `${this.config.get('QUEUE_PREFIX')}:rl:openpay-callback:${ip}:${window}`;
+    // Compteurs SÉPARÉS : un tiers sans secret ne peut pas épuiser le quota des appels légitimes.
+    const key = `${this.config.get('QUEUE_PREFIX')}:rl:openpay-callback-${secret.toLowerCase()}:${ip}:${window}`;
     try {
       const count = await this.redis.incr(key);
       if (count === 1) await this.redis.expire(key, 70);
-      return count <= this.config.get('OPENPAY_CALLBACKS_PER_MINUTE');
+      return (
+        count <=
+        this.config.get(
+          secret === 'VALID'
+            ? 'OPENPAY_CALLBACKS_PER_MINUTE'
+            : 'OPENPAY_INVALID_CALLBACKS_PER_MINUTE',
+        )
+      );
     } catch (error) {
       this.logger.warn(`Limiteur OpenPay indisponible : ${(error as Error).message}`);
       return true;
     }
   }
 
-  async tryAcquireStatusCall(): Promise<boolean> {
+  /**
+   * Budgets SÉPARÉS : `STANDARD` (polling du client, vérifications par callback) ne peut pas
+   * épuiser `PRIORITY` (rattrapage et reversements), sans quoi la saturation du polling rendrait
+   * le fournisseur « indisponible » pour tous.
+   */
+  async tryAcquireStatusCall(budget: 'STANDARD' | 'PRIORITY' = 'STANDARD'): Promise<boolean> {
     const window = Math.floor(Date.now() / 60_000);
-    const key = `${this.config.get('QUEUE_PREFIX')}:rl:openpay-status:${window}`;
+    const key = `${this.config.get('QUEUE_PREFIX')}:rl:openpay-status${budget === 'PRIORITY' ? '-priority' : ''}:${window}`;
     try {
       const count = await this.redis.incr(key);
       if (count === 1) await this.redis.expire(key, 70);
-      return count <= this.config.get('OPENPAY_STATUS_CALLS_PER_MINUTE');
+      return (
+        count <=
+        this.config.get(
+          budget === 'PRIORITY'
+            ? 'OPENPAY_PRIORITY_CALLS_PER_MINUTE'
+            : 'OPENPAY_STATUS_CALLS_PER_MINUTE',
+        )
+      );
     } catch (error) {
       this.logger.warn(`Limiteur OpenPay indisponible : ${(error as Error).message}`);
       return true;

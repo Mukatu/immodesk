@@ -70,15 +70,26 @@ export class MobileMoneyWebhooksController {
     @Req() req: RawBodyRequest<Request>,
   ): Promise<Record<string, never>> {
     try {
-      // Limite propre à la route (par IP, voir `SkipWebhookRateLimit`) : au-delà, l'appel est
-      // ignoré, jamais refusé.
-      if (!(await this.openPayLimiter.tryAcquireCallbackRequest(req.ip ?? 'inconnue'))) {
-        this.logger.warn(`MOMO.OPENPAY_CALLBACK_RATE_LIMITED ip=${req.ip ?? '-'}`);
+      // Le secret est vérifié D'ABORD (temps constant) : un appel sans secret valide est compté à
+      // part (limite propre, par IP) et ne consomme jamais le quota des appels légitimes ; sinon
+      // un tiers pourrait faire ignorer les vrais callbacks d'OpenPay. Au-delà de la limite, l'appel
+      // est ignoré, jamais refusé (voir `SkipWebhookRateLimit`).
+      const access = this.openPayGate.check(secret, req.ip ?? null);
+      const secretOk = access !== 'BAD_SECRET' && access !== 'NOT_CONFIGURED';
+      if (
+        !(await this.openPayLimiter.tryAcquireCallbackRequest(
+          req.ip ?? 'inconnue',
+          secretOk ? 'VALID' : 'INVALID',
+        ))
+      ) {
+        this.logger.warn(
+          `MOMO.OPENPAY_CALLBACK_RATE_LIMITED ip=${req.ip ?? '-'} secret=${secretOk ? 'valide' : 'invalide'}`,
+        );
         return {};
       }
       await this.ingest.ingestTrigger(
         'openpay',
-        this.openPayGate.check(secret, req.ip ?? null),
+        access,
         req.rawBody ?? Buffer.alloc(0),
         req.headers as Record<string, string | string[] | undefined>,
         req.ip ?? null,

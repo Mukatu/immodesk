@@ -126,6 +126,6 @@ describe('OpenPayApiLimiter : plafond des callbacks par fenêtre glissante', () 
     };
     const limiter = new OpenPayApiLimiter(redis as never, cfg() as never);
     expect(await limiter.tryAcquireCallbackCheck('t')).toBe(true);
-    expect(await limiter.tryAcquireCallbackRequest('1.2.3.4')).toBe(true);
+    expect(await limiter.tryAcquireCallbackRequest('1.2.3.4', 'VALID')).toBe(true);
   });
 });

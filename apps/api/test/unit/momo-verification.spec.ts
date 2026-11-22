@@ -77,6 +77,7 @@ function buildVerification(
     allocation as never,
     payouts as never,
     checkerStub() as never,
+    { requeueThrottled: jest.fn() } as never,
     auditService as never,
   );
   return { service, tx, allocation, getStatus, payouts };

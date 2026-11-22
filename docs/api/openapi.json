@@ -13167,8 +13167,48 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION.INVALID_PAYLOAD : identifiant de reversement qui n’est pas un UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle insuffisant (OWNER requis) ou organisation non autorisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "AGENCY.PAYOUT_NOT_FOUND (reversement absent de cette organisation), MOMO.NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
           "409": {
-            "description": "AGENCY.PAYOUT_INVALID_TRANSITION, MOMO.INVALID_TRANSITION",
+            "description": "MOMO.RESOLUTION_REFUSED (statut du retrait chez le fournisseur, ordre récent ou ligne non bloquée), AGENCY.PAYOUT_INVALID_TRANSITION, MOMO.INVALID_TRANSITION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION.INVALID_PAYLOAD : résolution inconnue ou motif hors de 10 à 1000 caractères.",
             "content": {
               "application/json": {
                 "schema": {
@@ -30898,12 +30938,14 @@
           "resolution": {
             "type": "string",
             "enum": ["RETRY", "MARK_PAID", "MARK_FAILED"],
-            "description": "Après vérification chez le fournisseur : `RETRY` (aucun virement émis : lève le marqueur, l'ordre ne repart que si le retrait est relu `approved`), `MARK_PAID` (virement bien émis), `MARK_FAILED` (aucun virement, abandon). Aucun virement n’est émis par cet appel."
+            "description": "Le statut du retrait est RELU chez le fournisseur et la résolution refusée (409 `MOMO.RESOLUTION_REFUSED`) si elle risque un double virement. `RETRY` : retrait relu `pending` ou `approved` (lève le marqueur ; l'ordre ne repart que si le retrait est relu `approved`). `MARK_PAID` : seulement si relu `completed`. `MARK_FAILED` : seulement si relu `cancelled`, `rejected`, inconnu (404) ou `pending` annulé (DELETE). Aucun virement n’est émis par cet appel."
           },
           "reason": {
             "type": "string",
             "example": "Vérifié sur le tableau de bord OpenPay : retrait completed, virement reçu.",
-            "description": "Constat fait chez le fournisseur (conservé dans le journal d’audit)."
+            "description": "Constat fait chez le fournisseur (conservé dans le journal d’audit).",
+            "minLength": 10,
+            "maxLength": 1000
           }
         },
         "required": ["resolution", "reason"]

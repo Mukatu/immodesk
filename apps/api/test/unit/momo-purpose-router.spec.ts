@@ -18,7 +18,11 @@ describe('MomoPurposeRouter', () => {
     const { router, queue, verification } = build();
     expect(router.handlerFor('SUBSCRIPTION')).toBeNull();
     await router.handlerFor('RENT_COLLECTION')?.enqueueVerify('o', 't');
-    expect(queue.enqueue).toHaveBeenCalledWith({ organizationId: 'o', transactionId: 't' });
+    expect(queue.enqueue).toHaveBeenCalledWith({
+      organizationId: 'o',
+      transactionId: 't',
+      origin: 'CALLBACK',
+    });
     await router.handlerFor('OWNER_PAYOUT')?.verifyNow('o', 't');
     expect(verification.verifyStatus).toHaveBeenCalledWith('o', 't');
   });
@@ -62,12 +66,21 @@ describe('MomoReconcileService : routage par purpose', () => {
       { adminClient: () => admin } as never,
       router as never,
       {} as never,
+      { get: () => 60 } as never,
+      { forCode: jest.fn() } as never,
+      { notifyOutcome: jest.fn() } as never,
     );
     const result = await service.reconcilePending(new Date('2026-09-10T08:10:00Z'));
     expect(result.rechecked).toBe(3);
-    expect(handlers.RENT_COLLECTION.verifyNow).toHaveBeenCalledWith('org-1', 'a');
-    expect(handlers.SUBSCRIPTION.verifyNow).toHaveBeenCalledWith('org-1', 'b');
-    expect(handlers.OWNER_PAYOUT.verifyNow).toHaveBeenCalledWith('org-1', 'c');
+    expect(handlers.RENT_COLLECTION.verifyNow).toHaveBeenCalledWith('org-1', 'a', {
+      origin: 'RECONCILE',
+    });
+    expect(handlers.SUBSCRIPTION.verifyNow).toHaveBeenCalledWith('org-1', 'b', {
+      origin: 'RECONCILE',
+    });
+    expect(handlers.OWNER_PAYOUT.verifyNow).toHaveBeenCalledWith('org-1', 'c', {
+      origin: 'RECONCILE',
+    });
     expect(admin.$queryRawUnsafe.mock.calls[0][0]).toContain('purpose');
   });
 });

@@ -4,6 +4,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { openPayCallbackBodyReader } from './modules/webhooks/presentation/openpay-body-reader';
 import { buildOpenApiDocument } from './modules/platform/infrastructure/openapi';
 import { AppConfigService } from './shared/config/config.module';
 import { DomainError } from './shared/errors/domain-error';
@@ -42,6 +43,13 @@ export async function createApp(): Promise<INestApplication> {
     bufferLogs: true,
     rawBody: true,
   });
+  // Callback OpenPay : corps lu ici (limite faible, aucune erreur d'analyse),
+  // AVANT les analyseurs globaux (`useBodyParser` s'enregistre immédiatement) ;
+  // ils sautent alors cette requête.
+  app.use(
+    `/${app.get(AppConfigService).get('API_GLOBAL_PREFIX')}/webhooks/mobile-money/openpay`,
+    openPayCallbackBodyReader(),
+  );
   app.useBodyParser('json', { limit: '1mb' });
   app.useBodyParser('urlencoded', { limit: '1mb', extended: true });
   app.useLogger(app.get(Logger));

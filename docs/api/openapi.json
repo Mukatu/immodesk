@@ -9429,6 +9429,38 @@
         "tags": ["Webhooks"]
       }
     },
+    "/v1/webhooks/mobile-money/openpay/{secret}": {
+      "post": {
+        "operationId": "MobileMoneyWebhooksController_receiveOpenPay",
+        "parameters": [
+          {
+            "name": "secret",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "description": "Organisation courante. Obligatoire sur les routes d'organisation ; ignoré ailleurs.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Callback OpenPay (non signé, segment secret)",
+        "tags": ["Webhooks"]
+      }
+    },
     "/v1/webhooks/mobile-money/{provider}": {
       "post": {
         "operationId": "MobileMoneyWebhooksController_receive",
@@ -13088,6 +13120,110 @@
           }
         ],
         "summary": "Exécuter un reversement APPROVED (ou retenter un reversement FAILED)",
+        "tags": ["Reversements"]
+      }
+    },
+    "/v1/owner-payouts/{id}/momo-resolution": {
+      "post": {
+        "description": "Réservé à OWNER, audité (OWNER_PAYOUT_MOMO_RESOLVED). À utiliser quand un ordre d’exécution a une issue incertaine (timeout, erreur réseau) : vérifier le retrait chez OpenPay, puis relancer, marquer payé ou marquer échoué. N’émet jamais de virement.",
+        "operationId": "OwnerPayoutsController_resolveMomo",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "description": "Organisation courante. Positionne `app.current_organization_id` (RLS).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveMomoPayoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION.INVALID_PAYLOAD : identifiant de reversement qui n’est pas un UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle insuffisant (OWNER requis) ou organisation non autorisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "AGENCY.PAYOUT_NOT_FOUND (reversement absent de cette organisation), MOMO.NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "MOMO.RESOLUTION_REFUSED (statut du retrait chez le fournisseur, ordre récent ou ligne non bloquée), AGENCY.PAYOUT_INVALID_TRANSITION, MOMO.INVALID_TRANSITION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION.INVALID_PAYLOAD : résolution inconnue ou motif hors de 10 à 1000 caractères.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Résoudre un décaissement Mobile Money bloqué (issue incertaine), après vérification",
         "tags": ["Reversements"]
       }
     },
@@ -20773,7 +20909,7 @@
           },
           "provider": {
             "type": "string",
-            "enum": ["SIMULATOR", "CINETPAY"],
+            "enum": ["SIMULATOR", "CINETPAY", "OPENPAY"],
             "example": "SIMULATOR"
           },
           "feeBearer": {
@@ -20857,7 +20993,7 @@
           },
           "provider": {
             "type": "string",
-            "enum": ["SIMULATOR", "CINETPAY"]
+            "enum": ["SIMULATOR", "CINETPAY", "OPENPAY"]
           },
           "feeBearer": {
             "type": "string",
@@ -30795,6 +30931,24 @@
             "description": "Un `documents.id` déjà existant (référence seule)."
           }
         }
+      },
+      "ResolveMomoPayoutDto": {
+        "type": "object",
+        "properties": {
+          "resolution": {
+            "type": "string",
+            "enum": ["RETRY", "MARK_PAID", "MARK_FAILED"],
+            "description": "Le statut du retrait est RELU chez le fournisseur et la résolution refusée (409 `MOMO.RESOLUTION_REFUSED`) si elle risque un double virement. `RETRY` : retrait relu `pending` ou `approved` (lève le marqueur ; l'ordre ne repart que si le retrait est relu `approved`). `MARK_PAID` : seulement si relu `completed`. `MARK_FAILED` : seulement si relu `cancelled`, `rejected`, inconnu (404) ou `pending` annulé (DELETE). Aucun virement n’est émis par cet appel."
+          },
+          "reason": {
+            "type": "string",
+            "example": "Vérifié sur le tableau de bord OpenPay : retrait completed, virement reçu.",
+            "description": "Constat fait chez le fournisseur (conservé dans le journal d’audit).",
+            "minLength": 10,
+            "maxLength": 1000
+          }
+        },
+        "required": ["resolution", "reason"]
       },
       "FailPayoutDto": {
         "type": "object",

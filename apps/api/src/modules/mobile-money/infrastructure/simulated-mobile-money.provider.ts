@@ -30,6 +30,7 @@ export class SimulatedMobileMoneyProvider implements MobileMoneyProvider {
   readonly code = 'SIMULATOR' as const;
   readonly signatureHeader = 'x-simulator-signature';
   readonly webhookSource = 'OTHER' as const;
+  readonly webhookTrust = 'SIGNED' as const;
   private readonly logger = new Logger(SimulatedMobileMoneyProvider.name);
   private readonly memory = new Map<string, SimulatedTransaction>();
 

@@ -222,6 +222,8 @@ export const AUDIT_OPERATIONS = {
   OWNER_PAYOUT_APPROVED: 'OWNER_PAYOUT_APPROVED',
   OWNER_PAYOUT_EXECUTED: 'OWNER_PAYOUT_EXECUTED',
   OWNER_PAYOUT_FAILED: 'OWNER_PAYOUT_FAILED',
+  /** Décaissement Mobile Money bloqué (issue incertaine) résolu par un OWNER après vérification chez le fournisseur. */
+  OWNER_PAYOUT_MOMO_RESOLVED: 'OWNER_PAYOUT_MOMO_RESOLVED',
   INDEPENDENT_MANAGER_ONBOARDED: 'INDEPENDENT_MANAGER_ONBOARDED',
 
   // --- Phase 8 : états des lieux, compteurs & charges, maintenance ------

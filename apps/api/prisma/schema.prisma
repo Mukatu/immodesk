@@ -1464,6 +1464,9 @@ model mobile_money_transactions {
   expires_at                                                 DateTime?               @db.Timestamptz(6)
   status_checked_at                                          DateTime?               @db.Timestamptz(6)
   status_check_count                                         Int                     @default(0) @db.SmallInt
+  payout_execute_sent_at                                     DateTime?               @db.Timestamptz(6)
+  payout_execute_refused_at                                  DateTime?               @db.Timestamptz(6)
+  payout_alert_code                                          String?
   failure_code                                               String?
   failure_message                                            String?
   raw_payload                                                Json                    @default("{}")

@@ -3,13 +3,14 @@ import * as React from 'react';
 import { useRefreshMomoTransaction } from '@/lib/api/hooks/use-mobile-money-transactions';
 import type { MomoStatus } from '@/lib/api/types';
 
-const POLL_INTERVAL_SECONDS = 3;
+/** 15 s : au-dessus de l'intervalle minimal anti-abus d'OpenPay (5 s) et sans épuiser le budget d'appels du fournisseur. */
+const POLL_INTERVAL_SECONDS = 15;
 const WAITING_STATUSES: MomoStatus[] = ['INITIATED', 'PENDING'];
 
 /**
  * Copie locale de `app/factures/[id]/_components/use-momo-status-polling.ts`
  * (générique, sans dépendance à une facture de loyer) : interroge
- * `/payments/mobile-money/transactions/{id}/refresh` toutes les 3 secondes
+ * `/payments/mobile-money/transactions/{id}/refresh` toutes les 15 secondes
  * tant que la transaction est en attente, et s'arrête sur un statut final.
  */
 export function useMomoStatusPolling(transactionId: string | null, initialStatus: MomoStatus) {

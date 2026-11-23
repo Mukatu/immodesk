@@ -38,7 +38,20 @@ export class MomoJobsService implements OnModuleInit, OnModuleDestroy {
       this.connection = createBullConnection(this.config.get('REDIS_URL'));
       this.verifyWorker = new Worker<VerifyStatusJobData>(
         MOMO_VERIFY_QUEUE_NAME,
-        (job) => this.verification.verifyStatus(job.data.organizationId, job.data.transactionId),
+        (job) =>
+          this.verification.verifyStatus(
+            job.data.organizationId,
+            job.data.transactionId,
+            // L'origine est portée par le job (CALLBACK par défaut, pour les jobs antérieurs) : la
+            // relecture interne 4 s après l'initiation ne consomme pas le plafond des callbacks.
+            {
+              origin: job.data.origin ?? 'CALLBACK',
+              requeues: job.data.requeues ?? 0,
+              ...(job.data.providerReferenceHint
+                ? { providerReference: job.data.providerReferenceHint }
+                : {}),
+            },
+          ),
         { connection: this.connection, prefix, concurrency: 4 },
       );
       this.verifyWorker.on('failed', (job, error) =>

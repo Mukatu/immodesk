@@ -1,9 +1,27 @@
-import { CanActivate, ExecutionContext, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Inject,
+  Injectable,
+  Logger,
+  Optional,
+  SetMetadata,
+} from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type Redis from 'ioredis';
 import { AppConfigService } from '../config/config.module';
 import { DomainError } from '../errors/domain-error';
 import { REDIS_CLIENT } from '../redis/redis.module';
+
+export const SKIP_WEBHOOK_RATE_LIMIT = 'skipWebhookRateLimit';
+
+/**
+ * Exclut une route de la garde commune : elle porte sa propre limite, qui ne doit jamais
+ * produire de 429 (callback OpenPay : réponse toujours `200 {}`, voir `OpenPayApiLimiter`).
+ */
+export const SkipWebhookRateLimit = (): MethodDecorator & ClassDecorator =>
+  SetMetadata(SKIP_WEBHOOK_RATE_LIMIT, true);
 
 /**
  * Limitation de débit des routes webhook PUBLIQUES (`/webhooks/*`) :
@@ -22,9 +40,18 @@ export class WebhookRateLimitGuard implements CanActivate {
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     private readonly config: AppConfigService,
+    @Optional() private readonly reflector?: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (
+      this.reflector?.getAllAndOverride<boolean | undefined>(SKIP_WEBHOOK_RATE_LIMIT, [
+        context.getHandler(),
+        context.getClass(),
+      ])
+    ) {
+      return true;
+    }
     const request = context.switchToHttp().getRequest<Request>();
     const ip = request.ip ?? request.socket?.remoteAddress ?? 'inconnue';
     const window = Math.floor(Date.now() / 60_000);

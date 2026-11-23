@@ -444,6 +444,11 @@ export const ERROR_CATALOG = {
     status: 409,
     message: "Cette transition d'état n'est pas permise pour cette transaction Mobile Money.",
   },
+  'MOMO.RESOLUTION_REFUSED': {
+    status: 409,
+    message:
+      'Résolution refusée : le statut du retrait chez le fournisseur ou le délai ne la permet pas sans risque de double virement.',
+  },
   'MOMO.PROOF_NOT_FOUND': { status: 404, message: 'Capture jointe introuvable.' },
   'MOMO.APPROVED_AMOUNT_REASON_REQUIRED': {
     status: 422,

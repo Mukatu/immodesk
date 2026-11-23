@@ -114,6 +114,7 @@ describe('MomoWebhookIngestService.ingest', () => {
     expect(rentQueue.enqueue).toHaveBeenCalledWith({
       organizationId: 'org-1',
       transactionId: 'tx-1',
+      origin: 'CALLBACK',
     });
     expect(subscription.enqueueVerify).not.toHaveBeenCalled();
     expect(events.markStatus).toHaveBeenLastCalledWith('evt-1', 'PROCESSED', expect.anything());

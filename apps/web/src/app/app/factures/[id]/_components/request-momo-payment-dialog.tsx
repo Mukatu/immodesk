@@ -35,7 +35,7 @@ type Step = 'form' | 'quote' | 'waiting';
  * Demander un paiement Mobile Money agrégateur (le locataire valide la
  * demande reçue sur son téléphone). Le devis précède toujours la validation
  * (arbitrage du contrat phase 4) ; l'écran d'attente interroge le statut
- * toutes les 3 secondes jusqu'à un résultat final.
+ * toutes les 15 secondes jusqu'à un résultat final.
  */
 export function RequestMomoPaymentDialog({ invoiceId, tenantId }: RequestMomoPaymentDialogProps) {
   const [open, setOpen] = React.useState(false);

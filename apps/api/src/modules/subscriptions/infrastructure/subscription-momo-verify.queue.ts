@@ -17,6 +17,8 @@ export const SUBSCRIPTION_MOMO_VERIFY_QUEUE = 'subscription-momo-verify';
 export interface SubscriptionVerifyJobData {
   organizationId: string;
   transactionId: string;
+  /** Référence fournisseur reçue dans un callback, avant d'être stockée : candidate, prouvée par `getStatus`. */
+  providerReferenceHint?: string;
 }
 
 @Injectable()

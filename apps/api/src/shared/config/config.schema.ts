@@ -255,6 +255,9 @@ export const configSchema = z
     OPENPAY_CALLBACKS_PER_MINUTE: z.coerce.number().int().positive().default(600),
     OPENPAY_PRIORITY_CALLS_PER_MINUTE: z.coerce.number().int().positive().default(60),
     OPENPAY_INVALID_CALLBACKS_PER_MINUTE: z.coerce.number().int().positive().default(60),
+    // Délai (minutes) après la pose du marqueur d'ordre d'exécution avant qu'un RETRY manuel soit
+    // recevable : un second ordre pendant que le premier est encore traité doublerait le virement.
+    MOMO_PAYOUT_RETRY_MIN_AGE_MINUTES: z.coerce.number().int().min(1).default(15),
     // Une transaction INITIATED que le fournisseur ne fait jamais évoluer passe
     // EXPIRED après ce délai (rattrapage `momo:reconcile-pending`).
     MOMO_INITIATED_EXPIRY_MINUTES: z.coerce.number().int().min(11).default(60),

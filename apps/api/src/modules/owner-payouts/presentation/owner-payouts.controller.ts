@@ -167,7 +167,8 @@ export class OwnerPayoutsController {
     status: 409,
     type: ErrorResponseDto,
     description:
-      'MOMO.RESOLUTION_REFUSED (statut du retrait chez le fournisseur, ordre récent ou ligne non bloquée), ' +
+      'MOMO.RESOLUTION_REFUSED (statut du retrait chez le fournisseur, ordre récent, RETRY avant le délai ' +
+      'MOMO_PAYOUT_RETRY_MIN_AGE_MINUTES ou ligne non bloquée), ' +
       'AGENCY.PAYOUT_INVALID_TRANSITION, MOMO.INVALID_TRANSITION',
   })
   async resolveMomo(
@@ -194,6 +195,13 @@ export class OwnerPayoutsController {
     status: 422,
     type: ErrorResponseDto,
     description: 'AGENCY.PAYOUT_FAILURE_REASON_REQUIRED',
+  })
+  @ApiResponse({
+    status: 409,
+    type: ErrorResponseDto,
+    description:
+      'AGENCY.PAYOUT_INVALID_TRANSITION, ou MOMO.RESOLUTION_REFUSED : décaissement Mobile Money en vol ' +
+      '(le virement peut encore partir), utiliser momo-resolution.',
   })
   async fail(
     @CurrentOrganizationId() organizationId: string,

@@ -13198,7 +13198,7 @@
             }
           },
           "409": {
-            "description": "MOMO.RESOLUTION_REFUSED (statut du retrait chez le fournisseur, ordre récent ou ligne non bloquée), AGENCY.PAYOUT_INVALID_TRANSITION, MOMO.INVALID_TRANSITION",
+            "description": "MOMO.RESOLUTION_REFUSED (statut du retrait chez le fournisseur, ordre récent, RETRY avant le délai MOMO_PAYOUT_RETRY_MIN_AGE_MINUTES ou ligne non bloquée), AGENCY.PAYOUT_INVALID_TRANSITION, MOMO.INVALID_TRANSITION",
             "content": {
               "application/json": {
                 "schema": {
@@ -13266,6 +13266,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PayoutDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "AGENCY.PAYOUT_INVALID_TRANSITION, ou MOMO.RESOLUTION_REFUSED : décaissement Mobile Money en vol (le virement peut encore partir), utiliser momo-resolution.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }

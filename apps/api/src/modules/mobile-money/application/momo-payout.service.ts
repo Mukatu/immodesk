@@ -55,6 +55,12 @@ interface PayoutRow {
   failure_code: string | null;
 }
 
+/** Codes d'alerte journalisés en erreur même si le type d'alerte est déjà posé (incident distinct). */
+const ALWAYS_LOGGED_CODES: ReadonlySet<string> = new Set(['MOMO.PAYOUT_EXECUTE_UNKNOWN']);
+
+/** Délai par défaut avant qu'un RETRY soit recevable sur un ordre d'exécution à l'issue incertaine. */
+const DEFAULT_RETRY_MIN_AGE_MINUTES = 15;
+
 /** Un ordre d'exécution posé depuis moins de ce délai est peut-être encore en cours (course normale). */
 const EXECUTE_IN_PROGRESS_MS = 40_000;
 
@@ -470,7 +476,7 @@ export class MomoPayoutService
         row.id,
         'REFUSED',
         'MOMO.PAYOUT_EXECUTE_REFUSED',
-        `ordre d'exécution refusé par le fournisseur (solde plateforme ou opérateur insuffisant ?), retrait toujours approuvé, aucun virement émis : marqueur levé, nouvelle tentative dans ${PAYOUT_EXECUTE_RETRY_MINUTES} min. Alimenter le solde.`,
+        `ordre d'exécution refusé par le fournisseur (solde plateforme ou opérateur insuffisant ?), retrait non exécuté (approuvé ou encore en attente selon la relecture), aucun virement émis : marqueur levé, nouvelle tentative dans ${PAYOUT_EXECUTE_RETRY_MINUTES} min. Alimenter le solde.`,
       );
       return;
     }
@@ -567,7 +573,11 @@ export class MomoPayoutService
     }
     const message = `${code} transaction=${transactionId} : ${detail}`;
     if (first) this.logger.error(message);
-    else this.logger.debug(`${message} (déjà signalé)`);
+    else if (ALWAYS_LOGGED_CODES.has(code)) {
+      // Un nouvel incident (issue incertaine d'un ordre) ne doit jamais se perdre derrière une
+      // alerte du même type déjà posée par un autre incident (ex. `ALREADY_SENT`).
+      this.logger.error(`${message} (alerte ${kind} déjà posée : nouvel incident à examiner)`);
+    } else this.logger.debug(`${message} (déjà signalé)`);
   }
 
   /**
@@ -580,9 +590,10 @@ export class MomoPayoutService
    * - recevable seulement si la ligne est bloquée (alerte `BLOCKED`) ou porte un marqueur d'ordre
    *   posé depuis plus de `RESOLUTION_MIN_AGE_MS` (un ordre plus récent peut être en cours) ;
    * - `MARK_PAID` : seulement si le retrait est relu `completed` ;
-   * - `MARK_FAILED` : seulement si relu `cancelled` / `rejected` / inconnu (404), ou `pending` ET
-   *   annulé (DELETE réussi) ; refusé si `approved` (non annulable, orienter vers `RETRY`) ou `completed` ;
-   * - `RETRY` : seulement si relu `pending` ou `approved` (la vérification ne redonnera l'ordre
+   * - `MARK_FAILED` : seulement si relu `cancelled` / `rejected`, ou inconnu (404) SANS marqueur
+   *   d'ordre posé, ou `pending` ET annulé (DELETE réussi) ; refusé si `approved` (non annulable, orienter vers `RETRY`) ou `completed` ;
+   * - `RETRY` : seulement si relu `pending` ou `approved`, et, si un marqueur d'ordre est posé,
+   *   après `MOMO_PAYOUT_RETRY_MIN_AGE_MINUTES` (défaut 15 min) (la vérification ne redonnera l'ordre
    *   que sur un statut `approved` relu).
    */
   async resolveBlockedPayout(
@@ -608,7 +619,7 @@ export class MomoPayoutService
     if (!IN_FLIGHT.includes(row.status)) {
       throw new DomainError('MOMO.INVALID_TRANSITION', { from: row.status, to: resolution });
     }
-    assertResolvable(row, resolution);
+    assertResolvable(row, resolution, this.retryMinAgeMs());
     const provider = this.registry.forCode(row.aggregator ?? 'SIMULATOR');
     const providerStatus = await this.rereadForResolution(row, provider, resolution);
     const refuse = (reason: string): never => {
@@ -663,6 +674,8 @@ export class MomoPayoutService
       if (!cancelled) {
         refuse('retrait en attente non annulable chez le fournisseur (annulation refusée)');
       }
+    } else if (providerStatus === 'not_found' && row.payout_execute_sent_at !== null) {
+      refuse(NOT_FOUND_AFTER_ORDER_REASON);
     } else if (!['cancelled', 'rejected', 'not_found'].includes(providerStatus)) {
       refuse(
         providerStatus === 'approved'
@@ -673,6 +686,14 @@ export class MomoPayoutService
       );
     }
     return this.concludeResolution(tx, row, resolution, providerStatus);
+  }
+
+  /** Délai minimal (ms) avant un RETRY sur un ordre à l'issue incertaine (`MOMO_PAYOUT_RETRY_MIN_AGE_MINUTES`). */
+  private retryMinAgeMs(): number {
+    const minutes = Number(this.config.get('MOMO_PAYOUT_RETRY_MIN_AGE_MINUTES'));
+    return (
+      (Number.isFinite(minutes) && minutes > 0 ? minutes : DEFAULT_RETRY_MIN_AGE_MINUTES) * 60_000
+    );
   }
 
   private async concludeResolution(
@@ -751,12 +772,22 @@ export class MomoPayoutService
     } catch {
       providerStatus = 'unknown';
     }
-    if (['cancelled', 'rejected', 'not_found'].includes(providerStatus)) return;
+    // `not_found` n'est une preuve d'absence de virement que si aucun ordre n'a jamais été donné.
+    if (
+      providerStatus === 'cancelled' ||
+      providerStatus === 'rejected' ||
+      (providerStatus === 'not_found' && row.payout_execute_sent_at === null)
+    ) {
+      return;
+    }
     this.logger.error(
       `MOMO.RETRY_REFUSED transaction=${row.id} statut=${providerStatus} : ancienne tentative marquée échouée à la main, retrait non confirmé annulé chez le fournisseur : aucune nouvelle tentative (double virement possible), vérifier puis résoudre.`,
     );
     throw new DomainError('MOMO.RESOLUTION_REFUSED', {
-      reason: 'ancien retrait non confirmé annulé chez le fournisseur : nouvelle tentative refusée',
+      reason:
+        providerStatus === 'not_found'
+          ? NOT_FOUND_AFTER_ORDER_REASON
+          : 'ancien retrait non confirmé annulé chez le fournisseur : nouvelle tentative refusée',
       providerStatus,
     });
   }
@@ -917,6 +948,10 @@ function toMomoDbStatus(
   return 'PENDING';
 }
 
+/** Un retrait vu `approved` puis introuvable (clé, environnement ou URL changés) n'est PAS une preuve d'absence de virement. */
+const NOT_FOUND_AFTER_ORDER_REASON =
+  'référence connue puis disparue chez le fournisseur : absence de virement non prouvée (clé, environnement ou URL modifiés ?)';
+
 /** Temps minimal depuis la pose du marqueur d'ordre avant toute résolution humaine (ordre peut-être en cours). */
 const RESOLUTION_MIN_AGE_MS = 60_000;
 
@@ -934,8 +969,21 @@ function classifyProviderStatus(status: ProviderStatus): ResolutionProviderStatu
  * Recevabilité d'une résolution : ligne bloquée (alerte `BLOCKED`) ou marqueur d'ordre posé et
  * ancien. Un ordre posé depuis moins de `RESOLUTION_MIN_AGE_MS` est peut-être encore en cours : refus.
  */
-function assertResolvable(row: PayoutRow, resolution: MobileMoneyPayoutResolution): void {
+function assertResolvable(
+  row: PayoutRow,
+  resolution: MobileMoneyPayoutResolution,
+  retryMinAgeMs: number,
+): void {
   const sentAt = row.payout_execute_sent_at;
+  // RETRY lève le marqueur et autorise un SECOND ordre d'exécution : si le premier est encore en
+  // cours chez OpenPay (délai de 20 s dépassé, idempotence non garantie), ce serait un double
+  // virement. Délai bien plus long, après confirmation écrite d'OpenPay (voir docs/09_exploitation.md).
+  if (resolution === 'RETRY' && sentAt && Date.now() - sentAt.getTime() < retryMinAgeMs) {
+    throw new DomainError('MOMO.RESOLUTION_REFUSED', {
+      resolution,
+      reason: `ordre d’exécution à l’issue incertaine posé depuis moins de ${Math.round(retryMinAgeMs / 60_000)} min : il peut encore être traité par le fournisseur, relance refusée`,
+    });
+  }
   if (sentAt && Date.now() - sentAt.getTime() < RESOLUTION_MIN_AGE_MS) {
     throw new DomainError('MOMO.RESOLUTION_REFUSED', {
       resolution,

@@ -46,6 +46,8 @@ describe('OpenPay : reversements (execute, callback, résolution)', () => {
       OPENPAY_API_KEY: 'cle-api-de-test',
       OPENPAY_CALLBACK_SECRET: SECRET,
       OPENPAY_MIN_CHECK_INTERVAL_SECONDS: '0',
+      OPENPAY_PRIORITY_CALLS_PER_MINUTE: '1000',
+      OPENPAY_STATUS_CALLS_PER_MINUTE: '1000',
       TRUST_PROXY_HOPS: '1',
     });
     ctx = await startTestApp();
@@ -256,6 +258,15 @@ describe('OpenPay : reversements (execute, callback, résolution)', () => {
       resolution: 'RETRY',
       reason: 'Vérifié sur le tableau de bord : retrait approuvé, rien émis.',
     };
+    // Ordre posé depuis 2 min : le premier execute peut encore être traité chez OpenPay, RETRY refusé
+    // (délai de 15 min) ; rien n'est levé, aucun virement.
+    const tooEarly = await resolve(p.id, body);
+    expect(tooEarly.status).toBe(409);
+    expect(tooEarly.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+    expect(tooEarly.body.details.reason).toContain('15 min');
+    expect((await momoOf(p.momoId)).payout_execute_sent_at).not.toBeNull();
+    expect(p.cashout.executeCount).toBe(0);
+    await markSent(p.momoId, 20 * 60_000);
     // Rôle à privilèges seulement : un comptable ne peut pas résoudre.
     expect((await resolve(p.id, body, asAccountant())).status).toBe(403);
     // Constat obligatoire.
@@ -373,6 +384,7 @@ describe('OpenPay : reversements (execute, callback, résolution)', () => {
         const refused = await resolve(p.id, { resolution, reason });
         expect(refused.status).toBe(409);
         expect(refused.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+        expect(refused.body.details.reason).toContain(resolution === 'RETRY' ? '15 min' : '60 s');
       }
       await running;
     } finally {
@@ -448,15 +460,86 @@ describe('OpenPay : reversements (execute, callback, résolution)', () => {
     expect(p.cashout.executeCount).toBe(0);
   }, 90_000);
 
-  it('N1 : « marquer échoué » accepté si OpenPay ne connaît plus le retrait (404) : aucun virement possible', async () => {
+  it('N1 : retrait introuvable (404) alors qu’un ordre a été donné : « marquer échoué » refusé, aucun virement exclu', async () => {
     const p = await startedPayout();
     await markSent(p.momoId);
+    fake.cashouts.delete(p.cashout.reference);
+    const refused = await resolve(p.id, { resolution: 'MARK_FAILED', reason });
+    expect(refused.status).toBe(409);
+    expect(refused.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+    expect(refused.body.details).toMatchObject({ providerStatus: 'not_found' });
+    expect(refused.body.details.reason).toContain('référence connue puis disparue');
+    expect((await momoOf(p.momoId)).status).toBe('PENDING');
+    expect((await payoutOf(p.id)).status).toBe('PROCESSING');
+    expect(await auditsOf(p.id, 'OWNER_PAYOUT_MOMO_RESOLVED')).toHaveLength(0);
+  }, 60_000);
+
+  it('N1 : retrait introuvable (404) sans ordre jamais donné : « marquer échoué » accepté', async () => {
+    const p = await startedPayout();
+    await ctx.admin.mobile_money_transactions.update({
+      where: { id: p.momoId },
+      data: { payout_alert_code: 'BLOCKED' },
+    });
     fake.cashouts.delete(p.cashout.reference);
     const failed = await resolve(p.id, { resolution: 'MARK_FAILED', reason });
     expect(failed.status).toBe(200);
     expect(failed.body.status).toBe('FAILED');
     const audits = await auditsOf(p.id, 'OWNER_PAYOUT_MOMO_RESOLVED');
     expect(audits[0]?.new_state).toMatchObject({ providerStatus: 'not_found' });
+  }, 60_000);
+
+  it('N1 : ancien retrait marqué échoué à la main puis introuvable (404) : nouvelle tentative refusée', async () => {
+    const p = await startedPayout();
+    await ctx.admin.mobile_money_transactions.update({
+      where: { id: p.momoId },
+      data: {
+        status: 'FAILED',
+        failure_code: 'MANUAL_RESOLUTION',
+        completed_at: new Date(),
+        payout_execute_sent_at: new Date(Date.now() - 300_000),
+      },
+    });
+    await ctx.admin.owner_payouts.update({ where: { id: p.id }, data: { status: 'FAILED' } });
+    fake.cashouts.delete(p.cashout.reference);
+    const created = () => fake.calls.filter((c) => c === 'POST /scheduled-cashout').length;
+    const before = created();
+    const retried = await api(ctx, 'POST', `/owner-payouts/${p.id}/execute`, {
+      ...asAccountant(),
+      body: {},
+    });
+    expect(retried.status).toBe(409);
+    expect(retried.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+    expect(retried.body.details.reason).toContain('référence connue puis disparue');
+    expect(created()).toBe(before);
+    expect((await payoutOf(p.id)).momo_transaction_id).toBe(p.momoId);
+  }, 60_000);
+
+  it('F : « échec » manuel refusé sur un reversement MoMo dont le retrait est en vol : orienter vers momo-resolution', async () => {
+    const p = await startedPayout();
+    for (const status of ['PENDING', 'INITIATED'] as const) {
+      await ctx.admin.mobile_money_transactions.update({
+        where: { id: p.momoId },
+        data: { status },
+      });
+      const failed = await api(ctx, 'POST', `/owner-payouts/${p.id}/fail`, {
+        ...asAccountant(),
+        body: { reason: 'Tentative de contournement des garde-fous.' },
+      });
+      expect(failed.status).toBe(409);
+      expect(failed.body.code).toBe('MOMO.RESOLUTION_REFUSED');
+      expect(failed.body.details.reason).toContain('momo-resolution');
+    }
+    expect((await payoutOf(p.id)).status).toBe('PROCESSING');
+    expect(await auditsOf(p.id, 'OWNER_PAYOUT_FAILED')).toHaveLength(0);
+    // Le callback `completed` qui suit solde bien le reversement : le virement n'est pas perdu.
+    await ctx.admin.mobile_money_transactions.update({
+      where: { id: p.momoId },
+      data: { status: 'PENDING' },
+    });
+    p.cashout.status = 'approved';
+    await callback(p.cashout.reference);
+    await waitFor(async () => (await payoutOf(p.id)).status === 'PAID');
+    expect(p.cashout.executeCount).toBe(1);
   }, 60_000);
 
   it('A : ancien retrait passé `completed` après un « marquer échoué » : alerte, aucune nouvelle tentative, aucun second virement', async () => {

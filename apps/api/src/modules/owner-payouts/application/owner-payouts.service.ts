@@ -442,6 +442,7 @@ export class OwnerPayoutsService implements OnModuleInit {
       // solder le reversement (PAID) ne peut jamais être écrasé par un échec manuel.
       const before = await this.lockPayoutInOrder(tx, id);
       assertFailable(before.status as PayoutStatus, reason);
+      await this.assertMomoNotInFlight(tx, before);
       const moved = await tx.owner_payouts.updateMany({
         where: { id, status: { in: ['APPROVED', 'PROCESSING'] } },
         data: { status: 'FAILED', failure_reason: reason.trim(), updated_at: new Date() },
@@ -462,6 +463,29 @@ export class OwnerPayoutsService implements OnModuleInit {
         newState: toJsonState({ status: 'FAILED', reason: reason.trim() }),
       });
       return toPayoutView(after);
+    });
+  }
+
+  /**
+   * `/fail` ne contourne pas les garde-fous Mobile Money : tant que le retrait lié est en vol
+   * (`INITIATED` / `PENDING`), le virement peut encore partir ; un échec manuel ferait ignorer le
+   * callback `completed` (argent parti, reversement non payé). Seule `momo-resolution` (OWNER, relecture
+   * chez le fournisseur) peut conclure. La transaction liée est déjà verrouillée (`lockPayoutInOrder`).
+   */
+  private async assertMomoNotInFlight(tx: TenantClient, payout: OwnerPayoutRow): Promise<void> {
+    if (payout.method !== 'MOBILE_MONEY' || !payout.momo_transaction_id) return;
+    const linked = await tx.mobile_money_transactions.findFirst({
+      where: { id: payout.momo_transaction_id },
+      select: { status: true },
+    });
+    if (!linked || !['INITIATED', 'PENDING'].includes(linked.status)) return;
+    this.logger.error(
+      `OWNER_PAYOUT.FAIL_REFUSED payout=${payout.id} momo=${payout.momo_transaction_id} statut=${linked.status} : décaissement Mobile Money en vol, utiliser momo-resolution.`,
+    );
+    throw new DomainError('MOMO.RESOLUTION_REFUSED', {
+      reason:
+        'décaissement Mobile Money en cours chez le fournisseur : le virement peut encore partir, utiliser momo-resolution (OWNER)',
+      momoStatus: linked.status,
     });
   }
 

@@ -21,6 +21,12 @@ async function bootstrap(): Promise<void> {
     logger.log(`Contrat OpenAPI : http://localhost:${port}/${prefix}/openapi.json`);
     logger.log(`Documentation : http://localhost:${port}/${prefix}/docs`);
   }
+  if (config.isStaging) {
+    logger.warn(
+      'DEPLOYMENT_ENV=staging : serveur de recette. Messagerie simulée : les codes de connexion ' +
+        'sont écrits dans ce journal au lieu d’être envoyés (docs/10_deploiement.md).',
+    );
+  }
   if (config.devOtpCode) {
     logger.warn(
       `OTP_DEV_CODE actif : le code « ${config.devOtpCode} » est accepté. Jamais en production.`,

@@ -23,6 +23,8 @@ import type { ObjectStorage, PresignedUpload, StoredObjectInfo } from '../domain
 export class S3ObjectStorage implements ObjectStorage, OnModuleDestroy {
   private readonly logger = new Logger(S3ObjectStorage.name);
   private readonly client: S3Client;
+  /** Client de signature : adresse publique (S3_PUBLIC_ENDPOINT) vue par les mobiles. */
+  private readonly signer: S3Client;
   readonly bucket: string;
   readonly provider = 'S3' as const;
 
@@ -47,9 +49,19 @@ export class S3ObjectStorage implements ObjectStorage, OnModuleDestroy {
       forcePathStyle: true,
       credentials: { accessKeyId, secretAccessKey },
     });
+    const publicEndpoint = config.get('S3_PUBLIC_ENDPOINT');
+    this.signer = publicEndpoint
+      ? new S3Client({
+          endpoint: publicEndpoint,
+          region: config.get('S3_REGION'),
+          forcePathStyle: true,
+          credentials: { accessKeyId, secretAccessKey },
+        })
+      : this.client;
   }
 
   onModuleDestroy(): void {
+    if (this.signer !== this.client) this.signer.destroy();
     this.client.destroy();
   }
 
@@ -168,7 +180,7 @@ export class S3ObjectStorage implements ObjectStorage, OnModuleDestroy {
     ttlSeconds: number,
   ): Promise<string> {
     try {
-      return await getSignedUrl(this.client, command, { expiresIn: ttlSeconds });
+      return await getSignedUrl(this.signer, command, { expiresIn: ttlSeconds });
     } catch (error) {
       this.logger.error(`Signature d'URL en échec : ${(error as Error).message}`);
       throw new DomainError('DOCUMENTS.STORAGE_UNAVAILABLE');

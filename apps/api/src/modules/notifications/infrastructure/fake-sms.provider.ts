@@ -42,11 +42,19 @@ export class FakeSmsProvider implements SmsProvider {
     OutboundMessage & { sentAt: Date; providerMessageId: string | null; failed: boolean }
   > = [];
 
+  constructor(private readonly config: AppConfigService) {}
+
   async send(message: OutboundMessage): Promise<SendResult> {
-    this.lastMessage = { ...message, sentAt: new Date() };
-    const failed = isSimulatedFailure(message.to);
+    // Sur un serveur de recette (NODE_ENV=production), aucun échec simulé : un vrai
+    // numéro finissant par 99 doit pouvoir se connecter. Et rien n'est conservé en
+    // mémoire : la liste ne sert qu'aux tests et grossirait sans fin.
+    const production = this.config.isProduction;
+    const failed = !production && isSimulatedFailure(message.to);
     const providerMessageId = failed ? null : `fake-sms-${newId()}`;
-    this.sent.push({ ...message, sentAt: new Date(), providerMessageId, failed });
+    if (!production) {
+      this.lastMessage = { ...message, sentAt: new Date() };
+      this.sent.push({ ...message, sentAt: new Date(), providerMessageId, failed });
+    }
     this.logger.log(`[SMS SIMULÉ${failed ? ' — ÉCHEC' : ''}] vers ${message.to} : ${message.body}`);
     if (failed) {
       return {
@@ -132,9 +140,11 @@ export class FakeWhatsAppProvider implements WhatsAppProvider {
     document: string | null,
     templateName?: string,
   ): Promise<SendResult> {
-    const failed = isSimulatedFailure(to);
+    // Même règle que FakeSmsProvider : en recette, ni échec simulé ni rétention.
+    const production = this.config.isProduction;
+    const failed = !production && isSimulatedFailure(to);
     const providerMessageId = failed ? null : `wamid.fake-${newId()}`;
-    this.sent.push({ to, kind, text, providerMessageId, document });
+    if (!production) this.sent.push({ to, kind, text, providerMessageId, document });
     this.logger.log(`[WHATSAPP SIMULÉ${failed ? ' — ÉCHEC' : ''}] ${kind} vers ${to} : ${text}`);
     if (failed) {
       return {

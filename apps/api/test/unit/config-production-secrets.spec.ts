@@ -1,4 +1,5 @@
 import { DEV_SECRET_DEFAULTS, validateConfig } from '../../src/shared/config/config.schema';
+import { PRODUCTION_MESSAGING } from './production-messaging.fixture';
 
 /**
  * Les secrets ont une valeur de développement par défaut, publique par
@@ -13,6 +14,7 @@ const BASE = {
 };
 
 const PRODUCTION_SECRETS = {
+  ...PRODUCTION_MESSAGING,
   CURSOR_SECRET: 'cursor-secret-de-production-xx',
   OTP_PEPPER: 'pepper-de-production',
   WHATSAPP_APP_SECRET: 'whatsapp-app-secret-prod',

@@ -8,8 +8,10 @@ import { MobileMoneyProviderRegistry } from '../../src/modules/mobile-money/infr
 import { MomoVerifyQueue } from '../../src/modules/mobile-money/infrastructure/momo-verify.queue';
 import { UpdateMobileMoneyAggregatorSettingsDto } from '../../src/modules/organizations/presentation/dto/operational-settings.dto';
 import { validateConfig } from '../../src/shared/config/config.schema';
+import { PRODUCTION_MESSAGING } from './production-messaging.fixture';
 
 const PROD = {
+  ...PRODUCTION_MESSAGING,
   DATABASE_URL: 'postgresql://immodesk_app:x@localhost:5440/immodesk',
   REDIS_URL: 'redis://localhost:6390',
   JWT_ALGORITHM: 'HS256',

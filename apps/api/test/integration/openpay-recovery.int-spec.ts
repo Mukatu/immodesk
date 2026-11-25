@@ -8,6 +8,7 @@ import {
   OpenPayApiLimiter,
   OpenPayClient,
 } from '../../src/modules/mobile-money/infrastructure/openpay.client';
+import { REDIS_CLIENT } from '../../src/shared/redis/redis.module';
 import { api, startTestApp, stopTestApp, type TestContext } from './helpers';
 import {
   createAgency,
@@ -79,6 +80,27 @@ describe('OpenPay : récupération, polling et reversement (revue PR #62)', () =
     for (const key of Object.keys(process.env)) if (!(key in saved)) delete process.env[key];
     Object.assign(process.env, saved);
   });
+
+  /**
+   * Les budgets d'appels de statut OpenPay sont des compteurs Redis par minute, partagés par TOUTES
+   * les specs d'un même run (même `QUEUE_PREFIX`). Les specs OpenPay précédentes en consomment une
+   * part dans la même minute : sans remise à zéro, les retraits de cette spec tombent sur
+   * « Fournisseur indisponible » selon l'ordre d'exécution (observé en CI, jamais en local).
+   */
+  const resetStatusBudgets = async () => {
+    const redis = ctx.app.get<{
+      scan: (cursor: string, ...args: (string | number)[]) => Promise<[string, string[]]>;
+      del: (...keys: string[]) => Promise<number>;
+    }>(REDIS_CLIENT);
+    const match = `${process.env.QUEUE_PREFIX}:rl:openpay-status*`;
+    let cursor = '0';
+    do {
+      const [next, keys] = await redis.scan(cursor, 'MATCH', match, 'COUNT', 200);
+      if (keys.length > 0) await redis.del(...keys);
+      cursor = next;
+    } while (cursor !== '0');
+  };
+  beforeEach(resetStatusBudgets);
 
   const post = (body: unknown, opts: { secret?: string; ip?: string } = {}) =>
     fetch(`${ctx.baseUrl}/webhooks/mobile-money/openpay/${opts.secret ?? SECRET}`, {

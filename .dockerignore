@@ -9,7 +9,8 @@
 .github
 .husky
 .vscode
-.claude
+# Fichiers locaux hors dépôt : les Dockerfile ne copient que des chemins explicites.
+*.html
 apps/mobile
 docs
 infra
@@ -20,4 +21,3 @@ apps/api/src/generated
 apps/web/playwright-report
 apps/web/test-results
 *.log
-stelantis_prototype_interactif.html

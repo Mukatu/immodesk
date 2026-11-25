@@ -6,7 +6,7 @@
 # après avoir vérifié que le numéro est bien le sien.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 SINCE="${1:-15m}"
-compose logs --no-log-prefix --since "$SINCE" api \
+compose logs --no-log-prefix --since "$SINCE" immodesk-api \
   | grep -E 'SIMUL' \
   | sed -E 's/.*"msg":"([^"]*)".*/\1/' \
   || echo "Aucun message simulé depuis $SINCE."

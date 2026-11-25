@@ -1,23 +1,26 @@
-# Pile de recette (staging) Immodesk sur un VPS unique de 4 Go.
+# Pile de recette (staging) Immodesk sur un VPS unique (OVH VPS-2 : 4 vCores, 8 Go).
 # Mode d'emploi pas à pas : docs/10_deploiement.md. Variables : .env (copie
 # de .env.staging.example), lu automatiquement par Docker Compose.
 #
-# Exposition : seul Caddy publie des ports (80 et 443). PostgreSQL et Redis
-# vivent sur un réseau interne sans accès Internet ; MinIO n'est joignable
-# que par Caddy (API S3, en https) pour les URL signées des mobiles.
+# Réseaux (aucun n'est partagé avec un autre projet) :
+#   public   : Caddy seul, porte les ports 80 et 443 ;
+#   edge     : Caddy, API et web ;
+#   edge_s3  : Caddy et MinIO seuls (le web n'a aucun chemin vers le stockage) ;
+#   app      : web vers API (appels serveur du BFF Next) ;
+#   backend  : API, bases et tâches ponctuelles, sans accès Internet ;
+#   egress   : sortie Internet de l'API seule (Meta, OpenPay).
+# Les services joints par Caddy portent un nom préfixé (immodesk-*) : un Caddy
+# commun à plusieurs projets ne peut pas confondre deux « api ».
 name: immodesk-staging
 
 x-logging: &logging
-  driver: json-file
-  options:
-    # Rotation : le journal de l'API contient, en recette, les codes de
-    # connexion. Il n'en garde que les derniers mégaoctets.
-    max-size: '10m'
-    max-file: '3'
+  # journald : rétention bornée dans le temps (7 jours, réglée par bootstrap.sh).
+  # Le journal de l'API contient, en recette, les codes de connexion.
+  driver: ${LOG_DRIVER:-journald}
 
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16.16-bookworm
     restart: unless-stopped
     environment:
       POSTGRES_DB: immodesk
@@ -26,13 +29,13 @@ services:
     command:
       - postgres
       - -c
-      - shared_buffers=256MB
+      - shared_buffers=512MB
       - -c
-      - effective_cache_size=768MB
+      - effective_cache_size=1536MB
       - -c
-      - work_mem=8MB
+      - work_mem=16MB
       - -c
-      - maintenance_work_mem=64MB
+      - maintenance_work_mem=128MB
       - -c
       - max_connections=60
       - -c
@@ -46,11 +49,11 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
-    mem_limit: 768m
+    mem_limit: 1536m
     logging: *logging
 
   redis:
-    image: redis:7
+    image: redis:7.4.12-bookworm
     restart: unless-stopped
     # AOF « everysec » et aucune éviction : une file BullMQ ne doit jamais
     # perdre de job (docs/02 § 14.4).
@@ -59,7 +62,7 @@ services:
       - -c
       - >-
         exec redis-server --appendonly yes --appendfsync everysec
-        --maxmemory 256mb --maxmemory-policy noeviction
+        --maxmemory 384mb --maxmemory-policy noeviction
         --requirepass "$$REDIS_PASSWORD"
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?à renseigner dans .env}
@@ -72,12 +75,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    mem_limit: 320m
+    mem_limit: 512m
     logging: *logging
 
-  minio:
+  immodesk-minio:
     # Les images officielles MinIO ne sont plus publiées en accès libre : même
-    # image que la CI, épinglée (voir docs/10_deploiement.md, points ouverts).
+    # image que la CI, épinglée, sans correctifs depuis juillet 2025. Caddy n'en
+    # expose que les requêtes signées d'objets (docs/10 § 17, points ouverts).
     image: docker.io/bitnamilegacy/minio:2025.7.23-debian-12-r5
     restart: unless-stopped
     environment:
@@ -86,17 +90,14 @@ services:
       MINIO_BROWSER: 'off'
     volumes:
       - minio_data:/bitnami/minio/data
-    networks:
-      backend: {}
-      edge:
-        aliases: [immodesk-minio]
+    networks: [backend, edge_s3]
     healthcheck:
       test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:9000/minio/health/live']
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
-    mem_limit: 512m
+    mem_limit: 1g
     logging: *logging
 
   # Tâche ponctuelle : bucket privé et compte d'accès dédié à l'API (jamais le
@@ -105,7 +106,7 @@ services:
     image: docker.io/bitnamilegacy/minio-client:2025.7.21-debian-12-r3
     restart: 'no'
     depends_on:
-      minio:
+      immodesk-minio:
         condition: service_healthy
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -139,7 +140,7 @@ services:
   # RLS) et immodesk_admin (BYPASSRLS, sans superutilisateur) créés NOLOGIN
   # par les migrations, avec leurs mots de passe.
   db-roles:
-    image: postgres:16
+    image: postgres:16.16-bookworm
     restart: 'no'
     depends_on:
       migrate:
@@ -157,7 +158,7 @@ services:
     networks: [backend]
     logging: *logging
 
-  api:
+  immodesk-api:
     build:
       context: ../..
       dockerfile: apps/api/Dockerfile
@@ -173,22 +174,23 @@ services:
     environment:
       NODE_ENV: production
       DEPLOYMENT_ENV: ${DEPLOYMENT_ENV:-staging}
-      NODE_OPTIONS: --max-old-space-size=768
+      NODE_OPTIONS: --max-old-space-size=1536
       LOG_LEVEL: ${LOG_LEVEL:-info}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
-      # Un seul reverse proxy (Caddy) devant l'API : docs/09_exploitation.md § 7.
+      # Un seul reverse proxy (Caddy) devant l'API, seul à la joindre sur le réseau
+      # edge : docs/09_exploitation.md § 7.
       TRUST_PROXY_HOPS: '1'
       DATABASE_URL: postgresql://immodesk_app:${IMMODESK_APP_PASSWORD}@postgres:5432/immodesk
       DATABASE_ADMIN_URL: postgresql://immodesk_admin:${IMMODESK_ADMIN_PASSWORD}@postgres:5432/immodesk
       DATABASE_POOL_MAX: '8'
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       QUEUE_PREFIX: immodesk-staging
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://immodesk-minio:9000
       S3_PUBLIC_ENDPOINT: https://${S3_HOST:?à renseigner dans .env}
       S3_BUCKET: immodesk
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
-      PDF_WORKER_CONCURRENCY: '1'
+      PDF_WORKER_CONCURRENCY: '2'
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?à renseigner dans .env}
       CURSOR_SECRET: ${CURSOR_SECRET:?à renseigner dans .env}
       OTP_PEPPER: ${OTP_PEPPER:?à renseigner dans .env}
@@ -215,14 +217,11 @@ services:
       PORTAL_BASE_URL: https://${WEB_HOST}/portail
       INVITATION_BASE_URL: https://${WEB_HOST}/invitations
       PRIVACY_DPO_CONTACT: ${PRIVACY_DPO_CONTACT:-}
-    networks:
-      backend: {}
-      edge:
-        aliases: [immodesk-api]
-    mem_limit: 1280m
+    networks: [backend, app, edge, egress]
+    mem_limit: 2g
     logging: *logging
 
-  web:
+  immodesk-web:
     build:
       context: ../..
       dockerfile: apps/web/Dockerfile
@@ -231,22 +230,20 @@ services:
     image: immodesk-staging/web:local
     restart: unless-stopped
     depends_on:
-      api:
+      immodesk-api:
         condition: service_started
     environment:
-      NODE_OPTIONS: --max-old-space-size=256
-      # Appels serveur à serveur (BFF Next) : directement sur le réseau interne.
-      API_INTERNAL_URL: http://api:3000/v1
-    networks:
-      backend: {}
-      edge:
-        aliases: [immodesk-web]
-    mem_limit: 384m
+      NODE_OPTIONS: --max-old-space-size=384
+      # Appels serveur à serveur (BFF Next), sur le réseau app.
+      API_INTERNAL_URL: http://immodesk-api:3000/v1
+    # Pas d'accès aux bases : le web ne parle qu'à l'API.
+    networks: [app, edge]
+    mem_limit: 512m
     logging: *logging
 
-  # Reverse proxy partagé : un seul Caddy par serveur. Les hôtes de chaque
-  # projet sont décrits dans un fichier du dossier CADDY_SITES_DIR
-  # (ici caddy/sites/immodesk.caddy) ; voir docs/10_deploiement.md § 11.
+  # Reverse proxy commun du serveur (un seul Caddy pour tous les projets).
+  # Hôtes Immodesk : caddy/sites/immodesk.caddy ; autres projets :
+  # CADDY_EXTRA_SITES_DIR. Voir docs/10_deploiement.md § 11.
   caddy:
     image: caddy:2.11.9-alpine
     restart: unless-stopped
@@ -261,16 +258,17 @@ services:
       IMMODESK_S3_HOST: ${S3_HOST}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ${CADDY_SITES_DIR:-./caddy/sites}:/etc/caddy/sites:ro
+      - ./caddy/sites:/etc/caddy/sites/immodesk:ro
+      - ${CADDY_EXTRA_SITES_DIR:-./caddy/autres}:/etc/caddy/sites/autres:ro
       - caddy_data:/data
       - caddy_config:/config
-    networks: [edge]
+    networks: [public, edge, edge_s3]
     healthcheck:
       test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:2019/config/']
       interval: 30s
       timeout: 5s
       retries: 3
-    mem_limit: 128m
+    mem_limit: 256m
     logging: *logging
 
 volumes:
@@ -281,10 +279,18 @@ volumes:
   caddy_config:
 
 networks:
-  # Bases et files : aucune sortie vers Internet, aucun port publié.
+  # Ports publiés : Caddy seul.
+  public: {}
+  # Caddy et les services qu'il sert ; nom fixe pour qu'un Caddy commun le
+  # rejoigne. Interne : aucune sortie vers Internet.
+  edge:
+    name: immodesk_edge
+    internal: true
+  edge_s3:
+    name: immodesk_edge_s3
+    internal: true
+  app:
+    internal: true
   backend:
     internal: true
-  # Réseau partagé avec le reverse proxy (et, plus tard, les autres projets).
-  edge:
-    name: ${EDGE_NETWORK:-watuneed_edge}
-    external: true
+  egress: {}

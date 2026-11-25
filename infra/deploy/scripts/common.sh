@@ -3,9 +3,13 @@
 set -euo pipefail
 
 DEPLOY_DIR="${DEPLOY_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-# Fichiers compose : la pile de recette, plus des surcharges éventuelles
-# (COMPOSE_FILES="docker-compose.yml docker-compose.local.yml" en local).
-COMPOSE_FILES="${COMPOSE_FILES:-docker-compose.yml}"
+# Fichiers compose : la pile de recette, la surcharge locale du serveur si elle
+# existe (docker-compose.override.yml, non versionnée : réseaux des autres
+# projets pour Caddy, docs/10 § 11), ou une liste explicite (COMPOSE_FILES).
+if [[ -z "${COMPOSE_FILES:-}" ]]; then
+  COMPOSE_FILES="docker-compose.yml"
+  [[ -f "$DEPLOY_DIR/docker-compose.override.yml" ]] && COMPOSE_FILES+=" docker-compose.override.yml"
+fi
 COMPOSE_ARGS=()
 for f in $COMPOSE_FILES; do COMPOSE_ARGS+=(-f "$DEPLOY_DIR/$f"); done
 
@@ -20,9 +24,7 @@ require_env_file() {
   fi
 }
 
-ensure_edge_network() {
-  local name
-  name="$(grep -E '^EDGE_NETWORK=' "$DEPLOY_DIR/.env" | cut -d= -f2- || true)"
-  name="${name:-watuneed_edge}"
-  docker network inspect "$name" >/dev/null 2>&1 || docker network create "$name" >/dev/null
+# Valeur d'une variable du fichier .env (sans l'exécuter comme du shell).
+env_value() {
+  grep -E "^$1=" "$DEPLOY_DIR/.env" 2>/dev/null | tail -n 1 | cut -d= -f2- || true
 }

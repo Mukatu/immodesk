@@ -1,13 +1,13 @@
 # Surcharge de VÉRIFICATION LOCALE de la pile de recette, sur un poste de
 # développement (jamais sur le serveur) :
 #
-#   docker network create immodesk_local_edge
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 #
-# Différences avec le serveur : nom de projet distinct (aucun conflit avec la
-# pile de développement infra/docker), Caddy publié sur 127.0.0.1:8480/8453
-# seulement, certificats de l'autorité interne de Caddy au lieu de
-# Let's Encrypt. Les noms d'hôtes restent ceux de la recette : on les joint
+# Différences avec le serveur : nom de projet et réseau edge distincts (aucun
+# conflit avec la pile de développement infra/docker), Caddy publié sur
+# 127.0.0.1:8480/8453 seulement, certificats de l'autorité interne de Caddy au
+# lieu de Let's Encrypt. Mettre LOG_DRIVER=json-file dans .env (Docker Desktop
+# n'a pas journald). Les noms d'hôtes restent ceux de la recette : on les joint
 # avec curl --connect-to (voir docs/10_deploiement.md § 13).
 name: immodesk-staging-local
 
@@ -18,3 +18,9 @@ services:
       - '127.0.0.1:8453:443'
     volumes:
       - ./caddy/Caddyfile.local:/etc/caddy/Caddyfile:ro
+
+networks:
+  edge:
+    name: immodesk_local_edge
+  edge_s3:
+    name: immodesk_local_edge_s3

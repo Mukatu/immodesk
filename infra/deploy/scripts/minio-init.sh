@@ -8,7 +8,7 @@ set -euo pipefail
 BUCKET="${S3_BUCKET:-immodesk}"
 POLICY_FILE="$(mktemp)"
 
-mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
+mc alias set local http://immodesk-minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
 mc mb --ignore-existing "local/$BUCKET"
 # Aucun accès anonyme : tout passe par des URL signées de durée limitée.
 mc anonymous set none "local/$BUCKET"

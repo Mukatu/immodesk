@@ -1,0 +1,23 @@
+# Contexte de build Docker (racine du monorepo) : rien de local, rien de secret.
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+.git
+.github
+.husky
+.vscode
+.claude
+apps/mobile
+docs
+infra
+**/.env
+**/.env.*
+!**/.env.example
+apps/api/src/generated
+apps/web/playwright-report
+apps/web/test-results
+*.log
+stelantis_prototype_interactif.html

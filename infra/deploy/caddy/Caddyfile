@@ -1,8 +1,10 @@
 # Caddy partagé du serveur : options globales, puis un fichier par projet
-# dans /etc/caddy/sites (dossier CADDY_SITES_DIR côté serveur).
+# dans /etc/caddy/sites/<projet>/ (Immodesk : caddy/sites ; autres projets :
+# CADDY_EXTRA_SITES_DIR, monté en /etc/caddy/sites/autres).
 {
 	# Adresse de contact Let's Encrypt (alertes d'expiration).
 	email {$ACME_EMAIL}
 }
 
-import /etc/caddy/sites/*.caddy
+import /etc/caddy/sites/immodesk/*.caddy
+import /etc/caddy/sites/autres/*.caddy

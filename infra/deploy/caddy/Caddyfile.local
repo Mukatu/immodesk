@@ -4,4 +4,5 @@
 	local_certs
 }
 
-import /etc/caddy/sites/*.caddy
+import /etc/caddy/sites/immodesk/*.caddy
+import /etc/caddy/sites/autres/*.caddy

@@ -13,11 +13,12 @@ set -euo pipefail
 : "${IMMODESK_APP_PASSWORD:?IMMODESK_APP_PASSWORD manquant}"
 : "${IMMODESK_ADMIN_PASSWORD:?IMMODESK_ADMIN_PASSWORD manquant}"
 
-# Les mots de passe passent par des variables psql (:'nom'), jamais par
-# interpolation dans le texte SQL : aucun risque d'injection ni de journal.
-psql -v ON_ERROR_STOP=1 \
-  -v app_password="$IMMODESK_APP_PASSWORD" \
-  -v admin_password="$IMMODESK_ADMIN_PASSWORD" <<'SQL'
+# Les mots de passe sont lus dans l'environnement par `\getenv` (psql 16), puis
+# insérés par des variables psql (:'nom') : ils n'apparaissent ni sur la ligne
+# de commande (ps), ni dans le texte SQL, ni dans un journal.
+psql -v ON_ERROR_STOP=1 <<'SQL'
+\getenv app_password IMMODESK_APP_PASSWORD
+\getenv admin_password IMMODESK_ADMIN_PASSWORD
 SELECT NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'immodesk_app') AS creer_app \gset
 \if :creer_app
   CREATE ROLE immodesk_app NOLOGIN;

@@ -1,10 +1,17 @@
 [Unit]
-Description=Sauvegarde Immodesk (PostgreSQL et MinIO)
+Description=Sauvegarde chiffrée Immodesk (PostgreSQL et MinIO)
 Requires=docker.service
 After=docker.service
+# En cas d'échec : ligne d'erreur dans le journal système et notification
+# ntfy si ALERT_NTFY_URL est renseignée (docs/10_deploiement.md § 15).
+OnFailure=immodesk-alerte@%n.service
 
 [Service]
 Type=oneshot
+# Même utilisateur que l'exploitant : les sauvegardes lui appartiennent et
+# restore.sh peut les relire sans sudo. Membre du groupe docker (bootstrap.sh).
+User=deploy
+Group=deploy
 # Chemin du dépôt cloné sur le serveur (docs/10_deploiement.md § 5).
 ExecStart=/opt/immodesk/infra/deploy/scripts/backup.sh
 Environment=BACKUP_DIR=/var/backups/immodesk

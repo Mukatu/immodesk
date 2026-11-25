@@ -1,0 +1,8 @@
+[Unit]
+Description=Alerte d'échec Immodesk (%i)
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+ExecStart=/opt/immodesk/infra/deploy/scripts/alert.sh %i

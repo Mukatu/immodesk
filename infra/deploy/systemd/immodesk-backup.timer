@@ -1,0 +1,12 @@
+[Unit]
+Description=Sauvegarde Immodesk chaque nuit
+
+[Timer]
+# Les traitements planifiés de l'API tournent à 02:00, 03:00 et 04:00 heure
+# de Brazzaville (01:00 à 03:00 UTC) : la sauvegarde passe après eux.
+OnCalendar=*-*-* 04:30:00 UTC
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

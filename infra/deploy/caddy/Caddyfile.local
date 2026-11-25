@@ -1,0 +1,7 @@
+# Variante de vérification locale (docker-compose.local.yml) : certificats
+# émis par l'autorité interne de Caddy au lieu de Let's Encrypt.
+{
+	local_certs
+}
+
+import /etc/caddy/sites/*.caddy

@@ -1,0 +1,8 @@
+# Caddy partagé du serveur : options globales, puis un fichier par projet
+# dans /etc/caddy/sites (dossier CADDY_SITES_DIR côté serveur).
+{
+	# Adresse de contact Let's Encrypt (alertes d'expiration).
+	email {$ACME_EMAIL}
+}
+
+import /etc/caddy/sites/*.caddy

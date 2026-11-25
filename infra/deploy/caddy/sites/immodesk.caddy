@@ -1,0 +1,46 @@
+# Hôtes Immodesk. Les services sont joints par leurs alias sur le réseau
+# partagé (immodesk-api, immodesk-web, immodesk-minio) : aucun conflit de nom
+# avec les autres projets du serveur.
+#
+# X-Forwarded-For : Caddy ignore celui envoyé par le client (aucun
+# trusted_proxies) et le remplace par l'adresse qu'il voit. L'API compte donc
+# exactement un saut de confiance : TRUST_PROXY_HOPS=1 (docs/09 § 7).
+
+(immodesk_entetes) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Recette : jamais indexée par les moteurs de recherche.
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+	log {
+		output stdout
+		format json
+	}
+}
+
+{$IMMODESK_WEB_HOST} {
+	import immodesk_entetes
+	header X-Frame-Options "DENY"
+	encode zstd gzip
+	reverse_proxy immodesk-web:3001
+}
+
+{$IMMODESK_API_HOST} {
+	import immodesk_entetes
+	header X-Frame-Options "DENY"
+	encode zstd gzip
+	request_body {
+		max_size 15MB
+	}
+	reverse_proxy immodesk-api:3000
+}
+
+# API S3 de MinIO pour les URL signées (envoi et lecture des photos et PDF).
+# Le Host d'origine est transmis tel quel : la signature SigV4 en dépend.
+{$IMMODESK_S3_HOST} {
+	import immodesk_entetes
+	reverse_proxy immodesk-minio:9000
+}

@@ -1,0 +1,13 @@
+[Unit]
+Description=Sauvegarde Immodesk (PostgreSQL et MinIO)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+# Chemin du dépôt cloné sur le serveur (docs/10_deploiement.md § 5).
+ExecStart=/opt/immodesk/infra/deploy/scripts/backup.sh
+Environment=BACKUP_DIR=/var/backups/immodesk
+Environment=KEEP_DAYS=14
+Nice=10
+IOSchedulingClass=idle

@@ -21,7 +21,7 @@ Le dossier de cadrage complet est dans [docs/](docs/00_README.md) : lettre de ca
 
 1. Prérequis : Node 24, pnpm, Docker Desktop, Flutter 3.41.
 2. `pnpm install`
-3. `pnpm db:up` pour PostgreSQL 16, Redis et MinIO.
+3. `pnpm db:up` pour PostgreSQL 16, Redis et Garage (stockage S3).
 4. `pnpm dev`
 
 Pour visualiser les écrans sans monter toute la pile, avec des données simulées, voir le

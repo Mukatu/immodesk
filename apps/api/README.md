@@ -110,7 +110,7 @@ contrainte d'unicité sur `client_ref`).
 ## 1. Démarrage rapide
 
 ```bash
-# 1. Pile locale (PostgreSQL 16, Redis, MinIO) — depuis la racine du monorepo
+# 1. Pile locale (PostgreSQL 16, Redis, Garage) — depuis la racine du monorepo
 pnpm db:up
 
 # 2. Dépendances
@@ -173,17 +173,17 @@ empêche le processus de démarrer, plutôt que de produire une panne différée
 
 ### Stockage objet (phase 1)
 
-Les pièces jointes vivent dans un stockage compatible S3 — **MinIO
-auto-hébergé** en pilote, Cloudflare R2 si le volume l'exige. Le fichier ne
+Les pièces jointes vivent dans un stockage compatible S3 — **Garage
+auto-hébergé** en pilote (ADR-014), Cloudflare R2 si le volume l'exige. Le fichier ne
 transite **jamais** par l'API : il part du navigateur ou du téléphone vers le
 stockage par une URL signée, et revient de même.
 
 | Variable                           | Rôle                                                                                       |
 | :--------------------------------- | :----------------------------------------------------------------------------------------- |
-| `S3_ENDPOINT`                      | `http://localhost:9010` en local ; console MinIO sur `9011`.                               |
+| `S3_ENDPOINT`                      | `http://localhost:9010` en local (Garage, `infra/docker`).                                 |
 | `S3_BUCKET`                        | `immodesk`.                                                                                |
 | `S3_ACCESS_KEY` / `S3_SECRET_KEY`  | Identifiants du stockage. Le démarrage **échoue** si l'un manque.                          |
-| `S3_REGION`                        | `us-east-1` par défaut : MinIO l'ignore, mais le SDK AWS en exige une pour signer.         |
+| `S3_REGION`                        | `us-east-1` : région de signature, égale à `s3_region` de `garage.toml`.                   |
 | `S3_UPLOAD_URL_TTL_SECONDS`        | Validité de l'URL d'envoi (600 s). Le téléchargement est figé à **10 min** par le contrat. |
 | `DOCUMENTS_PURGE_ENABLED`          | Active la purge différée des objets supprimés (inactive d'office en `NODE_ENV=test`).      |
 | `DOCUMENTS_PURGE_INTERVAL_SECONDS` | Période de passage de la tâche (3600 s).                                                   |
@@ -695,7 +695,7 @@ se vérifier que sur un vrai serveur.
   **rollback complet si un seul code est en doublon**, taux d'occupation
   recalculé, **refus de suppression d'un lot dont le bail ACTIF est inséré
   directement en SQL**, 404 cross-organisation.
-- `phase1-documents.int-spec.ts` — **contre MinIO réel** : URL signée d'envoi,
+- `phase1-documents.int-spec.ts` — **contre Garage réel** : URL signée d'envoi,
   PUT effectif, enregistrement après vérification HEAD, refus d'une clé
   d'une autre organisation, téléchargement signé, **404 pour l'organisation
   B**, **expiration effective d'une URL signée à 1 seconde**, purge différée.
@@ -710,7 +710,7 @@ se vérifier que sur un vrai serveur.
   contre-passation, révisions de loyer et `rent-at`, **cron quotidien rejoué
   sans effet**.
 - `phase2-contract-pdf.int-spec.ts` — **contre un vrai Chromium et un vrai
-  MinIO** : prévisualisation HTML, génération asynchrone, PDF téléchargeable,
+  Garage** : prévisualisation HTML, génération asynchrone, PDF téléchargeable,
   **empreinte identique sur deux rendus du même bail**, version suivante après
   révision, **v1 inchangée**, gabarit personnalisable. Se saute proprement si
   aucun navigateur n'est installé.
@@ -858,7 +858,7 @@ src/
     ├── parties/             # landlords, tenants, guarantors, contact_channels
     ├── portfolio/           # properties, units, taux d'occupation
     ├── banking/             # bank_accounts (banques locales et Mobile Money)
-    ├── documents/           # documents, stockage S3/MinIO, URL signées, purge différée
+    ├── documents/           # documents, stockage S3 (Garage), URL signées, purge différée
     ├── notifications/       # SmsProvider, WhatsAppProvider, templates, message_logs
     ├── leases/              # leases, lease_parties, lease_rent_revisions, lease_documents, cron
     ├── deposits/            # deposits, deposit_movements (append-only)
@@ -1132,7 +1132,7 @@ phase 0 :
 | `PROPERTY_READER`                  | `parties/domain`       | `portfolio`       | Biens d'un bailleur dans sa fiche                  |
 | `BANK_ACCOUNT_READER`              | `parties/domain`       | `banking`         | Comptes d'un bailleur dans sa fiche                |
 | `DOCUMENT_READER`                  | `parties/domain`       | `documents`       | Pièces jointes d'un locataire ou d'un lot          |
-| `OBJECT_STORAGE`                   | `documents/domain`     | `S3ObjectStorage` | MinIO aujourd'hui, R2 demain                       |
+| `OBJECT_STORAGE`                   | `documents/domain`     | `S3ObjectStorage` | Garage aujourd'hui, R2 demain                      |
 
 Les quatre modules sont donc déclarés `@Global()` : un jeu d'imports croisés
 produirait un cycle de **modules** là où il n'existe aucun cycle entre les

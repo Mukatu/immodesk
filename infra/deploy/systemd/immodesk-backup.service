@@ -1,5 +1,5 @@
 [Unit]
-Description=Sauvegarde chiffrée Immodesk (PostgreSQL et MinIO)
+Description=Sauvegarde chiffrée Immodesk (PostgreSQL et Garage)
 Requires=docker.service
 After=docker.service
 # En cas d'échec : ligne d'erreur dans le journal système et notification

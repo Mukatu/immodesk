@@ -1,6 +1,6 @@
 name: immodesk
 
-# Pile de développement local pour Immodesk : PostgreSQL, Redis, MinIO (S3) et
+# Pile de développement local pour Immodesk : PostgreSQL, Redis, Garage (S3) et
 # Mailpit (capture SMTP, optionnel). Voir infra/README.md pour l'usage complet.
 #
 # IMPORTANT : le port hôte de PostgreSQL est 5433 (et non 5432, déjà occupé par
@@ -51,42 +51,44 @@ services:
       retries: 10
       start_period: 5s
 
-  minio:
-    image: quay.io/minio/minio
-    container_name: immodesk_minio
+  # Stockage objet compatible S3 : Garage (docs/adr/0014). Image officielle
+  # épinglée, sans shell ; la préparation passe par garage-init.
+  garage:
+    image: dxflrs/garage:v2.5.0
+    container_name: immodesk_garage
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-immodesk}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-immodesk123}
-    command: server /data --console-address ":9001"
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:-1d1e0c0d3e5a7f0b9c2d4e6f8a1b3c5d7e9f0a2b4c6d8e0f1a3b5c7d9e1f2a3b}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-immodesk-dev-admin}
     ports:
-      - '9010:9000' # API S3
-      - '9011:9001' # Console web
+      - '9010:3900' # API S3
     volumes:
-      - immodesk_minio_data:/data
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - immodesk_garage_meta:/var/lib/garage/meta
+      - immodesk_garage_data:/var/lib/garage/data
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      test: ['CMD', '/garage', 'status']
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 5s
 
-  minio-init:
-    image: quay.io/minio/mc
-    container_name: immodesk_minio_init
+  # Rôle du nœud, bucket privé « immodesk » et clé de l'API ; idempotent.
+  garage-init:
+    image: curlimages/curl:8.23.0
+    container_name: immodesk_garage_init
     depends_on:
-      minio:
+      garage:
         condition: service_healthy
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-immodesk}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-immodesk123}
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\" &&
-      mc mb -p local/immodesk &&
-      mc anonymous set none local/immodesk &&
-      echo 'Bucket immodesk pret.'
-      "
+      GARAGE_ADMIN_URL: http://garage:3903
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-immodesk-dev-admin}
+      S3_BUCKET: immodesk
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-immodesk}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-immodesk-dev-secret}
+    entrypoint: ['/bin/sh', '/scripts/garage-init.sh']
+    volumes:
+      - ../deploy/scripts/garage-init.sh:/scripts/garage-init.sh:ro
     restart: 'no'
 
   mailpit:
@@ -105,7 +107,9 @@ volumes:
     name: immodesk_postgres_data
   immodesk_redis_data:
     name: immodesk_redis_data
-  immodesk_minio_data:
-    name: immodesk_minio_data
+  immodesk_garage_meta:
+    name: immodesk_garage_meta
+  immodesk_garage_data:
+    name: immodesk_garage_data
   immodesk_mailpit_data:
     name: immodesk_mailpit_data

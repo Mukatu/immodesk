@@ -1,7 +1,7 @@
 /**
  * Port de stockage objet.
  *
- * L'implémentation de la phase 1 est MinIO (compatible S3) ; Cloudflare R2 ou
+ * L'implémentation du pilote est Garage (compatible S3, ADR-014) ; Cloudflare R2 ou
  * un S3 réel se substitueront derrière la même interface sans toucher au
  * module. Aucune couche `application/` ne connaît `@aws-sdk/*`.
  */

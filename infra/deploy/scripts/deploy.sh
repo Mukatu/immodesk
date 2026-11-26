@@ -21,7 +21,7 @@ if compose ps --status running --services 2>/dev/null | grep -qx postgres; then
   "$DEPLOY_DIR/scripts/backup.sh"
 fi
 
-echo "== Images tierces (PostgreSQL, Redis, MinIO, Caddy)"
+echo "== Images tierces (PostgreSQL, Redis, Garage, Caddy)"
 compose pull --ignore-buildable
 
 echo "== Construction de l'API et du web"
@@ -31,5 +31,5 @@ echo "== Démarrage (migrations et rôles d'abord)"
 compose up -d --remove-orphans
 
 echo "== Résultat des tâches ponctuelles"
-compose logs --no-log-prefix migrate db-roles minio-init | tail -n 20
+compose logs --no-log-prefix migrate db-roles garage-init | tail -n 20
 compose ps

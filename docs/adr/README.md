@@ -17,3 +17,4 @@ Index des décisions architecturales du projet Immodesk.
 | [ADR-011](0011-whatsapp-dabord-sms-passerelle-android.md) | WhatsApp d'abord, SMS passerelle Android en repli               | Accepté | 0 / 3 |
 | [ADR-012](0012-mobile-money-deux-modes.md)                | Mobile Money à deux modes                                       | Accepté | 4     |
 | [ADR-013](0013-web-installable-surface-universelle.md)    | Web installable en surface universelle, Flutter pour le terrain | Accepté | 8     |
+| [ADR-014](0014-stockage-objet-garage.md)                  | Stockage objet auto-hébergé : Garage                            | Accepté | 0     |

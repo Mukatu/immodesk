@@ -37,7 +37,7 @@ function bgfiCsv(lines: CsvLine[]): Buffer {
   return Buffer.from([header, ...rows].join('\n'), 'utf8');
 }
 
-/** Cycle réel upload-url → PUT MinIO → enregistrement, comme un vrai client. */
+/** Cycle réel upload-url → PUT stockage → enregistrement, comme un vrai client. */
 async function uploadStatementDocument(
   ctx: TestContext,
   agency: Agency,
@@ -64,7 +64,7 @@ async function uploadStatementDocument(
     headers: { 'Content-Type': 'text/csv' },
     body: content,
   });
-  if (put.status !== 200) throw new Error(`PUT MinIO en échec : ${put.status}`);
+  if (put.status !== 200) throw new Error(`PUT stockage en échec : ${put.status}`);
   const registered = await api(ctx, 'POST', '/documents', {
     accessToken: agency.owner.accessToken,
     organizationId: agency.organizationId,

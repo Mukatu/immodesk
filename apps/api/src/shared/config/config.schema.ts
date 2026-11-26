@@ -136,7 +136,7 @@ function checkDeploymentEnv(cfg: DeploymentEnvInput, ctx: z.RefinementCtx): void
     }
   }
 
-  // Les URL signées sont ouvertes par les mobiles : une adresse interne (http://minio:9000)
+  // Les URL signées sont ouvertes par les mobiles : une adresse interne (http://immodesk-garage:3900)
   // les rendrait inutilisables, et du http ferait transiter photos et pièces en clair.
   const signingEndpoint = cfg.S3_PUBLIC_ENDPOINT ?? cfg.S3_ENDPOINT;
   if (signingEndpoint && !isPublicHttpsUrl(signingEndpoint)) {
@@ -178,7 +178,7 @@ export const configSchema = z
     // --- Redis (cache, limitation de débit) -------------------------------
     REDIS_URL: z.string().url(),
 
-    // --- Stockage objet (S3 / R2 / MinIO) --------------------------------
+    // --- Stockage objet (S3 / R2 / Garage) -------------------------------
     S3_ENDPOINT: z.string().url().optional(),
     // Adresse du stockage vue par les mobiles et navigateurs, utilisée pour signer les URL
     // d'envoi et de lecture. Absente : S3_ENDPOINT (poste de développement).
@@ -186,7 +186,7 @@ export const configSchema = z
     S3_BUCKET: z.string().optional(),
     S3_ACCESS_KEY: z.string().optional(),
     S3_SECRET_KEY: z.string().optional(),
-    // MinIO ignore la région, mais le SDK AWS en exige une pour signer.
+    // Région de signature SigV4 : doit égaler s3_region du stockage (garage.toml).
     S3_REGION: z.string().default('us-east-1'),
     // Validité des URL signées d'envoi. 10 min = valeur du contrat phase 1.
     S3_UPLOAD_URL_TTL_SECONDS: z.coerce.number().int().positive().default(600),

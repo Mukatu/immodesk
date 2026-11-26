@@ -10,7 +10,7 @@ describe('isAllowedPdfResource', () => {
   );
 
   it.each([
-    'http://immodesk-minio:9000/immodesk/org/x.jpg',
+    'http://immodesk-garage:3900/immodesk/org/x.jpg',
     'https://exemple.org/pixel.gif',
     'file:///etc/passwd',
     'http://169.254.169.254/latest/meta-data/',

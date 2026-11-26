@@ -68,7 +68,7 @@ graph TB
     subgraph data["Donnees"]
         PG[("PostgreSQL 16<br/>RLS par organization_id")]
         REDIS[("Redis 7<br/>files BullMQ + cache + rate limit")]
-        MINIO[("MinIO auto-heberge<br/>documents, photos, PDF - pilote")]
+        MINIO[("Garage auto-heberge<br/>documents, photos, PDF - pilote")]
     end
 
     subgraph ext["Services externes"]
@@ -240,16 +240,16 @@ Cette section justifie les arbitrages du référentiel commun. Elle ne les rouvr
 
 ### 2.6 Choix secondaires, en une ligne
 
-| Choix                                               | Raison                                                                                                                                                                                                                                                                                        |
-| :-------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PostgreSQL 16**                                   | RLS native (pilier du multi-tenant), `BIGINT` exact, JSONB pour les payloads bruts, contraintes d'exclusion pour les chevauchements de baux                                                                                                                                                   |
-| **BullMQ sur Redis**                                | Retries exponentiels, jobs répétables (cron), DLQ, verrous distribués ; déjà présent pour le cache et le rate limit                                                                                                                                                                           |
-| **MinIO auto-hébergé (pilote)**                     | Compatible S3, open source, hébergé sur le VPS existant : cohérent avec le principe « open source d'abord » du référentiel commun. Cloudflare R2 (pas de frais de sortie, décisif pour des PDF et photos servis à des mobiles africains) reste une **option de bascule** si le volume l'exige |
-| **GlitchTip (auto-hébergé) plutôt que Sentry SaaS** | Compatible avec le SDK Sentry (bascule sans changement de code applicatif), auto-hébergé sur le VPS déjà provisionné, cohérent avec le principe open source d'abord, coût nul au-delà de l'infrastructure existante                                                                           |
-| **Puppeteer**                                       | Le rendu HTML/CSS est le seul moyen réaliste d'obtenir des quittances typographiquement correctes et modifiables par un non-développeur                                                                                                                                                       |
-| **Next.js 15 App Router**                           | Rendu serveur (bundle réduit sur connexion lente), Server Actions pour les mutations simples, streaming                                                                                                                                                                                       |
-| **UUID v7**                                         | Ordonnancement temporel (index B-tree performant à l'insertion) tout en restant un UUID standard                                                                                                                                                                                              |
-| **ULID pour `client_ref`**                          | Généré hors ligne sur l'appareil, triable, court, lisible dans les logs de synchronisation                                                                                                                                                                                                    |
+| Choix                                               | Raison                                                                                                                                                                                                                                                                                                                           |
+| :-------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PostgreSQL 16**                                   | RLS native (pilier du multi-tenant), `BIGINT` exact, JSONB pour les payloads bruts, contraintes d'exclusion pour les chevauchements de baux                                                                                                                                                                                      |
+| **BullMQ sur Redis**                                | Retries exponentiels, jobs répétables (cron), DLQ, verrous distribués ; déjà présent pour le cache et le rate limit                                                                                                                                                                                                              |
+| **Garage auto-hébergé (pilote, ADR-014)**           | Compatible S3, open source (AGPL), maintenu, sobre en mémoire, hébergé sur le VPS existant : cohérent avec le principe « open source d'abord » du référentiel commun. Cloudflare R2 (pas de frais de sortie, décisif pour des PDF et photos servis à des mobiles africains) reste une **option de bascule** si le volume l'exige |
+| **GlitchTip (auto-hébergé) plutôt que Sentry SaaS** | Compatible avec le SDK Sentry (bascule sans changement de code applicatif), auto-hébergé sur le VPS déjà provisionné, cohérent avec le principe open source d'abord, coût nul au-delà de l'infrastructure existante                                                                                                              |
+| **Puppeteer**                                       | Le rendu HTML/CSS est le seul moyen réaliste d'obtenir des quittances typographiquement correctes et modifiables par un non-développeur                                                                                                                                                                                          |
+| **Next.js 15 App Router**                           | Rendu serveur (bundle réduit sur connexion lente), Server Actions pour les mutations simples, streaming                                                                                                                                                                                                                          |
+| **UUID v7**                                         | Ordonnancement temporel (index B-tree performant à l'insertion) tout en restant un UUID standard                                                                                                                                                                                                                                 |
+| **ULID pour `client_ref`**                          | Généré hors ligne sur l'appareil, triable, court, lisible dans les logs de synchronisation                                                                                                                                                                                                                                       |
 
 ---
 
@@ -1886,15 +1886,15 @@ Immodesk vise **OWASP ASVS 4.0 niveau 2** (application manipulant des données f
 
 ### 13.2 Chiffrement
 
-| Périmètre           | Mécanisme                                                                                                                                                                                                               |
-| :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Transit externe     | TLS 1.3 obligatoire (Caddy/Traefik, certificats Let's Encrypt automatiques), HSTS preload, redirection 301 systématique                                                                                                 |
-| Transit interne     | Réseau Docker privé, PostgreSQL et Redis **non exposés publiquement**, `sslmode=require` vers la base                                                                                                                   |
-| Repos — base        | Chiffrement du volume (LUKS sur le VPS) + `pgcrypto` pour les colonnes hautement sensibles (numéro de pièce d'identité, RIB)                                                                                            |
-| Repos — objets      | MinIO (auto-hébergé, solution de production en phase pilote) chiffré au repos ; accès exclusivement par **URL signée à 15 min**, jamais de bucket public ; bascule vers Cloudflare R2 envisageable en option ultérieure |
-| Repos — mobile      | SQLCipher AES-256, clé en Keystore/Keychain (§10.9)                                                                                                                                                                     |
-| Sauvegardes         | Chiffrement **age** (clé publique en CI, clé privée hors ligne) avant dépôt hors site                                                                                                                                   |
-| Secrets applicatifs | Voir §13.3                                                                                                                                                                                                              |
+| Périmètre           | Mécanisme                                                                                                                                                                                                                                                                        |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Transit externe     | TLS 1.3 obligatoire (Caddy/Traefik, certificats Let's Encrypt automatiques), HSTS preload, redirection 301 systématique                                                                                                                                                          |
+| Transit interne     | Réseau Docker privé, PostgreSQL et Redis **non exposés publiquement**, `sslmode=require` vers la base                                                                                                                                                                            |
+| Repos — base        | Chiffrement du volume (LUKS sur le VPS) + `pgcrypto` pour les colonnes hautement sensibles (numéro de pièce d'identité, RIB)                                                                                                                                                     |
+| Repos — objets      | Garage (auto-hébergé, ADR-014, solution de production en phase pilote) ; chiffrement au repos à assurer au niveau du disque du serveur ; accès exclusivement par **URL signée à 15 min**, jamais de bucket public ; bascule vers Cloudflare R2 envisageable en option ultérieure |
+| Repos — mobile      | SQLCipher AES-256, clé en Keystore/Keychain (§10.9)                                                                                                                                                                                                                              |
+| Sauvegardes         | Chiffrement **age** (clé publique en CI, clé privée hors ligne) avant dépôt hors site                                                                                                                                                                                            |
+| Secrets applicatifs | Voir §13.3                                                                                                                                                                                                                                                                       |
 
 En-têtes de sécurité imposés par la périphérie : `Content-Security-Policy` stricte avec nonce (pas de `unsafe-inline`), `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` minimale, `X-Frame-Options: DENY` sauf sur la page publique de vérification.
 
@@ -1966,7 +1966,7 @@ La loi n° 29-2019 du 10 octobre 2019 sur la protection des données à caractè
 
 ### 13.8 Sauvegardes chiffrées et scans en CI
 
-**Sauvegardes.** pgBackRest : sauvegarde complète hebdomadaire, incrémentale quotidienne, archivage WAL continu ; chiffrement `age` avant dépôt sur un stockage objet distinct du fournisseur d'hébergement (règle 3-2-1). Les médias MinIO bénéficient du versionnage d'objet et d'une règle de rétention de 30 jours sur les suppressions ; leur réplication hors site suit la même règle 3-2-1 que la base. **Une sauvegarde non restaurée n'est pas une sauvegarde** : l'exercice de restauration est trimestriel et chronométré (§14.7).
+**Sauvegardes.** pgBackRest : sauvegarde complète hebdomadaire, incrémentale quotidienne, archivage WAL continu ; chiffrement `age` avant dépôt sur un stockage objet distinct du fournisseur d'hébergement (règle 3-2-1). Les médias (Garage, sans versionnage d'objet) sont archivés chaque nuit avec la base et les suppressions passent par une purge différée de 24 h (module `documents`) ; leur réplication hors site suit la même règle 3-2-1 que la base. **Une sauvegarde non restaurée n'est pas une sauvegarde** : l'exercice de restauration est trimestriel et chronométré (§14.7).
 
 **Scans automatisés** (`.github/workflows/security.yml`) :
 
@@ -1988,27 +1988,27 @@ Un test d'intrusion externe est planifié avant le lancement commercial (Phase 1
 
 ### 14.1 Environnement de développement
 
-Un seul prérequis pour démarrer : Docker et pnpm. `docker compose -f infra/docker/docker-compose.dev.yml up` lève PostgreSQL 16, Redis 7, MinIO (compatible S3 — la **même** solution qu'en production pilote, pas un simple substitut), Mailpit (courriel), et un simulateur d'agrégateur Mobile Money maison qui reproduit les webhooks, y compris hors ordre, dupliqués et perdus — car un développeur doit rencontrer ces défauts **avant** la production.
+Un seul prérequis pour démarrer : Docker et pnpm. `docker compose -f infra/docker/docker-compose.dev.yml up` lève PostgreSQL 16, Redis 7, Garage (compatible S3 — la **même** solution qu'en production pilote, pas un simple substitut), Mailpit (courriel), et un simulateur d'agrégateur Mobile Money maison qui reproduit les webhooks, y compris hors ordre, dupliqués et perdus — car un développeur doit rencontrer ces défauts **avant** la production.
 
-| Service dev    | Image                | Port      | Note                                                          |
-| :------------- | :------------------- | :-------- | :------------------------------------------------------------ |
-| `postgres`     | `postgres:16-alpine` | 5432      | Volume nommé, `pg_stat_statements` activé                     |
-| `redis`        | `redis:7-alpine`     | 6379      | AOF activé, comme en production                               |
-| `minio`        | `minio/minio`        | 9000/9001 | Bucket `immodesk-dev` créé au démarrage                       |
-| `mailpit`      | `axllent/mailpit`    | 8025      | Interception de tout courriel sortant                         |
-| `momo-sandbox` | Image locale         | 4010      | Webhooks retardés, dupliqués, signatures valides et invalides |
+| Service dev    | Image                | Port | Note                                                          |
+| :------------- | :------------------- | :--- | :------------------------------------------------------------ |
+| `postgres`     | `postgres:16-alpine` | 5432 | Volume nommé, `pg_stat_statements` activé                     |
+| `redis`        | `redis:7-alpine`     | 6379 | AOF activé, comme en production                               |
+| `garage`       | `dxflrs/garage`      | 9010 | Bucket `immodesk` et clé de l'API créés par `garage-init`     |
+| `mailpit`      | `axllent/mailpit`    | 8025 | Interception de tout courriel sortant                         |
+| `momo-sandbox` | Image locale         | 4010 | Webhooks retardés, dupliqués, signatures valides et invalides |
 
 L'API, les workers et le web tournent **hors conteneur** en développement (rechargement à chaud rapide) ; seules les dépendances sont conteneurisées. `pnpm dev` orchestre le tout via Turborepo. `pnpm db:reset` rejoue migrations, policies RLS et seed de démo congolais (§15.4).
 
 ### 14.2 Environnements
 
-| Environnement  | Hébergement                                                                                                                                       | Données                                                       | Accès                                                                                        | Déploiement                            |
-| :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------ | :------------------------------------------------------------------------------------------- | :------------------------------------- |
-| **dev**        | Poste développeur                                                                                                                                 | Seed de démo                                                  | Local                                                                                        | —                                      |
-| **staging**    | VPS Paris (mutualisé, 4 vCPU / 8 Go)                                                                                                              | Copie **anonymisée** de production, rafraîchie chaque semaine | VPN + authentification supplémentaire à la périphérie, `noindex`                             | Automatique à chaque fusion sur `main` |
-| **production** | VPS Paris dédiés (Hetzner CX/CCX ou OVH), 2 nœuds applicatifs + 1 nœud base, **MinIO auto-hébergé** pour les documents/photos/PDF en phase pilote | Réelles                                                       | SSH par clé uniquement, port non standard, pare-feu restrictif, aucun accès direct à la base | Manuel, sur tag `v*`, avec approbation |
+| Environnement  | Hébergement                                                                                                                                        | Données                                                       | Accès                                                                                        | Déploiement                            |
+| :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------ | :------------------------------------------------------------------------------------------- | :------------------------------------- |
+| **dev**        | Poste développeur                                                                                                                                  | Seed de démo                                                  | Local                                                                                        | —                                      |
+| **staging**    | VPS Paris (mutualisé, 4 vCPU / 8 Go)                                                                                                               | Copie **anonymisée** de production, rafraîchie chaque semaine | VPN + authentification supplémentaire à la périphérie, `noindex`                             | Automatique à chaque fusion sur `main` |
+| **production** | VPS Paris dédiés (Hetzner CX/CCX ou OVH), 2 nœuds applicatifs + 1 nœud base, **Garage auto-hébergé** pour les documents/photos/PDF en phase pilote | Réelles                                                       | SSH par clé uniquement, port non standard, pare-feu restrictif, aucun accès direct à la base | Manuel, sur tag `v*`, avec approbation |
 
-L'anonymisation de staging est un script obligatoire (`infra/scripts/anonymize.sql`) : téléphones remplacés par une plage de test, noms substitués par un jeu congolais fictif, documents MinIO non copiés, montants conservés (les invariants financiers doivent rester vérifiables). Le passage à Cloudflare R2 reste une option de bascule ultérieure si le volume de documents servis aux mobiles africains le justifie, sans changement de code (interface de stockage compatible S3).
+L'anonymisation de staging est un script obligatoire (`infra/scripts/anonymize.sql`) : téléphones remplacés par une plage de test, noms substitués par un jeu congolais fictif, documents du stockage objet non copiés, montants conservés (les invariants financiers doivent rester vérifiables). Le passage à Cloudflare R2 reste une option de bascule ultérieure si le volume de documents servis aux mobiles africains le justifie, sans changement de code (interface de stockage compatible S3).
 
 ### 14.3 Schéma de déploiement
 
@@ -2038,7 +2038,7 @@ graph TB
             PGP[("PostgreSQL 16 primaire")]
             PGS[("Replica logique de secours")]
             PGBR["pgBackRest"]
-            MINIO[("MinIO auto-heberge<br/>documents, photos, PDF")]
+            MINIO[("Garage auto-heberge<br/>documents, photos, PDF")]
         end
     end
 
@@ -2095,7 +2095,7 @@ graph TB
 | Logs          | **pino** JSON → Loki                                                             | `request_id` propagé de bout en bout (en-tête `X-Request-Id` fourni par le mobile), rédaction des champs sensibles (§13.5)                                                                                                                                |
 | Disponibilité | Sonde externe (UptimeRobot ou équivalent)                                        | `/health/live`, `/health/ready`, page publique de vérification de quittance                                                                                                                                                                               |
 
-**Healthchecks.** `/health/live` répond sans dépendance (le processus est vivant) ; `/health/ready` vérifie PostgreSQL, Redis et MinIO et conditionne la réception du trafic. Les workers exposent une sonde de battement dans Redis, dont l'absence pendant 2 min déclenche une alerte.
+**Healthchecks.** `/health/live` répond sans dépendance (le processus est vivant) ; `/health/ready` vérifie PostgreSQL, Redis et le stockage objet et conditionne la réception du trafic. Les workers exposent une sonde de battement dans Redis, dont l'absence pendant 2 min déclenche une alerte.
 
 **Alertes qui réveillent** (astreinte) : API indisponible > 2 min, PostgreSQL injoignable, taux d'erreur 5xx > 2 % sur 5 min, file `payments` en croissance continue, sauvegarde quotidienne échouée, espace disque < 15 %, certificat TLS à moins de 7 jours. Les autres alertes créent un ticket sans notification nocturne.
 

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 
-import { ApiError, portalApiFetch } from '@/lib/api/portal-client';
+import { ApiError, portalApiFetch, refreshPortalAccessToken } from '@/lib/api/portal-client';
 import { resetPortalTokenStore, setPortalAccessToken } from '@/lib/api/portal-token-store';
 import type {
   PortalActivationRequestResponse,
@@ -25,20 +25,6 @@ interface PortalAuthContextValue {
 
 const PortalAuthContext = React.createContext<PortalAuthContextValue | null>(null);
 
-async function silentPortalRefresh(): Promise<string | null> {
-  try {
-    const response = await fetch('/api/portal-auth/refresh', {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (!response.ok) return null;
-    const data = (await response.json()) as { accessToken: string };
-    return data.accessToken;
-  } catch {
-    return null;
-  }
-}
-
 export function PortalAuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<PortalAuthStatus>('loading');
@@ -47,13 +33,12 @@ export function PortalAuthProvider({ children }: { children: React.ReactNode }) 
 
   React.useEffect(() => {
     (async () => {
-      const token = await silentPortalRefresh();
+      const token = await refreshPortalAccessToken();
       if (!token) {
         resetPortalTokenStore();
         setStatus('anonymous');
         return;
       }
-      setPortalAccessToken(token);
       try {
         const me = await portalApiFetch<PortalMeResponse>('/portal/me');
         setLandlord(me.landlord);

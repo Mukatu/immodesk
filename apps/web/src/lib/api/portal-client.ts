@@ -12,7 +12,7 @@ export interface PortalFetchOptions extends Omit<RequestInit, 'body'> {
 let refreshPromise: Promise<string | null> | null = null;
 
 /** Rafraîchit via la route BFF dédiée au portail (cookie `immodesk_portal_refresh_token`). */
-async function refreshPortalAccessToken(): Promise<string | null> {
+export async function refreshPortalAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {

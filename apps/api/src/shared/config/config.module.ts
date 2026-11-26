@@ -24,6 +24,11 @@ export class AppConfigService {
     return this.config.NODE_ENV === 'production';
   }
 
+  /** Serveur de recette : NODE_ENV=production et DEPLOYMENT_ENV=staging. */
+  get isStaging(): boolean {
+    return this.isProduction && this.config.DEPLOYMENT_ENV === 'staging';
+  }
+
   get isTest(): boolean {
     return this.config.NODE_ENV === 'test';
   }

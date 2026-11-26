@@ -76,6 +76,16 @@ export class PdfBrowserService implements OnModuleDestroy {
     const browser = await this.browserOrFail();
     const page = await browser.newPage();
     try {
+      // Aucun script ni accès réseau pendant le rendu : les modèles n'utilisent
+      // que du HTML et des images `data:`. Une donnée mal échappée (nom, adresse)
+      // ne peut ainsi ni exécuter de code ni joindre MinIO, l'API ou Internet.
+      await page.setJavaScriptEnabled(false);
+      await page.setRequestInterception(true);
+      page.on('request', (request) => {
+        if (request.isInterceptResolutionHandled()) return;
+        if (isAllowedPdfResource(request.url())) void request.continue();
+        else void request.abort('blockedbyclient');
+      });
       await page.setContent(html, { waitUntil: 'load' });
       await page.emulateMediaType('print');
       const pdf = await page.pdf({
@@ -157,6 +167,12 @@ export class PdfBrowserService implements OnModuleDestroy {
       attempted: candidates.length,
     });
   }
+}
+
+/** Seules les ressources incorporées au HTML sont admises pendant un rendu PDF. */
+export function isAllowedPdfResource(url: string): boolean {
+  const scheme = url.slice(0, url.indexOf(':') + 1).toLowerCase();
+  return scheme === 'data:' || scheme === 'about:';
 }
 
 function escapeHtml(value: string): string {

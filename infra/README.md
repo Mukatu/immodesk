@@ -1,5 +1,9 @@
 # Infra — pile de développement local
 
+> Déploiement sur un serveur (recette, puis production) : voir `infra/deploy/` et
+> [docs/10_deploiement.md](../docs/10_deploiement.md). Ce document ne concerne que le
+> poste de développement.
+
 Cette pile Docker fournit les dépendances de développement d'Immodesk :
 PostgreSQL 16, Redis 7, MinIO (S3) et, en option, Mailpit (capture SMTP).
 

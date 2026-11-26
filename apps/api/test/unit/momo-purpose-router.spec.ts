@@ -2,6 +2,7 @@ import { MomoPurposeRouter } from '../../src/modules/mobile-money/application/mo
 import { MomoReconcileService } from '../../src/modules/mobile-money/application/momo-reconcile.service';
 import { CinetPayProvider } from '../../src/modules/mobile-money/infrastructure/cinetpay.provider';
 import { validateConfig } from '../../src/shared/config/config.schema';
+import { PRODUCTION_MESSAGING } from './production-messaging.fixture';
 
 describe('MomoPurposeRouter', () => {
   const build = () => {
@@ -157,6 +158,7 @@ describe('CinetPayProvider : webhooks défensifs', () => {
 
 describe('configuration : MOMO_WEBHOOK_BASE_URL en production', () => {
   const PROD = {
+    ...PRODUCTION_MESSAGING,
     DATABASE_URL: 'postgresql://immodesk_app:x@localhost:5440/immodesk',
     REDIS_URL: 'redis://localhost:6390',
     JWT_ALGORITHM: 'HS256',

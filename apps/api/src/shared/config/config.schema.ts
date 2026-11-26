@@ -67,6 +67,86 @@ const originList = z
     return list.length > 0 ? list : undefined;
   });
 
+/** Vrai si l'un des libellés DNS de l'hôte de l'URL vaut exactement `staging`. */
+export function hasStagingLabel(value: string): boolean {
+  try {
+    return new URL(value).hostname.toLowerCase().split('.').includes('staging');
+  } catch {
+    return false;
+  }
+}
+
+interface DeploymentEnvInput {
+  NODE_ENV: 'development' | 'test' | 'production';
+  DEPLOYMENT_ENV: 'production' | 'staging';
+  WHATSAPP_PROVIDER: 'fake' | 'meta';
+  SMS_PROVIDER: 'fake' | 'android_gateway';
+  PUBLIC_API_BASE_URL: string;
+  PUBLIC_WEB_BASE_URL: string;
+  S3_ENDPOINT?: string;
+  S3_PUBLIC_ENDPOINT?: string;
+}
+
+/**
+ * Garde-fous de l'environnement de déploiement (recette ou production).
+ *
+ * En production, les fournisseurs de messagerie simulés sont refusés : ils écrivent
+ * les messages, codes de connexion compris, dans le journal au lieu de les envoyer.
+ * La recette (`DEPLOYMENT_ENV=staging`) les autorise, et c'est ainsi qu'un pilote se
+ * connecte tant que WhatsApp et la passerelle SMS n'existent pas : l'exploitant lit le
+ * code dans le journal du serveur et le transmet. Pour qu'une production ne bascule
+ * pas en recette par erreur, la recette exige NODE_ENV=production et des adresses
+ * publiques dont l'hôte porte le libellé `staging`.
+ */
+function checkDeploymentEnv(cfg: DeploymentEnvInput, ctx: z.RefinementCtx): void {
+  const issue = (path: string, message: string): void =>
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+  if (cfg.DEPLOYMENT_ENV === 'staging') {
+    if (cfg.NODE_ENV !== 'production') {
+      issue(
+        'DEPLOYMENT_ENV',
+        'DEPLOYMENT_ENV=staging exige NODE_ENV=production : la recette applique tous les durcissements de production.',
+      );
+    }
+    for (const key of ['PUBLIC_API_BASE_URL', 'PUBLIC_WEB_BASE_URL'] as const) {
+      if (!hasStagingLabel(cfg[key])) {
+        issue(
+          key,
+          `${key} doit désigner un hôte de recette (libellé « staging », ex. https://api.staging.immodesk.watuneed.fr) lorsque DEPLOYMENT_ENV=staging : un serveur de production ne peut pas passer en recette.`,
+        );
+      }
+    }
+  }
+
+  if (cfg.NODE_ENV !== 'production') return;
+
+  if (cfg.DEPLOYMENT_ENV === 'production') {
+    if (cfg.WHATSAPP_PROVIDER === 'fake') {
+      issue(
+        'WHATSAPP_PROVIDER',
+        "WHATSAPP_PROVIDER=fake est interdit en production : le fournisseur simulé n'envoie rien et écrit les codes de connexion dans le journal. Renseigner meta (ou DEPLOYMENT_ENV=staging sur un serveur de recette).",
+      );
+    }
+    if (cfg.SMS_PROVIDER === 'fake') {
+      issue(
+        'SMS_PROVIDER',
+        "SMS_PROVIDER=fake est interdit en production : le repli SMS simulé n'envoie rien et écrit les codes de connexion dans le journal. Renseigner android_gateway (ou DEPLOYMENT_ENV=staging sur un serveur de recette).",
+      );
+    }
+  }
+
+  // Les URL signées sont ouvertes par les mobiles : une adresse interne (http://minio:9000)
+  // les rendrait inutilisables, et du http ferait transiter photos et pièces en clair.
+  const signingEndpoint = cfg.S3_PUBLIC_ENDPOINT ?? cfg.S3_ENDPOINT;
+  if (signingEndpoint && !isPublicHttpsUrl(signingEndpoint)) {
+    issue(
+      cfg.S3_PUBLIC_ENDPOINT ? 'S3_PUBLIC_ENDPOINT' : 'S3_ENDPOINT',
+      'Les URL signées du stockage doivent viser une adresse https publique en production : renseigner S3_PUBLIC_ENDPOINT (ex. https://s3.staging.immodesk.watuneed.fr).',
+    );
+  }
+}
+
 /**
  * Schéma de configuration de l'API, validé au démarrage (fail-fast).
  * Toute variable absente ou incohérente empêche le boot du processus.
@@ -74,6 +154,11 @@ const originList = z
 export const configSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    // Serveur de recette (`staging`) ou production réelle. Les deux tournent avec
+    // NODE_ENV=production : tous les durcissements de production s'appliquent. `staging`
+    // n'assouplit que la messagerie (fournisseurs simulés, voir docs/10_deploiement.md) et
+    // la clé OpenPay ; il n'est jamais actif par défaut.
+    DEPLOYMENT_ENV: z.enum(['production', 'staging']).default('production'),
     PORT: port.default(3000),
     API_GLOBAL_PREFIX: z.string().default('v1'),
     LOG_LEVEL: z
@@ -95,6 +180,9 @@ export const configSchema = z
 
     // --- Stockage objet (S3 / R2 / MinIO) --------------------------------
     S3_ENDPOINT: z.string().url().optional(),
+    // Adresse du stockage vue par les mobiles et navigateurs, utilisée pour signer les URL
+    // d'envoi et de lecture. Absente : S3_ENDPOINT (poste de développement).
+    S3_PUBLIC_ENDPOINT: z.string().url().optional(),
     S3_BUCKET: z.string().optional(),
     S3_ACCESS_KEY: z.string().optional(),
     S3_SECRET_KEY: z.string().optional(),
@@ -444,7 +532,9 @@ export const configSchema = z
         cfg.OPENPAY_API_KEY ||
         cfg.OPENPAY_CALLBACK_SECRET)
     ) {
-      if (!cfg.OPENPAY_API_KEY) {
+      // En recette, OpenPay peut être sélectionné avant l'ouverture du compte : les
+      // paiements par agrégateur échouent alors proprement (clé absente), sans simulateur.
+      if (!cfg.OPENPAY_API_KEY && cfg.DEPLOYMENT_ENV !== 'staging') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['OPENPAY_API_KEY'],
@@ -515,6 +605,7 @@ export const configSchema = z
           'CORS_ALLOWED_ORIGINS est obligatoire en production : lister les origines autorisées, séparées par des virgules (ex. https://immodesk.watuneed.fr,https://portail.immodesk.watuneed.fr), faute de quoi toute origine serait acceptée avec les cookies.',
       });
     }
+    checkDeploymentEnv(cfg, ctx);
     if (cfg.NODE_ENV === 'production' && cfg.OTP_DEV_CODE) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

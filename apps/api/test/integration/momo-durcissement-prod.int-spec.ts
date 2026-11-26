@@ -27,6 +27,16 @@ describe('Mobile Money : durcissement production', () => {
       CINETPAY_SITE_ID: 's',
       CINETPAY_SECRET_KEY: 'x',
       MOMO_WEBHOOK_BASE_URL: 'https://api.immodesk.cg',
+      // Messagerie réelle et URL signées publiques exigées en production (aucun
+      // envoi ni téléversement n'a lieu dans ce test).
+      WHATSAPP_PROVIDER: 'meta',
+      WHATSAPP_PHONE_NUMBER_ID: '123456789',
+      WHATSAPP_ACCESS_TOKEN: 'jeton-meta-de-test',
+      SMS_PROVIDER: 'android_gateway',
+      SMS_GATEWAY_URL: 'https://sms-gateway.example.org',
+      SMS_GATEWAY_USERNAME: 'passerelle',
+      SMS_GATEWAY_PASSWORD: 'mot-de-passe-passerelle',
+      S3_PUBLIC_ENDPOINT: 'https://s3.immodesk.cg',
     });
     ctx = await startTestApp();
   }, 60_000);

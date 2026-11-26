@@ -9,10 +9,12 @@ import {
   WebhookRateLimitGuard,
 } from '../../src/shared/throttler/webhook-rate-limit.guard';
 import { SubscriptionMomoPurposeRegistrar } from '../../src/modules/subscriptions/infrastructure/subscription-momo-purpose.registrar';
+import { PRODUCTION_MESSAGING } from './production-messaging.fixture';
 
 /** Correctifs de la revue PR #62 : configuration (F7), journaux (F6, F8), garde de débit (F6), indice PTXN abonnement (M2). */
 
 const PROD = {
+  ...PRODUCTION_MESSAGING,
   DATABASE_URL: 'postgresql://immodesk_app:x@localhost:5440/immodesk',
   REDIS_URL: 'redis://localhost:6390',
   JWT_ALGORITHM: 'HS256',

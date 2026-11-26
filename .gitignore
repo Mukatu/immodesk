@@ -8,6 +8,9 @@ coverage/
 .env
 .env.*
 !.env.example
+!.env.*.example
+# Surcharge Compose propre à un serveur (réseaux des autres projets).
+infra/deploy/docker-compose.override.yml
 .DS_Store
 Thumbs.db
 .idea/

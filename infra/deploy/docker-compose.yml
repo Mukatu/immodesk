@@ -1,0 +1,296 @@
+# Pile de recette (staging) Immodesk sur un VPS unique (OVH VPS-2 : 4 vCores, 8 Go).
+# Mode d'emploi pas à pas : docs/10_deploiement.md. Variables : .env (copie
+# de .env.staging.example), lu automatiquement par Docker Compose.
+#
+# Réseaux (aucun n'est partagé avec un autre projet) :
+#   public   : Caddy seul, porte les ports 80 et 443 ;
+#   edge     : Caddy, API et web ;
+#   edge_s3  : Caddy et MinIO seuls (le web n'a aucun chemin vers le stockage) ;
+#   app      : web vers API (appels serveur du BFF Next) ;
+#   backend  : API, bases et tâches ponctuelles, sans accès Internet ;
+#   egress   : sortie Internet de l'API seule (Meta, OpenPay).
+# Les services joints par Caddy portent un nom préfixé (immodesk-*) : un Caddy
+# commun à plusieurs projets ne peut pas confondre deux « api ».
+name: immodesk-staging
+
+x-logging: &logging
+  # journald : rétention bornée dans le temps (7 jours, réglée par bootstrap.sh).
+  # Le journal de l'API contient, en recette, les codes de connexion.
+  driver: ${LOG_DRIVER:-journald}
+
+services:
+  postgres:
+    image: postgres:16.16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: immodesk
+      POSTGRES_USER: immodesk
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?à renseigner dans .env}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - max_connections=60
+      - -c
+      - log_min_duration_statement=500ms
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U immodesk -d immodesk']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    mem_limit: 1536m
+    logging: *logging
+
+  redis:
+    image: redis:7.4.12-bookworm
+    restart: unless-stopped
+    # AOF « everysec » et aucune éviction : une file BullMQ ne doit jamais
+    # perdre de job (docs/02 § 14.4).
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server --appendonly yes --appendfsync everysec
+        --maxmemory 384mb --maxmemory-policy noeviction
+        --requirepass "$$REDIS_PASSWORD"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?à renseigner dans .env}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks: [backend]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+    logging: *logging
+
+  immodesk-minio:
+    # Les images officielles MinIO ne sont plus publiées en accès libre : même
+    # image que la CI, épinglée, sans correctifs depuis juillet 2025. Caddy n'en
+    # expose que les requêtes signées d'objets (docs/10 § 17, points ouverts).
+    image: docker.io/bitnamilegacy/minio:2025.7.23-debian-12-r5
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?à renseigner dans .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?à renseigner dans .env}
+      MINIO_BROWSER: 'off'
+    volumes:
+      - minio_data:/bitnami/minio/data
+    networks: [backend, edge_s3]
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    mem_limit: 1g
+    logging: *logging
+
+  # Tâche ponctuelle : bucket privé et compte d'accès dédié à l'API (jamais le
+  # compte administrateur de MinIO).
+  minio-init:
+    image: docker.io/bitnamilegacy/minio-client:2025.7.21-debian-12-r3
+    restart: 'no'
+    depends_on:
+      immodesk-minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: immodesk
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?à renseigner dans .env}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?à renseigner dans .env}
+    entrypoint: ['/bin/bash', '/scripts/minio-init.sh']
+    volumes:
+      - ./scripts/minio-init.sh:/scripts/minio-init.sh:ro
+    networks: [backend]
+    logging: *logging
+
+  # Tâche ponctuelle : `prisma migrate deploy` avec le propriétaire du schéma.
+  migrate:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    image: immodesk-staging/migrate:local
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_ADMIN_URL: postgresql://immodesk:${POSTGRES_PASSWORD}@postgres:5432/immodesk
+    networks: [backend]
+    logging: *logging
+
+  # Tâche ponctuelle : ouvre la connexion des rôles immodesk_app (soumis à la
+  # RLS) et immodesk_admin (BYPASSRLS, sans superutilisateur) créés NOLOGIN
+  # par les migrations, avec leurs mots de passe.
+  db-roles:
+    image: postgres:16.16-bookworm
+    restart: 'no'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: postgres
+      PGUSER: immodesk
+      PGDATABASE: immodesk
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      IMMODESK_APP_PASSWORD: ${IMMODESK_APP_PASSWORD:?à renseigner dans .env}
+      IMMODESK_ADMIN_PASSWORD: ${IMMODESK_ADMIN_PASSWORD:?à renseigner dans .env}
+    entrypoint: ['/bin/bash', '/scripts/db-roles.sh']
+    volumes:
+      - ./scripts/db-roles.sh:/scripts/db-roles.sh:ro
+    networks: [backend]
+    logging: *logging
+
+  immodesk-api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    image: immodesk-staging/api:local
+    restart: unless-stopped
+    depends_on:
+      db-roles:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DEPLOYMENT_ENV: ${DEPLOYMENT_ENV:-staging}
+      NODE_OPTIONS: --max-old-space-size=1536
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      # Un seul reverse proxy (Caddy) devant l'API, seul à la joindre sur le réseau
+      # edge : docs/09_exploitation.md § 7.
+      TRUST_PROXY_HOPS: '1'
+      DATABASE_URL: postgresql://immodesk_app:${IMMODESK_APP_PASSWORD}@postgres:5432/immodesk
+      DATABASE_ADMIN_URL: postgresql://immodesk_admin:${IMMODESK_ADMIN_PASSWORD}@postgres:5432/immodesk
+      DATABASE_POOL_MAX: '8'
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      QUEUE_PREFIX: immodesk-staging
+      S3_ENDPOINT: http://immodesk-minio:9000
+      S3_PUBLIC_ENDPOINT: https://${S3_HOST:?à renseigner dans .env}
+      S3_BUCKET: immodesk
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      PDF_WORKER_CONCURRENCY: '2'
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?à renseigner dans .env}
+      CURSOR_SECRET: ${CURSOR_SECRET:?à renseigner dans .env}
+      OTP_PEPPER: ${OTP_PEPPER:?à renseigner dans .env}
+      LINK_SIGNING_SECRET: ${LINK_SIGNING_SECRET:?à renseigner dans .env}
+      MOMO_SIMULATOR_SECRET: ${MOMO_SIMULATOR_SECRET:?à renseigner dans .env}
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-fake}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:?à renseigner dans .env}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:?à renseigner dans .env}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      SMS_PROVIDER: ${SMS_PROVIDER:-fake}
+      SMS_GATEWAY_URL: ${SMS_GATEWAY_URL:-}
+      SMS_GATEWAY_USERNAME: ${SMS_GATEWAY_USERNAME:-}
+      SMS_GATEWAY_PASSWORD: ${SMS_GATEWAY_PASSWORD:-}
+      SMS_GATEWAY_WEBHOOK_SECRET: ${SMS_GATEWAY_WEBHOOK_SECRET:?à renseigner dans .env}
+      MOMO_PROVIDER_DEFAULT: ${MOMO_PROVIDER_DEFAULT:-OPENPAY}
+      MOMO_WEBHOOK_BASE_URL: https://${API_HOST:?à renseigner dans .env}
+      OPENPAY_API_KEY: ${OPENPAY_API_KEY:-}
+      OPENPAY_CALLBACK_SECRET: ${OPENPAY_CALLBACK_SECRET:?à renseigner dans .env}
+      OPENPAY_CALLBACK_IP_ALLOWLIST: ${OPENPAY_CALLBACK_IP_ALLOWLIST:-}
+      CORS_ALLOWED_ORIGINS: https://${WEB_HOST:?à renseigner dans .env}
+      PUBLIC_API_BASE_URL: https://${API_HOST}
+      PUBLIC_WEB_BASE_URL: https://${WEB_HOST}
+      PORTAL_BASE_URL: https://${WEB_HOST}/portail
+      INVITATION_BASE_URL: https://${WEB_HOST}/invitations
+      PRIVACY_DPO_CONTACT: ${PRIVACY_DPO_CONTACT:-}
+    networks: [backend, app, edge, egress]
+    mem_limit: 2g
+    logging: *logging
+
+  immodesk-web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://${API_HOST}/v1
+    image: immodesk-staging/web:local
+    restart: unless-stopped
+    depends_on:
+      immodesk-api:
+        condition: service_started
+    environment:
+      NODE_OPTIONS: --max-old-space-size=384
+      # Appels serveur à serveur (BFF Next), sur le réseau app.
+      API_INTERNAL_URL: http://immodesk-api:3000/v1
+    # Pas d'accès aux bases : le web ne parle qu'à l'API.
+    networks: [app, edge]
+    mem_limit: 512m
+    logging: *logging
+
+  # Reverse proxy commun du serveur (un seul Caddy pour tous les projets).
+  # Hôtes Immodesk : caddy/sites/immodesk.caddy ; autres projets :
+  # CADDY_EXTRA_SITES_DIR. Voir docs/10_deploiement.md § 11.
+  caddy:
+    image: caddy:2.11.9-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?à renseigner dans .env}
+      IMMODESK_API_HOST: ${API_HOST}
+      IMMODESK_WEB_HOST: ${WEB_HOST}
+      IMMODESK_S3_HOST: ${S3_HOST}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/sites:/etc/caddy/sites/immodesk:ro
+      - ${CADDY_EXTRA_SITES_DIR:-./caddy/autres}:/etc/caddy/sites/autres:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [public, edge, edge_s3]
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:2019/config/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 256m
+    logging: *logging
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  # Ports publiés : Caddy seul.
+  public: {}
+  # Caddy et les services qu'il sert ; nom fixe pour qu'un Caddy commun le
+  # rejoigne. Interne : aucune sortie vers Internet.
+  edge:
+    name: immodesk_edge
+    internal: true
+  edge_s3:
+    name: immodesk_edge_s3
+    internal: true
+  app:
+    internal: true
+  backend:
+    internal: true
+  egress: {}

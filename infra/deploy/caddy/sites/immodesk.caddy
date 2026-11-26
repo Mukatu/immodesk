@@ -1,0 +1,86 @@
+# Hôtes Immodesk. Caddy joint les services par leur nom préfixé sur le réseau
+# immodesk_edge, propre au projet : un autre projet ne s'y branche jamais.
+#
+# X-Forwarded-For : Caddy ignore celui envoyé par le client (aucun
+# trusted_proxies) et le remplace par l'adresse qu'il voit. L'API n'est
+# joignable que par Caddy : TRUST_PROXY_HOPS=1 (docs/09 § 7).
+
+(immodesk_entetes) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Recette : jamais indexée par les moteurs de recherche.
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+}
+
+# Journal d'accès sans secret : ni chaîne de requête (signatures des URL S3,
+# ?tel=), ni jeton dans le chemin (callback OpenPay, invitations, vérification
+# de quittance, liens courts de PDF, activation du portail), ni en-têtes.
+(immodesk_journal) {
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp "^(/(?:v1/webhooks/mobile-money/openpay|v1/invitations|invitations|verifier|v1/public/d|portail/activer)/)[^/?]+|\?.*$" "${1}[expurgé]"
+				request>headers delete
+				resp_headers delete
+			}
+		}
+	}
+}
+
+{$IMMODESK_WEB_HOST} {
+	import immodesk_entetes
+	import immodesk_journal
+	header {
+		X-Frame-Options "DENY"
+		# Next.js injecte des scripts et styles en ligne (hydratation) : 'unsafe-inline'
+		# reste nécessaire sans nonce ; tout le reste est fermé.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://{$IMMODESK_S3_HOST}; font-src 'self' data:; connect-src 'self' https://{$IMMODESK_API_HOST} https://{$IMMODESK_S3_HOST}; worker-src 'self'; manifest-src 'self'; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+		Permissions-Policy "camera=(self), geolocation=(), microphone=(), payment=(), usb=(), interest-cohort=()"
+	}
+	encode zstd gzip
+	reverse_proxy immodesk-web:3001
+}
+
+{$IMMODESK_API_HOST} {
+	import immodesk_entetes
+	import immodesk_journal
+	header {
+		X-Frame-Options "DENY"
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+	}
+	encode zstd gzip
+	request_body {
+		max_size 15MB
+	}
+	reverse_proxy immodesk-api:3000
+}
+
+# Stockage : uniquement les requêtes SIGNÉES d'objets du bucket (envoi et lecture
+# des photos et PDF par les mobiles). Tout le reste, dont /minio/admin, la santé
+# et les métriques de MinIO, répond 404. Le Host d'origine est transmis tel
+# quel : la signature SigV4 en dépend.
+{$IMMODESK_S3_HOST} {
+	import immodesk_entetes
+	import immodesk_journal
+	@objets_signes {
+		path /immodesk/*
+		not path_regexp \.\.|%2[eE]|%2[fF]
+		method GET HEAD PUT
+		query X-Amz-Signature=*
+	}
+	handle @objets_signes {
+		request_body {
+			max_size 15MB
+		}
+		reverse_proxy immodesk-minio:9000
+	}
+	handle {
+		respond 404
+	}
+}

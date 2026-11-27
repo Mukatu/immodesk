@@ -76,9 +76,23 @@
 		method GET HEAD PUT
 		query X-Amz-Signature=*
 	}
+	# Préflight CORS du navigateur (envoi depuis le web, autre origine) : OPTIONS
+	# sur un chemin d'objet seulement, sans signature (le navigateur n'en joint
+	# pas). Garage répond lui-même selon la règle CORS du bucket (garage-init.sh) :
+	# une autre origine est refusée par lui.
+	@preflight {
+		path_regexp ^/immodesk/[^/].*
+		not path_regexp \.\.|%2[eE]|%2[fF]
+		method OPTIONS
+	}
+	handle @preflight {
+		reverse_proxy immodesk-garage:3900
+	}
 	handle @objets_signes {
+		# Plafond d'envoi = MAX_PDF_BYTES de l'API (25 Mio, la plus grande limite
+		# par type) + marge : l'API reste la source de vérité (docs/10, § limites).
 		request_body {
-			max_size 15MB
+			max_size 26MiB
 		}
 		reverse_proxy immodesk-garage:3900
 	}

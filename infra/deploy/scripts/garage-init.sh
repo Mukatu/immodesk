@@ -7,7 +7,10 @@
 # Variables : GARAGE_ADMIN_URL (défaut http://immodesk-garage:3903),
 # GARAGE_ADMIN_TOKEN, S3_BUCKET (défaut immodesk), S3_ACCESS_KEY, S3_SECRET_KEY,
 # GARAGE_CAPACITY (poids du nœud en octets, défaut 100 Go : un seul nœud, la
-# valeur ne borne pas l'espace disque).
+# valeur ne borne pas l'espace disque), S3_ENDPOINT (API S3, défaut
+# http://immodesk-garage:3900) et S3_CORS_ORIGINS (origine publique du web, une
+# seule, sans joker : seule l'envoi depuis le navigateur en a besoin ; absente,
+# aucune règle CORS n'est posée).
 set -eu
 
 ADMIN="${GARAGE_ADMIN_URL:-http://immodesk-garage:3903}"
@@ -15,6 +18,8 @@ ADMIN="${GARAGE_ADMIN_URL:-http://immodesk-garage:3903}"
 : "${S3_ACCESS_KEY:?S3_ACCESS_KEY manquant}"
 : "${S3_SECRET_KEY:?S3_SECRET_KEY manquant}"
 BUCKET="${S3_BUCKET:-immodesk}"
+S3_ENDPOINT="${S3_ENDPOINT:-http://immodesk-garage:3900}"
+S3_CORS_ORIGINS="${S3_CORS_ORIGINS:-}"
 CAPACITY="${GARAGE_CAPACITY:-100000000000}"
 OUT="$(mktemp)"
 trap 'rm -f "$OUT"' EXIT
@@ -99,5 +104,31 @@ fi
 code="$(api POST /v2/AllowBucketKey \
   "{\"bucketId\":\"$bucket_id\",\"accessKeyId\":\"$S3_ACCESS_KEY\",\"permissions\":{\"read\":true,\"write\":true,\"owner\":false}}")"
 [ "$code" = 200 ] || echec "attribution des droits refusée (HTTP $code)."
+
+# 7. CORS du bucket (envoi direct depuis le navigateur : PUT d'une URL signée
+# d'une autre origine, donc préflight OPTIONS). Garage ne l'offre que par l'API
+# S3 (PutBucketCors) et réserve cette opération au propriétaire du bucket : la
+# clé reçoit « owner » le temps de poser la règle, puis le perd. Idempotent :
+# PutBucketCors remplace la configuration. En-têtes : content-type seul (Garage
+# compare sans normaliser la casse, le navigateur envoie la minuscule) (le
+# navigateur n'ajoute rien d'autre, la signature porte sur host et content-type) ;
+# aucun en-tête de réponse exposé.
+if [ -n "$S3_CORS_ORIGINS" ]; then
+  case "$S3_CORS_ORIGINS" in
+    *\** | *,* | *" "*) echec "S3_CORS_ORIGINS : une seule origine, sans joker ($S3_CORS_ORIGINS)." ;;
+  esac
+  perm() {
+    api "$1" "/v2/$2"       "{\"bucketId\":\"$bucket_id\",\"accessKeyId\":\"$S3_ACCESS_KEY\",\"permissions\":{\"read\":false,\"write\":false,\"owner\":true}}"
+  }
+  [ "$(perm POST AllowBucketKey)" = 200 ] || echec "droit propriétaire temporaire refusé."
+  cors="<CORSConfiguration><CORSRule><AllowedOrigin>$S3_CORS_ORIGINS</AllowedOrigin>"
+  cors="$cors<AllowedMethod>PUT</AllowedMethod><AllowedMethod>GET</AllowedMethod>"
+  cors="$cors<AllowedMethod>HEAD</AllowedMethod><AllowedHeader>content-type</AllowedHeader>"
+  cors="$cors<MaxAgeSeconds>600</MaxAgeSeconds></CORSRule></CORSConfiguration>"
+  code="$(curl -sS -o "$OUT" -w '%{http_code}' -X PUT --user "$S3_ACCESS_KEY:$S3_SECRET_KEY"     --aws-sigv4 "aws:amz:us-east-1:s3" -H 'Content-Type: application/xml' --data "$cors"     "$S3_ENDPOINT/$BUCKET?cors" || true)"
+  [ "$(perm POST DenyBucketKey)" = 200 ] || echec "retrait du droit propriétaire refusé."
+  [ "$code" = 200 ] || echec "CORS du bucket refusé (HTTP $code)."
+  echo "garage-init : CORS du bucket limité à $S3_CORS_ORIGINS (PUT, GET, HEAD)."
+fi
 
 echo "garage-init : bucket $BUCKET privé, clé $S3_ACCESS_KEY limitée à ce bucket."

@@ -36,7 +36,7 @@ test.describe('Recouvrement phase 9 : relances, pénalités, tableaux de bord et
 
     await expect(page).toHaveURL(/\/onboarding\/organisation/);
     await page.getByRole('button', { name: 'Suivant' }).click();
-    await page.getByLabel('Raison sociale').fill('Agence Recouvrement E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Recouvrement E2E');
     await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.locator('#contact-phone').fill(orgContactPhone);
@@ -278,7 +278,7 @@ test.describe('Recouvrement phase 9 : relances, pénalités, tableaux de bord et
 
     await expect(page).toHaveURL(/\/onboarding\/organisation/);
     await page.getByRole('button', { name: 'Suivant' }).click();
-    await page.getByLabel('Raison sociale').fill('Agence Tableaux De Bord E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Tableaux De Bord E2E');
     await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.locator('#contact-phone').fill(orgContactPhone);

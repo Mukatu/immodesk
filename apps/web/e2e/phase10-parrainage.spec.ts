@@ -48,7 +48,7 @@ async function loginAndCreateOrganization(
 
   await expect(page).toHaveURL(/\/onboarding\/organisation/);
   await page.getByRole('button', { name: 'Suivant' }).click();
-  await page.getByLabel('Raison sociale').fill(opts.orgName);
+  await page.getByLabel('Nom et prénom').fill(opts.orgName);
   await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
   await page.getByRole('button', { name: 'Suivant' }).click();
   await page.locator('#contact-phone').fill(opts.orgContactPhone);
@@ -133,7 +133,9 @@ test.describe('Parrainage phase 10 : partenaire, apport de bien confirmé par OT
     test.setTimeout(60_000);
 
     await loginAndCreateOrganization(page, {
-      loginPhone: '069070201',
+      // Numéro de l'administrateur plateforme du mock (PLATFORM_ADMIN_PHONE, src/mocks/handlers.ts) :
+      // le back-office est réservé à `isPlatformAdmin` (#12).
+      loginPhone: '066000900',
       orgContactPhone: '069070202',
       orgName: 'Agence Back-office Parrainage E2E',
     });

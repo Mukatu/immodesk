@@ -35,7 +35,7 @@ test.describe('Gérance d’agence phase 7 : campagne → relevé → reversemen
 
     await expect(page).toHaveURL(/\/onboarding\/organisation/);
     await page.getByRole('button', { name: 'Suivant' }).click();
-    await page.getByLabel('Raison sociale').fill('Agence Gérance E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Gérance E2E');
     await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.locator('#contact-phone').fill(ORG_CONTACT_PHONE);
@@ -197,6 +197,6 @@ test.describe('Gérance d’agence phase 7 : campagne → relevé → reversemen
     await expect(page.getByText('Preuve ajoutée.')).toBeVisible({ timeout: 10_000 });
     await page.getByRole('button', { name: 'Confirmer l’exécution' }).click();
     await expect(page.getByRole('dialog')).toBeHidden();
-    await expect(page.getByText('Reversé', { exact: true })).toBeVisible();
+    await expect(page.getByRole('table').getByText('Reversé', { exact: true })).toBeVisible();
   });
 });

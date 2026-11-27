@@ -46,7 +46,7 @@ test.describe('Rapprochement bancaire phase 6', () => {
 
     await expect(page).toHaveURL(/\/onboarding\/organisation/);
     await page.getByRole('button', { name: 'Suivant' }).click();
-    await page.getByLabel('Raison sociale').fill('Agence Rapprochement E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Rapprochement E2E');
     await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.locator('#contact-phone').fill(orgContactPhone);
@@ -103,7 +103,7 @@ test.describe('Rapprochement bancaire phase 6', () => {
     await page.getByLabel('Code banque du tireur').fill('LCB');
     await page.getByRole('button', { name: 'Enregistrer', exact: true }).click();
     await expect(page.getByRole('dialog')).toBeHidden();
-    await expect(page.getByText(checkNumber)).toBeVisible();
+    await expect(page.getByRole('table').getByText(checkNumber)).toBeVisible();
 
     const checkRow = page.getByRole('row', { name: new RegExp(checkNumber) });
     await checkRow.getByRole('button', { name: 'Déposer' }).click();

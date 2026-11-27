@@ -175,18 +175,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {status === 'authenticated' && user ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="gap-2 px-2"
-                        aria-label="Menu du compte"
-                      >
+                      <Button type="button" variant="ghost" className="gap-2 px-2">
                         <Avatar className="size-8">
                           <AvatarFallback>{initials(user.fullName || user.phone)}</AvatarFallback>
                         </Avatar>
                         <span className="hidden text-sm font-medium sm:inline">
                           {user.fullName}
                         </span>
+                        {/* Pas d'aria-label : le nom accessible doit contenir le texte visible
+                            (WCAG 2.5.3, axe label-content-name-mismatch). */}
+                        <span className="sr-only">Menu du compte</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">

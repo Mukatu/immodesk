@@ -32,7 +32,7 @@ test.describe('Portefeuille phase 1 : bailleur → immeuble → lots → locatai
     await expect(page).toHaveURL(/\/onboarding\/organisation/);
     await page.getByRole('button', { name: 'Suivant' }).click();
 
-    await page.getByLabel('Raison sociale').fill('Agence Portefeuille E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Portefeuille E2E');
     await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
 

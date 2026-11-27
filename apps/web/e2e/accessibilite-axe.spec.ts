@@ -81,7 +81,7 @@ for (const theme of ['light', 'dark'] as const) {
 
       await expect(page).toHaveURL(/\/onboarding\/organisation/);
       await page.getByRole('button', { name: 'Suivant' }).click();
-      await page.getByLabel('Raison sociale').fill(`Agence A11y ${theme}`);
+      await page.getByLabel('Nom et prénom').fill(`Agence A11y ${theme}`);
       await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
       await page.getByRole('button', { name: 'Suivant' }).click();
       await page.locator('#contact-phone').fill(agency);

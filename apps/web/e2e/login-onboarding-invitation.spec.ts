@@ -60,6 +60,6 @@ test.describe('Connexion OTP → création d’organisation → invitation', () 
     await page.getByRole('button', { name: 'Envoyer l’invitation' }).click();
 
     await expect(page.getByRole('cell', { name: '+242 06 600 00 97' })).toBeVisible();
-    await expect(page.getByText('En attente', { exact: true })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'En attente', exact: true })).toBeVisible();
   });
 });

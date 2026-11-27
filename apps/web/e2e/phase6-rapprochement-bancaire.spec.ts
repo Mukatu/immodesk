@@ -103,7 +103,7 @@ test.describe('Rapprochement bancaire phase 6', () => {
     await page.getByLabel('Code banque du tireur').fill('LCB');
     await page.getByRole('button', { name: 'Enregistrer', exact: true }).click();
     await expect(page.getByRole('dialog')).toBeHidden();
-    await expect(page.getByText(checkNumber)).toBeVisible();
+    await expect(page.getByRole('table').getByText(checkNumber)).toBeVisible();
 
     const checkRow = page.getByRole('row', { name: new RegExp(checkNumber) });
     await checkRow.getByRole('button', { name: 'Déposer' }).click();

@@ -197,6 +197,6 @@ test.describe('Gérance d’agence phase 7 : campagne → relevé → reversemen
     await expect(page.getByText('Preuve ajoutée.')).toBeVisible({ timeout: 10_000 });
     await page.getByRole('button', { name: 'Confirmer l’exécution' }).click();
     await expect(page.getByRole('dialog')).toBeHidden();
-    await expect(page.getByText('Reversé', { exact: true })).toBeVisible();
+    await expect(page.getByRole('table').getByText('Reversé', { exact: true })).toBeVisible();
   });
 });

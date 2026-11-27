@@ -142,8 +142,11 @@ test.describe('Synchronisation phase 5 : file des lots, conflit, résolution', (
     await page.goto('/app/synchronisation/conflits');
     const conflictRow = page.getByRole('row', { name: /encaissement non appliqué/ });
     await expect(conflictRow).toBeVisible();
-    await conflictRow.getByRole('button').click();
+    await conflictRow.getByRole('button', { name: /^Voir le résumé du conflit/ }).click();
 
+    // Le bouton de ligne ouvre désormais un panneau de résumé (#8) ; l'écran de décision
+    // s'atteint par son action « Résoudre le conflit ».
+    await page.getByRole('dialog').getByRole('button', { name: 'Résoudre le conflit' }).click();
     await expect(page.getByRole('heading', { name: /^Conflit clientref-/ })).toBeVisible();
     await page.getByRole('button', { name: 'Résoudre ce conflit' }).click();
 

@@ -150,7 +150,7 @@ test.describe('Facturation et caisse phase 3 : facture → encaissements → qui
 
     // La facture est désormais partiellement payée.
     await page.goto('/app/factures');
-    await expect(page.getByText('Partiellement payée')).toBeVisible();
+    await expect(page.getByRole('table').getByText('Partiellement payée')).toBeVisible();
 
     // --- Second encaissement : solde restant (40 000) → facture PAID ---
     await page.goto('/app/paiements/nouveau');
@@ -163,7 +163,7 @@ test.describe('Facturation et caisse phase 3 : facture → encaissements → qui
     await expect(page).toHaveURL(/\/app\/paiements\/[^/]+$/);
 
     await page.goto('/app/factures');
-    await expect(page.getByText('Payée', { exact: true })).toBeVisible();
+    await expect(page.getByRole('table').getByText('Payée', { exact: true })).toBeVisible();
 
     // --- Quittance créée automatiquement au règlement complet ---
     await page.getByRole('link', { name: /LOY-/ }).click();
@@ -181,8 +181,8 @@ test.describe('Facturation et caisse phase 3 : facture → encaissements → qui
 
     // --- Journal de messages : une entrée WhatsApp "Envoyé" liée à la quittance ---
     await page.goto('/app/messages');
-    await expect(page.getByText('Receipt #', { exact: false })).toBeVisible();
-    await expect(page.getByText('Envoyé', { exact: true })).toBeVisible();
+    await expect(page.getByRole('table').getByText('Receipt #', { exact: false })).toBeVisible();
+    await expect(page.getByRole('table').getByText('Envoyé', { exact: true })).toBeVisible();
 
     // --- Vérification publique, dans un contexte navigateur neuf (sans
     // cookies ni session) : preuve que la route ne requiert aucune auth. ---

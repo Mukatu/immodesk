@@ -12,15 +12,15 @@ La même pile devient la production plus tard, en changeant quelques variables
 
 Un seul serveur, des conteneurs Docker décrits dans `infra/deploy/docker-compose.yml` :
 
-| Service                             | Rôle                                                                        | Exposé sur Internet                |
-| :---------------------------------- | :-------------------------------------------------------------------------- | :--------------------------------- |
-| `caddy`                             | Reverse proxy : HTTPS automatique (Let's Encrypt), redirection HTTP → HTTPS | Oui, ports 80 et 443 seuls         |
-| `immodesk-api`                      | API NestJS, tâches planifiées et files BullMQ (dans le même processus)      | Via Caddy                          |
-| `immodesk-web`                      | Tableau de bord Next.js (et portails bailleur et locataire)                 | Via Caddy                          |
-| `immodesk-minio`                    | Stockage des photos, signatures et PDF (compatible S3)                      | Via Caddy, requêtes signées seules |
-| `postgres`                          | Base PostgreSQL 16, sécurité par ligne (RLS)                                | Jamais                             |
-| `redis`                             | Files de tâches et limites de débit                                         | Jamais                             |
-| `migrate`, `db-roles`, `minio-init` | Tâches ponctuelles à chaque lancement : migrations, rôles de base, bucket   | Jamais                             |
+| Service                              | Rôle                                                                        | Exposé sur Internet                |
+| :----------------------------------- | :-------------------------------------------------------------------------- | :--------------------------------- |
+| `caddy`                              | Reverse proxy : HTTPS automatique (Let's Encrypt), redirection HTTP → HTTPS | Oui, ports 80 et 443 seuls         |
+| `immodesk-api`                       | API NestJS, tâches planifiées et files BullMQ (dans le même processus)      | Via Caddy                          |
+| `immodesk-web`                       | Tableau de bord Next.js (et portails bailleur et locataire)                 | Via Caddy                          |
+| `immodesk-garage`                    | Stockage des photos, signatures et PDF (Garage, compatible S3, ADR-014)     | Via Caddy, requêtes signées seules |
+| `postgres`                           | Base PostgreSQL 16, sécurité par ligne (RLS)                                | Jamais                             |
+| `redis`                              | Files de tâches et limites de débit                                         | Jamais                             |
+| `migrate`, `db-roles`, `garage-init` | Tâches ponctuelles à chaque lancement : migrations, rôles de base, bucket   | Jamais                             |
 
 Trois adresses publiques, toutes en HTTPS :
 
@@ -32,23 +32,24 @@ Trois adresses publiques, toutes en HTTPS :
 
 Cloisonnement réseau. Aucun réseau Docker n'est partagé avec un autre projet :
 
-| Réseau             | Qui s'y trouve                                    | Rôle                                        |
-| :----------------- | :------------------------------------------------ | :------------------------------------------ |
-| `public`           | Caddy                                             | Ports 80 et 443                             |
-| `immodesk_edge`    | Caddy, `immodesk-api`, `immodesk-web`             | Seul chemin d'Internet vers l'API et le web |
-| `immodesk_edge_s3` | Caddy, `immodesk-minio`                           | Seul chemin d'Internet vers le stockage     |
-| `app`              | `immodesk-api`, `immodesk-web`                    | Appels serveur du web vers l'API            |
-| `backend`          | API, PostgreSQL, Redis, MinIO, tâches ponctuelles | Données, sans accès Internet                |
-| `egress`           | `immodesk-api`                                    | Sortie vers Meta et OpenPay                 |
+| Réseau             | Qui s'y trouve                                     | Rôle                                        |
+| :----------------- | :------------------------------------------------- | :------------------------------------------ |
+| `public`           | Caddy                                              | Ports 80 et 443                             |
+| `immodesk_edge`    | Caddy, `immodesk-api`, `immodesk-web`              | Seul chemin d'Internet vers l'API et le web |
+| `immodesk_edge_s3` | Caddy, `immodesk-garage`                           | Seul chemin d'Internet vers le stockage     |
+| `app`              | `immodesk-api`, `immodesk-web`                     | Appels serveur du web vers l'API            |
+| `backend`          | API, PostgreSQL, Redis, Garage, tâches ponctuelles | Données, sans accès Internet                |
+| `egress`           | `immodesk-api`                                     | Sortie vers Meta et OpenPay                 |
 
 Le web n'a aucun chemin vers les bases ni vers le stockage. L'API n'est joignable que par Caddy (d'où
 `TRUST_PROXY_HOPS=1`, `docs/09_exploitation.md` § 7) et par le web.
 
-Pourquoi MinIO passe par Caddy : le mobile envoie ses photos **directement** au
+Pourquoi Garage passe par Caddy : le mobile envoie ses photos **directement** au
 stockage, avec une URL signée fournie par l'API. Caddy ne laisse passer que les
-requêtes **signées** d'objets du bucket (lecture, envoi, 15 Mo au plus) ; tout le
-reste, dont l'administration de MinIO, répond 404. Le bucket est privé et la console
-de MinIO désactivée.
+requêtes **signées** d'objets du bucket (lecture, envoi, 15 Mo au plus) vers le port
+S3 de Garage ; tout le reste répond 404. L'API d'administration de Garage (port 3903)
+ne sert qu'à `garage-init` et n'est jamais relayée. Le bucket est privé : Garage
+n'offre d'accès anonyme qu'en mode site web, ni activé ni configuré.
 
 Sécurité de la base : l'API se connecte avec le rôle `immodesk_app`, soumis à la
 sécurité par ligne, et, pour les tâches transverses (crons, webhooks), avec
@@ -217,7 +218,8 @@ passe.
 La première fois, la construction des images prend 10 à 15 minutes. Le script
 télécharge les images tierces épinglées puis construit l'API et le web. Il applique
 ensuite les migrations (`migrate`), ouvre les rôles (`db-roles`) et prépare le
-stockage (`minio-init`). Enfin, il démarre l'API, le web et Caddy, qui obtient alors
+stockage (`garage-init` : rôle du nœud Garage, bucket privé, clé de l'API limitée à ce
+bucket ; idempotent). Enfin, il démarre l'API, le web et Caddy, qui obtient alors
 les certificats HTTPS : le DNS du § 3 doit être propagé.
 
 Installer ensuite la sauvegarde quotidienne et son alerte (§ 15) :
@@ -472,7 +474,7 @@ de redémarrage de l'API, le mobile continue hors ligne et synchronise ensuite.
 
 Une fois par mois, lancer `deploy.sh --sans-cache`. Les images sont alors reconstruites
 depuis zéro, avec les correctifs de Chromium et des paquets Debian. Monter de version
-(PostgreSQL, Redis, Caddy, MinIO) se fait en changeant l'étiquette dans
+(PostgreSQL, Redis, Caddy, Garage) se fait en changeant l'étiquette dans
 `docker-compose.yml`, par une PR.
 
 En cas de problème après une mise à jour, revenir au commit précédent
@@ -485,8 +487,10 @@ Chaque nuit à 04:30 UTC (après les traitements planifiés), `immodesk-backup.t
 lance `scripts/backup.sh` sous l'utilisateur `deploy` :
 
 - base : `pg_dump`, contrôlé par `pg_restore --list` ;
-- objets MinIO (photos, signatures, PDF) : archive `tar.gz`, prise pendant une
-  suspension de MinIO de quelques secondes, pour une archive cohérente ;
+- stockage Garage (métadonnées SQLite et blocs : photos, signatures, PDF) : archive
+  `tar.gz` des deux volumes, prise pendant une suspension de Garage de quelques
+  secondes, pour une archive cohérente. La restauration rend aussi l'identité du nœud,
+  le bucket et la clé de l'API ;
 - les deux fichiers sont **chiffrés avec age** pour `BACKUP_AGE_RECIPIENT`. Le serveur
   ne détient que la clé publique : un vol du disque ou des sauvegardes ne livre rien.
   Rien n'est jamais écrit en clair, et sans clé publique la sauvegarde échoue ;
@@ -568,20 +572,22 @@ Quand C1 (WhatsApp), E1 (passerelle SMS) et C4 (OpenPay) sont prêts :
 
 ## 17. Points ouverts
 
-- **Image MinIO non maintenue : risque réel, à traiter en priorité, avant que le
-  pilote saisisse de vraies pièces d'identité.**
-  - MinIO ne publie plus d'images en accès libre. La pile utilise l'image Bitnami
-    archivée (`bitnamilegacy/minio`, juillet 2025), la même que la CI, qui ne reçoit
-    plus aucun correctif de sécurité.
-  - Atténuations en place : Caddy n'expose que les requêtes signées d'objets du bucket
-    (le reste répond 404, administration comprise) avec une limite de 15 Mo ; le
-    bucket est privé ; l'API n'a qu'un compte limité au bucket ; la console est
-    désactivée ; MinIO n'a aucun accès à Internet.
-  - Une faille de MinIO joignable par une requête signée, ou par un détenteur de clé,
-    resterait exploitable.
-  - Tâche suivante proposée : migrer vers un stockage S3 libre et maintenu (Garage ou
-    SeaweedFS), ou vers MinIO compilé depuis ses sources, puis vérifier les URL
-    signées.
+- **Stockage objet : Garage remplace MinIO** (ADR-014). L'image `bitnamilegacy/minio`,
+  archivée et sans correctifs, a été remplacée avant le pilote par l'image officielle
+  de Garage, épinglée (`dxflrs/garage:v2.5.0`). Rien n'était déployé : aucune donnée
+  à migrer. Suivre ses versions (notes de version sur `git.deuxfleurs.fr`) comme celles
+  de PostgreSQL ; Garage interdit de revenir à une version antérieure une fois un
+  nœud mis à jour : sauvegarder avant.
+  - Rotation de la clé de l'API : Garage ne change jamais le secret d'une clé. Mettre
+    un **nouvel** `S3_ACCESS_KEY` et un nouveau `S3_SECRET_KEY` dans `.env`, lancer
+    `deploy.sh` (garage-init crée la clé et ses droits), puis supprimer l'ancienne :
+    `docker compose exec immodesk-garage /garage key delete --yes ANCIENNE_CLE`.
+    Garder l'ancienne valeur avec un nouveau secret fait échouer `garage-init`, exprès.
+- **Envoi depuis le navigateur** : le web envoie les pièces en `PUT` direct vers
+  l'URL signée, depuis une autre origine. Le navigateur fait d'abord une requête
+  `OPTIONS` (CORS), que Caddy refuse (404) et que le bucket n'autorise pas : seul le
+  mobile peut envoyer en recette. À traiter : règle CORS du bucket limitée à l'origine
+  du web, et `OPTIONS` admis par Caddy sur le chemin du bucket.
 - **Copie hors site automatique** : la copie est manuelle (§ 15) et reste à automatiser
   vers un second fournisseur.
 - **Limite d'OTP par IP côté web** : les demandes de code faites depuis le web passent
@@ -590,6 +596,8 @@ Quand C1 (WhatsApp), E1 (passerelle SMS) et C4 (OpenPay) sont prêts :
   corriger avant la production : transmettre l'IP du client par le BFF.
 - **Portail bailleur** : il est servi sous `/portail` du site web ; l'hôte distinct
   `portail.immodesk.watuneed.fr` prévu au besoin C3 n'est pas encore câblé.
-- **Type et taille des envois** : l'URL signée ne signe que l'hôte, pas le
-  `Content-Type` ni la taille (constaté en local). Caddy plafonne chaque envoi à
-  15 Mo. Signer ces en-têtes reste à faire dans le module documents.
+- **Taille des envois** : l'URL signée signe l'hôte et le `Content-Type` (un autre
+  type que celui déclaré est refusé en 403 par Garage), pas la taille. Caddy plafonne
+  chaque envoi à 15 Mo, et l'API relit la taille réelle (HEAD) avant d'enregistrer
+  le document. Les PDF de plus de 15 Mo, admis par l'API jusqu'à 25 Mo, sont donc
+  refusés par Caddy en recette.

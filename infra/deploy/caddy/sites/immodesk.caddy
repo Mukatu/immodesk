@@ -61,10 +61,12 @@
 	reverse_proxy immodesk-api:3000
 }
 
-# Stockage : uniquement les requêtes SIGNÉES d'objets du bucket (envoi et lecture
-# des photos et PDF par les mobiles). Tout le reste, dont /minio/admin, la santé
-# et les métriques de MinIO, répond 404. Le Host d'origine est transmis tel
-# quel : la signature SigV4 en dépend.
+# Stockage (Garage) : uniquement les requêtes SIGNÉES d'objets du bucket (envoi
+# et lecture des photos et PDF par les mobiles), sur le port S3 (3900) seul.
+# Tout le reste répond 404 : liste des buckets, opérations sur le bucket
+# lui-même (/immodesk sans clé), POST, DELETE, requêtes anonymes. L'API
+# d'administration (3903) et le RPC (3901) ne sont jamais relayés. Le Host
+# d'origine est transmis tel quel : la signature SigV4 en dépend.
 {$IMMODESK_S3_HOST} {
 	import immodesk_entetes
 	import immodesk_journal
@@ -78,7 +80,7 @@
 		request_body {
 			max_size 15MB
 		}
-		reverse_proxy immodesk-minio:9000
+		reverse_proxy immodesk-garage:3900
 	}
 	handle {
 		respond 404

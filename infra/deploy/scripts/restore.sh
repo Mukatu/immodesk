@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restauration complète de la base (et, en option, des objets MinIO) depuis
+# Restauration complète de la base (et, en option, du stockage Garage) depuis
 # des sauvegardes chiffrées par backup.sh.
 #
 #   restore.sh --cle <clé privée age> <base .pgdump.age> [objets .tar.gz.age] [--oui]
@@ -70,14 +70,13 @@ compose exec -T postgres pg_restore -U immodesk -d immodesk --no-owner --exit-on
   <"$work/db.pgdump"
 
 if [[ -n "$objects_file" ]]; then
-  echo "== 6. Restauration des objets MinIO"
-  compose stop immodesk-minio
-  # En root le temps de l'extraction (la racine du volume appartient à root),
-  # puis les fichiers sont rendus à l'utilisateur de MinIO (uid 1001).
-  compose run --rm --no-deps -T --user 0 --entrypoint sh immodesk-minio -c \
-    'find /bitnami/minio/data -mindepth 1 -delete \
-     && tar -C /bitnami/minio/data -xzf - \
-     && chown -R 1001:0 /bitnami/minio/data' \
+  echo "== 6. Restauration du stockage Garage (métadonnées, clés et objets)"
+  compose stop immodesk-garage
+  # Les deux volumes sont vidés puis remplis depuis la même archive : l'identité
+  # du nœud, sa disposition, le bucket et la clé de l'API reviennent avec les
+  # objets. garage-init, relancé par `up`, constate que tout est en place.
+  compose run --rm --no-deps -T garage-archive \
+    'find /garage/meta /garage/data -mindepth 1 -delete && tar -C /garage -xzf -' \
     <"$work/objets.tar.gz"
 fi
 

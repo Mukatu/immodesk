@@ -39,7 +39,7 @@ process.env.OTP_PEPPER = process.env.OTP_PEPPER ?? 'poivre-de-test-immodesk';
 process.env.S3_ENDPOINT = process.env.S3_ENDPOINT ?? 'http://localhost:9010';
 process.env.S3_BUCKET = process.env.S3_BUCKET ?? 'immodesk';
 process.env.S3_ACCESS_KEY = process.env.S3_ACCESS_KEY ?? 'immodesk';
-process.env.S3_SECRET_KEY = process.env.S3_SECRET_KEY ?? 'immodesk123';
+process.env.S3_SECRET_KEY = process.env.S3_SECRET_KEY ?? 'immodesk-dev-secret';
 process.env.SWAGGER_ENABLED = 'false';
 // Base de la notify_url des transactions Mobile Money (le simulateur la reecrit
 // vers le port ephemere de l'application testee : pointSimulatorAtTestApp).

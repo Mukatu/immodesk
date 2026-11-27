@@ -5,7 +5,7 @@
 > poste de développement.
 
 Cette pile Docker fournit les dépendances de développement d'Immodesk :
-PostgreSQL 16, Redis 7, MinIO (S3) et, en option, Mailpit (capture SMTP).
+PostgreSQL 16, Redis 7, Garage (stockage objet S3) et, en option, Mailpit (capture SMTP).
 
 ## Démarrage
 
@@ -41,7 +41,7 @@ docker compose -f infra/docker/docker-compose.yml --profile mail up -d
 | ------------------- | ------------ | --------------------------------- |
 | postgres            | **5440**     | mappé vers 5432 dans le conteneur |
 | redis               | 6390         |                                   |
-| minio               | 9010 / 9011  | API S3 / console web              |
+| garage              | 9010         | API S3 (pas de console web)       |
 | mailpit (optionnel) | 1025 / 8025  | SMTP / UI web (profile `mail`)    |
 
 **Important : le port hôte de PostgreSQL est 5440, jamais 5432.** Le port
@@ -55,22 +55,47 @@ Définies avec des valeurs par défaut inline dans
 `infra/docker/docker-compose.yml` (surchargeables via l'environnement ou
 `--env-file infra/env/docker.env.example`, voir ce fichier) :
 
-| Variable                | Défaut dev     | Usage                                  |
-| ----------------------- | -------------- | -------------------------------------- |
-| `POSTGRES_DB`           | `immodesk`     | Nom de la base                         |
-| `POSTGRES_USER`         | `immodesk`     | Rôle admin/owner Postgres              |
-| `POSTGRES_PASSWORD`     | `immodesk`     | Mot de passe du rôle admin/owner       |
-| `IMMODESK_APP_PASSWORD` | `immodesk_app` | Mot de passe attribué à `immodesk_app` |
-| `MINIO_ROOT_USER`       | `immodesk`     | Utilisateur admin MinIO                |
-| `MINIO_ROOT_PASSWORD`   | `immodesk123`  | Mot de passe admin MinIO               |
+| Variable                | Défaut dev            | Usage                                  |
+| ----------------------- | --------------------- | -------------------------------------- |
+| `POSTGRES_DB`           | `immodesk`            | Nom de la base                         |
+| `POSTGRES_USER`         | `immodesk`            | Rôle admin/owner Postgres              |
+| `POSTGRES_PASSWORD`     | `immodesk`            | Mot de passe du rôle admin/owner       |
+| `IMMODESK_APP_PASSWORD` | `immodesk_app`        | Mot de passe attribué à `immodesk_app` |
+| `GARAGE_RPC_SECRET`     | (hexadécimal)         | Secret interne de Garage (64 hexa)     |
+| `GARAGE_ADMIN_TOKEN`    | `immodesk-dev-admin`  | Jeton de l'API d'admin (garage-init)   |
+| `S3_ACCESS_KEY`         | `immodesk`            | Clé de l'API, créée par `garage-init`  |
+| `S3_SECRET_KEY`         | `immodesk-dev-secret` | Secret de cette clé (16 car. min.)     |
 
 Ces valeurs correspondent exactement à celles utilisées dans `.env.example`
 à la racine du repo (`DATABASE_URL`, `DATABASE_ADMIN_URL`, `S3_*`, etc.).
 
+## Stockage objet : Garage
+
+`garage-init` (tâche ponctuelle, idempotente) attribue son rôle au nœud,
+crée le bucket privé `immodesk` et la clé de l'API limitée à ce bucket
+(`infra/deploy/scripts/garage-init.sh`, partagé avec la recette et la CI).
+Choix de Garage : [ADR-014](../docs/adr/0014-stockage-objet-garage.md).
+
+Pour inspecter le stockage, le binaire est dans le conteneur :
+
+```bash
+docker exec immodesk_garage /garage status
+docker exec immodesk_garage /garage bucket info immodesk
+```
+
+**Ancienne pile MinIO.** Jusqu'en novembre 2026, la pile lançait MinIO (port
+9010, volume `immodesk_minio_data`). Les fichiers qu'il contient ne sont pas
+repris : ce sont des pièces de test, à téléverser de nouveau au besoin. Arrêter
+l'ancien conteneur avant `pnpm db:up` (`docker rm -f immodesk_minio
+immodesk_minio_init`), puis supprimer son volume une fois inutile
+(`docker volume rm immodesk_minio_data`). Dans `apps/api/.env`, remplacer
+`S3_SECRET_KEY=immodesk123` par `S3_SECRET_KEY=immodesk-dev-secret` : Garage
+exige un secret de 16 caractères au moins.
+
 ## Réinitialisation complète
 
 Pour repartir d'un état vierge (supprime aussi les volumes, donc les
-données Postgres/Redis/MinIO — l'init du schéma sera rejouée au prochain
+données Postgres/Redis/Garage — l'init du schéma sera rejouée au prochain
 démarrage) :
 
 ```bash

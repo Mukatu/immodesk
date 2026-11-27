@@ -62,7 +62,8 @@ export class ReadinessService {
   private async checkStorage(): Promise<HealthCheck> {
     const endpoint = this.config.S3_ENDPOINT;
     if (!endpoint) return { status: 'skipped', detail: 'S3_ENDPOINT non configuré.' };
-    return this.probeHttp(`${endpoint.replace(/\/+$/, '')}/minio/health/live`);
+    // Racine anonyme : 403 attendu, seul un 5xx ou l'absence de réponse compte.
+    return this.probeHttp(`${endpoint.replace(/\/+$/, '')}/`);
   }
 
   /**

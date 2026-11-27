@@ -78,7 +78,7 @@ export class PdfBrowserService implements OnModuleDestroy {
     try {
       // Aucun script ni accès réseau pendant le rendu : les modèles n'utilisent
       // que du HTML et des images `data:`. Une donnée mal échappée (nom, adresse)
-      // ne peut ainsi ni exécuter de code ni joindre MinIO, l'API ou Internet.
+      // ne peut ainsi ni exécuter de code ni joindre le stockage objet, l'API ou Internet.
       await page.setJavaScriptEnabled(false);
       await page.setRequestInterception(true);
       page.on('request', (request) => {

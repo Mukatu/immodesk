@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 
-import { ApiError, apiFetch } from '@/lib/api/client';
+import { ApiError, apiFetch, refreshAccessToken } from '@/lib/api/client';
 import type {
   MeResponse,
   OrganizationMembership,
@@ -74,17 +74,6 @@ async function verifyOtpBff(
   return payload as OtpVerifyResponse;
 }
 
-async function silentRefresh(): Promise<string | null> {
-  try {
-    const response = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
-    if (!response.ok) return null;
-    const data = (await response.json()) as { accessToken: string };
-    return data.accessToken;
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<AuthStatus>('loading');
@@ -95,13 +84,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const hydrate = React.useCallback(async () => {
-    const token = await silentRefresh();
+    const token = await refreshAccessToken();
     if (!token) {
       resetTokenStore();
       setStatus('anonymous');
       return;
     }
-    setAccessToken(token);
     try {
       const me = await apiFetch<MeResponse>('/me');
       setUser(me.user);

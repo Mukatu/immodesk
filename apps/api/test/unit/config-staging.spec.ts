@@ -36,7 +36,7 @@ const STAGING = {
   PUBLIC_WEB_BASE_URL: 'https://staging.immodesk.watuneed.fr',
   PUBLIC_API_BASE_URL: 'https://api.staging.immodesk.watuneed.fr',
   MOMO_WEBHOOK_BASE_URL: 'https://api.staging.immodesk.watuneed.fr',
-  S3_ENDPOINT: 'http://minio:9000',
+  S3_ENDPOINT: 'http://immodesk-garage:3900',
   S3_PUBLIC_ENDPOINT: 'https://s3.staging.immodesk.watuneed.fr',
 };
 

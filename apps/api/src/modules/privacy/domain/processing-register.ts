@@ -74,7 +74,7 @@ export function processingRegisterCommon(dpoContact: string | null): ProcessingR
     ],
     processors: [
       {
-        name: 'MinIO (auto-hébergé, VPS pilote)',
+        name: 'Garage (auto-hébergé, VPS pilote)',
         role: 'Stockage objet des documents et pièces jointes',
         country: 'CG',
         transferOutsideCountry: false,

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Sauvegarde chiffrée : base PostgreSQL (pg_dump, format custom) et objets
-# MinIO (photos, signatures, PDF), avec rotation.
+# Sauvegarde chiffrée : base PostgreSQL (pg_dump, format custom) et stockage
+# objet Garage (métadonnées et blocs : photos, signatures, PDF), avec rotation.
 #   infra/deploy/scripts/backup.sh
 # Lancé chaque nuit par immodesk-backup.timer, sous l'utilisateur deploy.
 #
@@ -25,9 +25,9 @@ fi
 umask 077
 mkdir -p "$BACKUP_DIR"
 work="$(mktemp -d "$BACKUP_DIR/.en-cours.XXXXXX")"
-minio_paused=0
+garage_paused=0
 cleanup() {
-  if [[ $minio_paused -eq 1 ]]; then compose unpause immodesk-minio >/dev/null 2>&1 || true; fi
+  if [[ $garage_paused -eq 1 ]]; then compose unpause immodesk-garage >/dev/null 2>&1 || true; fi
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -37,13 +37,16 @@ compose exec -T postgres pg_dump -U immodesk -d immodesk -Fc >"$work/db.pgdump"
 # Contrôle avant chiffrement : l'archive doit être relisible par pg_restore.
 compose exec -T postgres pg_restore --list <"$work/db.pgdump" >/dev/null
 
-echo "== Objets (MinIO suspendu quelques secondes : archive cohérente)"
-compose pause immodesk-minio >/dev/null
-minio_paused=1
-compose run --rm --no-deps -T --entrypoint tar immodesk-minio \
-  -C /bitnami/minio/data -czf - . >"$work/objets.tar.gz"
-compose unpause immodesk-minio >/dev/null
-minio_paused=0
+# Métadonnées (SQLite : clés, bucket, index des objets) et blocs ensemble,
+# Garage figé : l'archive est l'image d'un même instant, comme après une
+# coupure de courant, dont SQLite et Garage se relèvent sans perte.
+echo "== Objets (Garage suspendu quelques secondes : archive cohérente)"
+compose pause immodesk-garage >/dev/null
+garage_paused=1
+compose run --rm --no-deps -T garage-archive 'tar -C /garage -czf - meta data' \
+  >"$work/objets.tar.gz"
+compose unpause immodesk-garage >/dev/null
+garage_paused=0
 tar -tzf - <"$work/objets.tar.gz" >/dev/null
 
 echo "== Chiffrement"

@@ -5,7 +5,7 @@
 # Réseaux (aucun n'est partagé avec un autre projet) :
 #   public   : Caddy seul, porte les ports 80 et 443 ;
 #   edge     : Caddy, API et web ;
-#   edge_s3  : Caddy et MinIO seuls (le web n'a aucun chemin vers le stockage) ;
+#   edge_s3  : Caddy et Garage seuls (le web n'a aucun chemin vers le stockage) ;
 #   app      : web vers API (appels serveur du BFF Next) ;
 #   backend  : API, bases et tâches ponctuelles, sans accès Internet ;
 #   egress   : sortie Internet de l'API seule (Meta, OpenPay).
@@ -78,46 +78,62 @@ services:
     mem_limit: 512m
     logging: *logging
 
-  immodesk-minio:
-    # Les images officielles MinIO ne sont plus publiées en accès libre : même
-    # image que la CI, épinglée, sans correctifs depuis juillet 2025. Caddy n'en
-    # expose que les requêtes signées d'objets (docs/10 § 17, points ouverts).
-    image: docker.io/bitnamilegacy/minio:2025.7.23-debian-12-r5
+  # Stockage objet compatible S3 : Garage (docs/adr/0014), image officielle
+  # épinglée, sans shell. Caddy n'en expose que les requêtes signées d'objets
+  # du bucket (caddy/sites/immodesk.caddy) ; l'API d'administration (3903) ne
+  # sert qu'à garage-init.
+  immodesk-garage:
+    image: docker.io/dxflrs/garage:v2.5.0
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?à renseigner dans .env}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?à renseigner dans .env}
-      MINIO_BROWSER: 'off'
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?à renseigner dans .env}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?à renseigner dans .env}
     volumes:
-      - minio_data:/bitnami/minio/data
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
     networks: [backend, edge_s3]
     healthcheck:
-      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:9000/minio/health/live']
+      test: ['CMD', '/garage', 'status']
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 20s
-    mem_limit: 1g
+      start_period: 10s
+    mem_limit: 512m
     logging: *logging
 
-  # Tâche ponctuelle : bucket privé et compte d'accès dédié à l'API (jamais le
-  # compte administrateur de MinIO).
-  minio-init:
-    image: docker.io/bitnamilegacy/minio-client:2025.7.21-debian-12-r3
+  # Tâche ponctuelle et idempotente : rôle du nœud, bucket privé et clé d'accès
+  # de l'API limitée à ce bucket (jamais le jeton d'administration).
+  garage-init:
+    image: docker.io/curlimages/curl:8.23.0
     restart: 'no'
     depends_on:
-      immodesk-minio:
+      immodesk-garage:
         condition: service_healthy
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      GARAGE_ADMIN_URL: http://immodesk-garage:3903
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
       S3_BUCKET: immodesk
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:?à renseigner dans .env}
       S3_SECRET_KEY: ${S3_SECRET_KEY:?à renseigner dans .env}
-    entrypoint: ['/bin/bash', '/scripts/minio-init.sh']
+    entrypoint: ['/bin/sh', '/scripts/garage-init.sh']
     volumes:
-      - ./scripts/minio-init.sh:/scripts/minio-init.sh:ro
+      - ./scripts/garage-init.sh:/scripts/garage-init.sh:ro
     networks: [backend]
+    logging: *logging
+
+  # Outil de sauvegarde et de restauration des volumes de Garage (backup.sh,
+  # restore.sh) : jamais démarré par `up`, sans réseau.
+  garage-archive:
+    image: docker.io/curlimages/curl:8.23.0
+    profiles: ['outils']
+    user: '0'
+    network_mode: none
+    entrypoint: ['/bin/sh', '-c']
+    command: ['echo garage-archive : outil de backup.sh et restore.sh']
+    volumes:
+      - garage_meta:/garage/meta
+      - garage_data:/garage/data
     logging: *logging
 
   # Tâche ponctuelle : `prisma migrate deploy` avec le propriétaire du schéma.
@@ -167,7 +183,7 @@ services:
     depends_on:
       db-roles:
         condition: service_completed_successfully
-      minio-init:
+      garage-init:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
@@ -185,7 +201,7 @@ services:
       DATABASE_POOL_MAX: '8'
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       QUEUE_PREFIX: immodesk-staging
-      S3_ENDPOINT: http://immodesk-minio:9000
+      S3_ENDPOINT: http://immodesk-garage:3900
       S3_PUBLIC_ENDPOINT: https://${S3_HOST:?à renseigner dans .env}
       S3_BUCKET: immodesk
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
@@ -274,7 +290,8 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
+  garage_meta:
+  garage_data:
   caddy_data:
   caddy_config:
 

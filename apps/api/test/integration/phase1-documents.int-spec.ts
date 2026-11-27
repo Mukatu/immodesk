@@ -17,7 +17,7 @@ const PNG_1X1 = Buffer.from(
   'base64',
 );
 
-describe('Phase 1 — documents : URL signées contre MinIO réel', () => {
+describe('Phase 1 — documents : URL signées contre un stockage S3 réel (Garage)', () => {
   let ctx: TestContext;
   const ownerPhone = uniquePhone();
   const strangerPhone = uniquePhone();
@@ -120,13 +120,26 @@ describe('Phase 1 — documents : URL signées contre MinIO réel', () => {
     expect(signed.body.maxSizeBytes).toBe(15 * 1024 * 1024);
     objectKey = signed.body.objectKey;
 
-    // Téléversement réel vers MinIO, avec le Content-Type signé.
+    // Le Content-Type est signé : un autre type que celui déclaré est refusé
+    // par le stockage lui-même, avant tout enregistrement.
+    const disguised = await fetch(signed.body.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/x-msdownload' },
+      body: PNG_1X1,
+    });
+    expect(disguised.status).toBe(403);
+
+    // Téléversement réel vers le stockage, avec le Content-Type signé.
     const put = await fetch(signed.body.uploadUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'image/png' },
       body: PNG_1X1,
     });
     expect(put.status).toBe(200);
+
+    // Lecture anonyme (sans signature) refusée : le bucket est privé.
+    const anonymous = await fetch(signed.body.uploadUrl.split('?')[0]);
+    expect(anonymous.status).toBe(403);
 
     const registered = await api(ctx, 'POST', '/documents', {
       ...asOwner(),
@@ -214,11 +227,12 @@ describe('Phase 1 — documents : URL signées contre MinIO réel', () => {
     await new Promise((resolve) => setTimeout(resolve, 2500));
 
     const expired = await fetch(shortLived.downloadUrl);
-    expect(expired.status).toBe(403);
-    // Le refus vient bien du stockage (« Request has expired »), pas de l'API.
+    // Le refus vient bien du stockage, pas de l'API. AWS et MinIO répondent
+    // 403 « Request has expired », Garage 400 « Date is too old ».
+    expect([400, 403]).toContain(expired.status);
     const body = await expired.text();
-    expect(body).toMatch(/expired/i);
-    expect(body).toContain('AccessDenied');
+    expect(body).toMatch(/expired|too old/i);
+    expect(body).toMatch(/<Code>(AccessDenied|InvalidRequest)<\/Code>/);
   }, 30_000);
 
   it('supprime logiquement puis purge l’objet après le délai de rétractation', async () => {

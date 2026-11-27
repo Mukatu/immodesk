@@ -18,10 +18,11 @@ let refreshPromise: Promise<string | null> | null = null;
 
 /**
  * Rafraîchit l'access token via la route BFF Next (qui porte le refresh token httpOnly).
- * Toutes les requêtes concurrentes qui échouent en 401 partagent la même promesse :
- * une seule tentative de rafraîchissement est en vol à la fois (file d'attente implicite).
+ * Point d'entrée UNIQUE du rafraîchissement côté client (hydratation de la session comprise) :
+ * tous les appelants concurrents partagent la même promesse, car le refresh token tourne à
+ * chaque usage et un second appel avec l'ancien jeton serait rejeté (401, voire révocation).
  */
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {

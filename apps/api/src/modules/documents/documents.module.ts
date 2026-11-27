@@ -10,7 +10,7 @@ import { SignedLinksService } from './application/signed-links.service';
 import { PublicRateLimitGuard } from '../../shared/throttler/public-rate-limit.guard';
 
 /**
- * Module `documents` : stockage objet compatible S3 (MinIO en pilote,
+ * Module `documents` : stockage objet compatible S3 (Garage auto-hébergé en pilote,
  * Cloudflare R2 si le volume l'exige), URL signées, rattachement polymorphe.
  * Propriétaire exclusif de la table `documents`.
  *

@@ -55,7 +55,7 @@ export class HealthService {
   }
 
   /**
-   * Stockage objet : une sonde HTTP sur l'endpoint S3/MinIO suffit à
+   * Stockage objet : une sonde HTTP sur l'endpoint S3 suffit à
    * détecter une panne. Aucun accès authentifié n'est tenté ici, la sonde
    * doit rester rapide et sans effet de bord.
    */
@@ -67,11 +67,11 @@ export class HealthService {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
     try {
-      const response = await fetch(`${endpoint.replace(/\/+$/, '')}/minio/health/live`, {
+      const response = await fetch(`${endpoint.replace(/\/+$/, '')}/`, {
         method: 'GET',
         signal: controller.signal,
       });
-      // MinIO répond 200 ; un S3 générique répond 403/404 mais est joignable.
+      // Requête anonyme : Garage (comme tout S3) répond 403, mais est joignable.
       return response.status < 500
         ? { status: 'up' }
         : { status: 'down', detail: `HTTP ${response.status}` };

@@ -83,18 +83,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Stockage objet compatible S3 pour les tests du module documents.
-      # Image Bitnami (Docker Hub, sans authentification) : quay.io/minio et
-      # docker.io/minio ne sont plus accessibles anonymement. Le bucket est créé
-      # par MINIO_DEFAULT_BUCKETS, donc plus besoin du client mc.
-      - name: Start MinIO
+      # Stockage objet compatible S3 pour les tests du module documents : Garage,
+      # image officielle épinglée (docs/adr/0014), même configuration et même
+      # script de préparation que la pile de développement.
+      - name: Start Garage
+        env:
+          GARAGE_ADMIN_URL: http://localhost:3903
+          GARAGE_ADMIN_TOKEN: ci-admin-token
+          S3_ACCESS_KEY: immodesk
+          S3_SECRET_KEY: immodesk-dev-secret
         run: |
-          docker run -d --name minio -p 9000:9000             -e MINIO_ROOT_USER=immodesk -e MINIO_ROOT_PASSWORD=immodesk123             -e MINIO_DEFAULT_BUCKETS=immodesk             docker.io/bitnamilegacy/minio:2025.7.23-debian-12-r0
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:9000/minio/health/live >/dev/null; then echo "MinIO prêt"; break; fi
-            sleep 2
-          done
-          curl -sf http://localhost:9000/minio/health/live >/dev/null || { echo "MinIO indisponible"; docker logs minio; exit 1; }
+          docker run -d --name garage -p 9000:3900 -p 3903:3903 \
+            -e GARAGE_RPC_SECRET="$(openssl rand -hex 32)" \
+            -e GARAGE_ADMIN_TOKEN="$GARAGE_ADMIN_TOKEN" \
+            -v "$PWD/infra/docker/garage/garage.toml:/etc/garage.toml:ro" \
+            docker.io/dxflrs/garage:v2.5.0
+          sh infra/deploy/scripts/garage-init.sh || { docker logs garage; exit 1; }
 
       # postgresql-client (psql) is preinstalled on GitHub's ubuntu-latest
       # runners, so no apt-get install step is needed here.
@@ -115,7 +119,7 @@ jobs:
           S3_ENDPOINT: http://localhost:9000
           S3_BUCKET: immodesk
           S3_ACCESS_KEY: immodesk
-          S3_SECRET_KEY: immodesk123
+          S3_SECRET_KEY: immodesk-dev-secret
           MOMO_WEBHOOK_BASE_URL: http://localhost:3000
         run: pnpm --filter @immodesk/api test:integration
 

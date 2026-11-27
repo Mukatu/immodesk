@@ -182,18 +182,17 @@ La liste détaillée est dans `apps/web/README.md`.
 
 ## 4. Ports et adresses
 
-| Service            | Port | Défini par                          |
-| :----------------- | :--- | :---------------------------------- |
-| API                | 3000 | `PORT` dans `apps/api/.env.example` |
-| Dashboard web      | 3001 | Choisi au lancement avec `-p`       |
-| Dashboard simulé   | 3100 | `apps/web/playwright.config.ts`     |
-| PostgreSQL         | 5440 | `infra/docker/docker-compose.yml`   |
-| Redis              | 6390 | `infra/docker/docker-compose.yml`   |
-| MinIO, stockage    | 9010 | `infra/docker/docker-compose.yml`   |
-| MinIO, console     | 9011 | `infra/docker/docker-compose.yml`   |
-| Mailpit, courriels | 8025 | `infra/docker/docker-compose.yml`   |
+| Service             | Port | Défini par                          |
+| :------------------ | :--- | :---------------------------------- |
+| API                 | 3000 | `PORT` dans `apps/api/.env.example` |
+| Dashboard web       | 3001 | Choisi au lancement avec `-p`       |
+| Dashboard simulé    | 3100 | `apps/web/playwright.config.ts`     |
+| PostgreSQL          | 5440 | `infra/docker/docker-compose.yml`   |
+| Redis               | 6390 | `infra/docker/docker-compose.yml`   |
+| Garage, stockage S3 | 9010 | `infra/docker/docker-compose.yml`   |
+| Mailpit, courriels  | 8025 | `infra/docker/docker-compose.yml`   |
 
-Les deux dernières adresses sont des consoles web à ouvrir directement dans un navigateur.
+Mailpit est une console web à ouvrir directement dans un navigateur.
 Celle de Mailpit affiche les courriels envoyés en développement, qui ne partent jamais réellement.
 
 > La valeur par défaut du web vise désormais le port 3000 de l'API, en accord avec le port d'écoute

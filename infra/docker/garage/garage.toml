@@ -1,0 +1,26 @@
+# Garage, nœud unique de développement (et de la CI). Les secrets ne sont pas
+# ici : GARAGE_RPC_SECRET et GARAGE_ADMIN_TOKEN viennent de l'environnement.
+# Référence : https://garagehq.deuxfleurs.fr/documentation/reference-manual/configuration/
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+# SQLite : plus lent que LMDB mais robuste à un arrêt brutal ; largement
+# suffisant pour quelques milliers de pièces jointes.
+db_engine = "sqlite"
+replication_factor = 1
+# Photos et PDF sont déjà compressés : inutile de dépenser du processeur.
+compression_level = "none"
+block_ram_buffer_max = "64MiB"
+
+rpc_bind_addr = "0.0.0.0:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+# Région attendue dans la signature SigV4 : celle de S3_REGION (us-east-1).
+s3_region = "us-east-1"
+api_bind_addr = "0.0.0.0:3900"
+# Pas de root_domain : adressage par chemin seul (/bucket/clé), comme l'API
+# le demande (forcePathStyle).
+
+[admin]
+# Utilisée par garage-init seulement ; jamais publiée sur l'hôte.
+api_bind_addr = "0.0.0.0:3903"

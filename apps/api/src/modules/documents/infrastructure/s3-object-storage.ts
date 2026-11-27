@@ -12,13 +12,25 @@ import { DomainError } from '../../../shared/errors/domain-error';
 import type { ObjectStorage, PresignedUpload, StoredObjectInfo } from '../domain/storage.port';
 
 /**
- * Stockage objet compatible S3, branché sur MinIO en local.
+ * Stockage objet compatible S3, branché sur Garage (développement, CI, recette).
  *
- * `forcePathStyle: true` est indispensable avec MinIO : l'adressage par
- * sous-domaine (`bucket.host`) suppose un DNS générique que `localhost` n'a
- * pas. La région est fixée à `us-east-1` car le SDK en exige une pour signer,
- * alors que MinIO l'ignore.
+ * `forcePathStyle: true` : l'adressage par sous-domaine (`bucket.host`)
+ * suppose un DNS générique que `localhost` n'a pas, et Garage n'a pas de
+ * `root_domain`. La région (`S3_REGION`, `us-east-1`) entre dans la signature
+ * SigV4 : elle doit égaler `s3_region` de garage.toml.
+ *
+ * Sommes de contrôle « WHEN_REQUIRED » : depuis 2025, le SDK ajoute par défaut
+ * un CRC32 à chaque envoi. Dans une URL signée, il porterait le CRC32 d'un
+ * corps VIDE (`x-amz-checksum-crc32=AAAAAA==`), et tout stockage qui le vérifie
+ * (Garage 2.5) refuserait l'envoi réel du téléphone en 400.
  */
+const CHECKSUMS = {
+  requestChecksumCalculation: 'WHEN_REQUIRED',
+  responseChecksumValidation: 'WHEN_REQUIRED',
+} as const;
+
+/** En-têtes signés en plus de `host` dans les URL signées. */
+export const SIGNED_UPLOAD_HEADERS: ReadonlySet<string> = new Set(['content-type']);
 @Injectable()
 export class S3ObjectStorage implements ObjectStorage, OnModuleDestroy {
   private readonly logger = new Logger(S3ObjectStorage.name);
@@ -48,6 +60,7 @@ export class S3ObjectStorage implements ObjectStorage, OnModuleDestroy {
       region: config.get('S3_REGION'),
       forcePathStyle: true,
       credentials: { accessKeyId, secretAccessKey },
+      ...CHECKSUMS,
     });
     const publicEndpoint = config.get('S3_PUBLIC_ENDPOINT');
     this.signer = publicEndpoint
@@ -56,6 +69,7 @@ export class S3ObjectStorage implements ObjectStorage, OnModuleDestroy {
           region: config.get('S3_REGION'),
           forcePathStyle: true,
           credentials: { accessKeyId, secretAccessKey },
+          ...CHECKSUMS,
         })
       : this.client;
   }
@@ -70,14 +84,15 @@ export class S3ObjectStorage implements ObjectStorage, OnModuleDestroy {
     mimeType: string;
     ttlSeconds: number;
   }): Promise<PresignedUpload> {
-    // `ContentType` est signé : le client DOIT envoyer le même en-tête,
-    // ce qui empêche de faire passer un exécutable pour une image.
+    // `Content-Type` est signé (SIGNED_UPLOAD_HEADERS) : le client DOIT envoyer
+    // exactement le même en-tête, sinon le stockage répond 403. L'objet stocké
+    // porte donc le type déclaré et vérifié par `assertUploadAllowed`.
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: input.objectKey,
       ContentType: input.mimeType,
     });
-    const uploadUrl = await this.sign(command, input.ttlSeconds);
+    const uploadUrl = await this.sign(command, input.ttlSeconds, SIGNED_UPLOAD_HEADERS);
     return {
       uploadUrl,
       objectKey: input.objectKey,
@@ -178,9 +193,13 @@ export class S3ObjectStorage implements ObjectStorage, OnModuleDestroy {
   private async sign(
     command: PutObjectCommand | GetObjectCommand,
     ttlSeconds: number,
+    signableHeaders?: ReadonlySet<string>,
   ): Promise<string> {
     try {
-      return await getSignedUrl(this.signer, command, { expiresIn: ttlSeconds });
+      return await getSignedUrl(this.signer, command, {
+        expiresIn: ttlSeconds,
+        ...(signableHeaders ? { signableHeaders: new Set(signableHeaders) } : {}),
+      });
     } catch (error) {
       this.logger.error(`Signature d'URL en échec : ${(error as Error).message}`);
       throw new DomainError('DOCUMENTS.STORAGE_UNAVAILABLE');

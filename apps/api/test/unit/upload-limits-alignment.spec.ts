@@ -1,9 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  MAX_IMAGE_BYTES,
-  MAX_PDF_BYTES,
-} from '../../src/modules/documents/domain/document-rules';
+import { MAX_IMAGE_BYTES, MAX_PDF_BYTES } from '../../src/modules/documents/domain/document-rules';
 
 /**
  * Source de vérité des plafonds d'envoi : document-rules.ts (API). Le proxy et

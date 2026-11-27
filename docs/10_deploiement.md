@@ -46,8 +46,9 @@ Le web n'a aucun chemin vers les bases ni vers le stockage. L'API n'est joignabl
 
 Pourquoi Garage passe par Caddy : le mobile envoie ses photos **directement** au
 stockage, avec une URL signée fournie par l'API. Caddy ne laisse passer que les
-requêtes **signées** d'objets du bucket (lecture, envoi, 15 Mo au plus) vers le port
-S3 de Garage ; tout le reste répond 404. L'API d'administration de Garage (port 3903)
+requêtes **signées** d'objets du bucket (lecture, envoi, 26 Mio au plus, § 6 bis) et
+les préflights CORS `OPTIONS` sur les chemins d'objets seulement, vers le port S3 de
+Garage ; tout le reste répond 404. L'API d'administration de Garage (port 3903)
 ne sert qu'à `garage-init` et n'est jamais relayée. Le bucket est privé : Garage
 n'offre d'accès anonyme qu'en mode site web, ni activé ni configuré.
 
@@ -208,6 +209,29 @@ que les variables WhatsApp et SMS tant que C1 et E1 n'existent pas.
 Le fichier `.env` contient tous les secrets du serveur. Il n'est jamais versionné et ne
 s'envoie pas par messagerie ; en garder une copie dans le gestionnaire de mots de
 passe.
+
+## 6 bis. Envoi des pièces : CORS et limites de taille
+
+**CORS.** Le web envoie les pièces en `PUT` direct sur l'URL signée du stockage, depuis
+une autre origine : le navigateur fait d'abord un préflight `OPTIONS`. `garage-init`
+pose (idempotent, `PutBucketCors`) une seule règle sur le bucket : origine
+`https://${WEB_HOST}` (variable `S3_CORS_ORIGINS`, jamais de joker), méthodes PUT, GET et
+HEAD, en-tête `content-type` seul (en minuscules : Garage compare sans normaliser la
+casse), aucun en-tête exposé. Garage réserve cette opération au propriétaire du bucket :
+la clé de l'API l'obtient le temps de poser la règle, puis le perd. Caddy ne relaie
+`OPTIONS` que pour `/immodesk/<objet>` ; une autre origine reçoit 403 de Garage. En
+développement (`infra/docker`), l'origine est `http://localhost:3000`
+(`S3_CORS_ORIGINS` pour la changer).
+
+**Limites de taille (source de vérité : `MAX_IMAGE_BYTES` et `MAX_PDF_BYTES`,
+`apps/api/src/modules/documents/domain/document-rules.ts`).** Image 15 Mo, PDF 25 Mo,
+relevé bancaire 10 Mo (Mo = 1 048 576 octets). L'URL signée ne signe pas la taille : l'API
+relit la taille réelle (HEAD) et refuse au-delà (413 `DOCUMENTS.FILE_TOO_LARGE`). Le web
+reprend les mêmes plafonds avant l'envoi (message « Fichier trop volumineux »). Caddy
+plafonne le corps à **26 Mio**, soit le plus grand plafond de l'API plus 1 Mio de
+marge ; un test unitaire de l'API (`upload-limits-alignment.spec.ts`) échoue si Caddy ou
+le web dérivent. Le mobile compresse ses photos (1,5 Mo cibles) et n'a pas de plafond
+propre.
 
 ## 7. Premier lancement
 
@@ -583,11 +607,6 @@ Quand C1 (WhatsApp), E1 (passerelle SMS) et C4 (OpenPay) sont prêts :
     `deploy.sh` (garage-init crée la clé et ses droits), puis supprimer l'ancienne :
     `docker compose exec immodesk-garage /garage key delete --yes ANCIENNE_CLE`.
     Garder l'ancienne valeur avec un nouveau secret fait échouer `garage-init`, exprès.
-- **Envoi depuis le navigateur** : le web envoie les pièces en `PUT` direct vers
-  l'URL signée, depuis une autre origine. Le navigateur fait d'abord une requête
-  `OPTIONS` (CORS), que Caddy refuse (404) et que le bucket n'autorise pas : seul le
-  mobile peut envoyer en recette. À traiter : règle CORS du bucket limitée à l'origine
-  du web, et `OPTIONS` admis par Caddy sur le chemin du bucket.
 - **Copie hors site automatique** : la copie est manuelle (§ 15) et reste à automatiser
   vers un second fournisseur.
 - **Limite d'OTP par IP côté web** : les demandes de code faites depuis le web passent
@@ -596,8 +615,3 @@ Quand C1 (WhatsApp), E1 (passerelle SMS) et C4 (OpenPay) sont prêts :
   corriger avant la production : transmettre l'IP du client par le BFF.
 - **Portail bailleur** : il est servi sous `/portail` du site web ; l'hôte distinct
   `portail.immodesk.watuneed.fr` prévu au besoin C3 n'est pas encore câblé.
-- **Taille des envois** : l'URL signée signe l'hôte et le `Content-Type` (un autre
-  type que celui déclaré est refusé en 403 par Garage), pas la taille. Caddy plafonne
-  chaque envoi à 15 Mo, et l'API relit la taille réelle (HEAD) avant d'enregistrer
-  le document. Les PDF de plus de 15 Mo, admis par l'API jusqu'à 25 Mo, sont donc
-  refusés par Caddy en recette.

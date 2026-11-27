@@ -48,7 +48,7 @@ async function loginAndCreateOrganization(
 
   await expect(page).toHaveURL(/\/onboarding\/organisation/);
   await page.getByRole('button', { name: 'Suivant' }).click();
-  await page.getByLabel('Raison sociale').fill(opts.orgName);
+  await page.getByLabel('Nom et prénom').fill(opts.orgName);
   await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
   await page.getByRole('button', { name: 'Suivant' }).click();
   await page.locator('#contact-phone').fill(opts.orgContactPhone);

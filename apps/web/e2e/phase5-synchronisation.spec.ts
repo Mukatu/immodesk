@@ -37,7 +37,7 @@ test.describe('Synchronisation phase 5 : file des lots, conflit, résolution', (
 
     await expect(page).toHaveURL(/\/onboarding\/organisation/);
     await page.getByRole('button', { name: 'Suivant' }).click();
-    await page.getByLabel('Raison sociale').fill('Agence Synchronisation E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Synchronisation E2E');
     await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.locator('#contact-phone').fill(ORG_CONTACT_PHONE);

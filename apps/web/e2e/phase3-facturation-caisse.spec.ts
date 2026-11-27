@@ -35,7 +35,7 @@ test.describe('Facturation et caisse phase 3 : facture → encaissements → qui
 
     await expect(page).toHaveURL(/\/onboarding\/organisation/);
     await page.getByRole('button', { name: 'Suivant' }).click();
-    await page.getByLabel('Raison sociale').fill('Agence Facturation E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Facturation E2E');
     await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.locator('#contact-phone').fill(ORG_CONTACT_PHONE);

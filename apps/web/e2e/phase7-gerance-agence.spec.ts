@@ -35,7 +35,7 @@ test.describe('Gérance d’agence phase 7 : campagne → relevé → reversemen
 
     await expect(page).toHaveURL(/\/onboarding\/organisation/);
     await page.getByRole('button', { name: 'Suivant' }).click();
-    await page.getByLabel('Raison sociale').fill('Agence Gérance E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Gérance E2E');
     await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.locator('#contact-phone').fill(ORG_CONTACT_PHONE);

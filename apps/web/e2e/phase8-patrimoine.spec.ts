@@ -64,7 +64,7 @@ test.describe('Patrimoine phase 8 : états des lieux, compteurs et maintenance',
 
     await expect(page).toHaveURL(/\/onboarding\/organisation/);
     await page.getByRole('button', { name: 'Suivant' }).click();
-    await page.getByLabel('Raison sociale').fill('Agence Patrimoine E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Patrimoine E2E');
     await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.locator('#contact-phone').fill(orgContactPhone);
@@ -276,7 +276,7 @@ test.describe('Patrimoine phase 8 : états des lieux, compteurs et maintenance',
 
     await expect(page).toHaveURL(/\/onboarding\/organisation/);
     await page.getByRole('button', { name: 'Suivant' }).click();
-    await page.getByLabel('Raison sociale').fill('Agence Compteurs E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Compteurs E2E');
     await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.locator('#contact-phone').fill(orgContactPhone);
@@ -443,7 +443,7 @@ test.describe('Patrimoine phase 8 : états des lieux, compteurs et maintenance',
 
     await expect(page).toHaveURL(/\/onboarding\/organisation/);
     await page.getByRole('button', { name: 'Suivant' }).click();
-    await page.getByLabel('Raison sociale').fill('Agence Maintenance E2E');
+    await page.getByLabel('Nom et prénom').fill('Agence Maintenance E2E');
     await page.getByLabel('Ville', { exact: true }).fill('Brazzaville');
     await page.getByRole('button', { name: 'Suivant' }).click();
     await page.locator('#contact-phone').fill(orgContactPhone);

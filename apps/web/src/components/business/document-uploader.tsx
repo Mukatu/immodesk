@@ -26,6 +26,8 @@ const ALLOWED_MIME_TYPES = [
   'application/pdf',
 ] as const;
 
+// Copie de MAX_IMAGE_BYTES / MAX_PDF_BYTES (apps/api, document-rules.ts) : source de
+// vérité côté API ; un test de l API vérifie l alignement (et celui de Caddy).
 const MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_PDF_SIZE_BYTES = 25 * 1024 * 1024;
 

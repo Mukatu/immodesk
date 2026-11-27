@@ -116,6 +116,8 @@ services:
       S3_BUCKET: immodesk
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:?à renseigner dans .env}
       S3_SECRET_KEY: ${S3_SECRET_KEY:?à renseigner dans .env}
+      # CORS du bucket : l'origine publique du web, dérivée de WEB_HOST.
+      S3_CORS_ORIGINS: https://${WEB_HOST:?à renseigner dans .env}
     entrypoint: ['/bin/sh', '/scripts/garage-init.sh']
     volumes:
       - ./scripts/garage-init.sh:/scripts/garage-init.sh:ro
